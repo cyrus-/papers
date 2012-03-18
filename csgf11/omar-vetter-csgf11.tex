@@ -1,0 +1,395 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% amspaper.tex --  LaTeX2e-based template for submissions to American 
+% Meteorological Society Journals, including
+%
+% JAS 	-- Journal of the Atmospheric Sciences
+% JAMC 	-- Journal of Applied Meteorology and Climatology
+% JPO 	-- Journal of Physical Oceanography
+% MWR 	-- Monthly Weather Review
+% JTECH -- Journal of Atmospheric and Oceanic Technology
+% WAF 	-- Weather and Forecasting
+% JCLI 	-- Journal of Climate
+% JHM 	-- Journal of Hydrometeorology
+% JAM 	-- Journal of Applied Meteorology
+%
+% Template developed by B. Papa and S. Cooley, AMS. 
+% Email questions to latex@ametsoc.org.
+%
+% August 12, 2008 (SRC)
+%	- Clarified/added header notes, comments throughout
+%	- Improved title page
+%	- Edited text of document for clarity
+%	- Altered list styles to adhere to AMS style, added comments
+%	- Removed incorrect commands (i.e., \catcode) (corrects umlaut bug)
+%	- Moved non-template commands to ametsoc.sty
+%
+% August, 2008 - B. Papa
+% - Updated to handle two column journal page output
+% - Updated text with new/modified instructions
+%
+% February, 2011 - B. Papa
+% - Updated instructions for use with EM
+%
+% March, 2011 - B. Papa
+% - Added use of \linenumbers
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PREAMBLE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The following three commands will generate a PDF that follows all the requirements for submission
+% and peer review.  Uncomment these commands to generate this output (and comment out the two lines below.)
+%
+% DOUBLE SPACE VERSION FOR SUBMISSION TO THE AMS
+\documentclass[12pt]{article}
+\usepackage{ametsoc}
+%\linenumbers
+
+
+%
+% The following two commands will generate a single space, double column paper that closely
+% matches an AMS journal page.  Uncomment these commands to generate this output (and comment
+% out the two lines above. FOR AUTHOR USE ONLY. PAPERS SUBMITTED IN THIS FORMAT WILL BE RETURNED
+% TO THE AUTHOR for submission with the correct formatting.
+%
+% TWO COLUMN JOURNAL PAGE LAYOUT FOR AUTHOR USE ONLY
+%\documentclass[9pt]{article}
+%\usepackage{ametsoc2col}
+
+
+\input{macros}
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ABSTRACT
+%
+% Enter your Abstract here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\myabstract}{From the perspective of computational scientists, programming systems are the most visible component of HPC systems and they serve a critical role in enabling HPC architectures that are high-performance, energy-efficient, scalable, robust, and productive. However, systems designed to achieve these goals must  handle increasing architectural complexity associated with hierarchical parallelism, the inertia associated with investments in legacy software and platforms and a variety of other design requirements. Many of these challenges are already emerging in today's multicore and heterogeneous computing systems and recent reports conclude that the road to Exascale Computing will require addressing these challenges even more directly. In this survey, we expand upon the design criteria that constrain programming systems for high-performance computing and highlight some emerging approaches, including recent research on general-purpose computing on graphics processors.}
+%
+\begin{document}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TITLE
+%
+% Enter your TITLE here
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{\textbf{\large{Programming Systems on the Road to Exascale Computing
+}}}
+%
+% Author names, with corresponding author information. 
+% [Update and move the \thanks{...} block as appropriate.]
+%
+\author{\textsc{Cyrus Omar}\\
+\textit{\footnotesize{Carnegie Mellon University}}
+\and 
+\centerline{\textsc{Jeffrey Vetter}}\\% Add additional authors, different insitution
+\centerline{\textit{\footnotesize{Oak Ridge National Laboratory}}}
+}
+%
+% The following block of code will handle the formatting of the title page depnding on whether
+% we are formatting a double column (dc) author draft or a single column paper for submission.
+% AUTHORS SHOULD SKIP OVER THIS... There is nothing to do in this section of code.
+\ifthenelse{\boolean{dc}}
+{
+\twocolumn[
+\begin{@twocolumnfalse}
+\amstitle
+
+% Start Abstract (Enter your Abstract above.  Do not enter any text here)
+\begin{center}
+\begin{minipage}{13.0cm}
+\begin{abstract}
+	\myabstract
+	\newline
+	\begin{center}
+		\rule{38mm}{0.2mm}
+	\end{center}
+\end{abstract}
+\end{minipage}
+\end{center}
+\end{@twocolumnfalse}
+]
+}
+{
+\amstitle
+\begin{abstract}
+\myabstract
+\end{abstract}
+\newpage
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MAIN BODY OF PAPER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+\section{Introduction}
+Computer-aided simulations and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend more than 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets conventional desktop hardware, but about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}, a number that continues to grow as scientists face ever-larger datasets and increasingly complex systems, such as those studied in the biological, environmental and social sciences.
+
+Historically, scientists needing better performance simply purchased new hardware. This behavior was justified by appealing to Moore's Law, which has accurately predicted a doubling in the transistor count of integrated circuits every 18 months since the invention of the transistor in 1958 \cite{moore1998cramming}. Although Moore's Law remains valid, it is projected that by the end of this decade, the doubling period will increase substantially, due to fundamental physical limitations. More problematic, however, is that an assumed corollary of Moore's Law -- that {\it clock speeds} will also double every 18 months -- is no longer valid. Although transistor counts have continued to increase, clock speeds have remained flat for several years. It is now widely acknowledged that further performance gains will require that scientists make effective use of parallel computation. 
+
+Modern high-performance computing systems provide substantial hardware support for parallel computation. A single node in a cluster or a single workstation may contain several general-purpose multi-core processors as well as one or more  co-processors, such as a GPU, containing hundreds of specialized compute units. Modern clusters in turn  contain many such nodes -- the largest supercomputers today feature hundreds of thousands of nodes. These machines boast peak performance on the order of $10^{15}$ floating point operations per second (1 petaFLOPS). By the end of the decade, researchers hope to achieve a further thousand-fold increase in peak performance, a goal termed the {\it exascale initiative} \cite{exascale-roadmap}. At this scale, power consumption, hardware reliability, data movement and storage infrastructure become critical issues. Comprehensively addressing these issues  has emerged as one of the grand challenges in modern computing, and is a major focus of ongoing research spanning a variety of disciplines, including computer science, computer architecture, applied mathematics and a number of application domains in science and engineering.
+
+In an ideal world, programmers would simply continue to write programs as they have in the past, relying on a compiler to optimize them for execution on a variety of hardware configurations at high speed. Unfortunately, such heroic compilers are likely impractical. Many problems central to automatic parallelization have been shown to be NP-Hard, or require additional information that can't be extracted from a program directly, so it is unlikely that fast, exact, fully-automatic techniques will emerge. Instead, optimization procedures must increasingly rely on heuristics, profiling data and domain-specific knowledge. Such so-called `fuzzy' approaches tend to require significant human involvement, meaning that programmers who hope to make full use of modern high-performance computing hardware must deal with complex issues beyond those they have faced in programming sequential hardware in the past. Recognition of this issue has led to calls to develop and improve the programming systems that developers rely on for assistance with these difficult issues. We use the term {\it programming systems} to encompass a broad range of tools
+, including operating system APIs, programming languages, abstractions, libraries, compilers, editing environments, verification tools, documentation tools and so on.
+
+The ultimate goal of this line of research is to maximize the end-to-end {\it productivity} of practitioners, measured by the time taken by all aspects of the process leading to a desired scientific result. In taking this view -- with its focus on human aspects of software development and design in addition to algorithmic and architectural considerations -- it is important to first identify and characterize the developer communities who will use these tools. Researchers typically classify software developers as either {\it end-user developers} or {\it professional developers}. End-user developers are those who have little formal training related to the tools that they use. These tools, as a consequence, tend to be relatively simple (spreadsheets, for example). Professional developers, on the other hand, have explicit training or extensive experience with software engineering practices and software development tools and techniques. Unfortunately, scientists and engineers do not cleanly fall into either of these groups. Although formal training in software development is rare \cite{oai:open.ac.uk.OAI2:17673}, scientists and engineers are more technically literate and demanding than typical end-users. For this reason, researchers now define a third group, {\it professional end-user developers} \cite{segal2007some}, to describe ``people working in highly technical, knowledge rich professions, such as financial mathematicians, scientists and engineers, who develop their own software in order to advance their own professional goals.'' 
+
+In this survey, we examine the needs of professional end-user developers who currently work with, or will in the future need to work with, high-performance computing systems, including future exascale machines. As we do so, we describe both existing and emerging approaches, noting where additional research and development may be needed. We hope that the reader will emerge with a clear view of the state of the art and develop a clear, high-level understanding of the significant challenges remaining as we move toward future high-performance, high-productivity  computing systems and applications.
+
+%\section{Programming Systems in HPC}
+%Programmers today rely on a sophisticated collection of tools and abstractions to tackle the complex challenges faced in modern software engineering projects. In this section, we organize these programming systems and give a brief review of the choices most of these 
+
+\section{System Software}
+Systems software is the portion of the programming system typically associated with the operating system or low-level runtime environment. It is responsible for interacting with hardware resources, usually in a relatively transparent way to the user. This category includes operating system APIs, file systems and I/O libraries, and systems management software \cite{exascale-roadmap}.
+
+\subsection{Operating Systems} 
+Today, some flavor of Linux is the dominant choice in HPC machines. Variants of UNIX, such as AIX, and lightweight kernel operating systems such as Compute Node Kernel (CNK) are also used by some vendors (notably, IBM and Cray) \cite{hpc-survey}. Operating system APIs are the most primitive abstractions available to programmers, so small choices (e.g. in thread scheduling) can have a large impact on performance. The choices made to accomodate conventional desktop and server workloads may not be ideal in an HPC context, so there has been considerable interest in developing HPC-specific operating systems. Exascale machines introduce additional complications, because resource management will require consideration of power budgets, and hardware reliability issues will become increasingly prominent. In some cases, collective decisions may need to be made based on information integrated across a cluster, further complicating matters. 
+
+Researchers differ about whether the simpler, more specialized lightweight kernel (LWK) operating systems dedicated to high-performance computing applications are better suited to exascale applications, outweighing the flexibility and broad developer base of systems based on a general-purpose operating system like Linux. In either case, however, there is a need for improved APIs for memory and thread management, performance monitoring and debugging, energy management and access to specialized hardware. To evaluate these APIs at scale before the associated hardware is available, whole-system simulation techniques must also be developed. These are all active research areas.
+
+\subsection{File Systems and I/O Libraries}
+Large, distributed file systems require specialized support at the systems level. A number of different high-performance file systems are in wide use today, including Lustre, GPFS and NFS. Together with I/O libraries such as netCDF, HDF5 and MPI-IO, these systems form the basis for data storage and retrieval on high-performance machines today \cite{hpc-survey}. 
+
+Unfortunately, it is not clear that these systems can continue to scale without serious changes. A major component of the overall energy budget of an exascale machine will be consumed by data movement. Today's systems are based on traditional file systems and continue to offer strong guarantees about conflicts, snchronization and coherence. I/O is also generally thought of as an activity that occurs periodically (e.g. during checkpointing) or at the end of a simulation, rather than as an activity that occurs on an ongoing basis throughout a computation. These constraining requirements and assumptions make scaling a challenge, even as new storage architectures and devices emerge, such as solid state disks. Fortunately, many applications do not require such strong guarantees in some cases. As more applications interleave data analysis with computation, relieving a major burden on I/O systems, they can be targeted to more specialized tasks such as checkpointing, improving their performance. As such, scalable, purpose-driven, hardware-aware I/O systems that are more tightly integrated into the programming language and environment are a major focus of ongoing research.
+
+\subsection{Systems Management}
+High-performance computing systems require additional management tools to ensure that needed resources are available and divided amongst users fairly and securely. For example, {\it batch systems} allow users to request jobs on shared machines, and schedule these jobs in an equitable way on available resources. Popular choices for batch systems  include Torque, MOAB, LoadLeveler and SLURM. A number of other tools are also used by systems administrators to maintain the cluster's software systems, monitor hardware and ensure long-term data integrity. Although there are fewer scaling challenges with this aspect of the software stack than with some of the others, these tools interact with several aspects of both the software stack and the hardware, and must be updated as these aspects of the high-performance computing systems change on the road to exascale.
+
+\section{Programming Environments}
+The programming environment consists of the software that developers interact with directly to develop and debug programs. This category centers around programming languages and includes parallel programming abstractions, domain-specific abstractions, runtime systems, compilers, debuggers, performance analysis tools, data analysis and visualization tools, and editors \cite{exascale-roadmap}.
+
+Scientists and engineers generally prefer high-level scripting languages like MATLAB, Python, R and Perl \cite{nguyen2010survey}, particularly those bundled with powerful domain-specific libraries. These languages are typically interpreted rather than compiled and generally lack static type systems, relying instead on run-time (or ``dynamic'') type lookup and error handling. Although this may increase the flexibility of the language, these features also negatively impact performance and can lead to unexpected run-time errors that are generally impossible to rule out statically. This is particularly severe given that rigorous software testing practices are also quite rare in these domains \cite{nguyen2010survey}. When running at scale, a run-time error can be very costly, so better verification and testing of scientific code will be necessary.
+
+Along code paths where performance appears to be a bottleneck, developers today turn to statically-typed, though still unsafe, low-level languages like C and Fortran \cite{4222616}. These languages give users explicit control over data layout and heap allocation and require explicit type annotations on all variables. Although this makes writing programs more tedious which can increase the number of logic errors a programmer makes, it can also potentially improve performance, particularly if the programmer understands the target architecture well (e.g. cache behavior). While a sequential reimplementation of a critical code path using a low-level language will generally produce a modest speedup, more significant speedups on modern hardware require parallelizing over many processor cores and, on massively-parallel machines, many interconnected nodes. Despite well-known difficulties, low-level, unsafe  approaches that use a form of shared-memory  multithreading (e.g. pthreads, OpenMP) paired with explicit message passing between nodes (typically using MPI) remain widely used for these tasks as well \cite{4222616, basili2008understanding}. 
+
+Although researchers often propose higher-level language features and new parallel programming abstractions that aim to strike a better balance between raw performance, productivity, code portability and verifiability (see below), end-users remain skeptical of new approaches. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those in the research community working to advance the practice of scientific and high-performance computing. 
+%
+% Two types of languages see widespread use: productivity-oriented and performance-oriented
+% Significant diversity in productivity-oriented languages. Valued for clean syntax and high-level abstractions. Usually very slow. Have a FFI to call into a performance-oriented language.
+% Performance-oriented languages -- C or Fortran and their derivatives. Direct memory access, low-level abstractions, more verbose. Portable (though often need to include platform-specific optimizations, which can lead to messy code). Not easily extended with new abstractions and primitives (witness: lots of derivative languages that are not composable because no way to implement these abstractions cleanly)
+% Generally don't support verifiability very well (performance-oriented languages have simple type systems); only exception is functional languages.
+% 
+
+% Simplicity (Errors, Syntax, Core Semantics)
+% Extensibility (New Abstractions, Domain-Specific Things, Domain- and Platform-Specific Optimizations)
+% Performance (Need to allow control over data layout and movement, perhaps optionally)
+% Portability (Architectures and operating systems; support new optimizations)
+% Backwards-Compatibility (Existing codebases)
+% Verifiability (type systems, metaprogramming-based, formal semantics, small TCB)
+% Tool Support (syntax highlighting, editors, debuggers, etc.)
+% Social Proof (Will not disappear - open source, significant projects have been developed, community)
+
+As in many areas of design, it can be difficult to objectively evaluate the merit of language and tool designs. To better support such evaluations, researchers in design disciplines typically develop a set of high-level  design criteria that serve as a rubric for evaluating and guiding their design efforts. In programming language design, particularly for scientific and high-performance computing, there have been few concerted efforts to develop a coherent set of design criteria that capture the needs of the targeted developer communities. Similarly, there have been few treatments of adoption criteria for new languages and abstractions in practice, an important issue given the slow rates of adoption today. As such, we organize this section around a set of design and adoption criteria for new languages and abstractions based on prior empirical studies of this class of {\it professional end-user developer}, as well as our observations of characteristics common to successful projects in the past. 
+
+
+\subsection{Design Criteria}
+We define design criteria as aspects of an abstraction or language's specification, rather than its implementation, that help developers express their intent naturally and correctly.
+ 
+\subsubsection{Concise, Familiar and Readable Syntax}\label{syntax}
+Despite a considerable amount of evidence pointing toward the value of a well-designed syntax, particularly for end-users in specialized domains \cite{pane1996usability}, the issue is sometimes marginalized. It is likely the case, however, that some libraries and languages experience low adoption due in  part due to the use of a verbose, unfamiliar or unreadable syntactic style.
+
+A simple and concise syntax is common to most of the high-level languages that are widely used in scientific computing. Cordy identifies the principle of conciseness with elimination of redundancy and the availability of reasonable defaults \cite{cordy1992hints}. The high-level languages listed above have all either made optional, or removed entirely, much of the syntactic overhead characteristic of low-level languages, such as explicit variable declarations and extensive headers or preambles that contain information that can be inferred from the body of the program in most cases. They also typically feature simple array indexing syntax and concise literal forms for common data structures like arrays, matrices, sets and maps. A concise and minimal syntax eliminates unnecessary keystrokes and keeps more code visible on screen at a time. Studies have shown that there may be a correlation between lines of code entered and overall error rate, independent of other factors \cite{el2001confounding}. 
+
+However, the benefits of concise syntax must be balanced with concerns about readability and familiarity. A number of principles have been proposed to operationalize the notion of code readability. The most widely-used collection of principles are Green's cognitive dimensions \cite{green1996usability}. Of particular relevance is the notion of self-consistency, which serves to ensure that similar forms have similar meaning and that there are few subtle or context-dependent distinctions that users must be mindful of. Another important principle has been called {\it closeness of mapping}, expressing the value of a close correspondence between mental models and the formal model as expressed concretely using the language.
+
+Most researchers become familiar with formal notation by studying mathematics. In nearly all commonly used languages in scientific computing, common mathematical notations or close approximations thereof are generally used. In contrast, many academic languages have settled on alternative notational styles. For example, the LISP family of languages uses a highly uniform list-based notation, while most functional languages typically borrow notation for function invocation from the lambda calculus, using the form \verb|f x| rather than \verb|f(x)| for function invocation. Although both of these styles have certain benefits, they can impose mental burdens on users who continue to mentally translate them into more familiar notation \cite{anderson1985novice}. Although these and related difficulties can decrease with experience, they remain an important barrier for new users to these languages.
+
+Syntactic cues like whitespace and typography that do not have a formal meaning but rather exist to assist developers are called secondary notation \cite{green1990programming}. Most languages are whitespace-insensitive, while others (notably, Python) enforce consistent uses of whitespace, both in pursuit of consistency and as a technique to eliminate the need for block delimiters. Additionally, a few languages, such as Mathematica, have support for more typographically-rich mathematical notation via a structural editing interface. This technique appears to be helpful, although we do not know of formal studies that provide evidence for this claim.
+
+\subsubsection{Support for Multiple Paradigms and Abstractions}\label{multiparadigm}
+Although the difficulties of low-level and parallel programming are widely acknowledged, there is little consensus on which high-level abstractions are most appropriate for easing this burden. Indeed, it appears likely that no one abstraction will emerge triumphant over the others. Although library-based abstractions are useful, they often suffer from limitations of the language, particularly if they require compile-time support. Primitive language support for a parallel abstraction has been shown to be more useful than a library-based implementation in at least one case \cite{cave2010comparing}. As such, it is important that a language support several modes of operation, ideally without excessively favoring one over another. 
+
+Languages that have been designed specifically to explore a single abstraction as a core language feature often see limited adoption because they remain difficult to use in circumstances for which the favored abstraction is inappropriate. Examples of these abstractions and languages that feature them include: 
+
+\begin{itemize}
+\item shared-memory concurrency (e.g. Java, C\#)
+\item share-nothing message-passing (e.g. Erlang)
+\item flat data and task parallelism (e.g. OpenMP and  OpenCL)
+\item nested data and task parallelism (e.g. NESL, Copperhead)
+\item transactional memory (e.g. the language described by Harris \cite{harris2003language})
+\item automatic parallelization of functional primitives (e.g. Data Parallel Haskell, MapReduce and others)
+\item (partitioned) global address spaces (e.g. UPC, Co-array Fortran, Global Arrays, Fortress, X10, Chapel and others)
+\item adaptive thread migration (e.g. Charm++)
+\end{itemize}
+
+\subsubsection{Extensibility}\label{extensions}
+
+Although support for multiple paradigms and primitive abstractions can be built into a language design, this leaves control in the hands of the language designer. Novel or domain-specific constructs that may be useful to a small number of users or in rare situations can be difficult to develop and distribute for this reason, leading to the proliferation of new languages as  described above. Language extensibility mechanisms support these use cases by giving users the ability to develop new abstractions and constructs that behave as if they were primitive constructs. If a mechanism is powerful enough, nearly all language constructs may be implemented using it, greatly simplifying the core semantics of a language.
+
+Dynamic languages commonly rely on mechanisms like operator overloading and metaobject protocols \cite{Kiczales91} to provide extensibility via indirection. For example, the Python language allows objects to overload nearly every operator and as well as operations like attribute lookup (\verb|obj.attr|) and assignment. This mechanism is used by a number of libraries to create a more natural interface to a low-level API (e.g. \verb|pycuda|). More open-ended dynamic mechanisms, such as programmatic macros, have also been widely studied but as of yet have seen little adoption in languages used by professional end-users. 
+
+Language extensibility for statically-typed languages, on the other hand, remains an active research area. Compile-time metaprogramming systems, which are related to programmatic macros, have been developed for a number of languages (e.g. Template Haskell \cite{sheard2002template}) but these too have seen relatively limited development or adoption thus far.
+
+Some researchers have advocated the use of compiler extension mechanisms, rather than mechanisms built into a language itself (cf. \cite{clements2008comparison}). Modern compilers now offer some support for front-end language extensions, although often these  can be quite difficult to use.  Although potentially powerful, this approach can also lead to issues when extensions are not easily composable or when multiple compilers exist for a language. Back-end extensions (that is, extensions that preserve the semantics of the language, improving only performance) are better supported in modern compilers.
+
+Domain-specific language frameworks are a related approach that can serve many of the same goals as language-based  extension mechanisms \cite{fowler2010domain}. These tools ease the development of ``little languages'' and allow for the development and distribution of language features as modules. Domain experts use these tools to develop highly specialized languages that capture domain requirements precisely and allow for natural and concise specifications of scientific models and other structures. A major issue with this approach arises at language boundaries -- interoperability between different domain-specific languages is difficult due to feature mismatches. Another issue is that domain-specific languages often outgrow their initial implementations and begin to need increasingly powerful general-purpose features.
+
+All extensibility mechanisms must be used carefully. Indeed, inexperienced developers can abuse mechanisms like operator overloading to create inscrutable interfaces that cause more problems than they solve. Some languages (notably Java) have taken up the philosophy that even simple language extension mechanisms should not be in the hands of end-users for this reason. Although this continues to be debated, we argue that extensibility is crucial for parallel and scientific programming in particular due to the significant levels of ongoing research into new parallel abstractions and the diverse set of domain-specific use cases.
+
+\subsubsection{Support for Higher-Order Constructs}\label{hof}
+A number of parallel programming data structures and algorithms are of higher-order, meaning that they take other functions or types as arguments or parameters. We argue that support for higher-order programming is critical to language usability in our target domains.
+
+Well-known examples of functions that operate using other functions include fundamental parallel primitives like map, reduce and scan. Fortunately, most modern languages now support using functions as values. Languages like C and Fortran implement this using function pointers, although at considerable syntactic expense. However, unlike functional languages and most dynamic languages, they do not allow anonymous functions (that is, functions that are defined as inline expressions rather than statements), nor functions that close over variables in the surrounding scope. The most recent revision of C++ now has support for closures and closures are also being considered for a future revision of Java. OpenCL does not come with any support for higher-order functions, even via function pointers.
+
+Functions and types that are parameterized by types are often referred to as {\it polymorphic} or {\it generic}. C++ supports this using its template system. Java, ML and Haskell support a simpler form of {\it parametric polymorphism}, and Haskell also supports a more flexible {\it type class} system. C++, Java and Fortran also support {\it function overloading}, allowing multiple versions of a function that differ only according to their argument types. C and OpenCL do not support any form of polymorphism or user-defined function overloading.
+
+Dynamic languages do not require that variables be assigned a type, so generic functions are written using run-time checks that ensure that a particular value supports the specific interface that a function expects. This is sometimes known as ``duck typing'' and is generally considered as a useful feature, due to its considerable flexibility. A promising approach that resembles duck typing, while operating statically, is known as {\it structural typing} \cite{malayeri2009structural}.
+
+\subsubsection{Modularity and Packaging}\label{modularity}
+Modularity is a broad term that refers to mechanisms useful for combining and reusing independently developed libraries of code. Languages with good support for modularity promote information hiding, thus localizing the effect of code changes, and allow modules to communicate over well-defined interfaces. There remains widespread disagreement and considerable ongoing research on language support for modularity. Object-oriented methodologies, although common in industrial projects, are used less frequently in scientific codes due to a perceived loss of control and performance \cite{basili2008understanding}. Many dynamic languages support modularity only implicitly using duck typing. Functional languages, on the other hand, often have module systems that enforce correct usage of an interface at compile-time, albeit at some notational cost \cite{tapl}.
+
+The packaging and linking mechanisms available in a language can also significantly impact its usability. Languages like C and C++ use a fragile preprocessor-based packaging mechanism and require separate header files, which often leads to subtle errors and compilation inefficiencies. More recent high-level languages have developed a varied set of mechanisms that are significantly simpler for packaging and deployment.
+
+\subsubsection{Verifiability}\label{verifiability}
+Verifying that a program does not contain errors and that it will operate according to specification (if a specification exists, which can be rare in this domain \cite{oai:open.ac.uk.OAI2:17673}) is a critical concern across all areas of software development. Errors in scientific programs may arise due to problems in basic program logic, as in other domains, but also due to the accumulation of  numerical approximation errors or by violation of domain-specific constraints (e.g. inconsistent scientific units.)
+
+A number of design decisions can influence the difficulty of formal program verification. Broadly stated, unconstrained support for dynamic indirection and direct access to memory have made program verification more difficult in many commonly-used languages. As a result, many classes of errors are only caught at run-time, often due to edge cases that are difficult to test for.
+
+Advanced type systems, matched with appropriately constrained data structures and control constructs, can dramatically increase the likelihood that an error is found at compile-time and even eliminate entire classes of errors \cite{tapl}. A large portion of academic research on programming language design has focused on designing such type systems. Unfortunately, as with many new parallel abstractions, these generally require that a language be modified with new primitives and most work has either been with prototype languages or functional languages like Ocaml, Haskell or Coq, which, due to some of the factors mentioned here, have seen  limited (though growing) adoption in scientific computing so far.
+
+In the absence of a formal proof of correctness, users must test programs with specific inputs, relying both on language-provided run-time checks and user-provided run-time assertions to catch errors. Most languages have unit testing frameworks designed to minimize the burden of developing unit tests, though these are used infrequently in science \cite{oai:open.ac.uk.OAI2:17673, hannay2009scientists}. Several languages (e.g. Eiffel) also have support for specifying pre- and post-conditions for functions, so that the assertions that must hold about arguments are visible in the function signature, but this feature has not been well-supported by widely-used languages to date.
+
+\subsection{Adoption Criteria}
+While most of the design criteria described in the previous section have been the topic of significant (and ongoing) research, there are a number of other, more practical issues that can significantly affect adoption of a new language or tool. It should be noted that certain design decisions may make it easier to satisfy these adoption to criteria as well, an important consideration given that incentive structures in academia often do not reward efforts to improve a language along some of the following dimensions \cite{howison2011scientific}.
+
+\subsubsection{Performance}
+Performance is, of course, a critical concern in scientific and (particularly \cite{basili2008understanding}) high-performance computing. Low-level languages typically elect to give the user direct access to hardware primitives. High-level languages must rely on a sophisticated compiler to translate high-level abstractions into performant code. Although the latter approach would be ideal, program optimization remains an active research area with many open problems. Indeed, many relevant algorithms have been shown to be NP-Complete, so compilers must rely on heuristics. Humans remain better at inventing and applying heuristics, given enough motivation and experience, than computers in many cases. Indeed, even when the compiler can sometimes produce better optimizations, users generally insist on being able to form a mental model of what their code is doing at the machine-level so that they can {\it reason} about the effects of code changes on overall performance \cite{squires2005programmers}. As such, users generally demand that low-level abstractions remain available alongside high-level abstractions. It may also be useful to support a model where programmers can formalize, package and directly apply optimization heuristics programmatically, rather than relying on a ``black-box'' compiler.
+
+% Squires et al, 2005 -- programmers want to know what is happening under the hood so they can reason about optimization
+
+\subsubsection{Portability}\label{portability}
+A number of surveys have revealed that portability is one of the most important issues considered by scientists and engineers \cite{hannay2009scientists}\cite{basili2008understanding}. Several processor architectures and operating systems are in widespread use, with more appearing on a fairly regular basis. Low-level languages like C have generally achieved a reasonable level of portability, although aspects of the language that are underspecified can be a source of errors. The OpenCL language was designed with portability as a major design criteria, and compilers for OpenCL are now available for a diverse collection of processor and accelerator architectures. High-level languages are generally highly portable due to the use of a virtual machine architecture. 
+
+It should be noted, however, that simple portability is not entirely sufficient -- users want to be able to write programs that can be ported to new architectures and operating systems and achieve high performance without significant retuning. This remains an area of active research. Recent efforts to build abstractions that generate efficient code for devices with multi-level memories, as implemented in the Sequoia language \cite{fatahalian2006sequoia}, have  progressed toward this goal.
+
+\subsubsection{Useful Error Messages}\label{errors}
+When the compiler or run-time system of a language generates an error, users must determine the source of the problem using the information provided in an error message. Studies have shown that good error messages can dramatically reduce the time it takes to debug programs \cite{marceau2011measuring}. Indeed, a widely-reported frustration with C++ is that it produces overly verbose and cryptic error messages, particularly when using templates.
+
+\subsubsection{Tool and Infrastructure Support}\label{tools}
+% Squires 2005 might have a ref
+Modern software development now relies on a number of tools to assist with common tasks, such as debuggers,  profilers, syntax-aware editors, documentation generators, style checkers and interactive interpreters. Similarly, most established languages benefit from a centralized package repository (e.g. PyPI) paired with a package manager that can automate the installation of new packages. These tools and infrastructure are not trivial to develop from scratch, and few incentives exist for researchers to do so, but few users are willing to do without these tools for non-trivial projects \cite{squires2005programmers}.
+
+\subsubsection{Backwards Compatibility}
+End-user communities have produced a number of highly tuned and tested packages that are widely used in their fields. Porting these libraries to a new language requires significant effort and few communities will be willing to do so, particularly before a language is very well established. There is generally a greater willingness to develop wrappers that invoke functions from these packages, however. A powerful foreign function interface, ideally able to handle native code as well as code in existing widely-used high-level languages, enables these efforts to proceed smoothly and can provide a language with a large package library relatively early in its development. 
+
+Many of the reasonably successful approaches to date are built incrementally on existing languages as libraries or as simple  extensions to existing languages (e.g. OpenMP, UPC, Co-array Fortran, Cilk++, MPI, CUDA, OpenCL). Notably, this allows existing programs to continue to function correctly, while enabling the gradual integration of the new constructs in parts of the code that would derive the greatest benefit. In contrast, approaches that have required total rewrites have had more difficulty recruiting early adopters (e.g. X10 \cite{charles2005x10}.)
+
+\subsubsection{Learning Material}
+Existing languages benefit from a large collection of books, presentations and tutorials that allow new users to get started quickly. The most mature languages benefit further from the availability of courses and professional training seminars. New languages often suffer due to the lack of such polished learning material, or in some cases, due to the lack of {\it any} significant learning material targeted at end users (rather than other language designers.)
+
+\subsubsection{Open Availability}
+New languages and abstractions are often viewed with suspicion if they do not come with source code that can be modified under a free software license. The most unencumbered licenses (other than public domain releases) are BSD-style licenses. So called {\it copyleft} licenses like the GPL are also popular, requiring primarily that modifications to the compiler be distributed under the same license.
+
+\subsubsection{Social Proof}
+Finally, users look to the language's user community for evidence that the language is a serious effort that will not be abandoned and that there are other developers building libraries and sharing information over established communication channels. The availability of non-trivial demonstrations have been cited in surveys as critical to adoption as well \cite{basili2008understanding}. These criteria, as with many of the others described above, can be difficult to satisfy, particularly for ``clean-slate'' language designs, which may help to explain why language adoption is often slow. However, even projects with a narrower scope, such as new parallel or domain-specific abstractions, must tackle these issues. Funding agencies can aid in adoption by guaranteeing development will be supported for a number of years for languages that appear to have the greatest promise.
+
+% What Do Programmers of Parallel Machines Need?
+% Squiers et al, 2005
+% - Global view
+% - Tool support
+% - Understanding of what the code is doing
+% 
+%As should be clear, there are many challenges facing any new language design effort. Many of these challenges apply also to efforts with a narrower scope (e.g. a new parallel or domain-specific abstraction). Although the research community continues to tackle open issues described as design criteria, the challenges described as adoption criteria above have not generally received as much attention. 
+
+
+
+
+% An example of a floating figure using the graphicx package.
+% Note that \label must occur AFTER (or within) \caption.
+% For figures, \caption should occur after the \includegraphics.
+% Note that IEEEtran v1.7 and later has special internal code that
+% is designed to preserve the operation of \label within \caption
+% even when the captionsoff option is in effect. However, because
+% of issues like this, it may be the safest practice to put all your
+% \label just after \caption rather than within \caption{}.
+%
+% Reminder: the "draftcls" or "draftclsnofoot", not "draft", class
+% option should be used if it is desired that the figures are to be
+% displayed while in draft mode.
+%
+%\begin{figure}[!t]
+%\centering
+%\includegraphics[width=2.5in]{myfigure}
+% where an .eps filename suffix will be assumed under latex, 
+% and a .pdf suffix will be assumed for pdflatex; or what has been declared
+% via \DeclareGraphicsExtensions.
+%\caption{Simulation Results}
+%\label{fig_sim}
+%\end{figure}
+
+% Note that IEEE typically puts floats only at the top, even when this
+% results in a large percentage of a column being occupied by floats.
+
+
+% An example of a double column floating figure using two subfigures.
+% (The subfig.sty package must be loaded for this to work.)
+% The subfigure \label commands are set within each subfloat command, the
+% \label for the overall figure must come after \caption.
+% \hfil must be used as a separator to get equal spacing.
+% The subfigure.sty package works much the same way, except \subfigure is
+% used instead of \subfloat.
+%
+%\begin{figure*}[!t]
+%\centerline{\subfloat[Case I]\includegraphics[width=2.5in]{subfigcase1}%
+%\label{fig_first_case}}
+%\hfil
+%\subfloat[Case II]{\includegraphics[width=2.5in]{subfigcase2}%
+%\label{fig_second_case}}}
+%\caption{Simulation results}
+%\label{fig_sim}
+%\end{figure*}
+%
+% Note that often IEEE papers with subfigures do not employ subfigure
+% captions (using the optional argument to \subfloat), but instead will
+% reference/describe all of them (a), (b), etc., within the main caption.
+
+
+% An example of a floating table. Note that, for IEEE style tables, the 
+% \caption command should come BEFORE the table. Table text will default to
+% \footnotesize as IEEE normally uses this smaller font for tables.
+% The \label must come after \caption as always.
+%
+%\begin{table}[!t]
+%% increase table row spacing, adjust to taste
+%\renewcommand{\arraystretch}{1.3}
+% if using array.sty, it might be a good idea to tweak the value of
+% \extrarowheight as needed to properly center the text within the cells
+%\caption{An Example of a Table}
+%\label{table_example}
+%\centering
+%% Some packages, such as MDW tools, offer better commands for making tables
+%% than the plain LaTeX2e tabular which is used here.
+%\begin{tabular}{|c||c|}
+%\hline
+%One & Two\\
+%\hline
+%Three & Four\\
+%\hline
+%\end{tabular}
+%\end{table}
+
+
+% Note that IEEE does not put floats in the very first column - or typically
+% anywhere on the first page for that matter. Also, in-text middle ("here")
+% positioning is not used. Most IEEE journals/conferences use top floats
+% exclusively. Note that, LaTeX2e, unlike IEEE journals/conferences, places
+% footnotes above bottom floats. This can be corrected via the \fnbelowfloat
+% command of the stfloats package.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Create a bibliography directory and place your .bib file there.
+\ifthenelse{\boolean{dc}}
+{}
+{\clearpage}
+%\bibliographystyle{ametsoc}
+%\bibliographystyle{IEEEtran}
+\bibliographystyle{plain-annote}
+\bibliography{../research}
+
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% END OF TEMPLATE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
