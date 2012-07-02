@@ -1,0 +1,134 @@
+Require Import Eqdep.
+Require Import String.
+Require Import List.
+Require Import Omega.
+Require Import Recdef.
+Set Implicit Arguments.
+Unset Automatic Introduction.
+Local Open Scope string_scope.
+Axiom proof_irr : forall (P:Prop) (x y : P), x = y.
+
+Definition Kind := Type.
+Definition var := string.
+
+(* TL representation of IL Types *)
+Inductive datatype : Kind := 
+  | Nat_dt : datatype
+  | Bool_dt : datatype
+  | Arrow_dt : datatype -> datatype -> datatype
+  | Rep_dt : ty -> datatype
+(* Types *)
+with ty : Kind := 
+  | Ty : datatype -> ty
+  | Err : ty.
+
+(* IL *)
+Inductive binop_il : Kind := 
+  | plus_op_m 
+  | minus_op_m 
+  | eq_op_m.
+
+Inductive exp_il : Kind :=
+  | Var_il : var -> exp_il
+  | Lam_il : var -> datatype -> exp_il -> exp_il
+  | App_il : exp_il -> exp_il -> exp_il
+  | Num_il : nat -> exp_il
+  | Binop_il : binop_il -> exp_il -> exp_il -> exp_il
+  | Bool_il : bool -> exp_il
+  | If_il : exp_il -> exp_il -> exp_il -> exp_il
+  | Pair_il : exp_il -> exp_il -> exp_il
+  | Fst_il : exp_il -> exp_il
+  | Snd_il : exp_il -> exp_il
+  | ValOf_il : den -> exp_il
+with den : Kind := 
+  | Den : exp_il -> ty -> den.
+
+Inductive value : Set :=
+  | Lam_v : list (var * value) -> var -> exp -> value
+  | Num_v : nat -> value
+  | Bool_v : bool -> value
+  | Pair_v : value -> value -> value.
+
+Inductive answer : Set := 
+  | Value : value -> answer
+  | TypeError : answer.
+
+Definition env_t (A : Type) := list (var * A).
+Fixpoint lookup A (env:env_t A) (x : var) : option A := 
+  match env with 
+  | nil => None
+  | (y,v)::env' => if string_dec x y then Some v else lookup env' x
+  end.
+
+Reserved Notation "G |-- e ; t" (at level 80).
+
+Inductive hasType : env_t type -> exp -> type -> Prop := 
+  | Var_ht : forall G x t, lookup G x = Some t -> G |-- Var_e x ; t
+  | Lam_ht : forall G x e t1 t2,
+      ((x,t1)::G) |-- e ; t2 -> 
+        G |-- Lam_e x e ; Arrow_t t1 t2
+  | App_ht : forall G e1 e2 t1 t2,
+      G |-- e1 ; (Arrow_t t1 t2) -> 
+      G |-- e2 ; t1 -> 
+        G |-- App_e e1 e2 ; t2
+  | Num_ht : forall G n, 
+      G |-- Num_e n ; Nat_t
+  | Binop_ht : forall G b e1 e2,
+      G |-- e1 ; Nat_t -> 
+      G |-- e2 ; Nat_t ->
+        G |-- Binop_e b e1 e2 ; match b with
+          | Eq_op => Bool_t 
+          | _ => Nat_t
+          end
+  | Bool_ht : forall G b,
+    G |-- Bool_e b ; Bool_t
+  | If_ht : forall G e1 e2 e3 t,
+    G |-- e1 ; Bool_t ->
+    G |-- e2 ; t ->
+    G |-- e3 ; t -> 
+      G |-- If_e e1 e2 e3 ; t
+where "G |-- e ; t" := (hasType G e t) : typing_scope.
+Hint Constructors hasType : type_db.
+
+Section ValueTyping.
+  Local Open Scope typing_scope.
+  
+
+  Inductive valType : value -> type -> Prop := 
+    | Num_vt : forall n, valType (Num_v n) Nat_t
+    | Bool_vt : forall b, valType (Bool_v b) Bool_t
+    | Lam_vt : forall env x e G t1 t2,
+      envType env G -> 
+        (x, t1)::G |-- e ; t2 -> 
+          valType (Lam_v env x e) (Arrow_t t1 t2)
+  with envType : env_t value -> env_t type -> Prop :=
+    | Nil_et : envType nil nil
+    | Cons_et : forall x v t env G,
+      valType v t ->
+      envType env G ->
+      envType ((x, v)::env) ((x, t)::G).
+End ValueTyping.
+Hint Constructors valType envType : type_db.
+
+Scheme valType_ind_2 := Induction for valType Sort Prop
+  with envType_ind_2 := Induction for envType Sort Prop.
+Combined Scheme valenvType_ind from valType_ind_2, envType_ind_2.
+
+Inductive ansType : answer -> type -> Prop :=
+  | Val_ans : forall v t, valType v t -> ansType (Value v) t.
+Hint Constructors ansType : type_db.
+
+(* Denotations *)
+Inductive Denotation : Type := 
+  den : forall (E:env_t) (ity:type), exp E ity -> Ty -> Denotation.
+
+(* Operators *)
+Inductive Op : Type := 
+  | const : Denotation -> Op
+  | unary_op : (Denotation -> Denotation) -> Op
+  | nary_op : (Denotation -> Op) -> Op.
+
+(* Programs *)
+Inductive Program : Type :=
+  | program : Exp -> Program.
+
