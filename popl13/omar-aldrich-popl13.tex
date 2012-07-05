@@ -1,5 +1,5 @@
 %\documentclass[12pt]{article}
-\documentclass[10pt]{sigplanconf}
+\documentclass[9pt]{sigplanconf}
 % The following \documentclass options may be useful:
 %
 % 10pt          To set in 10-point type instead of 9-point.
@@ -7,6 +7,7 @@
 % authoryear    To obtain author/year citation style instead of numeric.
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{color}
+\usepackage[usenames,dvipsnames]{xcolor}
 \usepackage{mathpartir}
 \usepackage{amsmath}
 \usepackage{amssymb} 
@@ -28,8 +29,8 @@
 
 \begin{document}
 
-%\conferenceinfo{ICFP '12}{Copenhagen, Denmark} 
-%\copyrightyear{2012} 
+%\conferenceinfo{POPL '13}{somewhere} 
+%\copyrightyear{2013} 
 %\copyrightdata{[to be supplied]} 
 
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
@@ -105,8 +106,13 @@ $$\begin{array}{rccl}
 \textbf{expressions} 				&	e	&	::=	&	\evar{x} \pipe 
 												\elam{\evar{x}}{\psi}{e} \pipe 
 												\eapp{e_{1}}{e_{2}} \pipe 
-												\econst{\psi}{const\_name} \pipe 
-												\eop{\psi}{op\_name}{\splat{e}{1}{n}}\\
+												\eop{\psitype}{op}{
+												   \splat{\psi}{1}{n}
+												 }{
+  												    \splat{e}{1}{n}
+												}\\
+%												\econst{\psi}{const\_name} \pipe 
+%												\eop{\psi}{op\_name}{\splat{e}{1}{n}}\\
 							& 		&		& \\
 							
 \textbf{type-level specifications} 	& 	\psi	 & 	::= 	& 	\tvar{t} \pipe 
@@ -121,68 +127,71 @@ $$\begin{array}{rccl}
 												\tsnd{\psi} 
 												\\
 												
-\text{type families}				&		&   \pipe   &   \tfam{fam\_name}{\kappa}{\Theta}{\psi} \pipe																	\tfamcase{\psitype}{fam\_name}{\psi_{1}}{\psi_{2}} 
- \\
-\text{types} 					& 		& 	\pipe	& 	\ttype{t}{fam\_name}{\psiidx}{\delrep}{\theta} \pipe 
-												\tidx{\psitype} 
+\text{types} 					& 		& 	\pipe	& 	\ttype{t}{\psiidx}{\kappaidx}{\delrep}{\theta} \pipe 
+												\tidx{\psitype} \pipe
+												\tidxcase{\psitype}{\kappa}{\psi_0}{\psi_1}
 												\\
-												
-\text{operators} 				& 		 &	 \pipe & 	\tconst{\psi} \pipe 
-												\tOp{\psi} \\
-												
+																						
 \text{denotations} 				& 		 & 	\pipe	&	\tden{\mu}{\psitype} \pipe 
 												\ttypeof{\psiden} \pipe
 												\terr \pipe
-												\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}\\
-												 
+												\tdencase{\psiden}{\kappa}{\psi_0}{\psi_1}\\
+
+\text{programs}					&		&	\pipe	&	\tprog{e}\\
+
+\text{operators} 				& 		 &	 \pipe & 	\tconst{\psi} \pipe 
+												\tOp{\psi} \\
+
+\text{operator specifications}		&	\theta	&	::= &	\tops{\tvar{op}}{\psi} \pipe 
+												\topp{\theta_1}{\theta_2}\\
+												
+\textbf{kinds} 					& \kappa	&	::=	&	\karrow{\splat{\kappa}{1}{n}}{\kappa} \pipe 
+												\kunit \pipe 
+												\kpair{\kappa_{1}}{\kappa_{2}} \pipe 
+												\kType{\kappa} \pipe 
+												\kTypeBlur \pipe
+												\kDenk{\kappa} \pipe 
+												\kDen \pipe 
+												\kProg \pipe 
+												\kOp{n}
+												\\
+											 							&		&		&	\\
 \textbf{internal terms} 				& 	\mu	&	::=	&	\mvar{u} \pipe 
 												\mlam{\mvar{u}}{\psi}{\mu} \pipe 
 												\mfix{\mvar{f}}{\psi}{\mu} \pipe 
 												\mapp{\mu_{1}}{\mu_{2}} \pipe 
-												\mathbb{Z} \pipe 
+												\mIfEq{\mu_{0}}{\mu_{1}}{\mu_{2}}{\mu_{3}}\\
+							& 		& 	\pipe	&	\mintlit \pipe 
 												\mop{\mu_{1}}{\mu_{2}} \pipe 
 												\mpair{\mu_{1}}{\mu_{2}} \pipe 
 												\mfst{\mu} \pipe
-												\msnd{\mu} \\
-							& 		& 	\pipe	&	\mIfEq{\mu_{0}}{\mu_{1}}{\mu_{3}}{\mu_{4}} \pipe
+												\msnd{\mu} \pipe
 												\mvalof{\psiden}\\
-												
+\textbf{internal types}			&	\delta	&	::=	&    \darrow{\delta_1}{\delta_2} \pipe
+												\dint \pipe
+												\dpair{\delta_1}{\delta_2} \pipe
+												\drepof{\psiden}\\
 %\text{cases}					&\tcasev 	&	::=	&	\caseZ{\splat{\kappa}{1}{n}}{\psi} \pipe 
 %												\caseS{\tcasev}{\tcasev}\\
 							&		&		&	\\
 
-\textbf{kinds} 					& \kappa	&	::=	&	\kvar{$\alpha$} \pipe
-												\karrow{\splat{\kappa}{1}{n}}{\kappa} \pipe 
-												\kforall{\kvar{$\alpha$}}{\kappa} \pipe
-												\kProg \pipe 
-												\kstr \pipe 
-												\kunit \pipe 
-												\kpair{\kappa_{1}}{\kappa_{2}} \pipe 
-												\textsc{label} \\
-							&		&	\pipe	&	\kType{\kappa} \pipe 
-												\kTypeBlur \pipe
-												\kOp{n} \pipe 
-												\kDenk{\kappa} \pipe 
-												\kDen \pipe 
-												\kIType\\
-%							& \kcasev	&	::=	&	\kcaseZ{\splat{\kappa}{1}{n}} \pipe 
-%												\kcaseS{\kcasev}{\kcasev}
 \end{array}$$
 \caption{Syntax of $\lamA$. $\mathbb{Z}$ denotes integer literals and $\klabel{label}$ denotes any label.}
 \end{figure*}
-%\begin{figure*}
-%\begin{mathpar}
-%\inferrule{
-%	\overbrace{\tentails{\cdot}{\cdot}{\cdot}{\tof{\psiprog}{\kProg}}}^{\text{\small kind checking}}{ }\\
-%	\overbrace{\tevals{\psiprog}{\tprog{e}}{\noprob}}^{\text{\small specification normalization}}{ }\\
-%	\overbrace{\translates{\cdot}{e}{\mu}{\psiidx}{\kappa}{\psirep}}^{\text{\small verification \& translation}}{ }
-%}{
+\begin{figure*}
+\begin{mathpar}
+\inferrule{
+	\overbrace{\tentailst{\cdot}{\psiprog}{\kProg}}^{\text{\small kind checking}}{ }\\
+	\overbrace{\tevals{\psiprog}{\tprog{e}}{\noprob}}^{\text{\small specification normalization}}{ }\\
+	\overbrace{\translates{\cdot}{e}{\mu}{\ttypestd}}^{\text{\small verification \& translation}}{ }
+}{
 %	\compiles{\psiprog}{\mu}{\psiidx}{\kappa}{\psirep}
-%}
-%\end{mathpar}
-%\caption{Central compilation judgement of $\lamA$.}
-%\end{figure*}
-\noindent
+	\compiles{\psiprog}{\mu}{\ttypestd}
+}
+\end{mathpar}
+\caption{Central compilation judgement of $\lamA$.}
+\end{figure*}
+%\noindent
 %
 %The \textsf{def} construct is the type-level analog of the standard \textsf{let} construct. Indeed, the entire term consists of type-level constructs. The definition of $\tvar{nat}$ says that it is a type indexed by a uniquely labeled unit (that is, it is a simple type) that will be represented in the internal language by integers. The constructor $\tvar{z}$ is declared as a constant, denoted by the value $0$ and assigned the type $\tvar{nat}$. The successor operator $\tvar{s}$ first checks its argument to ensure that it is a $\tvar{nat}$ (which requires first checking the index's kind to ensure that it has the correct label using the $\sf{idxcase}_{D}$ statement). If so, it returns a denotation that assigns the type $\tvar{nat}$ to an internal term that increments the value of the argument. Otherwise, the special denotation $\terr$ is returned. We will return to explain these constructs in more detail shortly.
 %
@@ -201,42 +210,312 @@ $$\begin{array}{rccl}
 %Indeed, compilation with $\psi_{\text{nat}}$ as given above admits all well-typed expressions of the simply-typed lambda calculus with natural numbers and no others, compiling $\tvar{nat}$s to internal terms that evaluate to their integer representations.
 %
 %\subsection{$\lamA$}
-%\begin{figure*}
-%%\vspace{-0.33in}
-%$\fbox{\inferrule{}{\tentails{\mathcal{K}}{\mathcal{L}}{\mathcal{T}}{\tof{\psi}{\kappa}}}}$
-%~~~~$\kvarCtx ::= \cdot \pipe \kvarCtx, \kvar{$\alpha$}$
-%~~~~$\labelCtx ::= \cdot \pipe \labelCtx, \klabelOf{label}{\kappa}$
-%~~~~$\tvarCtx ::= \cdot \pipe \tvarCtx, \tof{\tvar{t}}{\kappa}$
+\begin{figure*}
+$\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
+~~~~$\tvarCtx ::= \cdot \pipe \tvarCtx, \tof{\tvar{t}}{\kappa}$
+\begin{mathpar}
+\small
+\inferrule{
+	\tof{\tvar{t}}{\kappa} \in \tvarCtx
+}{
+  \tentailsXt{\tvar{t}}{\kappa}
+}~(\text{var}^\psi)
+
+\inferrule{ }{\tentailsXt{\tunit}{\kunit}}~(\text{Unit})
+
+\inferrule{
+	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
+	\tentailsXt{\psi_{2}}{\kappa_{2}}
+}{
+	\tentailsXt{\tpair{\psi_{1}}{\psi_{2}}}{\kpair{\kappa_{1}}{\kappa_{2}}}
+}~(\times_I)
+
+\inferrule{
+	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
+}{
+	\tentailsXt{\tfst{\psi}}{\kappa_{1}}
+}~(\times_E^1)
+
+\inferrule{
+	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
+}{
+	\tentailsXt{\tsnd{\psi}}{\kappa_{2}}
+}~(\times_E^2)
+
+\inferrule{
+  \tentailst{\tvarCtx, \splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}{\kappa}
+}{
+  \tentailsXt{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
+}~\text{($\lambda^\psi_I$)}
+
+\inferrule{
+  \tentailsXt{\psi}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}\\
+  \tentailsXt{\psi_{1}}{\kappa_{1}}\\
+  \cdots\\
+  \tentailsXt{\psi_{n}}{\kappa_{n}}
+}{
+  \tentailsXt{\tapp{\psi}{\splat{\psi}{1}{n}}}{\kappa}
+}~\text{($\lambda^\psi_E$)}
+
+\inferrule{
+	\tentailsXt{\psi_{0}}{\kappa_{1}}\\
+	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
+	\tentailsXt{\psi_{2}}{\kappa_{2}}\\
+	\tentailsXt{\psi_{3}}{\kappa_{2}}
+}{
+	\tentailsXt{\tifeq{\psi_{0}}{\psi_{1}}{\psi_{2}}{\psi_{3}}}{\kappa_{2}}
+}~(\text{cond}^\psi)
+
+\inferrule{
+\kTypeBlur \text{~strictly positive in~} \kappaidx\\
+\tentailsXt{\psiidx}{\kappaidx}\\
+\tentailsX{\delrep}\\
+\tentails{\tvarCtx, \tof{\tvar{t}}{\kType{\kappaidx}}}{\theta}
+}{
+	\tentailsXt{\ttypestd}{\kType{\kappaidx}}
+} ~(\text{Type}_I)
+
+\inferrule{
+	\tentailsXt{\psi}{\kType{\kappa}}
+}{
+	\tentailsXt{\psi}{\kTypeBlur}
+}~(\text{Type-$\subseteq$})
+
+\inferrule{
+	\tentailsXt{\psi}{\kType{\kappa}}
+}{
+	\tentailsXt{\tidx{\psi}}{\kappa}
+}~(\text{idx})
+
+\inferrule{
+	\tentailsXt{\psitype}{\kTypeBlur}\\
+	\tentailsXt{\psi_0}{\karrow{\kType{\kappaidx}}{\kappa}}\\
+	\tentailsXt{\psi_1}{\kappa}
+}{
+	\tentailsXt{\tidxcase{\psitype}{\kappaidx}{\psi_0}{\psi_1}}{\kappa}
+}~(\text{idxcase})
+\\
+\inferrule{
+	\mentails{\Delta}{\cdot}{\mu}\\
+	\tentailsXt{\psitype}{\kType{\kappa}}
+}{
+	\tentailsXt{\tden{\mu}{\psitype}}{\kDenk{\kappa}}
+}~(\text{Den}_I)
+
+\inferrule{
+	\mentails{\Delta}{\cdot}{\mu}\\
+	\tentailsXt{\psitype}{\kTypeBlur}
+}{
+	\tentailsXt{\tden{\mu}{\psitype}}{\kDen}
+}~(\text{Den}_I\text{-$\subseteq$})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDenk{\kappa}}
+}{
+	\tentailsXt{\psi}{\kDen}
+}~(\text{Den-$\subseteq$})
+
+\inferrule{ }{
+	\tentailsXt{\terr}{\kDen}
+}~(\text{err})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDenk{\kappa}}
+}{
+	\tentailsXt{\ttypeof{\psi}}{\kType{\kappa}}
+}
+
+\inferrule{
+	\tentailsXt{\psiden}{\kDen}\\
+	\tentailsXt{\psi_0}{\karrow{\kDenk{\kappaidx}}{\kappa}}\\
+	\tentailsXt{\psi_1}{\kappa}
+}{
+	\tentailsXt{\tdencase{\psiden}{\kappaidx}{\psi_0}{\psi_1}}{\kappa}
+}~(\text{dencase})
+\\
+\inferrule{
+	\eentails{\Delta}{\cdot}{e}
+}{
+	\tentailsXt{\tprog{e}}{\kProg}
+}~(\text{program})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDen}
+}{
+	\tentailsXt{\tconst{\psi}}{\kOp{0}}
+}~(\text{const})
+
+\inferrule{
+	\tentailsXt{\psi}{\karrow{\kDen, \stackrel{n}{\cdots}, \kDen}{\kDen}}
+}{
+	\tentailsXt{\tOp{\psi}}{\kOp{n}}
+}~(\text{op})
+\end{mathpar}
+$\fbox{\inferrule{}{\tentails{\tvarCtx}{\theta}}}$
+\begin{mathpar}
+\small
+\inferrule{
+	\tentailsXt{\psi}{\kOp{n}}
+}{
+	\tentailsX{\tvar{op}=\psi}
+}~(\text{op-def})
+
+\inferrule{
+	\tentailsXt{\psi}{\karrow{\splat{\kappa}{1}{m}}{\kOp{n}}}
+}{
+	\tentailsX{\tvar{op}=\psi}
+}~(\text{op-fam-def})
+
+\inferrule{
+	\tentailsX{\theta_1}\\
+	\tentailsX{\theta_2}
+}{
+	\tentailsX{\theta_1; \theta_2}
+}~(\text{op-seq})
+\end{mathpar}
+$\fbox{\inferrule{}{\eentails{\tvarCtx}{\mtvarCtx}{\mu}}}$
+~~~~$\mtvarCtx ::= \cdot \pipe \mtvarCtx, \mvar{u}$
+\begin{mathpar}
+\small
+\inferrule{
+	\mvar{u} \in \mtvarCtx
+}{
+	\mentailsX{\mvar{u}}
+}~(\text{var-form}^{\mu})
+
+\inferrule{
+	\tentails{\tvarCtx}{\delta}\\
+	\mentails{\tvarCtx}{\mtvarCtx, u}{\mu}
+}{
+	\mentailsX{\mlam{\mvar{u}}{\delta}{\mu}}
+}~(\text{$\lambda$-form}^{\mu})
+
+\inferrule{
+	\tentails{\tvarCtx}{\delta}\\
+	\mentails{\tvarCtx}{\mtvarCtx, \mvar{f}}{\mu}
+}{
+	\mentailsX{\mfix}{\mvar{f}}{\delta}{\mu}
+}~(\text{fix-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu_1}\\
+	\mentailsX{\mu_2}
+}{
+	\mentailsX{\mapp}{\mu_1}{\mu_2}
+}~(\text{app-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu_1}\\
+	\mentailsX{\mu_2}\\
+	\mentailsX{\mu_3}\\
+	\mentailsX{\mu_4}
+}{
+	\mentailsX{\mIfEq}{\mu_1}{\mu_2}{\mu_3}{\mu_4}
+}~(\text{if-form}^\mu)
+
+\inferrule{ }{\mentailsX{\mintlit}}~(\text{int-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu_1}\\
+	\mentailsX{\mu_2}
+}{
+	\mentailsX{\mop{\mu_1}{\mu_2}}
+}~(\text{+-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu_1}\\
+	\mentailsX{\mu_2}
+}{
+	\mentailsX{\mpair{\mu_1}{\mu_2}}
+}~(\text{$\times$-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu}
+}{
+	\mentailsX{\mfst{\mu}}
+}~(\text{fst-form}^\mu)
+
+\inferrule{
+	\mentailsX{\mu}
+}{
+	\mentailsX{\msnd{\mu}}
+}~(\text{snd-form}^\mu)
+
+\inferrule{
+	\tentailsXt{\psiden}{\kDen}
+}{
+	\mentailsX{\mvalof}{\psiden}
+}~(\text{valof})
+\end{mathpar}
+$\fbox{\inferrule{}{\tentails{\tvarCtx}{\delta}}}$
+\begin{mathpar}
+\small
+\inferrule{
+	\tentailsX{\delta_1}\\
+	\tentailsX{\delta_2}
+}{
+	\tentailsX{\darrow{\delta_1}{\delta_2}}
+}~(\text{$\rightarrow$-form}^\delta)
+
+\inferrule{ }{\tentailsX{\dint}}~(\text{int-form}^\delta)
+
+\inferrule{
+	\tentailsX{\delta_1}\\
+	\tentailsX{\delta_2}
+}{
+	\tentailsX{\dpair{\delta_1}{\delta_2}}
+}~(\text{$\times$-form}^\delta)
+
+\inferrule{
+	\tentailsXt{\psiden}{\kDen}
+}{
+	\tentailsX{\drepof{\psiden}}
+}~(\text{repof})
+\end{mathpar}
+$\fbox{\inferrule{}{\eentails{\tvarCtx}{\etvarCtx}{e}}}$
+~~~~$\etvarCtx ::= \cdot \pipe \etvarCtx, \evar{x}$
+\begin{mathpar}
+\small
+\inferrule{
+	\evar{x} \in \etvarCtx
+}{
+	\eentailsX{\evar{x}}
+}~(\text{var-form}^e)
+
+\inferrule{
+	\tentailsXt{\psi}{\kTypeBlur}\\
+	\eentails{\tvarCtx}{\etvarCtx, \evar{x}}{e}
+}{
+	\eentailsX{\elam{\evar{x}}{\psi}{e}}
+}~(\text{$\lambda$-form}^e)
+
+\inferrule{
+	\eentailsX{e_1}\\
+	\eentailsX{e_2}
+}{
+	\eentailsX{\eapp{e_1}{e_2}}
+}~(\text{app-form}^e)
+
+\inferrule{
+	\tentailsXt{\psitype}{\kTypeBlur}\\
+	\tentailsXt{\psi_1}{\kappa_1}\\
+	\cdots\\
+	\tentailsXt{\psi_m}{\kappa_m}\\
+	\eentailsX{e_1}\\
+	\cdots\\
+	\eentailsX{e_n}
+}{
+	\eentailsX{\eop{\psitype}{\tvar{op}}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
+}~(\text{op-app-form}^e)
+\end{mathpar}
+\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
+\end{figure*}
 %\begin{mathpar}
-%\inferrule{
-%	\tof{\tvar{t}}{\kappa} \in \tvarCtx
-%}{
-%  \tentailsXt{\tvar{t}}{\kappa}
-%}
 %
-%\inferrule{
-%	\kentailsX{\kappa_{1}}\\
-%	\cdots\\
-%	\kentailsX{\kappa_{n}}\\
-%  \tentails{\kvarCtx}{\labelCtx}{\tvarCtx, \splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\tof{\psi}{\kappa}}
-%}{
-%  \tentailsXt{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
-%}
 %
-%\inferrule{
-%	\tentails{\kvarCtx, \kvar{$\alpha$}}{\labelCtx}{\tvarCtx}{\tof{\psi}{\kappa}}
-%}{
-%	\tentailsXt{\tLam{\kvar{$\alpha$}}{\psi}}{\kforall{\kvar{$\alpha$}}{\kappa}}
-%}
+
 %
-%\inferrule{
-%  \tentailsXt{\psi}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}\\
-%  \tentailsXt{\psi_{1}}{\kappa_{1}}\\
-%  \cdots\\
-%  \tentailsXt{\psi_{n}}{\kappa_{n}}
-%}{
-%  \tentailsXt{\tapp{\psi}{\splat{\psi}{1}{n}}}{\kappa}
-%}
+
 %
 %\inferrule{
 %	\kentailsX{\kappa_0}\\
@@ -253,35 +532,8 @@ $$\begin{array}{rccl}
 %
 %%\inferrule{ }{\tentailsXt{\tstr}{\kstr}}
 %
-%\inferrule{ }{\tentailsXt{\tunit}{\kunit}}
 %
-%\inferrule{
-%	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
-%	\tentailsXt{\psi_{2}}{\kappa_{2}}
-%}{
-%	\tentailsXt{\tpair{\psi_{1}}{\psi_{2}}}{\kpair{\kappa_{1}}{\kappa_{2}}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
-%}{
-%	\tentailsXt{\tfst{\psi}}{\kappa_{1}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
-%}{
-%	\tentailsXt{\tsnd{\psi}}{\kappa_{2}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi_{0}}{\kappa_{1}}\\
-%	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
-%	\tentailsXt{\psi_{2}}{\kappa_{2}}\\
-%	\tentailsXt{\psi_{3}}{\kappa_{2}}
-%}{
-%	\tentailsXt{\tifeq{\psi_{0}}{\psi_{1}}{\psi_{2}}{\psi_{3}}}{\kappa_{2}}
-%}
+
 %
 %\inferrule{
 %	\klabelOf{label}{\kappa} \notin \labelCtx\\
@@ -306,26 +558,6 @@ $$\begin{array}{rccl}
 %	\tentailsXt{\topen{\psi}}{\kappa}
 %}
 %
-%\inferrule{
-%	\kentailsX{\kappa}\\
-%	\kTypeBlur \text{~strictly positive in~} \kappa\\
-%	\tentailsXt{\psiidx}{\kappa}\\
-%	\tentailsXt{\psirep}{\kIType}
-%}{
-%	\tentailsXt{\ttype{\psiidx}{\kappa}{\psirep}}{\kType{\kappa}}
-%} \\
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kType{\kappa}}
-%}{
-%	\tentailsXt{\psi}{\kTypeBlur}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kType{\kappa}}
-%}{
-%	\tentailsXt{\tidx{\psi}}{\kappa}
-%}
 %
 %\inferrule{
 %	\tentailsXt{\psi}{\kTypeBlur}
@@ -353,28 +585,6 @@ $$\begin{array}{rccl}
 %	\tentailsXt{\tOp{\psi}}{\kOp{n}}
 %}
 %\\
-%\inferrule{
-%	\entails{\labelCtx~\mvarCtx~\cdot}{\mu}\\
-%	\tentailsXt{\psitype}{\kType{\kappa}}
-%}{
-%	\tentailsXt{\tden{\mu}{\psitype}}{\kDenk{\kappa}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kDenk{\kappa}}
-%}{
-%	\tentailsXt{\ttypeof{\psi}}{\kType{\kappa}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kDenk{\kappa}}
-%}{
-%	\tentailsXt{\psi}{\kDen}
-%}
-%
-%\inferrule{ }{
-%	\tentailsXt{\terr}{\kDen}
-%}
 %
 %\inferrule{
 %	\kentailsX{\kappa_{0}}\\
@@ -592,8 +802,6 @@ $$\begin{array}{rccl}
 %	\eentailsX{\eop{\psi}{\splat{e}{1}{n}}}
 %}
 %\end{mathpar}
-%\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
-%\end{figure*}
 %
 %Let us now examine the definition of $\lamA$ in more detail. The grammar of $\lamA$ is given in Figure 2. Expressions in $\lamA$ can take one of only five forms, the first three of which correspond to the simply-typed lambda calculus and the remaining two to abstract constants and operator invocations, respectively. 
 %
