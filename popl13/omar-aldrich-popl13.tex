@@ -46,13 +46,9 @@
 
 \maketitle
 \begin{abstract}
-Researchers and domain experts propose novel language constructs regularly. Unfortunately, today's statically-typed languages are {\it monolithic}: they do not give users the ability to specify the semantics of new types and primitive operations directly and safely. This has led to a   proliferation of distinct languages built around a few situationally useful  constructs. However, using multiple languages in an application remains difficult. 
-An alternative to this language-oriented approach is to work with an {\it extensible} programming language. Designing an extensibility mechanism that is both expressive and safe has been a challenge -- extensions must not weaken the global safety properties of the language, compromise the integrity of the compilation process, or interfere with each other. 
+Researchers and domain experts propose novel language primitives regularly. Unfortunately, today’s statically-typed languages are monolithic: they do not give users the ability to specify the semantics of new primitive types and operators directly. This has led to a proliferation of standalone languages built around a few situationally useful constructs. An alternative to this language-oriented approach is to work in an extensible programming language. Designing an extensibility mechanism that is both expressive and safe has been a challenge – extensions must not weaken the global safety properties of the language, compromise the integrity of the compilation process, or interfere with one other, while still admitting a range of useful constructs.
 
-This paper introduces a mechanism called {\it active type-checking and translation} (AT\&T) that aims to address these issues. By using type-level computation in a novel way, AT\&T can support a wide range of user-defined semantics over a fixed grammar safely and modularly. 
-In a language supporting AT\&T, all types are represented uniformly at the type level. Each type is equipped with type-level functions that are invoked specifically during the type-checking and translation of operations relevant to that type. 
-%By employing a sufficiently-constraining kind system and requiring that translations are type-preserving, we can show that the global safety properties of the language and compilation process in the presence of arbitrary combinations of user extensions. 
-We discuss three points in the design space: (1) a judgmental lambda calculus-based  formulation designed to distill essential concepts and admit formal safety theorems, (2) a practically-realized language called Ace that we use to demonstrate the expressive power of AT\&T in practice, and (3) a proposed language called Birdie that lifts Coq's rich system of dependent types into the type-level to allow extension developers to fully prove the correctness of an extension statically.
+This paper introduces a mechanism called active type-checking and translation (AT\&T) that aims to address these issues. By repurposing type-level computation in a novel way, AT\&T supports a wide range of user-defined semantics over a fixed grammar in a safe and modular manner. In a language supporting AT\&T, primitive types families are represented uniformly at the type level. Each type is equipped with operators, defined using type-level functions, that are invoked specifically during the type-checking and translation of operations relevant to that type. We discuss three points in the design space: (1) a simple judgmental construction of AT\&T designed to distill the essential concepts and admit formal safety theorems, (2) a "real" language called Ace that we use to demonstrate the expressive power of AT\&T in practice, and (3) a language design called Birdie that lifts and extends Coq’s rich system of dependent types into the type-level, allowing extension developers to fully prove the correctness of extensions statically.
 
 \end{abstract}
 
@@ -126,7 +122,7 @@ $$\begin{array}{rccl}
 														\\
 														
 \text{type families}				&		& \pipe	& 	\tfam{fam}{\kappaidx}{\psirep}{\theta}{\Theta}{\psi}\pipe
-														\tfamcase{\psi}{fam}{\psi_0}{\psi_1}\\
+														\tfamcase{\psi}{\phi}{\psi_0}{\psi_1}\\
 
 \text{types} 						& 		& \pipe	& 	\ttypestd \pipe 
 														\tidx{\psitype} \pipe
@@ -136,7 +132,7 @@ $$\begin{array}{rccl}
 \text{operator definitions} 		& 		& \pipe & 	\tconst{\psi} \pipe 
 														\tOp{\psi} \\
 												
-\text{denotations} 				& 		 & 	\pipe	&	\tden{\mu}{\psitype} \pipe 
+\text{denotations} 				& 		 & 	\pipe	&	\tden{\psiiterm}{\psitype} \pipe 
 														\tvalof{\psiden} \pipe
 														\ttypeof{\psiden} \pipe
 														\terr \\
@@ -145,25 +141,28 @@ $$\begin{array}{rccl}
 
 \text{programs}					&		&	\pipe	&	\tprog{e}\\
 
+\text{family instances}	&	\phi		&	::= & \fvar{fam} \pipe \tfamSpecStd\\
 \text{operator lists}		&	\theta	&	::= &	\topsempty \pipe 
 												\topp{\theta}{\tops{op}{\psi}}\\
 												
 \textbf{kinds} 					& \kappa	&	::=	&	\karrow{\splat{\kappa}{1}{n}}{\kappa} \pipe 
 												\kunit \pipe 
 												\kpair{\kappa_{1}}{\kappa_{2}} \pipe 
-												\kType{fam} \pipe 
+												\kType{\eta} \pipe 
 												\kTypeBlur \pipe
-												\kDenk{fam} \pipe 
+												\kOp{n} \pipe
+												\kDenk{\eta} \pipe 
 												\kDen \pipe 
-												\kProg \pipe 
-												\kOp{n}
+												\kIType \pipe \kITerm \pipe
+												\kProg 
 												\\
 												
+\text{family kinds}					& \eta		& 	::=	& \kFamVar{fam} \pipe \kFamStd\\
 \text{operator list signatures}			& \Theta	&	::=	&	\cdot \pipe \Theta; \tvar{op}: \kappa\\
 											 							&		&		&	\\
 \textbf{internal terms} 				& 	\mu	&	::=	&	\ivar{u} \pipe 
-												\ilam{\ivar{u}}{\psi}{\mu} \pipe 
-												\ifix{\ivar{f}}{\psi}{\mu} \pipe 
+												\ilam{\ivar{u}}{\delta}{\mu} \pipe 
+												\ifix{\ivar{f}}{\delta}{\mu} \pipe 
 												\iapp{\mu_{1}}{\mu_{2}} \pipe 
 												\iIfEq{\mu_{0}}{\mu_{1}}{\mu_{2}}{\mu_{3}}\\
 							& 		& 	\pipe	&	\iintlit \pipe 
@@ -188,7 +187,7 @@ $$\begin{array}{rccl}
 \begin{mathpar}
 \inferrule{
 	\overbrace{\tentailst{\cdot}{\psiprog}{\kProg}}^{\text{\small kind checking}}{ }\\
-	\overbrace{\tevals{\psiprog}{\tprog{e}}{\noprob}}^{\text{\small specification normalization}}{ }\\
+	\overbrace{\tevalsX{\psiprog}{\tprog{e}}{\noprob}}^{\text{\small specification normalization}}{ }\\
 	\overbrace{\translates{\cdot}{e}{\mu}{\ttypestd}}^{\text{\small verification \& translation}}{ }
 }{
 %	\compiles{\psiprog}{\mu}{\psiidx}{\kappa}{\psirep}
@@ -217,7 +216,8 @@ $$\begin{array}{rccl}
 %
 %\subsection{$\lamA$}
 \begin{figure*}
-$\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
+$\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
+~~~~$\fCtx ::= \cdot \pipe \fCtx, \fSpecStd$
 ~~~~$\tvarCtx ::= \cdot \pipe \tvarCtx, \tof{\tvar{t}}{\kappa}$
 \begin{mathpar}
 \small
@@ -225,34 +225,37 @@ $\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
 	\tof{\tvar{t}}{\kappa} \in \tvarCtx
 }{
   \tentailsXt{\tvar{t}}{\kappa}
-}~(\text{var}^\psi)
+}~(\text{var}_\psi)
 
-\inferrule{ }{\tentailsXt{\tunit}{\kunit}}~(\text{Unit})
+\inferrule{ }{\tentailsXt{\tunit}{\kunit}}~(\text{unit})
 
 \inferrule{
 	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
 	\tentailsXt{\psi_{2}}{\kappa_{2}}
 }{
 	\tentailsXt{\tpair{\psi_{1}}{\psi_{2}}}{\kpair{\kappa_{1}}{\kappa_{2}}}
-}~(\times_I)
+}~(\times_\psi)
 
 \inferrule{
 	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
 }{
 	\tentailsXt{\tfst{\psi}}{\kappa_{1}}
-}~(\times_E^1)
+}~(\text{fst}_\psi)
 
 \inferrule{
 	\tentailsXt{\psi}{\kpair{\kappa_{1}}{\kappa_{2}}}
 }{
 	\tentailsXt{\tsnd{\psi}}{\kappa_{2}}
-}~(\times_E^2)
+}~(\text{snd}_\psi)
 
 \inferrule{
-  \tentailst{\tvarCtx, \splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}{\kappa}
+  \kentailsX{\kappa_1}\\
+  \cdots\\
+  \kentailsX{\kappa_n}\\
+  \tentailst{\tCtxXT{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}}{\psi}{\kappa}
 }{
   \tentailsXt{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
-}~\text{($\lambda^\psi_I$)}
+}~\text{($\lambda_\psi$)}
 
 \inferrule{
   \tentailsXt{\psi}{\karrow{\splat{\kappa}{1}{n}}{\kappa}}\\
@@ -261,7 +264,7 @@ $\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
   \tentailsXt{\psi_{n}}{\kappa_{n}}
 }{
   \tentailsXt{\tapp{\psi}{\splat{\psi}{1}{n}}}{\kappa}
-}~\text{($\lambda^\psi_E$)}
+}~(\text{app}_\psi)
 
 \inferrule{
 	\tentailsXt{\psi_{0}}{\kappa_{1}}\\
@@ -270,80 +273,48 @@ $\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
 	\tentailsXt{\psi_{3}}{\kappa_{2}}
 }{
 	\tentailsXt{\tifeq{\psi_{0}}{\psi_{1}}{\psi_{2}}{\psi_{3}}}{\kappa_{2}}
-}~(\text{cond}^\psi)
+}~(\text{cond}_\psi)
 
 \inferrule{
-\kTypeBlur \text{~strictly positive in~} \kappaidx\\
-\tentailsXt{\psiidx}{\kappaidx}\\
-\tentailsX{\delrep}\\
-\tentails{\tvarCtx, \tof{\tvar{t}}{\kType{fam}}}{\theta}
+	\tentailst{\tCtxXF{\fSpecStd}}{\tfamSpecStd}{\kFamStd}\\
+	\tentailst{\tCtxXF{\tof{\fvar{fam}}{\kFamStd}}}{\psi}{\kappa}
 }{
-	\tentailsXt{\ttypestd}{\kType{fam}}
-} ~(\text{Type}_I)
+	\tentailsXt{\tfamStd}{\kappa}
+}~(\text{family-bind})
 
 \inferrule{
-	\tentailsXt{\psi}{\kType{fam}}
+	\tentailsXt{\psitype}{\kTypeBlur}\\
+	\tentailsXt{\phi}{\kFamStd}\\
+	\tentailsXt{\psi_0}{\karrow{\kType{\kFamStd}}{\kappa}}\\
+	\tentailsXt{\psi_1}{\kappa}
+}{
+	\tentailsXt{\tfamcase{\psitype}{\phi}{\psi_0}{\psi_1}}{\kappa}
+}~(\text{famcase-T})
+
+\inferrule{
+	\tentailsXt{\psi}{\kType{\kFamStd}}
 }{
 	\tentailsXt{\psi}{\kTypeBlur}
 }~(\text{Type-$\subseteq$})
 
 \inferrule{
-	\tentailsXt{\psi}{\kType{fam}}
+\tentailsXt{\phi}{\kFamStd}\\
+\tentailsXt{\psiidx}{\kappaidx}
 }{
-	\tentailsXt{\tidx{\psi}}{\kappa}
-}~(\text{idx})
+	\tentailsXt{\ttype{\psiidx}{\phi}}{\kType{\kFamStd}}
+} ~(\text{Type}_I)
 
 \inferrule{
-	\tentailsXt{\psitype}{\kTypeBlur}\\
-	\tentailsXt{\psi_0}{\karrow{\kType{fam}}{\kappa}}\\
-	\tentailsXt{\psi_1}{\kappa}
+	\tentailsXt{\psi}{\kType{\kFamStd}}
 }{
-	\tentailsXt{\tfamcase{\psitype}{fam}{\psi_0}{\psi_1}}{\kappa}
-}~(\text{idxcase})
-\\
-\inferrule{
-	\mentails{\Delta}{\cdot}{\mu}\\
-	\tentailsXt{\psitype}{\kType{fam}}
-}{
-	\tentailsXt{\tden{\mu}{\psitype}}{\kDenk{fam}}
-}~(\text{Den}_I)
+	\tentailsXt{\tidx{\psi}}{\kappaidx}
+}~(\text{idxof})
 
 \inferrule{
-	\mentails{\Delta}{\cdot}{\mu}\\
-	\tentailsXt{\psitype}{\kTypeBlur}
+	\tentailsXt{\psi}{\kTypeBlur}
 }{
-	\tentailsXt{\tden{\mu}{\psitype}}{\kDen}
-}~(\text{Den}_I\text{-$\subseteq$})
-
-\inferrule{
-	\tentailsXt{\psi}{\kDenk{fam}}
-}{
-	\tentailsXt{\psi}{\kDen}
-}~(\text{Den-$\subseteq$})
-
-\inferrule{ }{
-	\tentailsXt{\terr}{\kDen}
-}~(\text{err})
-
-\inferrule{
-	\tentailsXt{\psi}{\kDenk{fam}}
-}{
-	\tentailsXt{\ttypeof{\psi}}{\kType{fam}}
-}
-
-\inferrule{
-	\tentailsXt{\psiden}{\kDen}\\
-	\tentailsXt{\psi_0}{\karrow{\kDenk{fam}}{\kappa}}\\
-	\tentailsXt{\psi_1}{\kappa}
-}{
-	\tentailsXt{\tdencase{\psiden}{\kappaidx}{\psi_0}{\psi_1}}{\kappa}
-}~(\text{dencase})
-\\
-\inferrule{
-	\eentails{\Delta}{\cdot}{e}
-}{
-	\tentailsXt{\tprog{e}}{\kProg}
-}~(\text{program})
+	\tentailsXt{\trepof{\psi}}{\kIType}
+}~(\text{repof})
 
 \inferrule{
 	\tentailsXt{\psi}{\kDen}
@@ -356,104 +327,323 @@ $\fbox{\inferrule{}{\tentails{\tvarCtx}{\tof{\psi}{\kappa}}}}$
 }{
 	\tentailsXt{\tOp{\psi}}{\kOp{n}}
 }~(\text{op})
+
+\inferrule{
+	\tentailsXt{\psiiterm}{\kITerm}\\
+	\tentailsXt{\psitype}{\kType{\kFamStd}}
+}{
+	\tentailsXt{\tden{\psiiterm}{\psitype}}{\kDenk{\kFamStd}}
+}~(\text{Den}_I)
+
+\inferrule{
+	\tentailsXt{\psiiterm}{\kITerm}\\
+	\tentailsXt{\psitype}{\kTypeBlur}
+}{
+	\tentailsXt{\tden{\psiiterm}{\psitype}}{\kDen}
+}~(\text{Den}_I\text{-$\subseteq$})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+}{
+	\tentailsXt{\psi}{\kDen}
+}~(\text{Den-$\subseteq$})
+
+\inferrule{ }{
+	\tentailsXt{\terr}{\kDen}
+}~(\text{err})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+}{
+	\tentailsXt{\ttypeof{\psi}}{\kType{\kFamStd}}
+}~(\text{typeof})
+
+\inferrule{
+	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+} {
+	\tentailsXt{\tvalof{\psi}}{\kITerm}
+}~(\text{valof})
+
+\inferrule{
+	\tentailsXt{\psiden}{\kDen}\\
+	\tentailsXt{\phi}{\eta}\\
+	\tentailsXt{\psi_0}{\karrow{\kDenk{\eta}}{\kappa}}\\
+	\tentailsXt{\psi_1}{\kappa}
+}{
+	\tentailsXt{\tfamcase{\psiden}{\phi}{\psi_0}{\psi_1}}{\kappa}
+}~(\text{famcase-D})
+
+\inferrule{
+	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\cdot}}{\mu}
+}{
+	\tentailsXt{\titerm{\mu}}{\kITerm}	
+}~(\text{iterm})
+
+\inferrule{
+	\tentailsX{\delta}
+}{
+	\tentailsXt{\titype{\delta}}{\kIType}
+}~(\text{itype})
+
+\inferrule{
+	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\cdot}}{e}
+}{
+	\tentailsXt{\tprog{e}}{\kProg}
+}~(\text{program})
 \end{mathpar}
-$\fbox{\inferrule{}{\tentails{\tvarCtx}{\theta}}}$
+$\fbox{\inferrule{}{\kentailsX{\kappa}}}$~
+$\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$~
 \begin{mathpar}
 \small
 \inferrule{
-	\tentailsXt{\psi}{\kOp{n}}
+	\kentailsX{\kappa_1}\\
+	\cdots\\
+	\kentailsX{\kappa_n}\\
+	\kentailsX{\kappa}
 }{
-	\tentailsX{\tvar{op}=\psi}
-}~(\text{op-def})
+	\kentailsX{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
+}~(\text{$\rightarrow$})
 
 \inferrule{
-	\tentailsXt{\psi}{\karrow{\splat{\kappa}{1}{m}}{\kOp{n}}}
+	\kentailsX{\kappa_1}\\
+	\kentailsX{\kappa_2}
 }{
-	\tentailsX{\tvar{op}=\psi}
-}~(\text{op-fam-def})
+	\kentailsX{\kpair{\kappa_1}{\kappa_2}}
+}~(\text{$\times$})
 
 \inferrule{
-	\tentailsX{\theta_1}\\
-	\tentailsX{\theta_2}
+	\kentailsX{\kSimple{\kappa_1}}\\
+	\kentailsX{\kSimple{\kappa_2}}
 }{
-	\tentailsX{\theta_1; \theta_2}
+	\kentailsX{\kSimple{\kpair{\kappa_1}{\kappa_2}}}
+}~(\text{$\times$-simple})
+
+\inferrule{
+	\kentailsX{\kSimple{\kappa}}
+}{
+	\kentailsX{\kappa}
+}~(\text{simple})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kunit}}
+}~(\text{Unit})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kTypeBlur}}
+}~(\text{Type-any})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kDen}}
+}~(\text{Den-any})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kIType}}
+}~(\text{IType})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kITerm}}
+}~(\text{ITerm})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kProg}}
+}~(\text{Program})
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kOp{n}}}
+}~(\text{Op}_n)
+
+\inferrule{
+	\kentailsX{\kFamStd}
+}{
+	\kentailsX{\kSimple{\kType{\kFamStd}}}
+}~(\text{Type})
+
+\inferrule{
+	\kentailsX{\kFamStd}
+}{
+	\kentailsX{\kSimple{\kDenk{\kFamStd}}}
+}~(\text{Den})
+\end{mathpar}
+\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
+\end{figure*}
+\begin{figure*}
+$\fbox{\inferrule{}{\tentailsXt{\phi}{\eta}}}$~
+$\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
+\begin{mathpar}
+\small
+\inferrule{
+	\kentailsX{\kFamStd}\\
+	\tentailsXt{\theta}{\Theta}\\
+	\tentailsXt{\psirep}{\karrow{\kappaidx}{\kIType}}
+}{
+	\tentailsXt{\tfamSpecStd}{\kFamStd}
+}~(\text{family}_I)
+
+\inferrule{
+	\fSpecStd \in \Sigma
+}{
+	\tentailsXt{\fvar{fam}}{\kFamStd}
+}~(\text{var}_\phi)
+
+\inferrule{ }{
+	\tentailsXt{\cdot}{\cdot}
+}~(\text{no-ops})
+
+\inferrule{
+	\tentailsXt{\theta}{\Theta}\\
+	\tentailsXt{\psi}{\kappa}
+}{
+	\tentailsXt{\topp{\theta}{\tops{id}{\psi}}}{\Topp{\Theta}{\Tops{id}{\kappa}}}
 }~(\text{op-seq})
 \end{mathpar}
-$\fbox{\inferrule{}{\eentails{\tvarCtx}{\itvarCtx}{\mu}}}$
+$\fbox{\inferrule{}{\kentailsX{\eta}}}$~
+$\fbox{\inferrule{}{\TentailsX{\Theta}}}$
+~~~~$\hat{\Theta} := \Toppstd$
+\begin{mathpar}
+\small
+\inferrule{
+	\kentailsX{\kSimple{\kappaidx}}\\
+	\kentailsX{\Theta}
+}{
+	\kentailsX{\kFamStd}
+}~(\text{family})
+
+\inferrule{
+	\fSpecStd \in \Sigma
+}{
+	\kentailsX{\kFamVar{fam}}
+}~(\text{$\phi$-var})
+
+\inferrule{~}{
+	\kentailsX{\cdot}
+}~(\text{No-Ops})
+
+\inferrule{
+	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\Theta'}\\
+	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\karrow{\splat{\kappa}{1}{m}}{\kOp{n}}}
+}{
+	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\hat{\Theta}}
+}~(\text{Op-Seq})
+\end{mathpar}
+$\fbox{\inferrule{}{\eentailsX{e}}}$
+~~~~$\etvarCtx ::= \cdot \pipe \etvarCtx, \evar{x}$
+\begin{mathpar}
+\small
+\inferrule{
+	\evar{x} \in \etvarCtx
+}{
+	\eentailsX{\evar{x}}
+}~(\text{var-form}^e)
+
+\inferrule{
+	\tentailsXt{\psi}{\kTypeBlur}\\
+	\eentails{\fCtx}{\tvarCtx}{\etvarCtx, \evar{x}}{e}
+}{
+	\eentailsX{\elam{\evar{x}}{\psi}{e}}
+}~(\text{$\lambda$-form}^e)
+
+\inferrule{
+	\eentailsX{e_1}\\
+	\eentailsX{e_2}
+}{
+	\eentailsX{\eapp{e_1}{e_2}}
+}~(\text{app-form}^e)
+
+\inferrule{
+	\tentailsXt{\psitype}{\kType{\kFamStd}}\\
+	\tof{\tvar{op}}{
+		\karrow{\kType{\kFamStd}}
+		{
+			\karrow{\splat{\kappa}{1}{m}}{
+				\kOp{n}
+			}
+		}
+	} \in \Theta\\
+	\tentailsXt{\psi_1}{\kappa_1}\\
+	\cdots\\
+	\tentailsXt{\psi_m}{\kappa_m}\\
+	\eentailsX{e_1}\\
+	\cdots\\
+	\eentailsX{e_n}
+}{
+	\eentailsX{\eop{\psitype}{\tvar{op}}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
+}~(\text{op-app-form}^e)
+\end{mathpar}
+$\fbox{\inferrule{}{\ientailsX{\mu}}}$
 ~~~~$\itvarCtx ::= \cdot \pipe \itvarCtx, \ivar{u}$
 \begin{mathpar}
 \small
 \inferrule{
 	\ivar{u} \in \itvarCtx
 }{
-	\mentailsX{\ivar{u}}
+	\ientailsX{\ivar{u}}
 }~(\text{var-form}^{\mu})
 
 \inferrule{
-	\tentails{\tvarCtx}{\delta}\\
-	\mentails{\tvarCtx}{\itvarCtx, u}{\mu}
+	\tentailsX{\delta}\\
+	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\itvarCtx}, \ivar{u}}{\mu}
 }{
-	\mentailsX{\ilam{\ivar{u}}{\delta}{\mu}}
+	\ientailsX{\ilam{\ivar{u}}{\delta}{\mu}}
 }~(\text{$\lambda$-form}^{\mu})
 
 \inferrule{
-	\tentails{\tvarCtx}{\delta}\\
-	\mentails{\tvarCtx}{\itvarCtx, \ivar{f}}{\mu}
+	\tentailsX{\delta}\\
+	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\itvarCtx}, \ivar{f}}{\mu}
 }{
-	\mentailsX{\ifix}{\ivar{f}}{\delta}{\mu}
+	\ientailsX{\ifix}{\ivar{f}}{\delta}{\mu}
 }~(\text{fix-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu_1}\\
-	\mentailsX{\mu_2}
+	\ientailsX{\mu_1}\\
+	\ientailsX{\mu_2}
 }{
-	\mentailsX{\iapp}{\mu_1}{\mu_2}
+	\ientailsX{\iapp}{\mu_1}{\mu_2}
 }~(\text{app-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu_1}\\
-	\mentailsX{\mu_2}\\
-	\mentailsX{\mu_3}\\
-	\mentailsX{\mu_4}
+	\ientailsX{\mu_1}\\
+	\ientailsX{\mu_2}\\
+	\ientailsX{\mu_3}\\
+	\ientailsX{\mu_4}
 }{
-	\mentailsX{\iIfEq}{\mu_1}{\mu_2}{\mu_3}{\mu_4}
+	\ientailsX{\iIfEq}{\mu_1}{\mu_2}{\mu_3}{\mu_4}
 }~(\text{if-form}^\mu)
 
-\inferrule{ }{\mentailsX{\iintlit}}~(\text{int-form}^\mu)
+\inferrule{ }{\ientailsX{\iintlit}}~(\text{int-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu_1}\\
-	\mentailsX{\mu_2}
+	\ientailsX{\mu_1}\\
+	\ientailsX{\mu_2}
 }{
-	\mentailsX{\iop{\mu_1}{\mu_2}}
+	\ientailsX{\iop{\mu_1}{\mu_2}}
 }~(\text{+-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu_1}\\
-	\mentailsX{\mu_2}
+	\ientailsX{\mu_1}\\
+	\ientailsX{\mu_2}
 }{
-	\mentailsX{\ipair{\mu_1}{\mu_2}}
+	\ientailsX{\ipair{\mu_1}{\mu_2}}
 }~(\text{$\times$-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu}
+	\ientailsX{\mu}
 }{
-	\mentailsX{\ifst{\mu}}
+	\ientailsX{\ifst{\mu}}
 }~(\text{fst-form}^\mu)
 
 \inferrule{
-	\mentailsX{\mu}
+	\ientailsX{\mu}
 }{
-	\mentailsX{\isnd{\mu}}
+	\ientailsX{\isnd{\mu}}
 }~(\text{snd-form}^\mu)
 
 \inferrule{
-	\tentailsXt{\psiden}{\kDen}
+	\tentailsXt{\psi}{\kITerm}
 }{
-	\mentailsX{\mvalof}{\psiden}
-}~(\text{valof})
+	\ientailsX{\iup{\psi}}
+}~(\text{$\uparrow$-form}^\mu)
 \end{mathpar}
-$\fbox{\inferrule{}{\tentails{\tvarCtx}{\delta}}}$
+$\fbox{\inferrule{}{\tentailsX{\delta}}}$
 \begin{mathpar}
 \small
 \inferrule{
@@ -473,342 +663,681 @@ $\fbox{\inferrule{}{\tentails{\tvarCtx}{\delta}}}$
 }~(\text{$\times$-form}^\delta)
 
 \inferrule{
-	\tentailsXt{\psiden}{\kDen}
+	\tentailsXt{\psi}{\kIType}
 }{
-	\tentailsX{\drepof{\psiden}}
-}~(\text{repof})
+	\tentailsX{\dup{\psi}}
+}~(\text{$\uparrow$-form}^\delta)
 \end{mathpar}
-$\fbox{\inferrule{}{\eentails{\tvarCtx}{\etvarCtx}{e}}}$
-~~~~$\etvarCtx ::= \cdot \pipe \etvarCtx, \evar{x}$
+\caption{Continued}
+\end{figure*}
+
+\begin{figure*}
+%  \renewcommand\thefigure{4}
+% % \begin{textblock}{20}(0,0)
+%  \newpage
+$\fbox{$\tevalX{\psi}{\psi'}$}$~
+$\fbox{$\tevalX{\theta}{\theta'}$}$
+$\fbox{$\tevalX{\phi}{\phi'}$}$
+~~~~$\famEvalCtx ::= \cdot \pipe \famEvalCtx, \ttype{\psiidx}{\tfamSpecStd}$
+~~~~$\errCtx ::= \noprob \pipe \prob \pipe \errCtx, \errCtx$
+%~~~~$\inferrule{\tevalX{\psi}{\psi'} \\ \prob \notin \errCtx}{\tevalsX{\psi}{\psi'}{\noprob}}$
+%  ~~~~$\Sigma ::= \noprob \pipe \prob \pipe \Sigma,\Sigma$~~~~ 
+\begin{mathpar}
+\small
+\inferrule{ }{
+	\tevalsX{\tunit}{\tunit}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{1}}\\
+	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{2}}
+}{
+	\tevalsX{\tpair{\psi_1}{\psi_2}}{\tpair{\psi_1'}{\psi_2'}}{\errCtx_{1},\errCtx_{2}}
+}
+
+\inferrule{
+	\tevalX{\psi}{\tpair{\psi_1}{\psi_2}}
+}{
+	\tevalX{\tfst{\psi}}{\psi_1}
+}
+
+\inferrule{
+	\tevalX{\psi}{\tpair{\psi_1}{\psi_2}}
+}{
+	\tevalX{\tsnd{\psi}}{\psi_2}
+}
+
+\inferrule{ }{
+	\tevalsX{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\psi_0}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\errCtx_{0}}\\
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{1}}\\
+	\cdots\\
+	\tevalsX{\psi_n}{\psi_n'}{\errCtx_{n}}\\
+	\tevalsX{\substn{\splatTwo{\psi'}{{/}t}{1}{n}}{\psi}}{\psi'}{\errCtx}
+}{
+	\tevalsX{\tapp{\psi_0}{\splat{\psi}{1}{n}}}{\psi'}{\errCtx_{0},\errCtx_{1},\ldots,\errCtx_{n},\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psi_0}{\psi_0'}{\errCtx_{0}}\\
+	\tevalsX{\psi_1}{\psi_0'}{\errCtx_{1}}\\
+	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{2}}
+}{
+	\tevalsX{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_2'}{\errCtx_{0},\errCtx_{1},\errCtx_{2}}
+}
+
+\inferrule{
+	\tevalsX{\psi_0}{\psi_0'}{\errCtx_{0}}\\
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{1}}\\
+	\psi_0' \neq \psi_1'\\
+	\tevalsX{\psi_3}{\psi_3'}{\errCtx_{3}}
+}{
+	\tevalsX{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_3'}{\errCtx_{0},\errCtx_{1},\errCtx_{3}}
+}
+
+\inferrule{
+	\tevalsX{\tfamSpecStd}{\psit{fam}}{\errCtx_0}\\
+	\tevalsX{\subst{\psit{fam}}{\fvar{fam}}{\subst{\kFamStd}{\kFamVar{fam}}{\psi}}}{\psi'}{\errCtx_1}
+}{
+	\tevalsX{\tfamStd}{\psi'}{\errCtx_0, \errCtx_1}
+}
+
+\inferrule{
+	\tevalsX{\psirep}{\psirep'}{\errCtx_0}\\
+	\tevalsX{\theta}{\theta'}{\errCtx_1}
+}{
+	\tevalsX{\tfamSpecStd}{\tfamSpec{fam}{\kappaidx}{\psirep'}{\theta'}{\Theta}}{\errCtx_0, \errCtx_1}
+}	
+
+\inferrule{
+	\tevalsX{\psiidx}{\psiidx'}{\errCtx}
+}{
+	\tevalsX{\ttypestd}{
+		\ttype{\psiidx'}{fam}
+	}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psitype}{\ttypestd}{\errCtx}
+}{
+	\tevalsX{\tidx{\psitype}}{\psiidx}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psitype}{\ttypestd}{\errCtx_0}\\
+	\tfamSpecStd \in \famEvalCtx\\
+	\tevalsX{\tapp{\psirep}{\psiidx}}{\psi'}{\errCtx_1}
+}{
+	\tevalsX{\trepof{\psitype}}{\psi'}{\errCtx_0, \errCtx_1}
+}
+
+\inferrule{
+	\tevalsX{\psi}{\psi'}{\errCtx}
+}{
+	\tevalsX{\tconst{\psi}}{\tconst{\psi'}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psi}{\psi'}{\errCtx}
+}{
+	\tevalsX{\tOp{\psi}}{\tOp{\psi'}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psiiterm}{\psiiterm'}{\errCtx_0}\\
+	\tevalsX{\psitype}{\psitype'}{\errCtx_1}
+}{
+	\tevalsX{\tden{\psiiterm}{\psitype}}{\tden{\psiiterm'}{\psitype'}}{\errCtx_0, \errCtx_1}
+}
+
+\inferrule{
+	\tevalsX{\psiden}{\tden{\psiiterm}{\psitype}}{\errCtx}
+}{
+	\tevalsX{\tvalof{\psiden}}{\psiiterm}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psiden}{\tden{\psiiterm}{\psitype}}{\errCtx}
+}{
+	\tevalsX{\ttypeof{\psiden}}{\psitype}{\errCtx}
+}
+
+\inferrule{ }{
+	\tevalsX{\terr}{\terr}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\mu}{\mu'}{\errCtx}
+}{
+	\tevalsX{\titerm{\mu}}{\titerm{\mu'}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\delta}{\delta'}{\errCtx}
+}{
+	\tevalsX{\titype{\delta}}{\titype{\delta'}}{\errCtx}
+}
+
+\inferrule{
+	\tevale{e}{e'}
+}{
+	\tevalX{\tprog{e}}{\tprog{e'}}
+}
+
+\inferrule{ }{
+	\tevalsX{\topsempty}{\topsempty}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\theta}{\theta'}{\errCtx_0}\\
+	\tevalsX{\psi}{\psi'}{\errCtx_1}
+}{
+	\tevalsX{
+		\topp{\theta}{\tops{op}{\psi}}
+	}{
+		\topp{\theta'}{\tops{op}{\psi'}}
+	}{\errCtx_0, \errCtx_1}
+}
+\end{mathpar}
+$\fbox{$\tevale{e}{e'}$}$
 \begin{mathpar}
 \small
 \inferrule{
-	\evar{x} \in \etvarCtx
+	\tevalsX{\psi}{\psi'}{\errCtx}
 }{
-	\eentailsX{\evar{x}}
-}~(\text{var-form}^e)
+	\tevalsX{\elam{\evar{x}}{\psi}{e}}
+	{\elam{\evar{x}}{\psi'}{e}}{\errCtx}
+}
 
 \inferrule{
-	\tentailsXt{\psi}{\kTypeBlur}\\
-	\eentails{\tvarCtx}{\etvarCtx, \evar{x}}{e}
+	\tevalsX{e_1}{e_1'}{\errCtx_1}\\
+	\tevalsX{e_2}{e_2'}{\errCtx_2}
 }{
-	\eentailsX{\elam{\evar{x}}{\psi}{e}}
-}~(\text{$\lambda$-form}^e)
+	\tevalsX{\eapp{e_1}{e_2}}{\eapp{e_1'}{e_2'}}{\errCtx_1, \errCtx_2}
+}
 
 \inferrule{
-	\eentailsX{e_1}\\
-	\eentailsX{e_2}
-}{
-	\eentailsX{\eapp{e_1}{e_2}}
-}~(\text{app-form}^e)
-
-\inferrule{
-	\tentailsXt{\psitype}{\kTypeBlur}\\
-	\tentailsXt{\psi_1}{\kappa_1}\\
+	\tevalsX{\psitype}{\psitype'}{\errCtx}\\
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_1^1}\\
 	\cdots\\
-	\tentailsXt{\psi_m}{\kappa_m}\\
-	\eentailsX{e_1}\\
+	\tevalsX{\psi_m}{\psi_m'}{\errCtx_m^1}\\
+	\tevalsX{e_1}{e_1'}{\errCtx_1^2}\\
 	\cdots\\
-	\eentailsX{e_n}
+	\tevalsX{e_n}{e_n'}{\errCtx_n^2}
 }{
-	\eentailsX{\eop{\psitype}{\tvar{op}}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
-}~(\text{op-app-form}^e)
+	\tevalsX{\eop{\psitype}{op}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
+	{\eop{\psitype'}{op}{\splat{\psi'}{1}{m}}{\splat{e'}{1}{n}}}
+	{\errCtx, \errCtx_1^1, \ldots, \errCtx_m^1, \errCtx_1^2, \ldots, \errCtx_n^2}
+}
 \end{mathpar}
-\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
+$\fbox{$\tevalm{\mu}{\mu'}$}$
+\begin{mathpar}
+\small
+\inferrule{
+	\tevalsX{\delta}{\delta'}{\errCtx}
+}{
+	\tevalsX{\ilam{\ivar{u}}{\delta}{\mu}}{\ilam{\ivar{u}}{\delta'}{\mu}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\delta}{\delta'}{\errCtx}
+}{
+	\tevalsX{\ifix{\ivar{f}}{\delta}{\mu}}{\ifix{\ivar{f}}{\delta'}{\mu}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\mu_1}{\mu_1'}{\errCtx_1}\\
+	\tevalsX{\mu_2}{\mu_2'}{\errCtx_2}
+}{
+	\tevalsX{\iapp{\mu_1}{\mu_2}}{\iapp{\mu_1'}{\mu_2'}}{\errCtx_1, \errCtx_2}
+}
+
+\inferrule{
+	\tevalsX{\mu_0}{\mu_0'}{\errCtx_0}\\
+	\tevalsX{\mu_1}{\mu_1'}{\errCtx_1}\\
+	\tevalsX{\mu_2}{\mu_2'}{\errCtx_2}\\
+	\tevalsX{\mu_3}{\mu_3'}{\errCtx_3}
+}{
+	\tevalsX{\iIfEq{\mu_0}{\mu_1}{\mu_2}{\mu_3}}{\iIfEq{\mu_0'}{\mu_1'}{\mu_2'}{\mu_3'}}{\errCtx_0, \errCtx_1, \errCtx_2, \errCtx_3}
+}
+
+\inferrule{ }{
+	\tevalsX{\iintlit}{\iintlit}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\mu_1}{\mu_1'}{\errCtx_1}\\
+	\tevalsX{\mu_2}{\mu_2'}{\errCtx_2}
+}{
+	\tevalsX{\iop{\mu_1}{\mu_2}}{\iop{\mu_1'}{\mu_2'}}{\errCtx_1, \errCtx_2}
+}
+
+\inferrule{
+	\tevalsX{\mu_1}{\mu_1'}{\errCtx_1}\\
+	\tevalsX{\mu_2}{\mu_2'}{\errCtx_2}
+}{
+	\tevalsX{\ipair{\mu_1}{\mu_2}}{\ipair{\mu_1'}{\mu_2'}}{\errCtx_1, \errCtx_2}
+}
+
+\inferrule{
+	\tevalsX{\mu}{\mu'}{\errCtx}
+}{
+	\tevalsX{\ifst{\mu}}{\ifst{\mu'}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\mu}{\mu'}{\errCtx}
+}{
+	\tevalsX{\isnd{\mu}}{\isnd{\mu'}}{\errCtx}
+}
+
+\inferrule{
+	\tevalsX{\psi}{\titerm{\mu}}{\errCtx}
+}{
+	\tevalsX{\iup{\psi}}{\mu}{\errCtx}
+}
+\end{mathpar}
+$\fbox{$\tevalm{\delta}{\delta'}$}$
+\begin{mathpar}
+\small
+\inferrule{
+	\tevalsX{\delta_1}{\delta_1'}{\errCtx_1}\\
+	\tevalsX{\delta_2}{\delta_2'}{\errCtx_2}
+}{
+	\tevalsX{\darrow{\delta_1}{\delta_2}}{\darrow{\delta_1'}{\delta_2'}}{\errCtx_1, \errCtx_2}
+}
+
+\inferrule{ }{
+	\tevalsX{\dint}{\dint}{\noprob}
+}
+
+\inferrule{
+	\tevalsX{\delta_1}{\delta_1'}{\errCtx_1}\\
+	\tevalsX{\delta_2}{\delta_2'}{\errCtx_2}
+}{
+	\tevalsX{\dpair{\delta_1}{\delta_2}}{\dpair{\delta_1'}{\delta_2'}}{\errCtx_1, \errCtx_2}
+}
+
+\inferrule{
+	\tevalsX{\psi}{\titype{\delta}}{\errCtx}
+}{
+	\tevalsX{\dup{\psi}}{\delta}{\errCtx}
+}
+\end{mathpar}
+%
+%\inferrule{
+%	\tevalX{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}
+%}{
+%	\tevalX{\tidx{\psi}}{\psiidx}
+%}
+%
+%\inferrule{
+%	\tevalX{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}
+%}{
+%	\tevalX{\trepof{\psi}}{\psirep}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}{\errCtx_{0}}\\
+%	\tevalsX{\tapp{\psi_{0}}{\ttype{\psiidx}{\kappa}{\psirep}}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tfamcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\ttype{\psiidx}{\kappa'}{\psirep}}{\errCtx_{0}}\\
+%	\kappa \neq \kappa'\\
+%	\tevalsX{\psi_{1}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tfamcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalX{\psi}{\psi'}
+%}{
+%	\tevalX{\tconst{\psi}}{\tconst{\psi'}}
+%}
+%
+%\inferrule{
+%	\tevalX{\psi}{\psi'}
+%}{
+%	\tevalX{\tOp{\psi}}{\tOp{\psi'}}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu}{\mu'}{\errCtx_{0}}\\
+%	\tevalsX{\psitype}{\ttype{\psiidx}{\kappa}{\psirep}}{\errCtx_{1}}\\
+%	\mtentails{\cdot}{\mtof{\mu'}{\psirep}}
+%}{
+%	\tevalsX{\tden{\mu}{\psitype}}{\tden{\mu'}{\psitype'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu}{\mu'}{\errCtx_{0}}\\
+%	\tevalsX{\psitype}{\ttype{\psiidx}{\kappa}{\psirep}}{\errCtx_{1}}\\
+%	\cdot \nvdash \mtof{\mu'}{\psirep}
+%}{
+%	\tevalsX{\tden{\mu}{\psitype}}{\tden{\mu'}{\psitype'}}{\errCtx_{0},\errCtx_{1},\prob}
+%}
+%
+%\inferrule{
+%	\tevalX{\psi}{\tden{\mu}{\psitype}}
+%}{
+%	\tevalX{\ttypeof{\psi}}{\psitype}
+%}
+%
+%\inferrule{ }{
+%	\tevalsX{\terr}{\terr}{\noprob}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}{\errCtx_{0}}\\
+%	\tevalsX{\tapp{\psi_{0}}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\terr}{\errCtx_{0}}\\
+%	\tevalsX{\psi_{1}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\tden{\mu}{\ttype{\psiidx}{\kappa'}{\psirep}}}{\errCtx_{0}}\\
+%	\kappa \neq \kappa'\\
+%	\tevalsX{\psi_{1}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{0}}\\
+%	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tILtarrow{\psi_1}{\psi_2}}{\tILtarrow{\psi_1'}{\psi_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{0}}\\
+%	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tILtprod{\psi_1}{\psi_2}}{\tILtprod{\psi_1'}{\psi_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{ }{
+%	\tevalsX{\tILtint}{\tILtint}{\noprob}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\tILtarrow{\psi_1}{\psi_2}}{\errCtx_{0}}\\
+%	\tevalsX{\tapp{\psiarrow}{\psi_1, \psi_2}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\tILtprod{\psi_1}{\psi_2}}{\errCtx_{0}}\\
+%	\tevalsX{\tapp{\psiprod}{\psi_1, \psi_2}}{\psi'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psi'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\tILtint}{\errCtx_{0}}\\
+%	\tevalsX{\psiint}{\psiint'}{\errCtx_{1}}
+%}{
+%	\tevalsX{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psiint'}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{ }{
+%	\tevalms{\ivar{u}}{\ivar{u}}{\noprob}
+%}
+%
+%\inferrule{
+%	\tevalX{\psiden}{\tden{\mu}{\psitype}}
+%}{
+%	\tevalm{\mvalof{\psiden}}{\mu}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\psi'}{\errCtx_{0}}\\
+%	\tevalms{\mu}{\mu'}{\errCtx_{1}}
+%}{
+%	\tevalms{\ilam{\ivar{u}}{\psi}{\mu}}{\ilam{\ivar{u}}{\psi'}{\mu'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\psi'}{\errCtx_{0}}\\
+%	\tevalms{\mu}{\mu'}{\errCtx_{1}}
+%}{
+%	\tevalms{\ifix{\ivar{f}}{\psi}{\mu}}{\ifix{\ivar{f}}{\psi'}{\mu'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu_1}{\mu_1'}{\errCtx_{0}}\\
+%	\tevalms{\mu_2}{\mu_2'}{\errCtx_{1}}
+%}{
+%	\tevalms{\iapp{\mu_1}{\mu_2}}{\iapp{\mu_1'}{\mu_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{ }{
+%	\tevalms{\iintlit}{\iintlit}{\noprob}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu_1}{\mu_1'}{\errCtx_{0}}\\
+%	\tevalms{\mu_2}{\mu_2'}{\errCtx_{1}}
+%}{
+%	\tevalms{\iop{\mu_1}{\mu_2}}{\iop{\mu_1'}{\mu_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu_1}{\mu_1'}{\errCtx_{0}}\\
+%	\tevalms{\mu_2}{\mu_2'}{\errCtx_{1}}
+%}{
+%	\tevalms{\ipair{\mu_1}{\mu_2}}{\ipair{\mu_1'}{\mu_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalm{\mu}{\mu'}
+%}{
+%	\tevalm{\ifst{\mu}}{\ifst{\mu'}}
+%}
+%
+%\inferrule{
+%	\tevalm{\mu}{\mu'}
+%}{
+%	\tevalm{\isnd{\mu}}{\isnd{\mu'}}
+%}
+%
+%\inferrule{
+%	\tevalms{\mu_0}{\mu_0'}{\errCtx_{0}}\\
+%	\tevalms{\mu_1}{\mu_1'}{\errCtx_{1}}\\
+%	\tevalms{\mu_2}{\mu_2'}{\errCtx_{2}}\\
+%	\tevalms{\mu_3}{\mu_3'}{\errCtx_{3}}
+%}{
+%	\tevalms{\iIfEq{\mu_0}{\mu_1}{\mu_2}{\mu_3}}{\iIfEq{\mu_0'}{\mu_1'}{\mu_2'}{\mu_3'}}{\errCtx_{0},\errCtx_{1},\errCtx_{2},\errCtx_{3}}
+%}
+%
+%\inferrule{ }{
+%	\tevales{\evar{x}}{\evar{x}}{\noprob}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\psi'}{\errCtx_{0}}\\
+%	\tevales{e}{e'}{\errCtx_{1}}
+%}{
+%	\tevales{\elam{\evar{x}}{\psi}{e}}{\elam{\evar{x}}{\psi'}{e'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevales{e_1}{e_1'}{\errCtx_{0}}\\
+%	\tevales{e_2}{e_2'}{\errCtx_{1}}
+%}{
+%	\tevales{\eapp{e_1}{e_2}}{\eapp{e_1'}{e_2'}}{\errCtx_{0},\errCtx_{1}}
+%}
+%
+%\inferrule{
+%	\tevalX{\psi}{\psi'}
+%}{
+%	\tevale{\econst{\psi}}{\econst{\psi'}}
+%}
+%
+%\inferrule{
+%	\tevalsX{\psi}{\psi'}{\errCtx_{0}}\\
+%	\tevales{e_1}{e_1'}{\errCtx_{1}}\\
+%	\cdots\\
+%	\tevales{e_n}{e_n'}{\errCtx_{n}}
+%}{
+%	\tevales{\eop{\psi}{\splat{e}{1}{n}}}{\eop{\psi'}{\splat{e'}{1}{n}}}{\errCtx_{0},\errCtx_{1},\ldots,\errCtx_{n}}
+%}
+\caption{Big-step operational semantics for type-level terms. The error context $\Sigma$ is used to detect representational consistency errors.}
+%%\end{textblock}
 \end{figure*}
-%\begin{mathpar}
-%
-%
-
-%
-
-%
-%\inferrule{
-%	\kentailsX{\kappa_0}\\
-%	\tentailsXt{\psi}{\kforall{\kvar{$\alpha$}}{\kappa}}
-%}{
-%	\tentailsXt{\tApp{\psi}{\kappa_0}}{\subst{\kappa_0}{\kvar{$\alpha$}}{\kappa}}
-%}
-%
-%\inferrule{
-%	\eentails{\kvarCtx}{\labelCtx}{\tvarCtx}{\cdot}{e}
-%}{
-%	\tentailsXt{\tprog{e}}{\kProg}
-%}
-%
-%%\inferrule{ }{\tentailsXt{\tstr}{\kstr}}
-%
-%
-
-%
-%\inferrule{
-%	\klabelOf{label}{\kappa} \notin \labelCtx\\
-%	\kentailsX{\kappa_{0}}\\
-%	\tentails{\kvarCtx}{\labelCtx, \klabelOf{label}{\kappa_{0}}}{\tvarCtx}{\tof{\psi}{\kappa_{1}}}\\
-%	\kentailsX{\kappa_{1}}
-%}{
-%	\tentailsXt{\tlabel{\klabel{label}}{\kappa_{0}}{\psi}}{\kappa_{1}}
-%}
-%
-%\inferrule{
-%	\klabelOf{label}{\kappa} \in \labelCtx\\
-%	\tentailsXt{\psi}{\kappa}
-%}{
-%	\tentailsXt{\tnewOf{label}{\psi}}{\klabel{label}}
-%}
-%
-%\inferrule{
-%	\klabelOf{label}{\kappa} \in \labelCtx\\
-%	\tentailsXt{\psi}{\klabel{label}}
-%}{
-%	\tentailsXt{\topen{\psi}}{\kappa}
-%}
-%
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kTypeBlur}
-%}{
-%	\tentailsXt{\trepof{\psi}}{\kIType}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kDen}
-%}{
-%	\tentailsXt{\tconst{\psi}}{\kOp{0}}
-%}
-%
-%\inferrule{
-%	\kentailsX{\kappa_{0}}\\
-%	\tentailsXt{\psi}{\kTypeBlur}\\
-%	\tentailsXt{\psi_{0}}{\karrow{\kType{\kappa_{0}}}{\kappa_{1}}}\\
-%	\tentailsXt{\psi_{1}}{\kappa_{1}}
-%}{
-%	\tentailsXt{\tfamcase{\psi}{\kappa_{0}}{\psi_{0}}{\psi_{1}}}{\kappa_{1}}
-%}~~~~
-%\inferrule{
-%	\tentailsXt{\psi}{\karrow{\kDen_{1} \cdots \kDen_{n}}{\kDen}}
-%}{
-%	\tentailsXt{\tOp{\psi}}{\kOp{n}}
-%}
-%\\
-%
-%\inferrule{
-%	\kentailsX{\kappa_{0}}\\
-%	\tentailsXt{\psi}{\kDen}\\
-%	\tentailsXt{\psi_{0}}{\karrow{\kDenk{\kappa_{0}}}{\kappa_{1}}}\\
-%	\tentailsXt{\psi_{1}}{\kappa_{1}}
-%}{
-%	\tentailsXt{\ttidxcase{\psi}{\kappa_{0}}{\psi_{0}}{\psi_{1}}}{\kappa_{1}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi_{1}}{\kIType}\\
-%	\tentailsXt{\psi_{2}}{\kIType}
-%}{
-%	\tentailsXt{\tILtarrow{\psi_{1}}{\psi_{2}}}{\kIType}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi_{1}}{\kIType}\\
-%	\tentailsXt{\psi_{2}}{\kIType}
-%}{
-%	\tentailsXt{\tILtprod{\psi_{1}}{\psi_{2}}}{\kIType}
-%}
-%
-%\inferrule{ }{
-%	\tentailsXt{\tILtint}{\kIType}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kIType}\\
-%	\tentailsXt{\psiarrow}{\karrow{\kIType, \kIType}{\kappa}}\\
-%	\tentailsXt{\psiprod}{\karrow{\kIType, \kIType}{\kappa}}\\
-%	\tentailsXt{\psiint}{\kappa}
-%}{
-%	\tentailsXt{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\kappa}
-%}
-%\end{mathpar}
-%
-%$\fbox{\inferrule{}{\kentailsX{\kappa}}}$
-%
-%\begin{mathpar}
-%\inferrule{
-%	\kvar{$\alpha$} \in \kvarCtx
-%}{
-%	\kentailsX{a}
-%}
-%
-%\inferrule{ }{
-%	\kentailsX{\kProg}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kstr}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kunit}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kTypeBlur}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kDen}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kIType}
-%}~~~~
-%\inferrule{ }{
-%	\kentailsX{\kOp{n}}
-%}
-%
-%\inferrule{
-%	\kentailsX{\kappa_{1}}\\
-%	\cdots\\
-%	\kentailsX{\kappa_{n}}\\
-%	\kentailsX{\kappa}
-%}{
-%	\kentailsX{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
-%}~~~~
-%\inferrule{
-%	\kentailsX{\kappa_{1}}\\
-%	\kentailsX{\kappa_{2}}
-%}{
-%	\kentailsX{\kpair{\kappa_{1}}{\kappa_{2}}}
-%}~~~~
-%\inferrule{
-%	\klabelOf{label}{\kappa} \in \labelCtx
-%}{
-%	\kentailsX{\klabel{label}}
-%}~~~~
-%\inferrule{
-%	\kentailsX{\kappa}
-%}{
-%	\kentailsX{\kType{\kappa}}
-%}~~~~
-%\inferrule{
-%	\kentailsX{\kappa}
-%}{
-%	\kentailsX{\kDenk{\kappa}}
-%}
-%\end{mathpar}
-%$\fbox{\inferrule{}{\mentailsX{\mu}}}$
-%~~~~$\ivarCtx ::= \cdot \pipe \ivarCtx, \ivar{u}$
-%\begin{mathpar}
-%\inferrule{
-%	\ivar{u} \in \ivarCtx
-%}{
-%	\mentailsX{\ivar{u}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psiden}{\kDenk{\kappa}}
-%}{
-%	\mentailsX{\mvalof{\psiden}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kIType}\\
-%	\mentails{\kvarCtx}{\labelCtx}{\tvarCtx}{\ivarCtx, \ivar{u}}{\mu}
-%}{
-%	\mentailsX{\ilam{\ivar{u}}{\psi}{\mu}}
-%}
-%
-%\inferrule{
-%	\tentailsXt{\psi}{\kIType}\\
-%	\mentails{\kvarCtx}{\labelCtx}{\tvarCtx}{\ivarCtx, \ivar{f}}{\mu}
-%}{
-%	\mentailsX{\ifix{\ivar{f}}{\psi}{\mu}}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu_{1}}\\
-%	\mentailsX{\mu_{2}}
-%}{
-%	\mentailsX{\iapp{\mu_{1}}{\mu_{2}}}
-%}
-%
-%\inferrule{ }{
-%	\mentailsX{\iintlit}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu_{1}}\\
-%	\mentailsX{\mu_{2}}
-%}{
-%	\mentailsX{\iop{\mu_{1}}{\mu_{2}}}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu_{1}}\\
-%	\mentailsX{\mu_{2}}
-%}{
-%	\mentailsX{\ipair{\mu_{1}}{\mu_{2}}}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu}
-%}{
-%	\mentailsX{\ifst{\mu}}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu}
-%}{
-%	\mentailsX{\isnd{\mu}}
-%}
-%
-%\inferrule{
-%	\mentailsX{\mu_{0}}\\
-%	\mentailsX{\mu_{1}}\\
-%	\mentailsX{\mu_{2}}\\
-%	\mentailsX{\mu_{3}}
-%}{
-%	\mentailsX{\iIfEq{\mu_{0}}{\mu_{1}}{\mu_{2}}{\mu_{3}}}
-%}
-%\end{mathpar}
-%\caption{Kind checking rules for $\lamA$ (continued on following page)}
-%\end{figure*}
-%
 %\begin{figure*}
-%  \renewcommand\thefigure{3 (continued)}
-%$\fbox{\inferrule{}{\eentailsX{e}}}$
-%~~~~$\evarCtx ::= \cdot \pipe \evarCtx, \evar{x}$
+%\renewcommand\thefigure{5}
+%$\fbox{$\translates{\eCtx}{e}{\mu}{\psiidx}{\kappa}{\psirep}$}$
+%~~~~$\eCtx ::= \cdot \pipe \extendeCtx{x}{\mu}{\psiidx}{\kappa}{\psirep}$
 %\begin{mathpar}
-%\inferrule{ 
-%	\evar{x} \in \evarCtx
+%\inferrule{
+%	\translatesTo{\evar{x}}{\mu}{\psiidx}{\kappa}{\psirep} \in \eCtx
 %}{
-%	\eentailsX{\evar{x}}
+%	\translatesX{\evar{x}}{\mu}{\psiidx}{\kappa}{\psirep}
+%}
+%
+%\inferrule{ }{
+%	\translatesX{
+%		\econst{\tconst{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}}
+%	}{
+%		\mu
+%	}{
+%		\psiidx
+%	}{
+%		\kappa
+%	}{
+%		\psirep
+%	}
 %}
 %
 %\inferrule{
-%	\tentailsXt{\psi}{\kTypeBlur}\\
-%	\eentails{\kvarCtx}{\labelCtx}{\tvarCtx}{\evarCtx,\evar{x}}{e}
+%	\translates{\extendeCtx{x}{\ivar{x}}{\psiidx}{\kappa}{\psirep}}{e}{\mu'}{\psiidx'}{\kappa'}{\psirep'}
 %}{
-%	\eentailsX{\elam{\evar{x}}{\psi}{e}}
+%	\translatesX{
+%		\elam{\evar{x}}{\ttype{\psiidx}{\kappa}{\psirep}}{e}
+%	}{
+%		\ilam{\ivar{x}}{\psirep}{\mu'}
+%	}{
+%		\tpair{\ttype{\psiidx}{\kappa}{\psirep}}{\ttype{\psiidx'}{\kappa'}{\psirep'}}
+%	}{
+%		\kpair{\kType{\kappa}}{\kType{\kappa'}}
+%	}{
+%		\tILtarrow{\psirep}{\psirep'}
+%	}
 %}
 %
 %\inferrule{
-%	\eentailsX{e_{1}}\\
-%	\eentailsX{e_{2}}
+%	\translatesX{e_1}{\mu_1}{\psiidxn{1}}{\kappa_1}{\psirepn{1}}~~~~
+%	\cdots~~~~
+%	\translatesX{e_n}{\mu_n}{\psiidxn{n}}{\kappa_n}{\psirepn{n}}\\
+%	\tevalsX{\tapp{\psi}{
+%		\tden{\mu_1}{\ttype{\psiidxn{1}}{\kappa_1}{\psirepn{1}}},
+%		\ldots,
+%		\tden{\mu_n}{\ttype{\psiidxn{n}}{\kappa_n}{\psirepn{n}}}
+%	}}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}{\noprob}
 %}{
-%	\eentailsX{\eapp{e_{1}}{e_{2}}}
+%	\translatesX{
+%		\eop{\tOp{\psi}}{\splat{e}{1}{n}}
+%	}{
+%		\mu
+%	}{
+%		\psiidx
+%	}{
+%		\kappa
+%	}{
+%		\psirep
+%	}
+%}
+%
+%\end{mathpar}
+%\caption{Verification and translation rules for $\lamA$.}
+%\end{figure*}
+%\begin{figure*}
+%  \renewcommand\thefigure{6}
+%$\fbox{$\mtentailsXt{\mu}{\psi}$}$
+%~~~~$\iCtx ::= \cdot \pipe \iCtx, \mtof{\ivar{u}}{\psi}$
+%\begin{mathpar}
+%\inferrule{
+%	\mtof{\ivar{u}}{\psi} \in \ivarCtx
+%}{
+%	\mtentailsXt{\ivar{u}}{\psi}
 %}
 %
 %\inferrule{
-%	\tentailsXt{\psi}{\kOp{0}}
+%	\mtentails{\iCtx, \mtof{\ivar{u}}{\psi}}{\mtof{\mu}{\psi'}}
 %}{
-%	\eentailsX{\econst{\psi}}
+%	\mtentailsXt{\ilam{\ivar{u}}{\psi}{\mu}}{\psi'}
 %}
 %
 %\inferrule{
-%	\tentailsXt{\psi}{\kOp{n}}\\
-%	\eentailsX{e_{1}}\\
-%	\cdots\\
-%	\eentailsX{e_{n}}
+%	\mtentails{\iCtx, \mtof{\ivar{f}}{\psi}}{\mtof{\mu}{\psi}}
 %}{
-%	\eentailsX{\eop{\psi}{\splat{e}{1}{n}}}
+%	\mtentailsXt{\ifix{\ivar{f}}{\psi}{\mu}}{\psi}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu_1}{\tILtarrow{\psi_1}{\psi_2}}\\
+%	\mtentailsXt{\mu_2}{\psi_1}
+%}{
+%	\mtentailsXt{\iapp{\mu_1}{\mu_2}}{\psi_2}
+%}
+%
+%\inferrule{ }{
+%	\mtentailsXt{\iintlit}{\tILtint}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu_1}{\tILtint}\\
+%	\mtentailsXt{\mu_2}{\tILtint}
+%}{
+%	\mtentailsXt{\iop{\mu_1}{\mu_2}}{\tILtint}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu_1}{\psi_1}\\
+%	\mtentailsXt{\mu_2}{\psi_2}
+%}{
+%	\mtentailsXt{\ipair{\mu_1}{\mu_2}}{\tILtprod{\psi_1}{\psi_2}}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu}{\tILtprod{\psi_1}{\psi_2}}
+%}{
+%	\mtentailsXt{\ifst{\mu}}{\psi_1}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu}{\tILtprod{\psi_1}{\psi_2}}
+%}{
+%	\mtentailsXt{\isnd{\mu}}{\psi_2}
+%}
+%
+%\inferrule{
+%	\mtentailsXt{\mu_0}{\psi_1}\\
+%	\mtentailsXt{\mu_1}{\psi_1}\\
+%	\mtentailsXt{\mu_2}{\psi_2}\\
+%	\mtentailsXt{\mu_3}{\psi_2}
+%}{
+%	\mtentailsXt{\iIfEq{\mu_0}{\mu_1}{\mu_2}{\mu_3}}{\psi_2}
 %}
 %\end{mathpar}
-%
+%\caption{The internal type system of $\lamA$.}
+%\end{figure*}
+
 %Let us now examine the definition of $\lamA$ in more detail. The grammar of $\lamA$ is given in Figure 2. Expressions in $\lamA$ can take one of only five forms, the first three of which correspond to the simply-typed lambda calculus and the remaining two to abstract constants and operator invocations, respectively. 
 %
 %The type-level specification language is based on System F \cite{tapl} equipped with several additional primitives that we will describe below.  To emphasize the expanded role for type-level terms, we use the letter $\psi$ instead of the more conventional $\tau$. It is constrained by a kind system, the rules of which are given in Figure 4. A big-step semantics for the type-level language is given in Figure 5. As we will state more formally below, well-kinded terms of the type-level language strongly normalize.
@@ -920,7 +1449,7 @@ $\fbox{\inferrule{}{\eentails{\tvarCtx}{\etvarCtx}{e}}}$
 %Derivation of the internal type checking judgement $\mtentailsXt{\mu}{\psi}$ is decidable if $\psi$ is a canonical form for kind $\kIType$.
 %\end{lemma}
 %\begin{lemma}[Strong Normalization to Canonical Form] If a closed type-level term $\psi$ is well-kinded, that is 
-% $\tentails{\cdot}{\cdot}{\cdot}{\tof{\psi}{\kappa}}$,  then $\tevals{\psi}{\psi'}{\Sigma}$ for some $\Sigma$ and $\psi'$ is a canonical form of kind $\kappa$.
+% $\tentails{\cdot}{\cdot}{\cdot}{\tof{\psi}{\kappa}}$,  then $\tevalsX{\psi}{\psi'}{\Sigma}$ for some $\Sigma$ and $\psi'$ is a canonical form of kind $\kappa$.
 %\end{lemma}
 %\noindent
 %We omit statements of the canonical forms lemma and other minor lemmas due to space considerations. Lemma 3 is the most difficult to prove but also absolutely critical -- a type-level language that does not guarantee termination will necessarily lead to undecidable type checking. Our approach, which we do not have space to detail here, is based on the standard logical relations formulation for strong normalization in System F, with special considerations of type indices. The check for strictly positive occurrences of the kind $\kTypeBlur$ ensures that values of kind $\kTypeBlur$ cannot sneak self-references into functions by clever use of {\sf idxcase}, by an argument exactly analagous to those given for total functional programming languages with inductive data types. In fact, we'll see in the next section that this analogy between type constructors and inductive data types has significance in practice.
@@ -939,482 +1468,6 @@ $\fbox{\inferrule{}{\eentails{\tvarCtx}{\etvarCtx}{e}}}$
 %The purpose of this section was to demonstrate a technique that allows for the concrete specification and modular introduction of new primitives into a language. This facilitates experimentation with collections of primitives known (or at least strongly suspected) to be mutually consistent. But just as introducing new axioms into a proof assistant can cause problems if not done carefully, composing primitives should also be done with care. The hope is that by making experimentation as easy as importing a library and ensuring that it cannot invalidate fundamental properties of the language, different communities will more quickly converge upon powerful collections of mutually consistent primitives.
 %
 %In the next section, we sketch a general technique for proving stronger safety and composability theorems about specifications.
-%\begin{figure*}
-%  \renewcommand\thefigure{4}
-% % \begin{textblock}{20}(0,0)
-%  \newpage
-%  $\fbox{$\teval{\psi}{\psi'}$}$ $\fbox{$\tevalm{\mu}{\mu'}$}$   $\fbox{$\tevale{e}{e'}$}$
-%  ~~~~$\Sigma ::= \noprob \pipe \prob \pipe \Sigma,\Sigma$~~~~ $\inferrule{\teval{\psi}{\psi'} \\ \prob \notin \Sigma}{\tevals{\psi}{\psi'}{\noprob}}$
-%\begin{mathpar}
-%\inferrule{ }{
-%	\tevals{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\noprob}
-%}
-%
-%\inferrule{ }{
-%	\tevals{\tLam{\kvar{$\alpha$}}{\psi}}{\tLam{\kvar{$\alpha$}}{\psi}}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_0}{\tLam{\kvar{$\alpha$}}{\psi}}{\Sigma_{0}}\\
-%	\tevals{\subst{\kappa}{\kvar{$\alpha$}}{\psi}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\tApp{\psi_0}{\kappa}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{ }{
-%	\tevals{\tunit}{\tunit}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_0}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\Sigma_{0}}\\
-%	\tevals{\psi_1}{\psi_1'}{\Sigma_{1}}\\
-%	\cdots\\
-%	\tevals{\psi_n}{\psi_n'}{\Sigma_{n}}\\
-%	\tevals{\substn{\splatTwo{\psi'}{{/}t}{1}{n}}{\psi}}{\psi'}{\Sigma}
-%}{
-%	\tevals{\tapp{\psi_0}{\splat{\psi}{1}{n}}}{\psi'}{\Sigma_{0},\Sigma_{1},\ldots,\Sigma_{n},\Sigma}
-%}
-%
-%\inferrule{
-%	\tevale{e}{e'}
-%}{
-%	\teval{\tprog{e}}{\tprog{e'}}
-%}
-%%\inferrule{ }{
-%%	\teval{\tstr}{\tstr}
-%%}
-%
-%\inferrule{
-%	\tevals{\psi_1}{\psi_1'}{\Sigma_{1}}\\
-%	\tevals{\psi_2}{\psi_2'}{\Sigma_{2}}
-%}{
-%	\tevals{\tpair{\psi_1}{\psi_2}}{\tpair{\psi_1'}{\psi_2'}}{\Sigma_{1},\Sigma_{2}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\tpair{\psi_1}{\psi_2}}
-%}{
-%	\teval{\tfst{\psi}}{\psi_1}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\tpair{\psi_1}{\psi_2}}
-%}{
-%	\teval{\tsnd{\psi}}{\psi_2}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_0}{\psi_0'}{\Sigma_{0}}\\
-%	\tevals{\psi_1}{\psi_0'}{\Sigma_{1}}\\
-%	\tevals{\psi_2}{\psi_2'}{\Sigma_{2}}
-%}{
-%	\tevals{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_2'}{\Sigma_{0},\Sigma_{1},\Sigma_{2}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_0}{\psi_0'}{\Sigma_{0}}\\
-%	\tevals{\psi_1}{\psi_1'}{\Sigma_{1}}\\
-%	\psi_0' \neq \psi_1'\\
-%	\tevals{\psi_3}{\psi_3'}{\Sigma_{3}}
-%}{
-%	\tevals{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_3'}{\Sigma_{0},\Sigma_{1},\Sigma_{3}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\psi'}
-%}{
-%	\teval{\tlabel{\klabel{label}}{\kappa}{\psi}}{\psi'}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\psi'}
-%}{
-%	\teval{\tnewOf{label}{\psi}}{\tnewOf{label}{\psi'}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\tnewOf{label}{\psi'}}
-%}{
-%	\teval{\topen{\psi}}{\psi'}
-%}
-%
-%\inferrule{
-%	\tevals{\psiidx}{\psiidx'}{\Sigma_{0}}\\
-%	\tevals{\psirep}{\psirep'}{\Sigma_{1}}
-%}{
-%	\tevals{\ttype{\psiidx}{\kappa}{\psirep}}{\ttype{\psiidx'}{\kappa}{\psirep'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}
-%}{
-%	\teval{\tidx{\psi}}{\psiidx}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}
-%}{
-%	\teval{\trepof{\psi}}{\psirep}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\ttype{\psiidx}{\kappa}{\psirep}}{\Sigma_{0}}\\
-%	\tevals{\tapp{\psi_{0}}{\ttype{\psiidx}{\kappa}{\psirep}}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\tfamcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\ttype{\psiidx}{\kappa'}{\psirep}}{\Sigma_{0}}\\
-%	\kappa \neq \kappa'\\
-%	\tevals{\psi_{1}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\tfamcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\psi'}
-%}{
-%	\teval{\tconst{\psi}}{\tconst{\psi'}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\psi'}
-%}{
-%	\teval{\tOp{\psi}}{\tOp{\psi'}}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu}{\mu'}{\Sigma_{0}}\\
-%	\tevals{\psitype}{\ttype{\psiidx}{\kappa}{\psirep}}{\Sigma_{1}}\\
-%	\mtentails{\cdot}{\mtof{\mu'}{\psirep}}
-%}{
-%	\tevals{\tden{\mu}{\psitype}}{\tden{\mu'}{\psitype'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu}{\mu'}{\Sigma_{0}}\\
-%	\tevals{\psitype}{\ttype{\psiidx}{\kappa}{\psirep}}{\Sigma_{1}}\\
-%	\cdot \nvdash \mtof{\mu'}{\psirep}
-%}{
-%	\tevals{\tden{\mu}{\psitype}}{\tden{\mu'}{\psitype'}}{\Sigma_{0},\Sigma_{1},\prob}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\tden{\mu}{\psitype}}
-%}{
-%	\teval{\ttypeof{\psi}}{\psitype}
-%}
-%
-%\inferrule{ }{
-%	\tevals{\terr}{\terr}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}{\Sigma_{0}}\\
-%	\tevals{\tapp{\psi_{0}}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\terr}{\Sigma_{0}}\\
-%	\tevals{\psi_{1}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\tden{\mu}{\ttype{\psiidx}{\kappa'}{\psirep}}}{\Sigma_{0}}\\
-%	\kappa \neq \kappa'\\
-%	\tevals{\psi_{1}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\ttidxcase{\psi}{\kappa}{\psi_{0}}{\psi_{1}}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_1}{\psi_1'}{\Sigma_{0}}\\
-%	\tevals{\psi_2}{\psi_2'}{\Sigma_{1}}
-%}{
-%	\tevals{\tILtarrow{\psi_1}{\psi_2}}{\tILtarrow{\psi_1'}{\psi_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi_1}{\psi_1'}{\Sigma_{0}}\\
-%	\tevals{\psi_2}{\psi_2'}{\Sigma_{1}}
-%}{
-%	\tevals{\tILtprod{\psi_1}{\psi_2}}{\tILtprod{\psi_1'}{\psi_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{ }{
-%	\tevals{\tILtint}{\tILtint}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\tILtarrow{\psi_1}{\psi_2}}{\Sigma_{0}}\\
-%	\tevals{\tapp{\psiarrow}{\psi_1, \psi_2}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\tILtprod{\psi_1}{\psi_2}}{\Sigma_{0}}\\
-%	\tevals{\tapp{\psiprod}{\psi_1, \psi_2}}{\psi'}{\Sigma_{1}}
-%}{
-%	\tevals{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psi'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\tILtint}{\Sigma_{0}}\\
-%	\tevals{\psiint}{\psiint'}{\Sigma_{1}}
-%}{
-%	\tevals{\tILtcase{\psi}{\psiarrow}{\psiprod}{\psiint}}{\psiint'}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{ }{
-%	\tevalms{\ivar{u}}{\ivar{u}}{\noprob}
-%}
-%
-%\inferrule{
-%	\teval{\psiden}{\tden{\mu}{\psitype}}
-%}{
-%	\tevalm{\mvalof{\psiden}}{\mu}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\psi'}{\Sigma_{0}}\\
-%	\tevalms{\mu}{\mu'}{\Sigma_{1}}
-%}{
-%	\tevalms{\ilam{\ivar{u}}{\psi}{\mu}}{\ilam{\ivar{u}}{\psi'}{\mu'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\psi'}{\Sigma_{0}}\\
-%	\tevalms{\mu}{\mu'}{\Sigma_{1}}
-%}{
-%	\tevalms{\ifix{\ivar{f}}{\psi}{\mu}}{\ifix{\ivar{f}}{\psi'}{\mu'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu_1}{\mu_1'}{\Sigma_{0}}\\
-%	\tevalms{\mu_2}{\mu_2'}{\Sigma_{1}}
-%}{
-%	\tevalms{\iapp{\mu_1}{\mu_2}}{\iapp{\mu_1'}{\mu_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{ }{
-%	\tevalms{\iintlit}{\iintlit}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu_1}{\mu_1'}{\Sigma_{0}}\\
-%	\tevalms{\mu_2}{\mu_2'}{\Sigma_{1}}
-%}{
-%	\tevalms{\iop{\mu_1}{\mu_2}}{\iop{\mu_1'}{\mu_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu_1}{\mu_1'}{\Sigma_{0}}\\
-%	\tevalms{\mu_2}{\mu_2'}{\Sigma_{1}}
-%}{
-%	\tevalms{\ipair{\mu_1}{\mu_2}}{\ipair{\mu_1'}{\mu_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevalm{\mu}{\mu'}
-%}{
-%	\tevalm{\ifst{\mu}}{\ifst{\mu'}}
-%}
-%
-%\inferrule{
-%	\tevalm{\mu}{\mu'}
-%}{
-%	\tevalm{\isnd{\mu}}{\isnd{\mu'}}
-%}
-%
-%\inferrule{
-%	\tevalms{\mu_0}{\mu_0'}{\Sigma_{0}}\\
-%	\tevalms{\mu_1}{\mu_1'}{\Sigma_{1}}\\
-%	\tevalms{\mu_2}{\mu_2'}{\Sigma_{2}}\\
-%	\tevalms{\mu_3}{\mu_3'}{\Sigma_{3}}
-%}{
-%	\tevalms{\iIfEq{\mu_0}{\mu_1}{\mu_2}{\mu_3}}{\iIfEq{\mu_0'}{\mu_1'}{\mu_2'}{\mu_3'}}{\Sigma_{0},\Sigma_{1},\Sigma_{2},\Sigma_{3}}
-%}
-%
-%\inferrule{ }{
-%	\tevales{\evar{x}}{\evar{x}}{\noprob}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\psi'}{\Sigma_{0}}\\
-%	\tevales{e}{e'}{\Sigma_{1}}
-%}{
-%	\tevales{\elam{\evar{x}}{\psi}{e}}{\elam{\evar{x}}{\psi'}{e'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\tevales{e_1}{e_1'}{\Sigma_{0}}\\
-%	\tevales{e_2}{e_2'}{\Sigma_{1}}
-%}{
-%	\tevales{\eapp{e_1}{e_2}}{\eapp{e_1'}{e_2'}}{\Sigma_{0},\Sigma_{1}}
-%}
-%
-%\inferrule{
-%	\teval{\psi}{\psi'}
-%}{
-%	\tevale{\econst{\psi}}{\econst{\psi'}}
-%}
-%
-%\inferrule{
-%	\tevals{\psi}{\psi'}{\Sigma_{0}}\\
-%	\tevales{e_1}{e_1'}{\Sigma_{1}}\\
-%	\cdots\\
-%	\tevales{e_n}{e_n'}{\Sigma_{n}}
-%}{
-%	\tevales{\eop{\psi}{\splat{e}{1}{n}}}{\eop{\psi'}{\splat{e'}{1}{n}}}{\Sigma_{0},\Sigma_{1},\ldots,\Sigma_{n}}
-%}
-%\end{mathpar}
-%\caption{Big-step operational semantics for type-level terms. The error context $\Sigma$ is used to detect representational consistency errors.}
-%%\end{textblock}
-%\end{figure*}
-%\begin{figure*}
-%\renewcommand\thefigure{5}
-%$\fbox{$\translates{\eCtx}{e}{\mu}{\psiidx}{\kappa}{\psirep}$}$
-%~~~~$\eCtx ::= \cdot \pipe \extendeCtx{x}{\mu}{\psiidx}{\kappa}{\psirep}$
-%\begin{mathpar}
-%\inferrule{
-%	\translatesTo{\evar{x}}{\mu}{\psiidx}{\kappa}{\psirep} \in \eCtx
-%}{
-%	\translatesX{\evar{x}}{\mu}{\psiidx}{\kappa}{\psirep}
-%}
-%
-%\inferrule{ }{
-%	\translatesX{
-%		\econst{\tconst{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}}
-%	}{
-%		\mu
-%	}{
-%		\psiidx
-%	}{
-%		\kappa
-%	}{
-%		\psirep
-%	}
-%}
-%
-%\inferrule{
-%	\translates{\extendeCtx{x}{\ivar{x}}{\psiidx}{\kappa}{\psirep}}{e}{\mu'}{\psiidx'}{\kappa'}{\psirep'}
-%}{
-%	\translatesX{
-%		\elam{\evar{x}}{\ttype{\psiidx}{\kappa}{\psirep}}{e}
-%	}{
-%		\ilam{\ivar{x}}{\psirep}{\mu'}
-%	}{
-%		\tpair{\ttype{\psiidx}{\kappa}{\psirep}}{\ttype{\psiidx'}{\kappa'}{\psirep'}}
-%	}{
-%		\kpair{\kType{\kappa}}{\kType{\kappa'}}
-%	}{
-%		\tILtarrow{\psirep}{\psirep'}
-%	}
-%}
-%
-%\inferrule{
-%	\translatesX{e_1}{\mu_1}{\psiidxn{1}}{\kappa_1}{\psirepn{1}}~~~~
-%	\cdots~~~~
-%	\translatesX{e_n}{\mu_n}{\psiidxn{n}}{\kappa_n}{\psirepn{n}}\\
-%	\tevals{\tapp{\psi}{
-%		\tden{\mu_1}{\ttype{\psiidxn{1}}{\kappa_1}{\psirepn{1}}},
-%		\ldots,
-%		\tden{\mu_n}{\ttype{\psiidxn{n}}{\kappa_n}{\psirepn{n}}}
-%	}}{\tden{\mu}{\ttype{\psiidx}{\kappa}{\psirep}}}{\noprob}
-%}{
-%	\translatesX{
-%		\eop{\tOp{\psi}}{\splat{e}{1}{n}}
-%	}{
-%		\mu
-%	}{
-%		\psiidx
-%	}{
-%		\kappa
-%	}{
-%		\psirep
-%	}
-%}
-%
-%\end{mathpar}
-%\caption{Verification and translation rules for $\lamA$.}
-%\end{figure*}
-%\begin{figure*}
-%  \renewcommand\thefigure{6}
-%$\fbox{$\mtentailsXt{\mu}{\psi}$}$
-%~~~~$\iCtx ::= \cdot \pipe \iCtx, \mtof{\ivar{u}}{\psi}$
-%\begin{mathpar}
-%\inferrule{
-%	\mtof{\ivar{u}}{\psi} \in \ivarCtx
-%}{
-%	\mtentailsXt{\ivar{u}}{\psi}
-%}
-%
-%\inferrule{
-%	\mtentails{\iCtx, \mtof{\ivar{u}}{\psi}}{\mtof{\mu}{\psi'}}
-%}{
-%	\mtentailsXt{\ilam{\ivar{u}}{\psi}{\mu}}{\psi'}
-%}
-%
-%\inferrule{
-%	\mtentails{\iCtx, \mtof{\ivar{f}}{\psi}}{\mtof{\mu}{\psi}}
-%}{
-%	\mtentailsXt{\ifix{\ivar{f}}{\psi}{\mu}}{\psi}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu_1}{\tILtarrow{\psi_1}{\psi_2}}\\
-%	\mtentailsXt{\mu_2}{\psi_1}
-%}{
-%	\mtentailsXt{\iapp{\mu_1}{\mu_2}}{\psi_2}
-%}
-%
-%\inferrule{ }{
-%	\mtentailsXt{\iintlit}{\tILtint}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu_1}{\tILtint}\\
-%	\mtentailsXt{\mu_2}{\tILtint}
-%}{
-%	\mtentailsXt{\iop{\mu_1}{\mu_2}}{\tILtint}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu_1}{\psi_1}\\
-%	\mtentailsXt{\mu_2}{\psi_2}
-%}{
-%	\mtentailsXt{\ipair{\mu_1}{\mu_2}}{\tILtprod{\psi_1}{\psi_2}}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu}{\tILtprod{\psi_1}{\psi_2}}
-%}{
-%	\mtentailsXt{\ifst{\mu}}{\psi_1}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu}{\tILtprod{\psi_1}{\psi_2}}
-%}{
-%	\mtentailsXt{\isnd{\mu}}{\psi_2}
-%}
-%
-%\inferrule{
-%	\mtentailsXt{\mu_0}{\psi_1}\\
-%	\mtentailsXt{\mu_1}{\psi_1}\\
-%	\mtentailsXt{\mu_2}{\psi_2}\\
-%	\mtentailsXt{\mu_3}{\psi_2}
-%}{
-%	\mtentailsXt{\iIfEq{\mu_0}{\mu_1}{\mu_2}{\mu_3}}{\psi_2}
-%}
-%\end{mathpar}
-%\caption{The internal type system of $\lamA$.}
-%\end{figure*}
 %\section{Strengthening Specifications with Dependent Kinds}
 %In the previous section, we gave a minimal calculus that expresses the main ideas of this paper -- a type-level specification language that contains a uniform representation for types and operators. Operators were implemented as type-level functions operating on both indexed types and denotations. Although the language and compilation process could be shown to be safe in the face of these extensions, the extensions themselves could have errors in them -- we discussed representational consistency, soundness with respect to an independent specification (e.g. mathematical natural numbers) and composability of global guarantees.
 %
@@ -1479,7 +1532,7 @@ $\fbox{\inferrule{}{\eentails{\tvarCtx}{\etvarCtx}{e}}}$
 %\subsubsection{Interoperability Layers}
 %A type-safe interoperability layer can be derived from an unsafe interoperability layer encoded by implementing the type system of the target language, with type representations corresponding to the core data structures available in the unsafe interoperability layer.
 %\section{Related Work}
-%\subsection{Type-Level Computation}
+%\subsection{Type-Level Computation} %Haskell, Ur and $\Omega$mega
 %System $\text{F}_{\omega}$ with simple case analysis provides the basis of type-level computation in Haskell (where type-level functions are called type families \cite{Chakravarty:2005:ATC}). Ur uses type-level records and names to support typesafe metaprogramming, with applications to web programming \cite{conf/pldi/Chlipala10}. $\Omega$mega adds algebraic data types at the type-level, using these to increase the expressive power of algebraic data types at the expression level \cite{conf/cefp/SheardL07}. Dependently-typed languages blur the traditional phase separation between types and expressions, so type-level computation is often implicitly used (though not always in its most general form, e.g. Deputy \cite{conf/icfp/ChenX05}, ATS \cite{conf/esop/ConditHAGN07}.)
 %
 %\subsection{Run-Time Indirection}
