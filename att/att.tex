@@ -157,7 +157,7 @@ $$\begin{array}{rccl}
 												\kProg 
 												\\
 												
-\text{family kinds}					& \eta		& 	::=	& \kFamVar{fam} \pipe \kFamStd\\
+\text{family kinds}					& \eta		& 	::=	& \kFamStd\\
 \text{operator list signatures}			& \Theta	&	::=	&	\cdot \pipe \Theta; \tvar{op}: \kappa\\
 											 							&		&		&	\\
 \textbf{internal terms} 				& 	\mu	&	::=	&	\ivar{u} \pipe 
@@ -178,8 +178,7 @@ $$\begin{array}{rccl}
 												\dup{\psi}\\
 %\text{cases}					&\tcasev 	&	::=	&	\caseZ{\splat{\kappa}{1}{n}}{\psi} \pipe 
 %												\caseS{\tcasev}{\tcasev}\\
-							&		&		&	\\
-
+%							&		&		&	\\
 \end{array}$$
 \caption{Syntax of $\lamA$. $\mathbb{Z}$ denotes integer literals and $\klabel{label}$ denotes any label.}
 \end{figure*}
@@ -284,18 +283,21 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 
 \inferrule{
 	\tentailsXt{\psitype}{\kTypeBlur}\\
-	\tentailsXt{\phi}{\kFamStd}\\
-	\tentailsXt{\psi_0}{\karrow{\kType{\kFamStd}}{\kappa}}\\
+	\tentailsXt{\phi}{\eta}\\
+	\tentailsXt{\psi_0}{\karrow{\kType{\eta}}{\kappa}}\\
 	\tentailsXt{\psi_1}{\kappa}
 }{
 	\tentailsXt{\tfamcase{\psitype}{\phi}{\psi_0}{\psi_1}}{\kappa}
 }~(\text{famcase-T})
 
 \inferrule{
-	\tentailsXt{\psi}{\kType{\kFamStd}}
+	\tentailsXt{\psiden}{\kDen}\\
+	\tentailsXt{\phi}{\eta}\\
+	\tentailsXt{\psi_0}{\karrow{\kDenk{\eta}}{\kappa}}\\
+	\tentailsXt{\psi_1}{\kappa}
 }{
-	\tentailsXt{\psi}{\kTypeBlur}
-}~(\text{Type-$\subseteq$})
+	\tentailsXt{\tfamcase{\psiden}{\phi}{\psi_0}{\psi_1}}{\kappa}
+}~(\text{famcase-D})
 
 \inferrule{
 \tentailsXt{\phi}{\kFamStd}\\
@@ -303,6 +305,12 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 }{
 	\tentailsXt{\ttype{\psiidx}{\phi}}{\kType{\kFamStd}}
 } ~(\text{Type}_I)
+
+\inferrule{
+	\tentailsXt{\psi}{\kType{\eta}}
+}{
+	\tentailsXt{\psi}{\kTypeBlur}
+}~(\text{Type-$\subseteq$})
 
 \inferrule{
 	\tentailsXt{\psi}{\kType{\kFamStd}}
@@ -330,9 +338,9 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 
 \inferrule{
 	\tentailsXt{\psiiterm}{\kITerm}\\
-	\tentailsXt{\psitype}{\kType{\kFamStd}}
+	\tentailsXt{\psitype}{\kType{\eta}}
 }{
-	\tentailsXt{\tden{\psiiterm}{\psitype}}{\kDenk{\kFamStd}}
+	\tentailsXt{\tden{\psiiterm}{\psitype}}{\kDenk{\eta}}
 }~(\text{Den}_I)
 
 \inferrule{
@@ -343,7 +351,7 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 }~(\text{Den}_I\text{-$\subseteq$})
 
 \inferrule{
-	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+	\tentailsXt{\psi}{\kDenk{\eta}}
 }{
 	\tentailsXt{\psi}{\kDen}
 }~(\text{Den-$\subseteq$})
@@ -353,26 +361,17 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 }~(\text{err})
 
 \inferrule{
-	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+	\tentailsXt{\psi}{\kDenk{\eta}}
 }{
-	\tentailsXt{\ttypeof{\psi}}{\kType{\kFamStd}}
+	\tentailsXt{\ttypeof{\psi}}{\kType{\eta}}
 }~(\text{typeof})
 
 \inferrule{
-	\tentailsXt{\psi}{\kDenk{\kFamStd}}
+	\tentailsXt{\psi}{\kDenk{\eta}}
 } {
 	\tentailsXt{\tvalof{\psi}}{\kITerm}
 }~(\text{valof})
-
-\inferrule{
-	\tentailsXt{\psiden}{\kDen}\\
-	\tentailsXt{\phi}{\eta}\\
-	\tentailsXt{\psi_0}{\karrow{\kDenk{\eta}}{\kappa}}\\
-	\tentailsXt{\psi_1}{\kappa}
-}{
-	\tentailsXt{\tfamcase{\psiden}{\phi}{\psi_0}{\psi_1}}{\kappa}
-}~(\text{famcase-D})
-
+\\
 \inferrule{
 	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\cdot}}{\mu}
 }{
@@ -391,8 +390,47 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 	\tentailsXt{\tprog{e}}{\kProg}
 }~(\text{program})
 \end{mathpar}
+$\fbox{\inferrule{}{\tentailsXt{\phi}{\eta}}}$~
+\begin{mathpar}
+\small
+\inferrule{
+	\kentailsX{\kFamStd}\\
+	\tentailsXt{\theta}{\Theta}\\
+	\tentailsXt{\psirep}{\karrow{\kappaidx}{\kIType}}
+}{
+	\tentailsXt{\tfamSpecStd}{\kFamStd}
+}~(\text{family}_I)
+
+\inferrule{
+	\fSpecStd \in \Sigma
+}{
+	\tentailsXt{\fvar{fam}}{\eta}
+}~(\text{var}_\phi)
+\end{mathpar}
+$\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
+\begin{mathpar}
+\small
+\inferrule{ }{
+	\tentailsXt{\cdot}{\cdot}
+}~(\text{no-ops})
+
+\inferrule{
+	\tentailsXt{\theta}{\Theta}\\
+	\tentailsXt{\psi}{\kappa}
+}{
+	\tentailsXt{\topp{\theta}{\tops{id}{\psi}}}{\Topp{\Theta}{\Tops{id}{\kappa}}}
+}~(\text{op-seq})
+\end{mathpar}
+\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
+\end{figure*}
+\begin{figure*}
 $\fbox{\inferrule{}{\kentailsX{\kappa}}}$~
-$\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$~
+$\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$
+~~~~$\inferrule{
+	\kentailsX{\kSimple{\kappa}}
+}{
+	\kentailsX{\kappa}
+}~(\text{simple})$
 \begin{mathpar}
 \small
 \inferrule{
@@ -417,12 +455,6 @@ $\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$~
 }{
 	\kentailsX{\kSimple{\kpair{\kappa_1}{\kappa_2}}}
 }~(\text{$\times$-simple})
-
-\inferrule{
-	\kentailsX{\kSimple{\kappa}}
-}{
-	\kentailsX{\kappa}
-}~(\text{simple})
 
 \inferrule{ }{
 	\kentailsX{\kSimple{\kunit}}
@@ -453,67 +485,31 @@ $\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$~
 }~(\text{Op}_n)
 
 \inferrule{
-	\kentailsX{\kFamStd}
+	\kentailsX{\eta}
 }{
-	\kentailsX{\kSimple{\kType{\kFamStd}}}
+	\kentailsX{\kSimple{\kType{\eta}}}
 }~(\text{Type})
 
 \inferrule{
-	\kentailsX{\kFamStd}
+	\kentailsX{\eta}
 }{
-	\kentailsX{\kSimple{\kDenk{\kFamStd}}}
+	\kentailsX{\kSimple{\kDenk{\eta}}}
 }~(\text{Den})
 \end{mathpar}
-\caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
-\end{figure*}
-\begin{figure*}
-$\fbox{\inferrule{}{\tentailsXt{\phi}{\eta}}}$~
-$\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
-\begin{mathpar}
-\small
-\inferrule{
-	\kentailsX{\kFamStd}\\
-	\tentailsXt{\theta}{\Theta}\\
-	\tentailsXt{\psirep}{\karrow{\kappaidx}{\kIType}}
-}{
-	\tentailsXt{\tfamSpecStd}{\kFamStd}
-}~(\text{family}_I)
-
-\inferrule{
-	\fSpecStd \in \Sigma
-}{
-	\tentailsXt{\fvar{fam}}{\kFamStd}
-}~(\text{var}_\phi)
-
-\inferrule{ }{
-	\tentailsXt{\cdot}{\cdot}
-}~(\text{no-ops})
-
-\inferrule{
-	\tentailsXt{\theta}{\Theta}\\
-	\tentailsXt{\psi}{\kappa}
-}{
-	\tentailsXt{\topp{\theta}{\tops{id}{\psi}}}{\Topp{\Theta}{\Tops{id}{\kappa}}}
-}~(\text{op-seq})
-\end{mathpar}
 $\fbox{\inferrule{}{\kentailsX{\eta}}}$~
-$\fbox{\inferrule{}{\TentailsX{\Theta}}}$
-~~~~$\hat{\Theta} := \Toppstd$
 \begin{mathpar}
 \small
 \inferrule{
 	\kentailsX{\kSimple{\kappaidx}}\\
 	\kentailsX{\Theta}
 }{
-	\kentailsX{\kFamStd}
+	\kentailsX{\eta}
 }~(\text{family})
-
-\inferrule{
-	\fSpecStd \in \Sigma
-}{
-	\kentailsX{\kFamVar{fam}}
-}~(\text{$\phi$-var})
-
+\end{mathpar}
+$\fbox{\inferrule{}{\kentailsX{\Theta}}}$
+~~~~$\hat{\Theta} := \Toppstd$
+\begin{mathpar}
+\small
 \inferrule{~}{
 	\kentailsX{\cdot}
 }~(\text{No-Ops})
@@ -550,9 +546,9 @@ $\fbox{\inferrule{}{\eentailsX{e}}}$
 }~(\text{app-form}^e)
 
 \inferrule{
-	\tentailsXt{\psitype}{\kType{\kFamStd}}\\
+	\tentailsXt{\psitype}{\kType{\eta}}\\
 	\tof{\tvar{op}}{
-		\karrow{\kType{\kFamStd}}
+		\karrow{\kType{\eta}}
 		{
 			\karrow{\splat{\kappa}{1}{m}}{
 				\kOp{n}
@@ -740,7 +736,7 @@ $\fbox{$\tevalX{\phi}{\phi'}$}$
 
 \inferrule{
 	\tevalsX{\tfamSpecStd}{\psit{fam}}{\errCtx_0}\\
-	\tevalsX{\subst{\psit{fam}}{\fvar{fam}}{\subst{\kFamStd}{\kFamVar{fam}}{\psi}}}{\psi'}{\errCtx_1}
+	\tevalsX{\subst{\psit{fam}}{\fvar{fam}}{\subst{\eta}{\kFamVar{fam}}{\psi}}}{\psi'}{\errCtx_1}
 }{
 	\tevalsX{\tfamStd}{\psi'}{\errCtx_0, \errCtx_1}
 }
@@ -1360,6 +1356,60 @@ $\fbox{$\tevalm{\delta}{\delta'}$}$
 %All types are identified by their index, $\psiidx$ and an associated internal type, $\psirep$, which controls the representation of values that inhabit the type. The principal kind of a type constructor indexed by a value of kind $\kappa$ is $\kType{\kappa}$. 
 %
 %
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf afdasdfsdf 
+
+
 %In the example in Figure 1, $\tvar{nat}$ is a type with no (that is, unit) index that we will represent by an integer in the internal language. To distinguish it from other types of the same basic form, we need to label it. That is the purpose of the \textsf{label} declaration preceding the type definition -- it introduces a new kind of unit labeled $\klabel{nat}$. We can then identify the type $\tvar{nat}$ as being the sole type indexed by a value of kind $\klabel{nat}$ and represented by the internal type $\tILtint$. It is important to note that although the type $\tvar{nat}$ has kind $\kType{\klabel{nat}}$, it does not uniquely inhabit that kind -- you can construct other types indexed by a $\klabel{nat}$-labeled unit but associated with different internal types, so operator definitions must test for equality as appropriate.
 %
 %\subsubsection{Internal Terms and Types}
