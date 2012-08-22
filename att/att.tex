@@ -13,6 +13,7 @@
 \usepackage{amssymb} 
 \usepackage{amsthm}
 \usepackage{ stmaryrd }
+\usepackage{graphicx}
 
 \usepackage[noindentafter]{titlesec}
 %\titlespacing{\section}{0pt}{*0.5}{*0.25}
@@ -102,12 +103,17 @@ We begin with a simple calculus with no primitive notion of natural numbers, nor
 $$\begin{array}{rccl}
 \textbf{expressions} 				&	e	&	::=	&	\evar{x} \pipe 
 														\elam{\evar{x}}{\psi}{e} \pipe 
-														\eapp{e_{1}}{e_{2}} \pipe 
+														\eapp{e_{1}}{e_{2}} \pipe
+												\eop{\psitype}{op}{
+															\splat{\psi}{1}{m}
+														}{
+  												    		
+														} \pipe
 														\eop{\psitype}{op}{
 															\splat{\psi}{1}{m}
 														}{
   												    		\splat{e}{1}{n}
-														}\\
+														} \\
 									& 		&		& 	\\
 							
 \textbf{type-level specifications} 	& \psi 	& ::= 	& 	\tvar{t} \pipe 
@@ -141,7 +147,7 @@ $$\begin{array}{rccl}
 
 \text{programs}					&		&	\pipe	&	\tprog{e}\\
 
-\text{family instances}	&	\phi		&	::= & \fvar{fam} \pipe \tfamSpecStd\\
+\text{family specifications}	&	\phi		&	::= & \fvar{fam} \pipe \tfamSpecStd\\
 \text{operator lists}		&	\theta	&	::= &	\topsempty \pipe 
 												\topp{\theta}{\tops{op}{\psi}}\\
 												
@@ -157,7 +163,7 @@ $$\begin{array}{rccl}
 												\kProg 
 												\\
 												
-\text{family kinds}					& \eta		& 	::=	& \kFamStd\\
+\text{family signatures}				& \eta		& 	::=	& \kFamStd\\
 \text{operator list signatures}			& \Theta	&	::=	&	\cdot \pipe \Theta; \tvar{op}: \kappa\\
 											 							&		&		&	\\
 \textbf{internal terms} 				& 	\mu	&	::=	&	\ivar{u} \pipe 
@@ -226,7 +232,9 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
   \tentailsXt{\tvar{t}}{\kappa}
 }~(\text{var}_\psi)
 
-\inferrule{ }{\tentailsXt{\tunit}{\kunit}}~(\text{unit})
+\inferrule{ }{
+	\tentailsXt{\tunit}{\kunit}
+}~(\text{unit}_\psi)
 
 \inferrule{
 	\tentailsXt{\psi_{1}}{\kappa_{1}}\\
@@ -279,7 +287,7 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 	\tentailst{\tCtxXF{\tof{\fvar{fam}}{\kFamStd}}}{\psi}{\kappa}
 }{
 	\tentailsXt{\tfamStd}{\kappa}
-}~(\text{family-bind})
+}~(\text{fambind})
 
 \inferrule{
 	\tentailsXt{\psitype}{\kTypeBlur}\\
@@ -334,7 +342,7 @@ $\fbox{\inferrule{}{\tentailsXt{\psi}{\kappa}}}$~
 	\tentailsXt{\psi}{\karrow{\kDen, \stackrel{n}{\cdots}, \kDen}{\kDen}}
 }{
 	\tentailsXt{\tOp{\psi}}{\kOp{n}}
-}~(\text{op})
+}~(\text{$n$-op})
 
 \inferrule{
 	\tentailsXt{\psiiterm}{\kITerm}\\
@@ -394,18 +402,18 @@ $\fbox{\inferrule{}{\tentailsXt{\phi}{\eta}}}$~
 \begin{mathpar}
 \small
 \inferrule{
-	\kentailsX{\kFamStd}\\
-	\tentailsXt{\theta}{\Theta}\\
-	\tentailsXt{\psirep}{\karrow{\kappaidx}{\kIType}}
-}{
-	\tentailsXt{\tfamSpecStd}{\kFamStd}
-}~(\text{family}_I)
-
-\inferrule{
-	\fSpecStd \in \Sigma
+	\tof{\fvar{fam}}{\eta} \in \Sigma
 }{
 	\tentailsXt{\fvar{fam}}{\eta}
 }~(\text{var}_\phi)
+
+\inferrule{
+	\kentailsX{\kFamStd}\\
+	\tentailsXt{\psirep}{\karrow{\kappaidx}{\kIType}}\\
+	\tentailsXt{\theta}{\Theta}
+}{
+	\tentailsXt{\tfamSpecStd}{\kFamStd}
+}~(\text{family}_I)
 \end{mathpar}
 $\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
 \begin{mathpar}
@@ -415,10 +423,10 @@ $\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
 }~(\text{no-ops})
 
 \inferrule{
-	\tentailsXt{\theta}{\Theta}\\
-	\tentailsXt{\psi}{\kappa}
+	\tentailst{\Sigma, \tof{\fvar{fam}}{\eta}~\Delta}{\theta}{\Theta}\\
+	\tentailst{\Sigma, \tof{\fvar{fam}}{\eta}~\Delta}{\psi}{\karrow{\kType{\eta}}{\kappa}}
 }{
-	\tentailsXt{\topp{\theta}{\tops{id}{\psi}}}{\Topp{\Theta}{\Tops{id}{\kappa}}}
+	\tentailst{\Sigma, \tof{\fvar{fam}}{\eta}~\Delta}{\topp{\theta}{\tops{id}{\psi}}}{\Topp{\Theta}{\Tops{id}{\kappa}}}
 }~(\text{op-seq})
 \end{mathpar}
 \caption{Kind checking rules for $\lamA$. All contexts have standard substructural properties (not shown).}
@@ -426,11 +434,7 @@ $\fbox{\inferrule{}{\tentailsXt{\theta}{\Theta}}}$
 \begin{figure*}
 $\fbox{\inferrule{}{\kentailsX{\kappa}}}$~
 $\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$
-~~~~$\inferrule{
-	\kentailsX{\kSimple{\kappa}}
-}{
-	\kentailsX{\kappa}
-}~(\text{simple})$
+%~~~~$\$
 \begin{mathpar}
 \small
 \inferrule{
@@ -440,61 +444,67 @@ $\fbox{\inferrule{}{\kentailsX{\kSimple{\kappa}}}}$
 	\kentailsX{\kappa}
 }{
 	\kentailsX{\karrow{\splat{\kappa}{1}{n}}{\kappa}}
-}~(\text{$\rightarrow$})
+}~(\text{$\rightarrow$}_\kappa)
 
 \inferrule{
 	\kentailsX{\kappa_1}\\
 	\kentailsX{\kappa_2}
 }{
 	\kentailsX{\kpair{\kappa_1}{\kappa_2}}
-}~(\text{$\times$})
+}~(\text{$\times$}_\kappa)
+
+\inferrule{
+	\kentailsX{\kSimple{\kappa}}
+}{
+	\kentailsX{\kappa}
+}~(\text{simple})
 
 \inferrule{
 	\kentailsX{\kSimple{\kappa_1}}\\
 	\kentailsX{\kSimple{\kappa_2}}
 }{
 	\kentailsX{\kSimple{\kpair{\kappa_1}{\kappa_2}}}
-}~(\text{$\times$-simple})
+}~(\text{$\times_\kappa$-simple})
 
 \inferrule{ }{
 	\kentailsX{\kSimple{\kunit}}
-}~(\text{Unit})
+}~(\text{Unit}_\kappa)
 
 \inferrule{ }{
 	\kentailsX{\kSimple{\kTypeBlur}}
-}~(\text{Type-any})
-
-\inferrule{ }{
-	\kentailsX{\kSimple{\kDen}}
-}~(\text{Den-any})
-
-\inferrule{ }{
-	\kentailsX{\kSimple{\kIType}}
-}~(\text{IType})
-
-\inferrule{ }{
-	\kentailsX{\kSimple{\kITerm}}
-}~(\text{ITerm})
-
-\inferrule{ }{
-	\kentailsX{\kSimple{\kProg}}
-}~(\text{Program})
-
-\inferrule{ }{
-	\kentailsX{\kSimple{\kOp{n}}}
-}~(\text{Op}_n)
+}~(\text{Type-$\subseteq$}_\kappa)
 
 \inferrule{
 	\kentailsX{\eta}
 }{
 	\kentailsX{\kSimple{\kType{\eta}}}
-}~(\text{Type})
+}~(\text{Type}_\kappa)
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kDen}}
+}~(\text{Den-$\subseteq$}_\kappa)
 
 \inferrule{
 	\kentailsX{\eta}
 }{
 	\kentailsX{\kSimple{\kDenk{\eta}}}
-}~(\text{Den})
+}~(\text{Den}_\kappa)
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kIType}}
+}~(\text{IType}_\kappa)
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kITerm}}
+}~(\text{ITerm}_\kappa)
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kProg}}
+}~(\text{Program}_\kappa)
+
+\inferrule{ }{
+	\kentailsX{\kSimple{\kOp{n}}}
+}~(\text{$n$-Op}_\kappa)
 \end{mathpar}
 $\fbox{\inferrule{}{\kentailsX{\eta}}}$~
 \begin{mathpar}
@@ -503,23 +513,28 @@ $\fbox{\inferrule{}{\kentailsX{\eta}}}$~
 	\kentailsX{\kSimple{\kappaidx}}\\
 	\kentailsX{\Theta}
 }{
-	\kentailsX{\eta}
-}~(\text{family})
+	\kentailsX{\kFamStd}
+}~(\text{family}_\eta)
 \end{mathpar}
 $\fbox{\inferrule{}{\kentailsX{\Theta}}}$
-~~~~$\hat{\Theta} := \Toppstd$
 \begin{mathpar}
 \small
 \inferrule{~}{
 	\kentailsX{\cdot}
 }~(\text{No-Ops})
+%
+%\inferrule{
+%	\kentailsX{\Theta}
+%}{
+%	\kentailsX{\Topp{\Theta}{\Tops{id}{\kOp{n}}}}
+%}~(\text{(0, $n$)-Op-Seq})
 
 \inferrule{
-	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\Theta'}\\
-	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\karrow{\splat{\kappa}{1}{m}}{\kOp{n}}}
+	\kentailsX{\Theta}\\
+	\kentailsX{\karrow{\splat{\kappa}{1}{m}}}{\kOp{n}}
 }{
-	\kentails{\fCtx, \fSpec{fam}{\kappaidx}{\hat{\Theta}}}{\hat{\Theta}}
-}~(\text{Op-Seq})
+	\kentailsX{\Topp{\Theta}{\Tops{id}{\karrow{\splat{\kappa}{1}{m}}{\kOp{n}}}}}
+}~(\text{($m$, $n$)-Op-Seq})
 \end{mathpar}
 $\fbox{\inferrule{}{\eentailsX{e}}}$
 ~~~~$\etvarCtx ::= \cdot \pipe \etvarCtx, \evar{x}$
@@ -529,41 +544,48 @@ $\fbox{\inferrule{}{\eentailsX{e}}}$
 	\evar{x} \in \etvarCtx
 }{
 	\eentailsX{\evar{x}}
-}~(\text{var-form}^e)
+}~(\text{var-form}_e)
 
 \inferrule{
 	\tentailsXt{\psi}{\kTypeBlur}\\
 	\eentails{\fCtx}{\tvarCtx}{\etvarCtx, \evar{x}}{e}
 }{
 	\eentailsX{\elam{\evar{x}}{\psi}{e}}
-}~(\text{$\lambda$-form}^e)
+}~(\text{$\lambda$-form}_e)
 
 \inferrule{
 	\eentailsX{e_1}\\
 	\eentailsX{e_2}
 }{
 	\eentailsX{\eapp{e_1}{e_2}}
-}~(\text{app-form}^e)
+}~(\text{app-form}_e)
 
 \inferrule{
-	\tentailsXt{\psitype}{\kType{\eta}}\\
-	\tof{\tvar{op}}{
-		\karrow{\kType{\eta}}
-		{
-			\karrow{\splat{\kappa}{1}{m}}{
-				\kOp{n}
-			}
-		}
-	} \in \Theta\\
+	\tentailsXt{\psitype}{\kType{\kFamStd}}\\
+	\tof{\tvar{id}}{\karrow{\splat{\kappa}{1}{m}}{\kOp{0}}}\in\Theta\\
 	\tentailsXt{\psi_1}{\kappa_1}\\
 	\cdots\\
+	\tentailsXt{\psi_m}{\kappa_m}
+}{
+	\eentailsX{\eop{\psitype}{\tvar{id}}{\splat{\psi}{1}{m}}{ }}
+}~(\text{$(m, 0)$-op-app-form}_e)
+
+\inferrule{
+	\tentailsXt{\psitype}{\kType{\kFamStd}}~~~~~~~~
+	\tof{\tvar{id}}{
+		\karrow{\splat{\kappa}{1}{m}}{
+			\kOp{n}
+		}
+	} \in \Theta~~~~~~~~
+	\tentailsXt{\psi_1}{\kappa_1}~~~~~~~~
+	\cdots~~~~~~~~
 	\tentailsXt{\psi_m}{\kappa_m}\\
 	\eentailsX{e_1}\\
 	\cdots\\
 	\eentailsX{e_n}
 }{
-	\eentailsX{\eop{\psitype}{\tvar{op}}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
-}~(\text{op-app-form}^e)
+	\eentailsX{\eop{\psitype}{\tvar{id}}{\splat{\psi}{1}{m}}{\splat{e}{1}{n}}}
+}~(\text{$(m, n)$-op-app-form}_e)
 \end{mathpar}
 $\fbox{\inferrule{}{\ientailsX{\mu}}}$
 ~~~~$\itvarCtx ::= \cdot \pipe \itvarCtx, \ivar{u}$
@@ -573,28 +595,28 @@ $\fbox{\inferrule{}{\ientailsX{\mu}}}$
 	\ivar{u} \in \itvarCtx
 }{
 	\ientailsX{\ivar{u}}
-}~(\text{var-form}^{\mu})
+}~(\text{var-form}_{\mu})
 
 \inferrule{
 	\tentailsX{\delta}\\
 	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\itvarCtx}, \ivar{u}}{\mu}
 }{
 	\ientailsX{\ilam{\ivar{u}}{\delta}{\mu}}
-}~(\text{$\lambda$-form}^{\mu})
+}~(\text{$\lambda$-form}_{\mu})
 
 \inferrule{
 	\tentailsX{\delta}\\
 	\ientails{\iMkCtx{\fCtx}{\tvarCtx}{\itvarCtx}, \ivar{f}}{\mu}
 }{
 	\ientailsX{\ifix}{\ivar{f}}{\delta}{\mu}
-}~(\text{fix-form}^\mu)
+}~(\text{fix-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu_1}\\
 	\ientailsX{\mu_2}
 }{
 	\ientailsX{\iapp}{\mu_1}{\mu_2}
-}~(\text{app-form}^\mu)
+}~(\text{app-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu_1}\\
@@ -603,41 +625,41 @@ $\fbox{\inferrule{}{\ientailsX{\mu}}}$
 	\ientailsX{\mu_4}
 }{
 	\ientailsX{\iIfEq}{\mu_1}{\mu_2}{\mu_3}{\mu_4}
-}~(\text{if-form}^\mu)
+}~(\text{cond-form}_\mu)
 
-\inferrule{ }{\ientailsX{\iintlit}}~(\text{int-form}^\mu)
+\inferrule{ }{\ientailsX{\iintlit}}~(\text{int-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu_1}\\
 	\ientailsX{\mu_2}
 }{
 	\ientailsX{\iop{\mu_1}{\mu_2}}
-}~(\text{+-form}^\mu)
+}~(\text{+-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu_1}\\
 	\ientailsX{\mu_2}
 }{
 	\ientailsX{\ipair{\mu_1}{\mu_2}}
-}~(\text{$\times$-form}^\mu)
+}~(\text{$\times$-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu}
 }{
 	\ientailsX{\ifst{\mu}}
-}~(\text{fst-form}^\mu)
+}~(\text{fst-form}_\mu)
 
 \inferrule{
 	\ientailsX{\mu}
 }{
 	\ientailsX{\isnd{\mu}}
-}~(\text{snd-form}^\mu)
+}~(\text{snd-form}_\mu)
 
 \inferrule{
 	\tentailsXt{\psi}{\kITerm}
 }{
 	\ientailsX{\iup{\psi}}
-}~(\text{$\uparrow$-form}^\mu)
+}~(\text{$\uparrow$-form}_\mu)
 \end{mathpar}
 $\fbox{\inferrule{}{\tentailsX{\delta}}}$
 \begin{mathpar}
@@ -647,24 +669,24 @@ $\fbox{\inferrule{}{\tentailsX{\delta}}}$
 	\tentailsX{\delta_2}
 }{
 	\tentailsX{\darrow{\delta_1}{\delta_2}}
-}~(\text{$\rightarrow$-form}^\delta)
+}~(\text{$\rightarrow$-form}_\delta)
 
-\inferrule{ }{\tentailsX{\dint}}~(\text{int-form}^\delta)
+\inferrule{ }{\tentailsX{\dint}}~(\text{int-form}_\delta)
 
 \inferrule{
 	\tentailsX{\delta_1}\\
 	\tentailsX{\delta_2}
 }{
 	\tentailsX{\dpair{\delta_1}{\delta_2}}
-}~(\text{$\times$-form}^\delta)
+}~(\text{$\times$-form}_\delta)
 
 \inferrule{
 	\tentailsXt{\psi}{\kIType}
 }{
 	\tentailsX{\dup{\psi}}
-}~(\text{$\uparrow$-form}^\delta)
+}~(\text{$\uparrow$-form}_\delta)
 \end{mathpar}
-\caption{Continued}
+\caption{Kind and term formation rules}
 \end{figure*}
 
 \begin{figure*}
@@ -674,38 +696,36 @@ $\fbox{\inferrule{}{\tentailsX{\delta}}}$
 $\fbox{$\tevalX{\psi}{\psi'}$}$~
 $\fbox{$\tevalX{\theta}{\theta'}$}$
 $\fbox{$\tevalX{\phi}{\phi'}$}$
-~~~~$\famEvalCtx ::= \cdot \pipe \famEvalCtx, \ttype{\psiidx}{\tfamSpecStd}$
-~~~~$\errCtx ::= \noprob \pipe \prob \pipe \errCtx, \errCtx$
-%~~~~$\inferrule{\tevalX{\psi}{\psi'} \\ \prob \notin \errCtx}{\tevalsX{\psi}{\psi'}{\noprob}}$
-%  ~~~~$\Sigma ::= \noprob \pipe \prob \pipe \Sigma,\Sigma$~~~~ 
+~~~~$\famEvalCtx ::= \cdot \pipe \famEvalCtx,\tfamSpecStd$
+~~~~~~~~$\errCtx ::= \noprob \pipe \prob \pipe \errCtx, \errCtx$
 \begin{mathpar}
 \small
 \inferrule{ }{
 	\tevalsX{\tunit}{\tunit}{\noprob}
-}
+}~(\text{unit}_\beta)
 
 \inferrule{
 	\tevalsX{\psi_1}{\psi_1'}{\errCtx_{1}}\\
 	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{2}}
 }{
 	\tevalsX{\tpair{\psi_1}{\psi_2}}{\tpair{\psi_1'}{\psi_2'}}{\errCtx_{1},\errCtx_{2}}
-}
+}~(\text{pair}_\beta)
 
 \inferrule{
 	\tevalX{\psi}{\tpair{\psi_1}{\psi_2}}
 }{
 	\tevalX{\tfst{\psi}}{\psi_1}
-}
+}~(\text{fst}_\beta)
 
 \inferrule{
 	\tevalX{\psi}{\tpair{\psi_1}{\psi_2}}
 }{
 	\tevalX{\tsnd{\psi}}{\psi_2}
-}
+}~(\text{snd}_\beta)
 
 \inferrule{ }{
 	\tevalsX{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\noprob}
-}
+}~(\lambda_\beta)
 
 \inferrule{
 	\tevalsX{\psi_0}{\tlam{\splatTwo{\tvar{t}}{{:}\kappa}{1}{n}}{\psi}}{\errCtx_{0}}\\
@@ -715,7 +735,7 @@ $\fbox{$\tevalX{\phi}{\phi'}$}$
 	\tevalsX{\substn{\splatTwo{\psi'}{{/}t}{1}{n}}{\psi}}{\psi'}{\errCtx}
 }{
 	\tevalsX{\tapp{\psi_0}{\splat{\psi}{1}{n}}}{\psi'}{\errCtx_{0},\errCtx_{1},\ldots,\errCtx_{n},\errCtx}
-}
+}~(\text{app}_\beta)
 
 \inferrule{
 	\tevalsX{\psi_0}{\psi_0'}{\errCtx_{0}}\\
@@ -723,7 +743,7 @@ $\fbox{$\tevalX{\phi}{\phi'}$}$
 	\tevalsX{\psi_2}{\psi_2'}{\errCtx_{2}}
 }{
 	\tevalsX{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_2'}{\errCtx_{0},\errCtx_{1},\errCtx_{2}}
-}
+}~(\text{if}_\beta^1)
 
 \inferrule{
 	\tevalsX{\psi_0}{\psi_0'}{\errCtx_{0}}\\
@@ -732,21 +752,72 @@ $\fbox{$\tevalX{\phi}{\phi'}$}$
 	\tevalsX{\psi_3}{\psi_3'}{\errCtx_{3}}
 }{
 	\tevalsX{\tifeq{\psi_0}{\psi_1}{\psi_2}{\psi_3}}{\psi_3'}{\errCtx_{0},\errCtx_{1},\errCtx_{3}}
-}
+}~(\text{if}_\beta^2)
 
 \inferrule{
-	\tevalsX{\tfamSpecStd}{\psit{fam}}{\errCtx_0}\\
-	\tevalsX{\subst{\psit{fam}}{\fvar{fam}}{\subst{\eta}{\kFamVar{fam}}{\psi}}}{\psi'}{\errCtx_1}
+	\tevalsX{\tfamSpecStd}{\phi}{\errCtx_0}\\
+	\tevalsX{\subst{\phi}{\fvar{fam}}{\psi}}{\psi'}{\errCtx_1}
 }{
 	\tevalsX{\tfamStd}{\psi'}{\errCtx_0, \errCtx_1}
-}
+}~(\text{fambind}_\beta)
 
 \inferrule{
 	\tevalsX{\psirep}{\psirep'}{\errCtx_0}\\
 	\tevalsX{\theta}{\theta'}{\errCtx_1}
 }{
 	\tevalsX{\tfamSpecStd}{\tfamSpec{fam}{\kappaidx}{\psirep'}{\theta'}{\Theta}}{\errCtx_0, \errCtx_1}
-}	
+}~(\text{family}_\beta)
+
+\inferrule{
+	\tevalsX{\psitype}{\ttype{\psiidx}{\phi'}}{\errCtx_0}\\
+	\tevalsX{\phi}{\phi'}{\errCtx_1}\\
+	\tevalsX{\tapp{\psi_0}{\ttype{\psiidx}{\phi'}}}{\psi_0'}{\errCtx_2}
+}{
+	\tevalsX{
+		\tfamcase{\psitype}{\phi}{\psi_0}{\psi_1}
+	}{
+		\psi_0'
+	}{\errCtx_0, \errCtx_1, \errCtx_2}
+}~(\text{famcase-T}_\beta^1)
+
+\inferrule{
+	\tevalsX{\psitype}{\ttype{\psiidx}{\phi'}}{\errCtx_0}\\
+	\tevalsX{\phi}{\phi''}{\errCtx_1}\\
+	\phi' \neq \phi''\\
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_2}
+}{
+	\tevalsX{
+		\tfamcase{\psitype}{\phi}{\psi_0}{\psi_1}
+	}{
+		\psi_1'
+	}{\errCtx_0, \errCtx_1, \errCtx_2}
+}~(\text{famcase-T}_\beta^2)
+
+
+\inferrule{
+	\tevalsX{\psiden}{\tden{\psiiterm}{\ttype{\psiidx}{\phi'}}}{\errCtx_0}\\
+	\tevalsX{\phi}{\phi'}{\errCtx_1}\\
+	\tevalsX{\tapp{\psi_0}{\tden{\psiiterm}{\ttype{\psiidx}{\phi'}}}}{\psi_0'}{\errCtx_2}
+}{
+	\tevalsX{
+		\tfamcase{\psiden}{\phi}{\psi_0}{\psi_1}
+	}{
+		\psi_0'
+	}{\errCtx_0, \errCtx_1, \errCtx_2}
+}~(\text{famcase-D}_\beta^1)
+
+\inferrule{
+	\tevalsX{\psiden}{\tden{\psiiterm}{\ttype{\psiidx}{\phi'}}}{\errCtx_0}\\
+	\tevalsX{\phi}{\phi''}{\errCtx_1}\\
+	\phi' \neq \phi''\\
+	\tevalsX{\psi_1}{\psi_1'}{\errCtx_2}
+}{
+	\tevalsX{
+		\tfamcase{\psiden}{\phi}{\psi_0}{\psi_1}
+	}{
+		\psi_1'
+	}{\errCtx_0, \errCtx_1, \errCtx_2}
+}~(\text{famcase-D}_\beta^2)
 
 \inferrule{
 	\tevalsX{\psiidx}{\psiidx'}{\errCtx}
