@@ -325,7 +325,7 @@
 
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 %
-%\usepackage{url}
+\usepackage{url}
 % url.sty was written by Donald Arseneau. It provides better support for
 % handling and breaking URLs. url.sty is already installed on most LaTeX
 % systems. The latest version can be obtained at:
@@ -359,11 +359,12 @@
 % use a multiple column layout for up to two different
 % affiliations
 
-\author{\IEEEauthorblockN{Cyrus Omar, Jonathan Aldrich}
+\author{\IEEEauthorblockN{Cyrus Omar, Nathan Fulton, Sharschchandra Bidargaddi and Jonathan Aldrich}
 \IEEEauthorblockA{School of Computer Science\\
 Carnegie Mellon University\\
 Pittsburgh, PA, USA\\
-\texttt{\{comar,jonathan.aldrich\}@cs.cmu.edu}}}
+\url{http://www.acelang.org/}
+}}
 
 % conference papers do not typically use \thanks and this command
 % is locked out in conference mode. If really needed, such as for
@@ -401,13 +402,14 @@ Pittsburgh, PA, USA\\
 
 
 \begin{abstract}
-In this paper, we introduce the Ace programming language and demonstrate its practicality as a foundational tool for both high-performance computing researchers and practitioners. Ace is a statically-typed language that shares a syntax with Python and uses the Python language itself as a multi-purpose compile-time metalanguage. Ace has a minimal core that delegates control over many aspects of compilation to user modules via a novel extension mechanism called {\em active type-checking and translation (\ATT)}. Specifically, users specify new primitive types and operations by equipping type definitions -- first-class objects in the metalanguage -- with compile-time methods. The compiler invokes these methods when type checking and translating expressions, according to a fixed type dispatch protocol associated with each syntactic form. 
+In this paper, we introduce the Ace compilation environment and demonstrate its practicality as a foundational tool in both high-performance computing research and in practice. Ace consists of a statically-typed language that shares syntax with Python and uses the Python language itself as a multi-purpose compile-time metalanguage. Unlike standard languages, however, the Ace compiler consists only of a minimal core that delegates control over most aspects of compilation to user libraries using a novel extension mechanism that we call {\em active type-checking and translation (\ATT)}. In particular, users can specify new primitive types and operations by equipping type definitions, which are first-class objects in the metalanguage, with special methods. The compiler then invokes these methods when type checking and translating expressions, according to a fixed type dispatch protocol associated with each syntactic form. Translation targets a user-defined backend language, and the safety of user-defined translations can be checked automatically. Using this mechanism, we implement the primitives of the C99 and OpenCL languages as simple modules within Ace. We go on show examples of other interesting primitive parallel  abstractions that build on top of these basic modules, demonstrating the foundational role that an actively-typed system like Ace can play in support of research on language-based parallel programming abstractions.
+
+In addition to \ATT, Ace supports more conventional forms of structured and unstructured metaprogramming  and integrates directly with the numeric capabilities of Python itself. We use these features to design a scientific simulation framework that allows users to modularly specify and orchestrate the execution of parameterized families of simulations on clusters of GPUs. This framework is used to successfully conduct large-scale, high-performance neuroscience simulations, providing  evidence that Ace can be used in practice today.
 
 \end{abstract}
 
 %\begin{IEEEkeywords}
 %programming languages, heterogeneous computing, metaprogramming, code generation
-
 %\end{IEEEkeywords}
 
 
@@ -455,110 +457,6 @@ We then introduce a new programming language named $\cloquence$ (pronounced ``C 
 Unlike many existing languages, $\cloquence$ is designed to be highly extensible from inception, employing a powerful compile-time language extension and code generation mechanism based around the concept of {\it active libraries} \cite{activelibraries}. We argue that this feature may make $\cloquence$ particularly suitable as a platform for researchers developing new parallel abstractions and other specialized, high-level language features, as well as  development tools.
 
 In Section 4 we briefly describe a case study where the language was used to conduct large-scale spiking neural circuit simulations on GPU hardware, demonstrating the feasibility of this approach on a non-trivial problem. Finally, conclude in Section 6 with future directions for both the $\cloquence$ language and the research community.
-
-\section{Design and Adoption Criteria}
-The primary purpose of this paper is to describe the design of a programming language, $\cloquence$. Unfortunately, as in many areas of design, it can be difficult to objectively evaluate the merit of such efforts. To better support such evaluations, researchers in design disciplines typically develop a set of high-level  design criteria that serve as a rubric for evaluating and guiding their design efforts. In programming language design, particularly for scientific and high-performance computing, there have been few concerted efforts to develop a coherent set of design criteria that capture the needs of the targeted developer communities. Similarly, there have been few treatments of adoption criteria for new languages and abstractions in practice, an important issue given the slow rates of adoption today. We have purposefully separated these criteria from the specific language we describe in Section 3 in the hopes of starting a productive discussion within the community.
-
-\subsection{Professional End-User Developers}
-An important first step is to identify the developer communities targeted by our design efforts. Researchers in software engineering typically distinguish between {\it end-user developers} and {\it professional developers}. End-user developers have little formal training relevant to the tools that they use, and the tools themselves are relatively simple (spreadsheets, for example). Professional developers, on the other hand, have explicit training or extensive experience with software engineering and software development techniques. Scientists and engineers do not cleanly fall into either of these groups, however -- although formal training in software development is rare \cite{oai:open.ac.uk.OAI2:17673}, members of these groups are more technically literate and demanding than typical end-users. For this reason, researchers have proposed a third group, {\it professional end-user developers}, to describe ``people working in highly technical, knowledge rich professions, such as financial mathematicians, scientists and engineers, who develop their own software in order to advance their own professional goals. \cite{segal2007some}'' 
-As such, we consider the literature on novice and end-user programming (cf. \cite{pane1996usability}) in addition to that on programming language design for professional developers to justify the criteria we develop below. Language usability and adoption are not commonly studied topics, so many of the hypotheses we present below also rely on informal observations about languages and tools that have been successful in the past.
-
-\subsection{Design Criteria}
-We define design criteria as aspects of a language's design, rather than its implementation, that help developers express their intent naturally and correctly.
- 
-\subsubsection{Concise, Familiar and Readable Syntax}\label{syntax}
-Despite a considerable amount of evidence pointing toward the value of a well-designed syntax, particularly for end-users in specialized domains \cite{pane1996usability}, the issue is sometimes marginalized. It is likely the case, however, that some libraries and languages experience low adoption due in  part due to the use of a verbose, unfamiliar or unreadable syntactic style.
-
-A simple and concise syntax is common to most of the high-level languages that are widely used in scientific computing. Cordy identifies the principle of conciseness with elimination of redundancy and the availability of reasonable defaults \cite{cordy1992hints}. The high-level languages listed in the introduction have all either made optional, or removed entirely, much of the syntactic overhead characteristic of low-level languages, such as explicit variable declarations and extensive headers or preambles that contain information that can be inferred from the body of the program in most cases. They also typically feature simple array indexing syntax and concise literal forms for common data structures like arrays, sets and maps. A concise and minimal syntax eliminates unnecessary keystrokes and keeps more code visible on screen at a time. Studies have shown that there may be a correlation between lines of code entered and overall error rate, independent of other factors \cite{el2001confounding}. 
-
-However, one can also go too far, so these benefits must be balanced with concerns about readability and familiarity. A number of principles have been proposed to operationalize the notion of code readability. The most widely-used collection of principles are Green's cognitive dimensions \cite{green1996usability}. Of particular relevance is the notion of self-consistency, which serves to ensure that similar forms have similar meaning and that there are few subtle or context-dependent distinctions that users must be mindful of. Another important principle has been called {\it closeness of mapping}, expressing the value of a close correspondence between mental models and the formal model as expressed concretely using the language.
-
-Most researchers become familiar with formal notation by studying mathematics. In nearly all commonly used languages in scientific computing, the common mathematical notation is used whenever possible. In contrast, many academic languages have settled on alternative notational styles. For example, the LISP family of languages uses a highly uniform list-based notation, while most functional languages typically borrow notation for function invocation from the lambda calculus, using the form \verb|f x| rather than \verb|f(x)| for function invocation. Although both of these styles have certain benefits, they can impose mental burdens on users who continue to mentally translate them into more familiar notation \cite{anderson1985novice}. Although these and related difficulties can decrease with experience, they remain an important barrier for new users to these languages.
-
-Syntactic cues like whitespace and typography that do not have a formal meaning but rather exist to assist developers are called secondary notation \cite{green1990programming}. Most languages are whitespace-insensitive, while others (notably, Python) enforce consistent uses of whitespace, both in pursuit of consistency and as a technique to eliminate the need for block delimiters. Additionally, a few languages, such as Mathematica, have support for more typographically-rich mathematical notation via a structural editing interface. These techniques appear to be helpful, although we do not know of formal studies that provide evidence for this claim.
-
-\subsubsection{Support for Multiple Paradigms and Abstractions}\label{multiparadigm}
-Although the difficulties of low-level and parallel programming are widely acknowledged, there is little consensus on which high-level abstractions are most appropriate for easing this burden. Indeed, it appears likely that no one abstraction will emerge triumphant over the others. Although library-based abstractions are useful, they often suffer from limitations of the language, particularly if they require compile-time support. Primitive language support for a parallel abstraction has been shown to be more usable than a library-based implementation in at least one case \cite{cave2010comparing}. 
-Languages that have been designed specifically to explore a single abstraction as a core language feature often see more limited adoption than library-based implementations because they remain difficult to use in circumstances for which an alternative abstraction is more appropriate. Examples of abstractions where language-based implementations remain less frequently used than library-based implementations include the actor model (e.g. Erlang), software transactional memory \cite{harris2003language}, and global arrays (e.g. UPC). As such, it is important that a language support several modes of operation, ideally without excessively favoring one over another. 
-
-\subsubsection{Extensibility}\label{extensions}
-
-Although support for multiple paradigms and primitive abstractions can be built into a language design, this leaves control in the hands of the language designer. Novel or domain-specific constructs that may be useful to a small number of users or in rare situations can be difficult to develop and distribute for this reason, leading to the proliferation of new languages as  described above. Language extensibility mechanisms support these use cases by giving users the ability to develop new abstractions and constructs that behave as if they were primitive constructs. If a mechanism is powerful enough, nearly all language constructs may be implemented using it, greatly simplifying the core semantics of a language.
-
-Dynamic languages commonly rely on mechanisms like operator overloading and metaobject protocols \cite{Kiczales91} to provide extensibility via indirection. For example, the Python language allows objects to overload nearly every operator and as well as operations like attribute lookup (\verb|obj.attr|) and assignment. This mechanism is used by a number of libraries to create a more natural interface to a low-level API (e.g. \verb|pycuda|). More open-ended dynamic mechanisms, such as programmatic macros, have also been widely studied but as of yet have seen little adoption in languages used by professional end-users. 
-
-Language extensibility for statically-typed languages, on the other hand, remains an active research area. Compile-time metaprogramming systems, which are related to programmatic macros, have been developed for a number of languages (e.g. Template Haskell \cite{sheard2002template}) but these too have seen relatively limited development or adoption thus far. In Section 3, we introduce a novel static language extension mechanism that uses type-based dispatch rather than direct manipulation of syntax trees.
-
-Some researchers have advocated the use of compiler extension mechanisms, rather than mechanisms built into a language itself (cf. \cite{clements2008comparison}). Modern compilers now offer some support for front-end language extensions, although often these  can be quite difficult to use.  Although potentially powerful, this approach can also lead to issues when extensions are not easily composable or when multiple compilers exist for a language. Back-end extensions (that is, extensions that preserve the semantics of the language, improving only performance) are better supported in modern compilers.
-
-Domain-specific language frameworks are a related approach that can serve many of the same goals as language-based  extension mechanisms \cite{fowler2010domain}. These tools ease the development of ``little languages'' and allow for the development and distribution of language features as modules. Domain experts use these tools to develop highly specialized languages that capture domain requirements precisely and allow for natural and concise specifications of scientific models and other structures. A major issue with this approach arises at language boundaries -- interoperability between different domain-specific languages is difficult due to feature mismatches. Another issue is that domain-specific languages often outgrow their initial implementations and begin to need increasingly powerful general-purpose features.
-
-All extensibility mechanisms must be used carefully. Indeed, inexperienced developers can abuse mechanisms like operator overloading to create inscrutable interfaces that cause more problems than they solve. Some languages (notably Java) have taken up the philosophy that even simple language extension mechanisms should not be in the hands of end-users for this reason. Although this continues to be debated, we argue that extensibility is crucial for parallel and scientific programming in particular due to the significant levels of ongoing research into new parallel abstractions and the diverse set of other domain-specific use cases.
-
-\subsubsection{Support for Higher-Order Constructs}\label{hof}
-A number of parallel programming data structures and algorithms are of higher-order, meaning that they take other functions or types as arguments or parameters. We argue that support for higher-order programming is critical to language usability in our target domains.
-
-Well-known examples of functions that operate using other functions include fundamental parallel primitives like map, reduce and scan. Fortunately, most modern languages now support using functions as values. Languages like C and Fortran implement this using function pointers, although at considerable syntactic expense. However, unlike functional languages and most dynamic languages, they do not allow anonymous functions (that is, functions that are defined as inline expressions rather than statements), nor functions that close over variables in the surrounding scope. The most recent revision of C++ now has support for closures and closures are also being considered for a future revision of Java. OpenCL does not come with any support for higher-order functions, an issue we explore further in Section 3.
-
-Functions and types that are parameterized by types are often referred to as {\it polymorphic} or {\it generic}. C++ supports this using its template system. Java, ML and Haskell support a simpler form of {\it parametric polymorphism}, and Haskell also supports a more flexible {\it type class} system. C++, Java and Fortran also support {\it function overloading}, allowing multiple versions of a function that differ only according to their argument types. C and OpenCL do not support any form of polymorphism or user-defined function overloading.
-
-Dynamic languages do not require that variables be assigned a type, so generic functions are written using run-time checks that ensure that a particular value supports the specific interface that a function expects. This is sometimes known as ``duck typing'' and is generally considered as a useful feature, due to its considerable flexibility. A promising approach that resembles duck typing, while operating statically, is known as {\it structural typing} \cite{malayeri2009structural}.
-
-\subsubsection{Modularity and Packaging}\label{modularity}
-Modularity is a broad term that refers to mechanisms useful for combining and reusing independently developed libraries of code. Languages with good support for modularity promote information hiding, thus localizing the effect of code changes, and allow modules to communicate over well-defined interfaces. There remains widespread disagreement and considerable ongoing research on language support for modularity. Object-oriented methodologies, although common in industrial projects, are used less frequently in scientific codes due to a perceived loss of control and performance \cite{basili2008understanding}. Many dynamic languages support modularity only implicitly using duck typing. Functional languages, on the other hand, often have module systems that enforce correct usage of an interface at compile-time, albeit at some notational cost \cite{tapl}.
-
-The packaging and linking mechanisms available in a language can also significantly impact its usability. Languages like C and C++ use a fragile preprocessor-based packaging mechanism and require separate header files, which often leads to subtle errors and compilation inefficiencies. More recent high-level languages have developed a varied set of mechanisms that are significantly simpler.
-
-\subsubsection{Verifiability}\label{verifiability}
-Verifying that a program does not contain errors and that it will operate according to specification (if a specification exists, which can be rare in this domain \cite{oai:open.ac.uk.OAI2:17673}) is a critical concern across all areas of software development. Errors in scientific programs may arise due to problems in basic program logic, as in other domains, but also due to the accumulation of  numerical approximation errors or by violation of domain-specific constraints (e.g. inconsistent scientific units.)
-
-A number of design decisions can influence the difficulty of formal program verification. Broadly stated, unconstrained support for dynamic indirection and direct access to memory have made program verification more difficult in many commonly-used languages. As a result, many classes of errors are only caught at run-time, often due to edge cases that are difficult to test for.
-
-Advanced type systems, matched with appropriately constrained data structures and control constructs, can dramatically increase the likelihood that an error is found at compile-time and even eliminate entire classes of errors \cite{tapl}. A large portion of academic research on programming language design has focused on designing such type systems. Unfortunately, as with many new parallel abstractions, these generally require that a language be modified with new primitives and most work has either been with prototype languages or functional languages like Ocaml, Haskell or Coq, which, due to some of the factors mentioned here, have seen  limited (though growing) adoption in scientific computing so far.
-
-In the absence of a formal proof of correctness, users must test programs with specific inputs, relying both on language-provided run-time checks and user-provided run-time assertions to catch errors. Most languages have unit testing frameworks designed to minimize the burden of developing unit tests, though these are used infrequently in science \cite{oai:open.ac.uk.OAI2:17673}\cite{hannay2009scientists}. Several languages (e.g. Eiffel) also have support for specifying pre- and post-conditions for functions, so that the assertions that must hold about arguments are visible in the function signature, but this feature has not been well-supported by widely-used languages to date.
-
-\subsection{Adoption Criteria}
-While most of the design criteria described in the previous sections have been the topic of significant (and ongoing) research, there are a number of other, more practical issues that can significantly affect adoption of a new language or tool. It should be noted that certain design decisions may make it easier to satisfy these adoption to criteria as well, an important consideration given that incentive structures in academia often do not reward efforts to improve a language along these dimensions \cite{howison2011scientific}. We give examples of such design decisions when we describe $\cloquence$ in Section 3.
-
-\subsubsection{Performance}
-Performance is, of course, a critical concern in scientific and (particularly \cite{basili2008understanding}) high-performance computing. Low-level languages typically elect to give the user direct access to hardware primitives. High-level languages must rely on a sophisticated compiler to translate high-level abstractions into performant code. Although the latter approach would be ideal, program optimization remains an active research area with many open problems. Indeed, many relevant algorithms have been shown to be NP-Complete, so compilers must rely on heuristics. Humans remain better at inventing and applying heuristics, given enough motivation and experience, than computers in many cases. Indeed, even when the compiler can sometimes produce better optimizations, users generally insist on being able to form a mental model of what their code is doing at the machine-level so that they can {\it reason} about the effects of code changes on overall performance \cite{squires2005programmers}. As such, users generally demand that low-level abstractions remain available alongside high-level abstractions. It may also be useful to support a model where programmers can formalize, package and directly apply optimization heuristics programmatically, rather than relying on a ``black-box'' compiler.
-
-% Squires et al, 2005 -- programmers want to know what is happening under the hood so they can reason about optimization
-
-\subsubsection{Portability}\label{portability}
-A number of surveys have revealed that portability is one of the most important issues considered by scientists and engineers \cite{hannay2009scientists}\cite{basili2008understanding}. Several processor architectures and operating systems are in widespread use, with more appearing on a fairly regular basis. Low-level languages like C have generally achieved a reasonable level of portability, although aspects of the language that are underspecified can be sources of errors. The OpenCL language was designed with portability as a major design criteria, and compilers for OpenCL are now available for a diverse collection of processor and accelerator architectures. High-level languages are generally highly portable. 
-
-It should be noted, however, that simple portability is not entirely sufficient -- users want to be able to write programs that can be ported to new architectures and operating systems and achieve high performance without significant retuning. This remains an area of active research. Recent efforts to build abstractions that generate efficient code for devices with multi-level memories, as implemented in the Sequoia language \cite{fatahalian2006sequoia}, have  progressed toward this goal.
-
-\subsubsection{Useful Error Messages}\label{errors}
-When the compiler or run-time system of a language generates an error, users must determine the source of the problem using the information provided in an error message. Studies have shown that good error messages can dramatically reduce the time it takes to debug programs \cite{marceau2011measuring}. Indeed, a widely-reported frustration with C++ is that it produces overly verbose and cryptic error messages, particularly when using templates.
-
-\subsubsection{Tool and Infrastructure Support}\label{tools}
-% Squires 2005 might have a ref
-Modern software development now relies on a number of tools to assist with common tasks, such as debuggers,  profilers, syntax-aware editors, documentation generators, style checkers and interactive interpreters. Similarly, most established languages benefit from a centralized packaged repository (e.g. PyPI) and a package manager that can automate the installation of new packages. Such support is not trivial to develop from scratch, but few early adopters are likely willing to do without these tools for non-trivial projects \cite{squires2005programmers}.
-
-\subsubsection{Backwards Compatibility}
-End-user communities have produced a number of highly tuned and tested packages that are widely used in their fields. Porting these libraries to a new language requires significant effort and few communities will be willing to do so, particularly before a language is very well established. There is generally a greater willingness to develop wrappers that invoke functions from these packages, however. A powerful foreign function interface, ideally able to handle native code as well as code in existing widely-used high-level languages, enables these efforts to proceed smoothly and can provide a language with a large package library relatively early in its development. 
-
-Many of the reasonably successful approaches to date are built incrementally on existing languages as libraries or as simple  extensions to existing languages (e.g. OpenMP, UPC, Co-array Fortran, Cilk++, MPI, CUDA, OpenCL). Notably, this allows existing programs to continue to function correctly, while enabling the gradual integration of the new constructs in parts of the code that would derive the greatest benefit. In contrast, approaches that have required total rewrites have had more difficulty recruiting early adopters (e.g. X10 \cite{charles2005x10}.)
-
-\subsubsection{Learning Material}
-Existing languages benefit from a large collection of books, presentations and tutorials that allow new users to get started quickly. The most mature languages benefit further from the availability of courses and professional training seminars. New languages often suffer due to the lack of such polished learning material, or in some cases, due to the lack of {\it any} significant learning material targeted at end users (rather than other language designers.)
-
-\subsubsection{Open Availability}
-New languages and abstractions are often viewed with suspicion if they do not come with source code that can be modified under a free software license. The most unencumbered licenses (other than public domain releases) are BSD-style licenses. So called {\it copyleft} licenses like the GPL are also popular, requiring primarily that modifications to the compiler be distributed under the same license.
-
-\subsubsection{Social Proof}\label{social}
-Finally, users look to the language's user community for evidence that the language is a serious effort that will not be abandoned and that there are other developers building libraries and sharing information over established communication channels. The availability of non-trivial demonstrations have been cited in surveys as critical to adoption as well \cite{basili2008understanding}. These criteria, as with many of the others described above, can be difficult to satisfy, particularly for ``clean-slate'' language designs, which may help to explain why language adoption is often slow. However, even projects with a narrower scope, such as new parallel or domain-specific abstractions, must tackle these issues.
-
-% What Do Programmers of Parallel Machines Need?
-% Squiers et al, 2005
-% - Global view
-% - Tool support
-% - Understanding of what the code is doing
-% 
-%As should be clear, there are many challenges facing any new language design effort. Many of these challenges apply also to efforts with a narrower scope (e.g. a new parallel or domain-specific abstraction). Although the research community continues to tackle open issues described as design criteria, the challenges described as adoption criteria above have not generally received as much attention. 
 
 
 \section{The $\cloquence$ Language}
@@ -928,7 +826,7 @@ Professional end-users demand much from new languages and abstractions. In this 
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
 \bibliographystyle{IEEEtran}
-\bibliography{research}
+\bibliography{../research}
 %
 %\begin{thebibliography}{1}
 %
