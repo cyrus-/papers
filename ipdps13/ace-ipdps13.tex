@@ -71,8 +71,10 @@
 % \documentclass[conference]{../sty/IEEEtran}
 
 
-
-
+\usepackage[noadjust]{cite}
+% IEEE wants to use ],\,[ for this
+% but that looks dumb...
+\renewcommand{\citepunct}{,\,}
 
 % Some very useful LaTeX packages include:
 % (uncomment the ones you want to load)
@@ -103,7 +105,8 @@
 
 % *** CITATION PACKAGES ***
 %
-%\usepackage{cite}
+\usepackage{cite}
+\renewcommand{\citemid}{,~}
 % cite.sty was written by Donald Arseneau
 % V1.6 and later of IEEEtran pre-defines the format of the cite.sty package
 % \cite{} output to follow that of IEEE. Loading the cite package will
@@ -400,7 +403,6 @@ Pittsburgh, PA, USA\\
 % make the title area
 \maketitle
 
-
 \begin{abstract}
 In this paper, we introduce the Ace compilation environment and demonstrate its practicality as a foundational tool for both high-performance computing research and in practice. 
 Ace consists of a statically-typed language that shares syntax with Python and uses the Python language itself as a multi-purpose compile-time metalanguage. Unlike standard languages, however, the Ace compiler consists only of a minimal core that delegates control over most aspects of front-end compilation to {\em active libraries} using a novel extension mechanism that we call {\em active type-checking and translation (\ATT)}. Users specify new primitive types and operations by equipping type definitions, which are first-class objects in the metalanguage, with designated methods that the compiler selectively invokes when type checking and translating expressions. Using \ATT, we implement the primitives of the C99 and OpenCL languages as modules within Ace. We then give examples of several first-class parallel abstractions that can be used alongside these basic primitives, demonstrating the foundational role that an actively-typed system like Ace can play for researchers developing language-based programming abstractions.
@@ -427,26 +429,34 @@ Ace also supports more conventional forms of structured and unstructured metapro
 
 \section{Introduction}
 
-Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software, generally individually or in small groups \cite{howison2011scientific}\cite{hannay2009scientists}. Most of this software targets desktop hardware, and about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of modern processors, however, these so-called {\em professional end-user developers} \cite{segal2007some} must write parallel programs.
+Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware, and about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of this modern hardware, however, these so-called {\em professional end-user developers} \cite{segal2007some} must write parallel programs.
 
-Professional end-users today generally use high-level scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as simple data analysis and plotting \cite{nguyen2010survey}. For tasks where these interpretted, dynamically-typed languages are too slow, they turn to statically-typed, low-level languages like C and Fortran, paired with low-level abstractions like pthreads and MPI \cite{4222616}\cite{basili2008understanding}. These low-level languages and abstractions are notoriously tedious and difficult to use correctly, even for expert programmers. {\color{red} CITATION?}
+Professional end-users today generally use high-level scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For tasks where these interpretted languages are too slow, they generally call into code written in statically-typed, low-level languages like C and Fortran that uses low-level concurrency abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. These low-level languages and abstractions are notoriously error-prone and difficult to use, even for expert programmers. {\color{red} CITATION?}
 
-The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important factors like performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have not adopted any of these {\em en masse}, and users have become  skeptical of new approaches. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those in the research community working to advance the practice of scientific and high-performance computing. 
+The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have not adopted these {\em en masse}, and many are generally skeptical of new approaches from the research community. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those working to advance the practice of scientific and high-performance computing. 
 
-We begin in Section 2 by developing a set of design and adoption criteria for new languages and abstractions based on prior empirical studies of these {\it professional end-user developers} as well as our observations of characteristics common to successful projects in the past. 
+One reason for this is that new features and abstractions tend to come in new languages. This is because they need first-class language and compiler support. Monolithic languages make it difficult to provide this. Thus, we need a mechanism that allows new primitives to be defined and implemented modularly and distributed with libraries.
 
+Ace is a language-integrated compilation environment that aims to solve this problem. A {\em compilation environment} is a framework that allows users to programmatically control the compilation of programs. In Ace, each module can interleave two kinds  of program logic: compile-time and run-time. The compile-time logic, written in the {\em metalanguage}, is the top-level logic in each file. Here, users can define and import new primitive types and operators, generate functions programmatically, perform arbitrary code transformations and emit functions for later execution. Ace also permits a hybrid mode of use whereby the functions can also be executed immediately after being defined. 
 
-Scientists and engineers often use high-level scripting languages like MATLAB, Python, R and Perl \cite{nguyen2010survey}, due to their powerful domain-specific libraries and their focus on ease-of-use and flexibility. Scripting languages are typically interpreted rather than compiled and generally do not feature static type systems, relying instead on run-time  type lookup and indirection. Although this can increase the flexibility of the language, these features negatively impact  performance and code verifiability.
+Paragraph describing how active typechecking and translation work. Generalization of active libraries. 
 
-Along code paths where performance appears to be a bottleneck, professional end users typically turn to statically-typed low-level languages like C and Fortran \cite{4222616}. These languages are statically and explicitly typed and require users to explicitly control data layout and heap allocation. Although this makes writing programs more tedious and error-prone, it can significantly improve performance, particularly if attributes of the target architecture (e.g. caching behavior) and the problem domain are carefully considered. 
+The overall design of the Ace language as a gestalt thing that satisfies a number of design and adoption criteria imposed by professional end-users. We demonstrate its practicality by describing an Ace-based simulator library in Section ??. Ace also supports researchers by allowing them to modularly specify new abstractions, which we demonstrate with examples like OpenCL and several others in Section ??. 
 
-Although even a sequential reimplementation of a critical code path using a low-level language will produce a modest speedup, more significant speedups on modern hardware require parallelizing over many processor cores and, on massively-parallel machines, many interconnected nodes. Despite well-known difficulties, low-level approaches that use a form of shared-memory concurrency (e.g. pthreads, OpenMP) paired with explicit message passing between nodes (typically using MPI) are the most widely-used \cite{4222616}\cite{basili2008understanding}. 
+In addition to the general introduction of Ace as a foundational tool for research and practice and generalizable lessons relating to language design that we note below, specific novel contributions in this paper: 
 
-Researchers design and implement novel parallel programming abstractions\- on a regular basis. Each abstraction aims to make some class of developers more productive by making appropriate trade-offs between performance, portability, verifiability and ease-of-use. It can be observed that the most widely-adopted abstractions to date are those that been implemented as libraries that can be easily deployed within existing, widely-used languages. Abstractions that require introducing new primitive constructs, changing the semantics of existing constructs in particular contexts, or controlling compilation in a fine-grained manner cannot take this approach. This has led to a proliferation of specialized programming languages, each designed around a few privileged abstractions. Unfortunately, such languages have not been widely adopted by practitioners.
+\begin{itemize}
+\item ATT, a generalization of active libraries, where types are metalanguage objects and programs are given semantics by type-associated methods called by the compiler.
+\item A method for eliminating type annotations by using a form of type inference within functions and type propagation between functions.
+\item A method to check the correctness of generated code, by checking for satisfaction of representational consistency constraints associated with types, defined in Section ??. 
+\item Several type-aware code generation and simulation orchestration techniques used in the clegans library, described in Section ??.
+\end{itemize}
 
-slash
-
-Although researchers often propose higher-level language features and parallel programming abstractions that aim to strike a better balance between raw performance, productivity, code portability and verifiability (see Section 2), end-users remain skeptical of new approaches. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those in the research community working to advance the practice of scientific and high-performance computing. We begin in Section 2 by developing a set of design and adoption criteria for new languages and abstractions based on prior empirical studies of these {\it professional end-user developers} as well as our observations of characteristics common to successful projects in the past. 
+%Researchers design and implement novel parallel programming abstractions\- on a regular basis. Each abstraction aims to make some class of developers more productive by making appropriate trade-offs between performance, portability, verifiability and ease-of-use. It can be observed that the most widely-adopted abstractions to date are those that been implemented as libraries that can be easily deployed within existing, widely-used languages. Abstractions that require introducing new primitive constructs, changing the semantics of existing constructs in particular contexts, or controlling compilation in a fine-grained manner cannot take this approach. This has led to a proliferation of specialized programming languages, each designed around a few privileged abstractions. Unfortunately, such languages have not been widely adopted by practitioners.
+%
+%slash
+%
+%Although researchers often propose higher-level language features and parallel programming abstractions that aim to strike a better balance between raw performance, productivity, code portability and verifiability (see Section 2), end-users remain skeptical of new approaches. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those in the research community working to advance the practice of scientific and high-performance computing. We begin in Section 2 by developing a set of design and adoption criteria for new languages and abstractions based on prior empirical studies of these {\it professional end-user developers} as well as our observations of characteristics common to successful projects in the past. 
 
 %
 % Two types of languages see widespread use: productivity-oriented and performance-oriented
@@ -464,14 +474,16 @@ Although researchers often propose higher-level language features and parallel p
 % Tool Support (syntax highlighting, editors, debuggers, etc.)
 % Social Proof (Will not disappear - open source, significant projects have been developed, community)
 
-We then introduce a new programming language named $\cloquence$ (pronounced ``C eloquence'') in Section 3. $\cloquence$ initially targets code paths where low-level languages, particularly OpenCL, would be used today. By employing a collection of powerful front-end language and compiler design techniques, making pragmatic design choices, and building on top of established infrastructure, we argue that $\cloquence$ may uniquely satisfy many of the criteria established in Section 2, particularly those related to ease of use, familiarity, performance and tool support.
+%We then introduce a new programming language named $\cloquence$ (pronounced ``C eloquence'') in Section 3. $\cloquence$ initially targets code paths where low-level languages, particularly OpenCL, would be used today. By employing a collection of powerful front-end language and compiler design techniques, making pragmatic design choices, and building on top of established infrastructure, we argue that $\cloquence$ may uniquely satisfy many of the criteria established in Section 2, particularly those related to ease of use, familiarity, performance and tool support.
+%
+%Unlike many existing languages, $\cloquence$ is designed to be highly extensible from inception, employing a powerful compile-time language extension and code generation mechanism based around the concept of {\it active libraries} \cite{activelibraries}. We argue that this feature may make $\cloquence$ particularly suitable as a platform for researchers developing new parallel abstractions and other specialized, high-level language features, as well as  development tools.
+%
+%In Section 4 we briefly describe a case study where the language was used to conduct large-scale spiking neural circuit simulations on GPU hardware, demonstrating the feasibility of this approach on a non-trivial problem. Finally, conclude in Section 6 with future directions for both the $\cloquence$ language and the research community.
+%
 
-Unlike many existing languages, $\cloquence$ is designed to be highly extensible from inception, employing a powerful compile-time language extension and code generation mechanism based around the concept of {\it active libraries} \cite{activelibraries}. We argue that this feature may make $\cloquence$ particularly suitable as a platform for researchers developing new parallel abstractions and other specialized, high-level language features, as well as  development tools.
+\section{ACE: An \underline{A}ctively-Typed \underline{C}ompilation \underline{E}nvironment}
+Ace is based on the Python programming language and implemented entirely as a Python package. The metalanguage is Python itself, the object language uses Python's grammar directly, and the compiler is implemented in Python as well. Write some more here. Why Python? Popularity and to aid in adoption: can be installed just like any other Python module, uses Python's module system and distribution infrastructure, piggybacks on existing Python toolchain. 
 
-In Section 4 we briefly describe a case study where the language was used to conduct large-scale spiking neural circuit simulations on GPU hardware, demonstrating the feasibility of this approach on a non-trivial problem. Finally, conclude in Section 6 with future directions for both the $\cloquence$ language and the research community.
-
-
-\section{The $\cloquence$ Language}
 We now describe a programming language designed with many of the criteria described in the previous sections in mind, $\cloquence$. $\cloquence$ is built around a minimal core and nearly every construct in the language is implemented as a library. Rather than beginning directly with this extension mechanism, however, let us begin with a concrete example of the language in use.
 
 \subsection{Example: Higher-Order Map for OpenCL}
@@ -723,6 +735,8 @@ class SpikingModel(Model):
 \caption{An example of a hook that inserts code and also inserts new, nested hooks for downstream simulation nodes  below that.}
 \label{impl}
 \end{figure}
+
+\section{Related Work}
 
 \section{Conclusion}
 Professional end-users demand much from new languages and abstractions. In this paper, we began by generating a concrete, detailed set of design and adoption criteria that we hope will be of broad interest and utility to the research community. Based on these constraints, we designed a new language, $\cloquence$, making several pragmatic design decisions and utilizing advanced techniques, including type inference, structural typing, compile-time metaprogramming and active libraries, to uniquely satisfy many of the criteria we discuss, particularly those related to extensibility. We validated the extension mechanism with a mature implementation of  the entirety of the OpenCL type system, as well as preliminary implementations of some other features. Finally, we demonstrated that this language was useful in practice, drastically improving performance without negatively impacting the high-level scientific workflow of a large-scale neurobiological circuit simulation project. Going forward, we hope that $\cloquence$ (or simply the key techniques it proposes, by some other vehicle) will be developed further by the community to strengthen the foundations upon which new abstractions are implemented and deployed into professional end-user development communities.
