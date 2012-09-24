@@ -71,11 +71,14 @@
 % \documentclass[conference]{../sty/IEEEtran}
 
 
-\usepackage[noadjust]{cite}
+\usepackage{cite}
 % IEEE wants to use ],\,[ for this
 % but that looks dumb...
 \renewcommand{\citepunct}{,\,}
 
+
+%\usepackage{alltt}
+\renewcommand{\ttdefault}{txtt}
 % Some very useful LaTeX packages include:
 % (uncomment the ones you want to load)
 
@@ -105,8 +108,6 @@
 
 % *** CITATION PACKAGES ***
 %
-\usepackage{cite}
-\renewcommand{\citemid}{,~}
 % cite.sty was written by Donald Arseneau
 % V1.6 and later of IEEEtran pre-defines the format of the cite.sty package
 % \cite{} output to follow that of IEEE. Loading the cite package will
@@ -404,10 +405,9 @@ Pittsburgh, PA, USA\\
 \maketitle
 
 \begin{abstract}
-In this paper, we introduce the Ace compilation environment and demonstrate its practicality as a foundational tool for both high-performance computing research and in practice. 
-Ace consists of a statically-typed language that shares syntax with Python embedded within the Python language itself, which serves as the compile-time metalanguage. Unlike standard languages, Ace consists only of a minimal core that delegates control over most aspects of front-end compilation to {\em active libraries} using a novel extension mechanism that we call {\em active type-checking and translation (\ATT)}. Users specify new primitive types and operations by equipping type definitions, which are first-class objects in the metalanguage, with  methods that the compiler selectively invokes when type checking and translating expressions. \ATT~ allows us to  implement the primitives of the C99 and OpenCL languages as simple modules within Ace. We then give examples of several first-class parallel abstractions that can be defined and used alongside these basic primitives, demonstrating the foundational role that an actively-typed system like Ace can play for researchers and domain experts developing first-class abstractions as well as practitioners wishing to combine multiple such abstractions without interfacing between many distinct languages.
-
-Active library support in Ace also allows for conventional forms of structured and unstructured metaprogramming, and programs can be compiled and launched from Python directly. We used these features, along with the OpenCL language module and some extensions, to design a scientific simulation framework that allows users to modularly specify, compile and orchestrate the execution of parameterized families of scientific simulations on clusters of GPUs. This framework has been used to successfully conduct large-scale, high-performance neuroscience simulations, providing initial evidence that Ace can be used at scale in practice today.
+We introduce the Ace compilation environment and demonstrate its practicality as a foundational tool for both high-performance computing research and in practice. 
+Ace consists of a statically-typed programming language with user-extensible semantics controlled by a compile-time meta\-language, Python. Users specify new primitive types and their operations by equipping type definitions, which are first-class objects in the metalanguage, with  methods that the compiler selectively invokes when type checking and translating expressions, a mechanism we call {\em active type-checking and translation (\ATT)}. This mechanism allowed us to express the primitives of the C99 and OpenCL languages as simple modules within Ace. We then give examples of several first-class parallel abstractions that can be defined and used alongside these basic primitives, demonstrating the foundational role that an actively-typed system like Ace can play for researchers and domain experts developing first-class language abstractions, as well as practitioners wishing to use multiple such abstractions within a single program. Active library support in Ace also supports more general forms of type-aware metaprogramming, and Ace functions can be compiled and launched directly from Python, taking its standard numeric data structures as arguments.
+Using active library support in Ace, we designed a scientific simulation framework that allows users to modularly specify, compile and orchestrate the execution of parameterized families of scientific simulations on clusters of GPUs. This framework has been used to successfully conduct large-scale, high-performance neuroscience simulations, providing initial evidence that Ace can be used, at scale, in practice today.
 \end{abstract}
 
 %\begin{IEEEkeywords}
@@ -429,13 +429,21 @@ Active library support in Ace also allows for conventional forms of structured a
 
 \section{Introduction}
 
-Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware, and about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of this modern hardware, however, these so-called {\em professional end-user developers} \cite{segal2007some} must write parallel programs.
+Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware and about 20\% of scientists target either local clusters or super\-computers for more numerically-intensive computations as well \cite{hannay2009scientists}. To fully harness the power of this modern hardware, however, these {\em professional end-user developers} \cite{segal2007some} must write parallel programs.
 
-Professional end-users today generally use high-level scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For tasks where these interpretted languages are too slow, they generally call into code written in statically-typed, low-level languages like C and Fortran that uses low-level concurrency abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. These low-level languages and abstractions are notoriously error-prone and difficult to use, even for expert programmers. {\color{red} CITATION?}
+Professional end-users today generally use high-level scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-intensive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For tasks where these interpretted languages are too slow, they generally call into code written in a statically-typed, low-level language like C and Fortran and use low-level parallel abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously error-prone and difficult to use, even for expert programmers. {\color{red} CITATION?}
 
-The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have not adopted these {\em en masse}, and many are generally skeptical of new approaches from the research community. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by those working to advance the practice of scientific and high-performance computing. 
+The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have not commonly adopted these approaches, and many have become generally skeptical of new approaches originating in the research community. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by researchers working to advance the practice of scientific and high-performance computing. 
 
-One reason for this is that new features and abstractions tend to come in new languages. This is because they need first-class language and compiler support. Monolithic languages make it difficult to provide this. Thus, we need a mechanism that allows new primitives to be defined and implemented modularly and distributed with libraries.
+One reason for this gap is because new features and abstractions tend to be distributed within new programming languages. Prominent examples include:
+\begin{itemize}
+\item UPC, CAF, X10
+\item Erlang
+\item Cilk
+\item Charm++
+\end{itemize}
+
+This is because they need first-class language and compiler support but monolithic languages cannot be modularly and portably extended (we discuss the difference between language extensions and compiler extensions in Section XX). Unfortunately, writing code in multiple languages poses a host of challenges. Thus, we need a mechanism that allows new primitives to be defined and implemented modularly and distributed with libraries.
 
 Ace is a language-integrated compilation environment that aims to solve this problem. A {\em compilation environment} is a framework that allows users to programmatically control the compilation of programs. In Ace, each module can interleave two kinds  of program logic: compile-time and run-time. The compile-time logic, written in the {\em metalanguage}, is the top-level logic in each file. Here, users can define and import new primitive types and operators, generate functions programmatically, perform arbitrary code transformations and emit functions for later execution. Ace also permits a hybrid mode of use whereby the functions can also be executed immediately after being defined. 
 
@@ -495,33 +503,49 @@ Readers familiar with the Python programming language will recognize the style o
 \begin{figure}
 \small{
 \begin{verbatim}
-import clq
-from clq.backends.opencl import 
-    OpenCL, get_global_id
+from ace.OpenCL import OpenCL, get_global_id
 
-@clq.fn(OpenCL)
+@OpenCL.fn
 def map(in, out, fn):
     gid = get_global_id(0)
     out[gid] = fn(in[gid])
-\end{verbatim}}
-\caption{Data-parallel higher-order map in $\cloquence$. The \texttt{get\_global\_id} function is an OpenCL primitive function.}
+\end{verbatim}
+}
+\vspace{-10pt}
+\caption{A generic data-parallel map function written using the user-defined Ace OpenCL module.}
 \label{map}
-
 \end{figure}
-
+\begin{figure}
+\small{
+\begin{verbatim}
+from figure1 import map
+from ace.OpenCL import global_ptr, double, sin
+    
+T = global_ptr(double)
+map_sin_dbl = map.compile(T, T, sin.cl_type)
+\end{verbatim}
+}
+\vspace{-10pt}
+\caption{The generic map function compiled to map the sin function over global arrays of double-precision floating-point numbers. The \texttt{get\_global\_id} and \texttt{sin} functions are OpenCL primitives.}
+\label{mapsindblace}
+\end{figure}
 \begin{figure}
 \small{\begin{verbatim}
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-__kernel void map_sin_dbl(__global double *in, 
-                          __global double *out) 
+__kernel void map_sin_dbl(
+  __global double* in, 
+  __global double* out) 
 {
-    size_t gid = get_global_id(0);
+    size_t gid;
+    gid = get_global_id(0);
     out[gid] = sin(in[gid]);
+}\end{verbatim}
 }
-\end{verbatim}}
-\caption{An OpenCL kernel function that maps the sin function over a vector of double-precision floating-point numbers in the global memory address space.}
+\vspace{-10pt}
+\caption{The OpenCL kernel function generated by running \texttt{acecc figure2.py}, or by executing the  \texttt{print map\_sin\_dbl.code} statement.}
 \label{mapsinint}
+\vspace{-10pt}
 \end{figure}
 
 \subsection{Semantics}
