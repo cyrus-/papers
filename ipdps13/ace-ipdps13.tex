@@ -435,29 +435,29 @@ Professional end-users today generally use high-level scripting languages like M
 
 The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have not commonly adopted these approaches, and many have become generally skeptical of new approaches originating in the research community. This viewpoint was perhaps most succinctly expressed by a participant interviewed in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by researchers working to advance the practice of scientific and high-performance computing. 
 
-One reason for this gap is because new features and abstractions tend to be distributed within new programming languages. Prominent examples include:
+One reason for this gap between research and practice is because new features and abstractions are often developed and distributed together with a new programming language. Some prominent examples include:
 \begin{itemize}
-\item UPC, CAF, X10
-\item Erlang
-\item Cilk
-\item Charm++
+\item UPC, Fortress, X10 and Chapel, each featuring some form of first-class partitioned global address space (PGAS) support;
+\item Erlang, Charm++, Occam and Axum, featuring some form of first-class support for message-passing; 
+\item Cilk and NESL, featuring nested data parallelism
+\item {\color{red} should I flesh this out more? less?}
 \end{itemize}
 
-This is because they need first-class language and compiler support but monolithic languages cannot be modularly and portably extended (we discuss the difference between language extensions and compiler extensions in Section XX). Unfortunately, writing code in multiple languages poses a host of challenges. Thus, we need a mechanism that allows new primitives to be defined and implemented modularly and distributed with libraries.
+Unfortunately, using a domain-specific research language comes with a host of challenges. {\color{red} List challenges here?} Indeed, the most widely adopted parallel programming abstractions have been those that are distributed as libraries, such as MapReduce, or as simple, conservative language extensions available in existing compilers, such as OpenMP. 
 
-Ace is a language-integrated compilation environment that aims to solve this problem. A {\em compilation environment} is a framework that allows users to programmatically control the compilation of programs. In Ace, each module can interleave two kinds  of program logic: compile-time and run-time. The compile-time logic, written in the {\em metalanguage}, is the top-level logic in each file. Here, users can define and import new primitive types and operators, generate functions programmatically, perform arbitrary code transformations and emit functions for later execution. Ace also permits a hybrid mode of use whereby the functions can also be executed immediately after being defined. 
+Ace is a language-integrated compilation environment that aims to make it easier for researchers to introduce new first-class language constructs as libraries. A {\em compilation environment} is a framework that allows users to programmatically control the compilation of programs. In Ace, users can interleave two kinds of program logic: compile-time and run-time. The compile-time logic, written in the {\em metalanguage}, is the top-level code in each file. Here, users can define and import new primitive types and operators, generate functions programmatically, perform arbitrary code transformations and emit functions for later execution. Ace also permits an interactive mode of use whereby the functions can also be executed immediately after being defined, a common usage scenario for professional end-users.
 
-Paragraph describing how active typechecking and translation work. Generalization of active libraries. 
+Ace is an {\it actively-typed} compilation environment. This means that types are first-class objects in the metalanguage, and that the logic needed to typecheck and compile the operators associated with a type is defined alongside the type itself. The process by which this occurs is called {\em active typechecking and translation (\ATT)}, and we discuss it in detail in Section \ref{att}. \ATT~is flexible enough that we are able to define the entirety of the C99 and OpenCL languages   with it, demonstrating its practicality and providing a foundation for higher-level abstractions that we discuss in Section \ref{abstractions}. Notably, these abstractions can be imported piecemeal as libraries -- they are not defined as new languages, nor as extensions for particular compilers.
 
-The overall design of the Ace language as a gestalt thing that satisfies a number of design and adoption criteria imposed by professional end-users. We demonstrate its practicality by describing an Ace-based simulator library in Section ??. Ace also supports researchers by allowing them to modularly specify new abstractions, which we demonstrate with examples like OpenCL and several others in Section ??. 
+Although the \ATT~mechanism is designed for use by researchers and domain experts, Ace is designed to be practical for professional end-user developers as well. It is based on the Python programming language, which is among the most broadly adopted languages in these communities. Indeed, the language itself is implemented entirely as a Python library -- no new executables need to be installed. Extension writers can target arbitrary backend languages and use existing compilers for back-end optimization. In this paper, we demonstrate the use of the flexible OpenCL platform for this purpose. Using these capabilities, we developed a 
 
-In addition to the general introduction of Ace as a foundational tool for research and practice and generalizable lessons relating to language design that we note below, specific novel contributions in this paper: 
+In addition to the general introduction of Ace as a foundational tool for research and practice and generalizable lessons relating to language design that we note below, we highlight several individual contributions in this paper: 
 
 \begin{itemize}
-\item ATT, a generalization of active libraries, where types are metalanguage objects and programs are given semantics by type-associated methods called by the compiler.
+\item \ATT, a generalization of active libraries, where types are metalanguage objects and programs are given semantics by type-associated methods called by the compiler.
 \item A method for eliminating type annotations by using a form of type inference within functions and type propagation between functions.
-\item A method to check the correctness of generated code, by checking for satisfaction of representational consistency constraints associated with types, defined in Section ??. 
-\item Several type-aware code generation and simulation orchestration techniques used in the clegans library, described in Section ??.
+\item A method to check the correctness of generated code, by checking for satisfaction of representational consistency constraints associated with types, defined in Section \ref{repcon}. 
+\item Several type-aware code generation and simulation orchestration techniques used in the clegans library, described in Section \ref{clegans}.
 \end{itemize}
 
 %Researchers design and implement novel parallel programming abstractions\- on a regular basis. Each abstraction aims to make some class of developers more productive by making appropriate trade-offs between performance, portability, verifiability and ease-of-use. It can be observed that the most widely-adopted abstractions to date are those that been implemented as libraries that can be easily deployed within existing, widely-used languages. Abstractions that require introducing new primitive constructs, changing the semantics of existing constructs in particular contexts, or controlling compilation in a fine-grained manner cannot take this approach. This has led to a proliferation of specialized programming languages, each designed around a few privileged abstractions. Unfortunately, such languages have not been widely adopted by practitioners.
