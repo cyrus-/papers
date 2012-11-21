@@ -335,131 +335,75 @@ Professional end-users today generally use high-level scripting languages like M
 
 The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users are hesitant to adopt these, with many being generally skeptical regarding the practicality of new approaches that come from the research community. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by researchers working to advance high-performance computing. 
 
-Many of the barriers to adoption of new abstractions stem from the fact that new abstractions are often developed and distributed together with a new programming language. Some prominent examples where this {\em language-oriented approach} has been followed include:
+Many of the barriers to adoption faced by new abstractions stem from the fact that new abstractions are often developed and distributed together with a new programming language. Some prominent examples where this {\em language-oriented approach} has been followed include:
 \begin{itemize}
-\item UPC \cite{upc}, CAF \cite{caf}, X10 \cite{x10} and Chapel \cite{chapel}, built around first-class support for a partitioned global address space (PGAS) programming model; 
-\item Erlang \cite{erlang}, Charm++ \cite{charm}, Occam \cite{occam} and Axum \cite{axum}, built around first-class support for message passing;
-\item Cilk \cite{cilk} and NESL \cite{nesl}, built around first-class support for nested data parallelism; and
-\item Add something about automatic parallelization of functional programs.
+\item UPC, CAF, X10 and Chapel, built around first-class support for a partitioned global address space (PGAS) programming model; 
+\item Erlang, Charm++, Occam and Axum, built around first-class support for message passing;
+\item Cilk and NESL, built around first-class support for nested data parallelism; and
+\item {\color{red} Add something about automatic parallelization of functional programs.}
+\item {\color{red} Add something about CSP like Go.}
 \end{itemize}
 
-There is evidence suggesting that developers would prefer first-class support for a parallel abstraction over a library-based solution, if all else is held constant \cite{ppfirstclass}. Unfortunately, adopting a specialized research language comes with a host of ancillary challenges. Learning a new language can be time-consuming, new languages often lack well-developed libraries and tools, and it can be difficult to port large legacy codebases. Indeed, the most widely adopted parallel programming abstractions have been those that are distributed as libraries for an existing, widely-used language, such as MapReduce, Global Arrays and MPI. This {\em library-oriented approach} has proven more practical because it allows developers to progressively introduce parallelism into existing programs, leverage a familiar and well-developed general-purpose programming language when not directly invoking parallel primitives, and utilize different abstractions within a single program without encountering the friction inherent to language boundaries. 
+There is indeed evidence suggesting that developers would prefer first-class support for a parallel abstraction over a library-based solution, when all else is held constant \cite{ppfirstclass}. Unfortunately, adopting a specialized research language comes with a host of ancillary challenges \cite{adoptionTR,socioplt}. Indeed, the most widely {\em adopted} parallel programming abstractions have been those that are distributed as libraries for an existing, widely-used language, such as MapReduce, Global Arrays and MPI. This {\em library-oriented approach} has proven more practical because it allows developers to progressively introduce parallelism into existing programs, leverage a familiar and well-developed general-purpose programming language when not directly invoking parallel primitives, and utilize different abstractions within a single program without encountering the friction inherent to language boundaries. 
 
-Ace aims to solve this problem by allowing developers to define and distribute new {\em first-class language constructs}, in a safely composable manner, directly within user libraries, via a mechanism we introduce called {\em active typechecking and translation (\ATT)}. In particular, \ATT~is a mechanism that allows developers to  extend the semantics of a language that has a fixed but flexible grammar. The Ace grammar is a large subset of Python's  and we show that it is flexible enough that we are able to define all of the primitives of the C99 and OpenCL languages in a natural manner, aided by a form of type inference. These primitives can then be supplemented with higher-level user-defined primitives, examples of which we discuss in Section \ref{abstractions}. Notably, all of these primitives are imported via the normal library loading mechanism; they are not defined within domain-specific languages, nor as extensions for a particular compiler for a language.
+Ace aims to bridge these two approaches by allowing developers to define and distribute new {\em first-class language constructs} directly within user libraries, using a mechanism we introduce called {\em active typechecking and translation (\ATT)}. Specifically, \ATT~allows developers to  extend the semantics of a language that has a fixed, but flexible, grammar. The Ace grammar is a nearly-complete subset of Python's  and we show that it is flexible enough to support all of the primitives of the C99 and OpenCL languages in a natural manner, when aided by a form of type inference that we describe. We further supplement these primitives with higher-level user-defined primitives, examples of which we discuss in Section \ref{abstractions}. Notably, all of these primitives are imported via the normal library loading mechanism; they are not defined within domain-specific languages, nor as extensions for a particular compiler implementation.
 
 Although the \ATT~mechanism, a key feature of Ace, is designed primarily for use by researchers and domain experts, Ace is intended to be highly practical and ready for adoption by professional end-user developers today. It is based on the Python programming language, which enjoys broad adoption in this community. Indeed, the language itself is implemented entirely as a Python library, and many existing tools, such as editor modes, documentation tools and style checkers, can be used without modification.
-Ace functions are generated programmatically and can be called directly from Python, with numeric arrays as arguments, so developers can integrate Ace immediately within their existing workflows to define portions of code that may benefit from static compilation and support for parallelism.
+Ace functions are generated programmatically and can be called directly from Python, with numeric arrays as arguments, so developers can integrate Ace immediately within their existing workflows for portions of code that may benefit from static compilation and support for parallelism.
 We demonstrate the practicality of Ace in Section \ref{clegans} by describing an Ace-based framework that supports specifying and orchestrating families of large-scale neurobiological circuit simulations on clusters of GPUs.
 
 \begin{codelisting}
-\begin{lstlisting}
-from ace.OpenCL import OpenCL, printf
- 
-print "Hello, compile-time world!"
- 
-@OpenCL.fn
-def main():
-    printf("Hello, run-time world!")
-main = main.compile()
-
-print "Goodbye, compile-time world!"
-\end{lstlisting}
-\caption{\texttt{hello.py}}
+\lstinputlisting{hello.py}
+\caption{\texttt{[hello.py]} A basic Ace program demonstrating the two-phase structure of Ace programs and libraries.}
 \label{hello}
 \end{codelisting}
 \begin{codelisting}
 \begin{lstlisting}[style=Bash]
-$ `acecc hello.py`
+$ `acec hello.py`
 Hello, compile-time world.
 Goodbye, compile-time world.
 $ `cat hello.cl`
 __kernel void main() {
     printf("Hello, run-time world.");
 }\end{lstlisting}
-\caption{Compiling \texttt{hello.py} using \texttt{acecc}.}
+\caption{Compiling \texttt{hello.py} using the \texttt{acec} compiler.}
 \label{helloout}
 \end{codelisting}
 
-\section{Ace for Professional End-Users}
+\section{Structure and Usage}
 %Ace is an {\em actively-typed, language-integrated compilation environment}. Let us begin by defining each of these terms. 
 %A {\em compilation environment} is a system that allows developers to programmatically control aspects of compilation directly. The language used to do so is called the {\em metalanguage} while the grammar that programs themselves are written in is called the {\em source grammar}. The metalanguage of Ace is Python and the source grammar is a significant subset of Python's own grammar. Programs and metalanguage code can be interleaved within the same file, so Ace is {\em language-integrated}. Ace programs are statically-typed, and types themselves are objects in the metalanguage. They can be equipped by developers with methods that control how operators associated with them are typechecked and compiled. Because of the relationship between this mechanism and the idea of {\em active libraries} \cite{activelibraries}, discussed further in Section \ref{related}, we call them {\em active types}, and thus Ace is {\em actively-typed}.
 \subsection{Example 1: Hello, World!}
-To demonstrate the structure of programs and libraries in Ace, let us begin in Listing \ref{hello} with a variant of the canonical ``Hello, World!'' example written using the OpenCL module distributed with Ace. We note that this module, which we use throughout the paper in examples, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed with Ace for convenience.
+To demonstrate the somewhat unconventional structure of Ace programs and libraries, we begin in Listing \ref{hello} with a variant of the canonical ``Hello, World!'' example written using the \verb|OpenCL| module. We note that this module, which we use throughout the paper in examples, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed with Ace for convenience. Aspects of its implementation will be described in Section \ref{att}.
 
 Perhaps the most immediately apparent departure from the standard ``Hello, World!'' example comes on lines 3 and 10 of Listing \ref{hello}, which contain \verb|print| statements that are executed at {\em compile-time}. Indeed, Ace programs are Python scripts at the top-level, rather than a list of declarations as in most conventional languages. In other words, Python is the {\em compile-time metalanguage} of Ace; Ace programs are embedded within Python. A consequence of this choice is that Ace can leverage Python's well-developed package system and  distribution infrastructure directly (Line 1). 
 
 The \verb|main| function defined on Lines 5-7 contains a single call to the \verb|printf| primitive, imported from the \verb|ace.OpenCL| module on Line 1. The function is introduced using the \verb|@OpenCL.fn| decorator, which indicates that it is a statically-typed Ace function containing run-time logic targeting the \verb|OpenCL| backend, also imported on Line 1. Without this decorator, the function would simply be a conventional Python function that could be called only at compile-time (doing so would fail here: \verb|printf| is not a Python primitive.)
 
-On Line 8, this {\em generic function} defined on Lines 5-7, is compiled to produce a {\em concrete function} that we also identify as \verb|main| (overwriting the previous definition). The distinction between generic and concrete functions will be explained in our next example. For now, we note that only concrete functions are exported when running the Ace compiler, called \verb|acecc|, shown operating at the shell in Listing \ref{helloout}. The \verb|acecc| compiler operates as follows:
+On Line 8, this {\em generic function} defined on Lines 5-7, is compiled to produce a {\em concrete function} that we also identify as \verb|main| (overwriting the previous definition). The distinction between generic and concrete functions will be explained in our next example. For now, we note that only concrete functions are exported when running the Ace compiler, called \verb|acec|, shown operating at the shell in Listing \ref{helloout}. The \verb|acec| compiler operates as follows:
 \begin{enumerate}
 \item Executes the provided Python module (\verb|hello.py|)
 \item Produces source code associated with any concrete functions (functions produced using the \verb|compile| method on Line 8 of Listing \ref{hello}) that are in the top-level environment. Each backend may produce one or more files (here, \verb|hello.cl| is produced).
 \end{enumerate}
 
-Using the \verb|acecc| executable is simply a convenience; the generated code is also available as an attribute called of the concrete function immediately after it has been defined, accessed as \verb|main.code|. We will show in Section \ref{pyopencl} that, for backend languages with Python bindings, such as OpenCL and C, generic functions can be executed directly, without the intermediate compilation step, if desired.
+Using the \verb|acec| executable is simply a convenience; the generated code is also available as an attribute of the concrete function immediately after it has been defined, accessed as \verb|main.code|. We will show in Section \ref{pyopencl} that, for backend languages with Python bindings, such as OpenCL and C, generic functions can be executed directly, without the intermediate compilation step, if desired.
 
 \subsection{Example 2: Higher-Order Map for OpenCL}
 \begin{codelisting}
-\begin{lstlisting}
-from ace.OpenCL import OpenCL, get_global_id
-
-@OpenCL.fn
-def map(input, output, f):
-    gid = get_global_id(0)
-    output[gid] = f(input[gid])
-\end{lstlisting}
-\caption{[\texttt{listing3.py}] A generic data-parallel higher-order map function written using OpenCL user module.}
+\lstinputlisting{listing3.py}
+\caption{[\texttt{listing\ref{map}.py}] A generic data-parallel higher-order map function written using the OpenCL user module.}
 \label{map}
 \end{codelisting}
 
 \begin{codelisting}
-\begin{lstlisting}
-from listing3 import map
-from ace.OpenCL import global_ptr, double, int
-
-@OpenCL.fn
-def add5(x):
-    return x + 5
-
-A = global_ptr(double); B = global_ptr(int)
-map_add5_dbl = map.compile(A, A, add5.ace_type)
-map_add5_int = map.compile(B, B, add5.ace_type)
-\end{lstlisting}
-\caption{[\texttt{listing4.py}] The generic \texttt{map} function compiled to map the \texttt{add5} function over two  types of input.}
+\lstinputlisting{listing4.py}
+\caption{[\texttt{listing\ref{mapadd5dbl}.py}] The generic \texttt{map} function compiled to map the \texttt{add5} function over two  types of input.}
 \label{mapadd5dbl}
 \end{codelisting}
 
 \begin{codelisting}
-\begin{lstlisting}[style=OpenCL]
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
-double add5(double x) {
-    return x + 5;
-}
-
-__kernel void map_add5_dbl(
-  __global double* input, 
-  __global double* output) 
-{
-    size_t gid;
-    gid = get_global_id(0);
-    output[gid] = add5(input[gid]);
-}
-
-int add5__1(int x) {
-    return x + 5;
-}
-
-__kernel void map_add5_int(
-  __global int* input,
-  __global int* output)
-{
-    size_t = gid;
-    gid = get_global_id(0);
-    output[gid] = add5__1(input[gid]);
-}
-\end{lstlisting}
-\caption{[\texttt{listing4.cl}] The OpenCL code generated by running \texttt{acecc listing4.py}.}
+\lstinputlisting[style=OpenCL]{listing5.cl}
+\caption{[\texttt{listing\ref{mapout}.cl}] The OpenCL code generated by running \texttt{acec listing2.py}.}
 \label{mapout}
 \end{codelisting}
 
@@ -467,7 +411,7 @@ The ``Hello, World!'' example demonstrates the basic structure of Ace programs, 
 
 As above, \verb|map| is a {\em generic function} (specifically, an instance of the class \verb|ace.GenericFn|). This means that it's arguments have not been assigned types. Indeed, the functionality given by the \verb|map| definition is applicable to many combinations of types for \verb|input| and \verb|output| and functions, \verb|f|. In this sense, \verb|map| is actually a family of functions defined for all types assignments for \verb|input|, \verb|output| and \verb|f| for which the operations in the function's body are well-defined.
 
-Running \verb|acecc listing3.py| would produce no output, however. To create a {\em concrete function} (an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments of any externally callable functions. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in two different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL has a notion of four different memory spaces). Line 9 produces a version specialized for arrays of \verb|double|s and Line 10 produces a version for arrays of \verb|int|s. The output of compilation is shown in Figure \ref{mapout}.
+Running \verb|acec listing3.py| would produce no output, however. To create a {\em concrete function} (an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments of any externally callable functions. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in two different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL has a notion of four different memory spaces). Line 9 produces a version specialized for arrays of \verb|double|s and Line 10 produces a version for arrays of \verb|int|s. The output of compilation is shown in Figure \ref{mapout}.
 
 \subsection{Types as Metalanguage Objects}
 The types of the arguments of the functions being compiled on Lines 4.9 and 4.10, if written directly in OpenCL as in Listing \ref{mapout}, are \verb|__global double*| and \verb|__global int*|, respectively. The corresponding types in Ace are \verb|global_ptr(double)| and \verb|global_ptr(int)|, abbreviated for convenience as \verb|A| and \verb|B| respectively on Line 8 (note that here, standard variable assignment in the metalanguage is serving the role that a \verb|typedef| declaration would fill in a C-like language.)
@@ -486,22 +430,8 @@ On Line 5 in the generic \verb|map| function in Listing \ref{map}, the variable 
 Inference is not restricted within single assignments, as in the \verb|map| example. Multiple assignments to the same variable with values of differing types, or multiple return statements, can be unified such that the variable or return type is given a common supertype. For example, in the \verb|threshold_scale| function defined in Listing \ref{inference}, the variable \verb|y| in the first branch of the conditional is assigned the \verb|int| literal \verb|0|. However, in the second branch of the loop, its type depends on the types of \verb|x| and \verb|scale|. We show two choices for these types on Lines 10 and 11. However, type inference correctly unifies these two types according to OpenCL's C99-derived rules governing numeric types (which are defined by the user in the \verb|OpenCL| module, as we will describe in Section \ref{att}). We test this programmatically on Lines 12 and 13. Note that this example would also work correctly if the assignments to \verb|y| were replaced with \verb|return| statements (in other words, the return value of a function is treated as an assignable for the purpose of type inference).
 
 \begin{codelisting}
-\begin{lstlisting}
-from ace.OpenCL import OpenCL, int, double, long
-
-@OpenCL.fn
-def threshold_scale(x, scale):
-    if x <= 0:
-        y = 0
-    else:
-        y = scale * x
-    return y
-f = f.compile(int, double)
-g = g.compile(int, long)
-assert f.return_type == double
-assert g.return_type == long
-\end{lstlisting}
-\caption{A function demonstrating whole-function type inference when multiple values with differing types are assigned to a single variable.}
+\lstinputlisting{listing6.py}
+\caption{\texttt{[listing6.py]} A function demonstrating whole-function type inference when multiple values with differing types are assigned to a single variable.}
 \label{inference}
 \end{codelisting}
 
@@ -510,18 +440,7 @@ In addition to type annotations, OpenCL normally asks for additional annotations
 
 \subsection{Metaprogramming in Ace}
 \begin{codelisting}
-\begin{lstlisting}[commentstyle=\color{mauve}]
-from ace.OpenCL import OpenCL
-import ace.astx as astx
-
-plus = OpenCL.fn.from_str("""
-def plus(a, b):
-    return a + b
-""")
-
-add5_ast = astx.specialize(plus.ast, b=5)
-add5 = OpenCL.fn.from_ast(add5_ast)
-\end{lstlisting}
+\lstinputlisting[commentstyle=\color{mauve}]{listing7.py}
 \caption{[\texttt{listing7.py}] Metaprogramming with Ace, showing how to construct generic functions from both strings and abstract syntax trees, and how to manipulate syntax trees at compile-time.}
 \label{metaprogramming}
 \end{codelisting}
@@ -531,85 +450,42 @@ On Lines 4-7 of Listing \ref{metaprogramming}, an Ace function is constructed fr
 \subsection{Direct Invocation from Python}\label{direct}
 
 \begin{codelisting}
-\begin{lstlisting}
-import numpy as np
-import ace.OpenCL.bindings as cl
-from listing3 import map
-from listing4 import add5 # or from listing7
-cl.ctx = cl.Context.for_device(0, 0)
-
-input = np.ones((1024,))
-d_in = cl.to_device(input)
-d_out = cl.alloc(like=d_in)
-map(d_in, d_out, add5, 
-    global_size=d_in.shape, local_size=(128,))
-out = cl.from_device(d_out)
-assert (out == a + 5).all()
-\end{lstlisting}
-\caption{[\texttt{listing8.py}] A full OpenCL program using the \texttt{Ace.OpenCL} Python bindings, including data transfer to and from a device and direct invocation of a generic function, \texttt{map}, as a kernel without explicit compilation.}
+\lstinputlisting{listing8.py}
+\caption{[\texttt{listing\ref{py}.py}] A full OpenCL program using the \texttt{Ace.OpenCL} Python bindings, including data transfer to and from a device and direct invocation of a generic function, \texttt{map}, as a kernel without explicit compilation.}
 \label{py}
 \end{codelisting}
 
 As discussed in the Introduction, a common workflow for professional end-users involves the use of a high-level scripting language for overall workflow orchestration and small-scale data analysis and visualization, paired with a low-level language for performance-critical sections. Python is already widely used by professional end-users as a high-level scripting language and also features mature support for calling into code written in low-level languages. Developers can call into native libraries using its foreign function interface (FFI),  or by using a wrapper library like \verb|pycuda| for code compiled with CUDA, a proprietary language similar to OpenCL  specifically targeting nVidia GPU hardware. 
 Although CUDA's compilers are separate executables on the system, the OpenCL language was designed for this workflow, in that it exposes the compiler directly as an API. The \verb|pyopencl| module exposes this API as well as the OpenCL memory management API to Python. With both \verb|pyopencl| and \verb|pycuda|, developers generate source code as strings, compile it programmatically, then execute it using the run-time APIs that each library provides \cite{pyopencl}.
 
-Ace supports this workflow as an alternative to using the \verb|acecc| compiler as described above to generate  source code directly from the shell. For the OpenCL backend, these bindings are exposed as a wrapper on top of \verb|pyopencl| called \verb|Ace.OpenCL.bindings|. Both generic functions and concrete functions written for a backend that supports the direct execution interface (thus far, \verb|OpenCL| and \verb|C99|) can be called like regular Python functions. An example of this for the generic \verb|map| function defined in Listing \ref{map} is shown in Listing \ref{py}, with the call itself on Lines 9-10. The first two arguments to \verb|map| are OpenCL buffers, generated using a simplified wrapper to the \verb|pyopencl| APIs on Lines 7-8. This wrapper associates type information with each buffer, similarly to \verb|numpy|, and this is used to implicitly compile \verb|map| as appropriate the first time it is called for any given combination of input types. Explicit calls to the \verb|compile| method, as we have been showing thusfar, are unnecessary if using this method of invocation. The final two keyword arguments on Line 10 are parameters that OpenCL requires for execution that determine the number of threads (called the {\em global size}) and thread grouping (the {\em local size}). 
+Ace supports this workflow as an alternative to using the \verb|acec| compiler as described above to generate  source code directly from the shell. For the OpenCL backend, these bindings are exposed as a wrapper on top of \verb|pyopencl| called \verb|Ace.OpenCL.bindings|. Both generic functions and concrete functions written for a backend that supports the direct execution interface (thus far, \verb|OpenCL| and \verb|C99|) can be called like regular Python functions. An example of this for the generic \verb|map| function defined in Listing \ref{map} is shown in Listing \ref{py}, with the call itself on Lines 9-10. The first two arguments to \verb|map| are OpenCL buffers, generated using a simplified wrapper to the \verb|pyopencl| APIs on Lines 7-8. This wrapper associates type information with each buffer, similarly to \verb|numpy|, and this is used to implicitly compile \verb|map| as appropriate the first time it is called for any given combination of input types. Explicit calls to the \verb|compile| method, as we have been showing thusfar, are unnecessary if using this method of invocation. The final two keyword arguments on Line 10 are parameters that OpenCL requires for execution that determine the number of threads (called the {\em global size}) and thread grouping (the {\em local size}). 
 
 By way of comparison, the same program written using the OpenCL C API directly is an order of magnitude larger and correspondingly more complex. A full implementation of the logic of \verb|map| written using the \verb|pyopencl| bindings and metaprogramming techniques as described in \cite{pyopencl} is twice as large and significantly more difficult to comprehend than the code we have shown thus far. Not shown are several additional conveniences, such as delegated kernel sizing and \verb|In| and \verb|Out| constructs that can reduce the size and improve the clarity of this code further; due to a lack of space, the reader is referred to the language documentation for additional details on these features.
 
 \section{Ace for Researchers}
-Thus far, we have been largely discussing the OpenCL module in our examples. However, Ace gives no preferential treatment to this module; it is implemented entirely using the user-facing mechanisms described in this section.
+Thus far, we have been largely discussing the OpenCL module in our examples. However, Ace gives no preferential treatment to this module; it is implemented entirely using the user-facing mechanisms described in this section. A C99 module has also been developed (which, due to its similarity to OpenCL, shares many of its implementation details), but we do not discuss it further in this paper. Extensions complementing these are described in Section C below.
 
-Most programming languages are {\em monolithic} -- the set of available primitives is determined by the language designers, and users must combine these primitives to produce desired behaviors. Although a number of very flexible primitives have been developed (e.g. object systems), these have proven insufficient in specialized domains where developers and researchers need fine control over how certain operations are type checked and translated. High-performance computing is an example of such a field, since both correctness and performance have been difficult to achieve in general, and are topics of active research. As discussed in the Introduction, the proliferation of parallel programming languages, rather than library-based abstractions, indicates that researchers often find the abstractions in existing languages insufficient for their needs.
+Most programming languages are {\em monolithic} -- the set of available primitives is determined by the language designers, and users must combine these primitives to produce any desired run-time behavior. Although many very general primitives have been developed (e.g. object systems and algebraic datatypes), these can be insufficient in specialized domains where developers and researchers need fine control over how certain operations are type checked and translated. High-performance computing is an example of such a field, since both correctness and performance have been difficult to achieve in general, and are topics of active research. As discussed in the Introduction, the proliferation of parallel programming languages, rather than library-based abstractions, indicates that researchers often find the abstractions available in existing languages insufficient for their needs.
 
-In view of these issues, Ace is fundamentally {\em extensible}, rather than monolithic. Users can introduce new primitive types and operations, fully controlling how they are type checked and translated. The target of translation can also be specified modularly by the user. Because Ace libraries can contain compile-time logic, written in the metalanguage as described in the previous section, these primitive definitions can be distributed within normal modules.
+To address these use cases, Ace has been designed to be fundamentally {\em extensible}, rather than monolithic. Users can introduce new primitive types and operations and fully control how they are typechecked and translated. The backend target of translation can also be specified modularly by the user. Because Ace libraries can contain compile-time logic, written in the metalanguage as described in the previous section, these primitive definitions can be distributed as modules, rather than as extensions to particular compilers or domain-specific languages.
 
 \subsection{Active Typechecking and Translation (\ATT)}
-
-When the compiler encounters an expression, it must first verify that it typechecks, then translate it to produce code in a target language. Rather than containing fixed logic for this, however, the Ace compiler defers this responsibility to the {\it type} of a subexpression whenever possible, according to a fixed {\em dispatch protocol} for each syntactic form. Below are examples of the rules that comprise the Ace dispatch protocol. Due to space constraints, we do not list the entire dispatch protocol, which contains a rule for each possible syntactic form.
+We now explain how new primitive types and operators can be defined in Ace. When the compiler encounters an expression, such as \verb|input[gid]|, it must first verify its validity by assigning it a type, then translate the expression to produce an expression in a target language. Rather than containing fixed logic for this, however, the Ace compiler defers this responsibility to the {\it type} of a subexpression, such as \verb|input|, whenever possible, according to a fixed {\em dispatch protocol} for each syntactic form. Below are examples of the rules that comprise the Ace dispatch protocol. Due to space constraints, we do not list the entire dispatch protocol, which contains a rule for each possible syntactic form in the language.
 \begin{itemize}
 \item Responsibility over a {\bf unary operation} like \verb|-x| is handed to the type assigned to the operand, \verb|x|.
 \item Responsibility over {\bf binary operations} is first handed to the type assigned to the left operand. If it indicates that it does not understand the operation, the type assigned to the right operand is handed responsibility, with a different method call\footnote{Note that this operates similarly to the Python run-time operator overloading protocol; see Related Work.}.
 \item Responsibility over {\bf attribute access} (\texttt{obj.attr}) and {\bf subscript access}, (\texttt{obj[idx]}) is handed to the type assigned to \texttt{obj}.
+\item {\color{red} Talk about multiple assignment here I think}
 \end{itemize}
-
-\subsubsection{Active Typechecking}
-During the typechecking phase, the type of the primary operand, as determined by the dispatch protocol, is responsible for assigning a type to the expression as a whole. Let us consider the \verb|map| function from Listing \ref{map} once again. When it is compiled on Line 9 of Listing \ref{mapadd5dbl}, its first two argument types are given as \verb|global_ptr(double)|. As described in Section \ref{types}, this type, abbreviated \verb|A|, is an instance of \verb|ace.OpenCL.GlobalPtrType| which inherits from \verb|ace.OpenCL.PtrType| and ultimately from \verb|ace.Type|. So when the compiler encounters the expression \verb|input[gid]| on Line 6, it follows the dispatch protocol just described and assigns responsibility over typechecking it to \verb|A|. This is done by calling the \verb|resolve_|$X$ method of the responsible type, where $X$ is the syntactic form of the expression. In this case, the expression is of the \verb|Subscript| form, so the compiler calls \verb|A.resolve_Subscript|.
-
-
 \begin{codelisting}
-\begin{lstlisting}
-import ace, ace.astx as astx
-
-class PtrType(ace.Type):
-  def __init__(self, T, addr_space):
-    self.target_type = T
-    self.addr_space = addr_space
-        
-  def resolve_Subscript(self, context, node):
-    slice_type = context.resolve(node.slice)
-    if isinstance(slice_type, IntegerType):
-      return self.target_type
-    else:
-      raise TypeError('<error message>', node)
-       
-  def translate_Subscript(self, context, node):
-    value = context.translate(node.value)
-    slice = context.translate(node.slice)
-    return astx.copy_node(node, 
-      value=value, slice=slice,    
-      code=value.code + '[' + slice.code + ']')
-      
-  # ...
-   
-class GlobalPtrType(PtrType):
-  def __init__(self, T):
-    PtrType.__init__(self, T, '__global')
-\end{lstlisting}
-\caption{A portion of the implementation of OpenCL pointer types implementing subscripting logic using the Ace extension mechanism.}
+\lstinputlisting{listing9.py}
+\caption{\texttt{[listing9.py]} A portion of the implementation of OpenCL pointer types implementing subscripting logic using the Ace extension mechanism.}
 \label{pointers}
 \end{codelisting}
 
+
+\subsubsection{Active Typechecking}
+During the typechecking phase, the type of the primary operand, as determined by this dispatch protocol, is responsible for assigning a type to the expression as a whole. Let us consider the \verb|map| function from Listing \ref{map} once again. When it is compiled on Line 9 of Listing \ref{mapadd5dbl}, its first two argument types are given as \verb|global_ptr(double)|. As described in Section \ref{types}, this type, abbreviated \verb|A|, is an instance of \verb|ace.OpenCL.GlobalPtrType| which inherits from \verb|ace.OpenCL.PtrType| and ultimately from \verb|ace.Type|. So when the compiler encounters the expression \verb|input[gid]| on Line 6, it follows the dispatch protocol just described and assigns responsibility over typechecking it to \verb|A|. This is done by calling the \verb|resolve_|$X$ method of the responsible type, where $X$ is the syntactic form of the expression. In this case, the expression is of the \verb|Subscript| form, so the compiler calls \verb|A.resolve_Subscript|.
 
 The relevant portion of \verb|ace.OpenCL.GlobalPtrType| is shown in Listing \ref{pointers}. The \verb|verify_Subscript| method on Line 8 receives a context and the syntax tree of the node itself as input. The context contains information about other variables in scope, as well as other potentially relevant information, and also contains a method, \verb|resolve_type|, that can be used recursively resolve the types of subexpressions. On Line 9, this method is used to resolve the type of the slice subexpression, \verb|gid|, which is the machine-dependent integer type \verb|size_t| as discussed in Section II.E. On Line 10, it confirms that this type is an instance of an integer type. Thus, it assigns the whole expression, \verb|input[gid]|, the target type of the pointer, \verb|double|. Had a user attempted to index \verb|input| using a non-integer value, the method would take the other branch of the conditional and raise a type error with a relevant user-defined error message on Line 13.
 
@@ -666,33 +542,14 @@ Once the kernel has been generated and memory has been allocated, the simulation
 Using this Ace-based framework, the benefits of the Brian-based workflow were recovered without the  corresponding decrease in performance relative to the previous CUDA-based solution, leading ultimately to a satisfying solution for the group conducting this research.
 
 \begin{codelisting}
-\begin{lstlisting}
-# Create the root node of the simulation
-sim = Simulation(ctx, n_timesteps=10000)
-neurons = ReducedLIF(sim, count=N, tau=20.0)
-e_synapse = ExponentialSynapse(neurons, 'ge',
-    tau=5.0, reversal=60.0)
-probe = StateVariableProbeCopyback(e_synapse)
-\end{lstlisting}
-\caption{An example of a nested simulation tree, showing that specifying a simulation is both simple and modular.}
+\lstinputlisting{listing10.py}
+\caption{\texttt{[listing10.py]} An example of a nested simulation tree, showing that specifying a simulation is both simple and modular. The first argument to the constructor specifies each node's parent.}
 \label{spec}
 \end{codelisting}
 
 \begin{codelisting}
-\begin{lstlisting}
-class SpikingModel(Model):
-  """Base class for spiking neuron models."""
-  def in_model_code(self, g):
-    "idx_state = idx_model + count*" << g
-    "(realization_n - realization_start)" << g
-    self.insert_hook("read_incoming", g)
-    self.insert_hook("read_state", g)
-    self.insert_hook("calculate_inputs", g)
-    self.insert_hook("state_calculations", g)
-    self.insert_hook("spike_processing", g)
-  # ...
-\end{lstlisting}
-\caption{An example of a hook that inserts code and also inserts new, nested hooks for downstream simulation nodes  below that.}
+\lstinputlisting{listing11.py}
+\caption{\texttt{[listing11.py]} An example of a hook that inserts code and also inserts new, nested hooks for downstream simulation nodes  below that.}
 \label{impl}
 \end{codelisting}
 
