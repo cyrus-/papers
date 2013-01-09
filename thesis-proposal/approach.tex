@@ -1,0 +1,69 @@
+\newcommand{\nat}{\textbf{nat}}
+\newcommand{\natz}{\textbf{z}}
+\newcommand{\nats}[1]{\textbf{s}(#1)}
+\newcommand{\natrec}[3]{\textbf{natrec}(#1, #2, #3)}
+\renewcommand{\ttdefault}{txtt}
+
+\section{Approach}
+
+The goal of the research proposed here is to develop the theoretical and practical foundations for a statically-typed programming system that can be flexibly extended from within user libraries, in a safe, composable and simple manner. The extension mechanism must be expressive enough to allow users to associate rich run-time, compile-time and edit-time behaviors with user constructs directly, while being sufficiently restrictive to maintain the global safety properties of the language and system as a whole, and to ensure that constructs cannot interfere with one another. This explicit consideration of the full programming system, and the tension between expressiveness and safety, are key aspects of our approach.
+
+The mechanism we propose builds upon and refines the notion of active libraries described above by focusing on user-defined types as the primary constructs around which new system behaviors are defined. More specifically, users specify first-class behavior by equipping a type declaration with executable specifications. These are selectively invoked by tools, including the type checker, compiler and components of the code editor, to provide information as they work with expressions of that type (but not necessarily to handle the expression directly). We refer to such types as \emph{active types}, and to a system designed around this extensibility mechanism as an \emph{actively-typed programming system}, due to this connection with active libraries.
+
+This mechanism expresses a fundamental \emph{inversion of control} relative to monolithic programming systems. Rather than centralizing behaviors within the tools themselves, the tools instead selectively delegate control to the relevant user-provided function according to some well-defined protocol. These functions are responsible for implementing the domain-specific aspects of the behavior. This leads to a system design where the distinction between first-class constructs and user-defined constructs is far less distinct. 
+
+\subsection{Example: First-Class Natural Numbers}
+To make our approach more concrete and emphasize its foundational character, let us begin with a very simple example, first-class natural numbers. If a programming system included first-class support for natural numbers, it might support behaviors like the following:
+
+\begin{enumerate}
+\item type checking rules that constrain uses of the three operators associated with the $\nat$ type, as defined in G\"{o}del's System \textbf{T} \cite{tapl}: $\natz$, $\nats{e}$ and $\natrec{e_1}{e_2}{e_3}$
+\item type checker error messages that provide domain-specific assistance, like detecting when the trailing $\textbf{z}$ in a constant has been omitted:
+\begin{verbatim}
+    s(s(s))
+        ^ (Line 1, Character 5)
+    Error: Operator s requires 1 argument of type nat. Provided 0 arguments.
+    Did you mean s(z)?
+\end{verbatim}
+\item translation into an efficient integer representation at run-time
+\item editor support, such as the ability to instantiate nat constants more easily (see Section \ref{graphite} below), generate statistical predictions useful for code completion (e.g. biasing smaller constants) and other editor interactions, customized syntactic/visual representations and so on.
+\end{enumerate}
+
+In a conventional monolithic programming system, each of these behaviors would need to be specified beforehand by the system designer. In the absence of such support, a library-based implementation of natural numbers would need to use a more general language mechanism (such as algebraic datatypes or an object system) to simulate the desired behavior. In this case, the type checking behavior of natural numbers would likely be supported, but the remaining behaviors would be more difficult to simulate.
+% the typechecker would have a fixed set of base types that it could work with, the representation for these types would be determined by the compiler and the editor would need to be equipped with explicit support for any  language constructs. [[elaborate a bit]]
+
+Each of these behaviors relate specifically to expressions of type $\nat$. This suggests that a natural place where these behaviors can be defined is with the declaration of the type itself, rather than centrally in the core of the language and tool implementations. An \emph{actively-typed} declaration of $\nat$ would thus be equipped with functions, written using an appropriately constrained type-level language, that described how the type checker (items 1 and 2 above), compiler (item 3) and editor (item 4) should operate when encountering expressions of type $\nat$. We can abstractly denote this declaration, as it would exist within a user-defined library, as follows:
+\begin{equation*}
+{\sf type}~\nat[f_{\text{editor}}]\{
+\textbf{z}[f_{\text{resolve-z}}, f_{\text{compile-z}}], 
+\textbf{s}[f_{\text{resolve-s}}, f_{\text{compile-s}}], 
+\textbf{natrec}[f_{\text{resolve-rec}}, f_{\text{compile-rec}}]\}
+\end{equation*}
+
+When type checking an expression like $\nats{\nats{\natz}}$, the type checker delegates to the user-provided type-level function $f_{\text{resolve-s}}$. This function would be tasked with assigning a type to expression as a whole, given information including the \emph{types} (but not necessarily the full syntax trees) of all its subexpressions, or if a type cannot be assigned, producing a specific error message. Similarly, the compiler calls the $f_{\text{compile-s}}$ function to determine a representation in the target language for the expression, checking to ensure that it is well-formed and type-correct with respect to the target type system. Finally, elements of the editor may call into the $f_{\text{editor}}$ function (or one of several such functions, more generally) to control behaviors like code completion and code prediction when an expression of type $\nat$ is being entered. 
+
+Note that these functions are \emph{not} to be conflated with methods or run-time functions -- they are functions written in a type-level language that are called at compile-time and edit-time to define the basic behaviors associated with the type that they are associated with.
+
+\subsection{Characteristics of an Actively-Typed Programming System}
+An actively-typed programming system can be characterized by its choice of type-level language, source grammar, target language and dispatch protocols.
+
+\paragraph{Type-Level Language} The type-level language is the language within which the type definitions and the functions that define their behaviors are defined. This language must be constrained so that different definitions do not interfere with one another and so that desirable safety properties for the system as a whole are maintained, as we discuss below.
+
+\paragraph{Source Language} The source language is the language with which run-time behavior is defined. In our example above, terms like $\nats{\nats{\natz}}$ are part of the source language. In the purest case, the source language is simply a grammar; its semantics are given entirely by active type specifications.
+
+\paragraph{Dispatch Protocol} For each syntactic form in the source language, there is a dispatch protocol that determines which type is delegated responsibility over it, and which specific function(s) are called for each behavior the system supports. This fixed protocol makes it possible for users to predict the meaning of a construct using information local to the term, a key differentiator of this approach compared to term-rewriting systems where there can be action at a distance.
+
+\paragraph{Target Language} The target language is the language that the front-end compilation phase of the system targets. The limitations and constraints imposed by the target language are final, because all constructs ultimately translate into terms in the target language. In other words, active type specifications can only add additional invariants to the language; they cannot violate invariants imposed by the target language.
+
+\subsection{Research Challenges}
+The example of natural numbers given above is relatively simple, and the solution we outline remains abstract. A key challenge is then to demonstrate that this approach is able to express the behaviors of more sophisticated language constructs that span diverse problem domains, and be implemented in the context of a realistic collection of tools. The resulting system should be usable by developers who lack the expertise needed to define new language constructs themselves.
+
+Simultaneously, we must also demonstrate that this model is well-motivated theoretically, place it within the broader context of the theory of typed programming languages, and demonstrate that it is possible for desirable system safety properties to be maintained. In particular, we are interested in properties like:
+
+\begin{itemize}
+\item Correctness of active type specifications, so that users of a library need not be forced to debug errors arising within the specifications themselves.
+\item Correctness of translations, so that the results of translation are guaranteed to be well-typed and consistent with respect to the target language.
+\item Termination of active type specifications, so that evaluation of the type-level functions cannot cause the compiler or editor to hang.
+\item Composability of active type specifications, so that the behaviors defined by one type cannot interfere with those defined by another, no matter the order in which they are imported. This property is essential if we wish to place these specifications within normal libraries.
+\end{itemize}
+
+
