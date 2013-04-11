@@ -1,0 +1,102 @@
+\section{Introduction}
+\label{s:intro}
+
+Domain-specific languages (DSLs) \cite{shellchapter, coldfusion,
+  sinatra}
+% have been widely-studied because they 
+enable the expression of  
+domain-specific ideas naturally and permit domain-specific
+verification and compilation strategies.  For DSLs to reach their full
+potential, however, it must be possible to easily use multiple
+DSLs at once within a host general-purpose language (GPL), such that DSL code
+and GPL glue code can inter-operate to form a complete application. More specifically, we propose the following essential design criteria:
+
+\begin{itemize}
+
+\item \emph {Composability}: It should be possible to use multiple DSLs and a GPL
+%, in addition to a GPL,
+within a single program unit.  %Here 
+Within the text file-based paradigm familiar to most developers, this 
+means including multiple DSLs within a single file.
+ Moreover, it should be possible to embed code written in one DSL
+  within another DSL without them requiring knowledge of each other or interfering with one another. So, more specifically, DSLs should be \emph{safely composable}.
+
+\item \emph{Interoperability}: DSLs should be able to \emph{interoperate}. A necessary condition for interoperability is that it should be
+  possible to pass and operate on values 
+%such as functions or data structures
+  defined in foreign DSLs. Additional requirements, such as the ability to do so naturally (rather than requiring a large amount of ``glue code'') and safely may also be relevant in many settings. 
+%Moreover,
+  Minimally, however, if one DSL defines a function or data structure satisfying an interface specified in
+  a common interface description language (such as the type system of
+  a host GPL), code written in another DSL should be able to use those
+  values according to that interface, without requiring that the client DSL
+  have knowledge of the details of the provider DSL or \emph{vice versa}.
+
+\end{itemize}
+
+
+%\item type system: one DSL depends on types defined by another DSL,
+%  can use objects of that type in special ways [this goes beyond the
+%    scope - save for a later paper]
+
+
+In addition to composability and interoperability, we believe that to be most useful, a system supporting DSLs should have the following characteristics:
+
+\begin{itemize}
+
+\item \emph{Flexibility}: Have flexible enough DSL syntax to support a wide variety of text-based notations;
+
+\item \emph{Identifiability}: Make it easy for programmers to identify which code is written in which DSL;
+
+\item \emph{Consistency}: Encourage DSLs written in similar styles in order to enhance readability and learnability of each DSL;
+
+\item \emph{Simplicity}: Keep the cost of defining a DSL low.
+ 
+%\item Share conventions between DSLs and a host language, making each DSL easier for programmers to learn, helping programmers to identify which code is written in which DSL, and avoiding unintended conflicts between DSLs. \todo{Avoid conflicts (visual and real), enhance learnability}
+ 
+%\item Reuse low-level mechanisms and design decisions from a host language, thereby reducing the cost of defining DSLs.  \todo{Easy to define DSLs}
+
+\end{itemize}
+
+We are developing a comprehensive approach that has the potential to meet these design requirements well, based on defining DSLs within a language specifically designed for extensibility from within.
+The approach inherently supports multiple DSLs in the same file, and
+supports interoperability because the DSLs are defined by translation
+into a common internal language.  One key aspect of our proposed solution, and one of the focal points of this paper, is
+that we restrict the syntax of DSLs in a few key ways that greatly simplify
+the mechanism without significantly decreasing expressiveness:
+\begin{itemize}
+
+\item The host language and its DSLs share a tokenization and lexing 
+  strategy, standardizing conventions for identifiers, operators,
+  constants, and comments.  This avoids the cost of defining lexing
+  within each DSL, avoids many kinds of low-level clashes between
+  languages, and makes the composed language more readable. Note that this does not limit the ability of a DSL to define new keywords and other constructs.
+ 
+\item Constructs in the host language and its DSLs are
+  \emph{whitespace-delimited} at the top level, according to a particular strategy that we will describe.  Various forms of parentheses 
+  can also serve as delimiters.  Thus, indentation levels or
+  parenthesized expressions clearly delimit blocks that are governed by a particular 
+  language.  This makes the boundaries of each DSL clear to
+  the programmer and the compiler, enhancing usability and guaranteeing that 
+  subtle conflicts cannot arise.
+  
+\end{itemize}
+
+Within this syntactic framework, we then propose a novel syntax extension
+mechanism in which the \emph{expected type of an expression}, rather than an explicit keyword, 
+%, rather than a keyword, 
+signals the switch to a new DSL that parses the tokenized and lexed code within a subsequent delimited block according to a type-associated grammar. The  more common keyword-directed strategy arises as a special case of this type-directed strategy. 
+We will begin with some motivating examples (\S\ref{s:motivation}), describe our approach (\S\ref{s:approach}) and implementation (\S\ref{s:implementation}), and conclude with related work (\S\ref{s:related}).
+
+% keep discussion of type-based parsing brief - active typing for parsing (only)
+% avoids conflict with Cyrus' paper
+
+%The rest of the paper is organized as follows.  The next section
+%illustrates our approach by example, discussing the components of the
+%solution in more detail. Section~\ref{s:approach} outlines our
+%approach, shows a wider variety of examples and discusses variations
+%of our approach.  Our in-progress implementation of the proposal is
+%described in Section~\ref{s:implementation}.  Section~\ref{s:related}
+%compares to related work, and Section~\ref{s:conclusion} concludes.
+
+% with a discussion of future work.

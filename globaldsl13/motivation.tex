@@ -1,0 +1,71 @@
+\section{Motivating Examples}
+\label{s:motivation}
+
+\begin{figure}
+  \centering
+  \begin{lstlisting}
+val hotProductDashboard = new Application
+    external component twitter : Feed
+        location [www.twitter.com]
+    external component client : Browser
+        connects to servlet
+    component servlet : DashServlet
+        connects to productDB, twitter
+        location [intranet.nameless.com]
+    component productDB : Database
+        location [db.nameless.com]
+    policy NamelessSecurity
+        must salt [servlet.login.password]
+        connect * -> servlet with HTTPS
+        connect servlet -> productDB with TLS
+  \end{lstlisting}
+  \caption{Wyvern DSL: Architecture Specification}
+  \label{f:dsl-arch}
+\end{figure}
+
+We start with a few examples meant to illustrate the expressiveness of our approach and the breadth of DSLs we plan for it to support.  The examples are presented in the proposed syntax for Wyvern, a new language being developed by our group  initially targeted toward building secure web and mobile applications. We will further clarify how these examples are parsed in Section \ref{s:approach}.
+
+The first example, shown in Figure~\ref{f:dsl-arch}, describes the overall architecture of a ``hot product dashboard'' application.  The constructor \verb|Application| takes an argument of type \verb|ComponentArch|. Rather than being provided explicitly, a DSL for specifying the component architecture of the application is used to provide this argument because it appears in a whitespace-delimited block. The example architecture declares several components, some of which are marked \keyw{external} to indicate that they are used by this application but are not part of it directly. Component types, connectivity and properties, such as location, are declared within further-indented blocks.
+
+The \keyw{policy} keyword introduces a security policy, which constrains the communication protocols to be used as well as
+enforces secure handling of passwords.  Again, indentation delimits
+the scope of the security policy.  This
+%example
+illustrates that one DSL may be nested within another.
+
+\begin{figure}
+  \centering
+  \begin{lstlisting}
+val newProds = productDB.query 
+    select twHandle 
+    where introduced - today < 3 months
+this.prodTwt = Feed(newProds)
+return prodTwt.query
+    select *
+    group by followed
+    where count > POPULAR  
+  \end{lstlisting}
+  \caption{Wyvern DSL: Queries}
+  \label{f:dsl-query}
+\end{figure}
+
+Figure~\ref{f:dsl-query} shows how a DSL for querying can be used from within ordinary Wyvern code.  The example shows the body of a method for computing a feed that is derived from tweets about the company's new products.  In this example, the use of a querying DSL is triggered by the use of a function, query, expecting a \verb|DBQuery|.  This type defines a particular syntax for database queries, delimited by the indented block as the reader would expect. This is similar to what can be expressed with built-in query syntax such as Microsoft's LINQ \cite{mslinq}, but in this case, defined in a user-defined type. The feed query operator may define different features, as seen on Line 5.
+\begin{figure}
+  \centering
+  \begin{lstlisting}
+html:
+    head:
+        title: [text "Hot Products"]
+        style:
+            myStylesheet
+    body:
+        div id="search":
+            SearchBox("products")
+        div id="products":
+            FeedBox(servlet.hotProds())
+  \end{lstlisting}
+  \caption{Wyvern DSL: Presentation}
+  \label{f:dsl-presentation}
+\end{figure}
+
+Finally, Figure~\ref{f:dsl-presentation} shows a DSL for rendering the hot product application in a web browser.  The DSL is based on HTML but uses our indentation-based syntax and allows Wyvern code to be integrated -- function/method calls and variables of the appropriate type can be used at any point. Literal tags are introduced by a tag name followed by any tag attributes followed by a colon.

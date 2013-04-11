@@ -1,0 +1,123 @@
+TITLE
+
+Whitespace-Delimited Embedded DSLs
+
+
+ABSTRACT
+
+
+
+
+INTRODUCTION
+
+Domain-specific languages (DSLs) can provide many benefits, such as expressing domain-specific ideas more clearly and permitting domain-specific analysis and compilation capabilities.  For DSLs to reach their full potential, however, it must be possible to easily compose multiple DSLs together with a general-purpose language, allowing DSL code and general-purpose glue code to interoperate to form a complete application.
+
+[TODO: express the following requirements at a somewhat higher level of abstraction]
+
+What does composition and interoperation mean?
+ * multiple DSLs, plus perhaps a GPL, in a single text file
+ * polymorphism: values defined in one DSL can be passed through another one
+ * host language as lingua franca - DSLs defined in terms of host language, another DSL can use it via that interface
+ * type system: one DSL depends on types defined by another DSL, can use objects of that type in special ways [this goes beyond the scope - save for a later paper]
+ * embedding one DSL within another [possibly with the host DSLs knowledge, possibly without - may also be type-based, may want to give a scaled down version of this]
+
+We are interested in developing a DSL composition and interoperation solution that has the following characteristics:
+
+ * Support development in a text-based format, which is familiar to programmers and well-supported by a wide range of existing tools, such as version control systems. [excludes graphical DSLs]
+ 
+ * Support enough flexibility in DSL syntax to support a wide variety of text-based notations [excludes embedded DSLs that reuse a restrictive syntax]
+ 
+ * Allow different DSLs, as well as a general-purpose language, to be used within the same file. [requires textual composition and integration, raising the challenge]
+ 
+ * Enforce conventions that help programmers identify what code is written in a DSL, avoids unintended conflicts between DSLs, and reuses the programmer's knowledge of a host language's conventions when learning DSLs. [excludes DSLs that radically change conventions or parsing; enhances composability and learnability]
+ 
+ * Allow DSLs to be defined at low cost, by reusing low-level mechanisms and design decisions from a host language.  [enhances ease of definition of DSLs]
+
+We propose a solution based on DSLs embedded in a text-based language.  This approach inherently supports multiple DSLs in the same file, and eases interoperation because the DSLs can be defined by translation into the host language.  What makes our proposed solution unique is that we restrict the DSLs in a few key ways that greatly simplify interoperation without significantly limiting embedded DSL syntax and semantics.  Our restrictions are:
+
+ * The host language and its DSLs share a low-level tokenization strategy, including conventions for identifiers, operators, constants, and comments.  This avoids the need to define lexing within the DSL, avoids many kinds of low-level clashes between languages, and makes the composed language more readable.  We do not force keywords to be shared.
+ 
+ * Constructs in the host language and its DSLs are whitespace-delimited.  If parentheses of various types appear within an indentation level, whitespace is ignored inside them (as in the Python language)  \TODO{maybe make this an option?}.  Thus indentation levels or parenthesized expressions show blocks that are implemented in one language or another.
+
+Building on these restrictions, we proposal a novel language extension system in which a keyword, or an identifier of a particular type \TODO{keep brief - active typing for parsing (only)}, signals a switch to a new DSL that parses and interprets the remainder of the code at that indentation or parenthesization level or below.
+
+[TODO: maybe move this to the next section?]
+
+Our proposal is most similar to macros in the Lisp family of languages.  Relative to this prior work, we provide a very similar tree-rewriting based conceptual model, but differ in that we work in a typed setting (which enables a new form of type-based extension, discussed further in section 2) and we use whitespace delimitation at the top of the tree (which allows DSLs to be embedded in a syntax that many programmers find more readable).
+
+The rest of the paper is organized as follows.   The next section illustrates our approach by example, discussing the components of the solution in more detail.  Section 3 shows a wider variety of examples and discusses variations of our approach.  Our in-progress implementation of the proposal is described in section 4.  Section 5 compares to related work, and section 6 concludes with a discussion of future work.
+
+\section{Approach} [JA,Cyrus]
+	Typical weaknesses of ad-hoc DSL approach
+		complexity and difficult to make modular / interoperable / composable
+	These are addressed by an embedded DSL approach
+	Typical weaknesses of embedded DSL approach
+		limitations on syntax
+		limitations on typing - leads to bad error messages
+	Promise of Lisp macros, along with their limitations: dynamic typing and parentheses
+		[lisp macros are good for introducing things, but the syntax is less clean (requires macro keyword to be first) and less extensible (can't depend on different types) for eliminations]
+	Our solution
+		* Addresses parenthesis paralysis via whitespace delimiting
+		* Integrates static typing, leveraging it to trigger DSL parsing for values of types defined by a DSL, and providing an additional layer of safety
+	
+	EXAMPLE: pick one that is type-based, to distinguish from Lisp
+		could do if in Smalltalk style:
+			condition iftrue
+				[block]
+			  iffalse
+			    [block]
+		database example - name a database in scope, then use a query syntax
+			students <<some weird operator specific to Oracle>>
+			
+			// real example
+			import DB module
+			create DB somehow
+			goodstudents = students where grade = A | B | C
+				// database supports query language; could be DB-specific
+		data feed
+			mydatasource --> fn x => addToRunningTotal(x) --> mytotals
+			// now join with goodstudents using another syntax
+
+	Adds complexity: eliminates parsing/typechecking phase distinction
+		requires us to handle this specially, especially for mutually recursive defns
+	Discuss components of solution in more detail
+	
+Examples and Discussion [JA, Darya -> Alex, Cyrus]
+	examples
+		let
+		if
+		html
+		architecture
+		security policy
+		DSL definition (parsing, typing rules)
+		others from DSL literature?
+		
+	alternative choices, etc
+		Allow 1-3-2 indent sequences (e.g. for if, let)
+		parser has access to following lines, or not (e.g. for if, let)
+		parser optionally gets raw string of indented/parenthesized text
+		issue of operators: do we fix operator precedence (current Wyvern strategy, also Scala)?
+		annotations?
+		allow/enforce whitespace delimitation inside parentheses
+
+Implementation considerations (VERY brief) [Alex]
+	parsing interface
+	defining semantics
+	modules / modularity
+	recursion support? [more iffy]
+	
+Related work [Darya]
+	Lisp macros
+		indent-sensitive Lisp
+		f-expressions in Lisp?
+	Indentation parsing
+	Active types
+	Racket
+	Embedded DSL approaches
+	Other DSL approaches
+	Other macro approaches, especially higenic or typed.  e.g. OpenJava
+		"Marco: Safe, Expressive Macros for Any Language"
+	
+Conclusion and future work
+	tie features to goals
+	implementation and validation plans
