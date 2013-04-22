@@ -42,10 +42,10 @@
 %% File list of work: IEEEtran.cls, IEEEtran_HOWTO.pdf, bare_adv.tex,
 %%                    bare_conf.tex, bare_jrnl.tex, bare_jrnl_compsoc.tex
 %%*************************************************************************
-\documentclass[10pt, conference, compsocconf]{IEEEtran}
+\documentclass{sig-alternate}
 
-\usepackage{cite}
-\renewcommand{\citepunct}{,\,} % IEEEtran wants to use ],\,[ for this but that looks dumb...
+%\usepackage{cite}
+%\renewcommand{\citepunct}{,\,} % IEEEtran wants to use ],\,[ for this but that looks dumb...
 
 \usepackage{alltt}
 \renewcommand{\ttdefault}{txtt}
@@ -59,7 +59,7 @@
   formfeed=\newpage,
   tabsize=4,
   commentstyle=\itshape,
-  basicstyle=\ttfamily\footnotesize,
+  basicstyle=\ttfamily\scriptsize,
   morekeywords={lambda, self, assert, as},
   numbers=left,
   numberstyle=\footnotesize\color{gray}\textsf,
@@ -82,24 +82,6 @@
 
 % *** GRAPHICS RELATED PACKAGES ***
 %
-\ifCLASSINFOpdf
-  % \usepackage[pdftex]{graphicx}
-  % declare the path(s) where your graphic files are
-  % \graphicspath{{../pdf/}{../jpeg/}}
-  % and their extensions so you won't have to specify these with
-  % every instance of \includegraphics
-  % \DeclareGraphicsExtensions{.pdf,.jpeg,.png}
-\else
-  % or other class option (dvipsone, dvipdf, if not using dvips). graphicx
-  % will default to the driver specified in the system graphics.cfg if no
-  % driver is specified.
-  % \usepackage[dvips]{graphicx}
-  % declare the path(s) where your graphic files are
-  % \graphicspath{{../eps/}}
-  % and their extensions so you won't have to specify these with
-  % every instance of \includegraphics
-  % \DeclareGraphicsExtensions{.eps}
-\fi
 % *** MATH PACKAGES ***
 %
 %\usepackage[cmex10]{amsmath}
@@ -257,19 +239,17 @@
 %
 % paper title
 % can use linebreaks \\ within to get better formatting as desired
-\title{\Ace: An Actively-Typed Compilation Environment\\for High-Performance Computing}
+\title{Ace: An Actively-Typed Language and Compilation Environment for High-Performance Computing}
 
 
 % author names and affiliations
 % use a multiple column layout for up to two different
 % affiliations
-
-\author{\IEEEauthorblockN{Cyrus Omar, Nathan Fulton and Jonathan Aldrich}
-\IEEEauthorblockA{School of Computer Science\\
-Carnegie Mellon University\\
-Pittsburgh, PA, USA\\
-\url{http://www.acelang.org/}
-}}
+\author{\alignauthor
+Cyrus Omar and Jonathan Aldrich\\
+       \affaddr{Carnegie Mellon University, Pittsburgh, PA}\\
+       \email{\{comar,aldrich\}@cs.cmu.edu}
+}
 
 % conference papers do not typically use \thanks and this command
 % is locked out in conference mode. If really needed, such as for
@@ -306,13 +286,18 @@ Pittsburgh, PA, USA\\
 \maketitle
 
 \begin{abstract}
-We introduce the Ace compilation environment and demonstrate its suitability as a foundational tool for both research and practice in high-performance computing.
-Ace consists of a statically-typed programming language with {\em user-extensible semantics} specified via a compile-time meta\-language, Python. Users specify new primitive types and their operations by equipping type definitions, which are first-class objects in the metalanguage, with  methods that the compiler selectively invokes when type checking and translating expressions, a mechanism we call {\em active type-checking and translation (\ATT)}. We demonstrate the flexibility of this mechanism by implementing primitives from several widely-known languages, including the entirety of OpenCL, as libraries. Ace also supports more general forms of metaprogramming, and functions can be launched directly from Python with standard numeric data structures as arguments. Using these features, we designed a scientific simulation framework that allows users to modularly specify, compile and orchestrate the execution of parameterized families of scientific simulations on clusters of GPUs. This framework has been used to successfully conduct large-scale, high-performance neuroscience simulations, providing initial evidence that Ace is useful in practice today.
+Ace %, evaluates it against several design and adoption criteria, and describes several use cases as well as a realistic case study involving parallelizing neurobiological circuit simulations on clusters of GPUs. 
+is an extensible statically-typed programming language embedded within the ubiquitous scripting language Python. Python serves as a {metalanguage}, enabling programmatic control over several aspects of language specification and compilation. The central innovation is a novel reification of types as first-class objects in the metalanguage, a refinement to the concept of active libraries that we call \emph{active types}. 
+We demonstrate the power of this design for HPC by defining all of the primitives of the OpenCL kernel language as a library of user-defined types in Ace, then extending this core with several higher-level first-class abstractions. The target of translation, called the \emph{backend}, is user-defined as well, allowing us to implement the semantics of these primitives by direct translation to OpenCL, CUDA or C99.
+
+Although Ace is built around a static type discipline, it supports a novel form of generic programming based on type propagation that, together with a form of extensible local type inference, eliminates most of the syntactic overhead usually associated with statically-typed languages. A companion host API allows type information from \verb|numpy| arrays to directly propagate into Ace kernels, supporting seamless adoption of Ace into current scientific workflows.
+
+We validate our overall design by developing a simulation framework that uses the features of Ace to allow users to specify, compile and orchestrate the execution of ensembles of neural simulations on clusters of GPUs.
 \end{abstract}
 
-\begin{IEEEkeywords}
-programming languages, metaprogramming, type systems, extensibility, heterogeneous computing
-\end{IEEEkeywords}
+%\begin{IEEEkeywords}
+%extensible programming languages, heterogeneous computing, type systems
+%\end{IEEEkeywords}
 
 
 % For peer review papers, you can put extra information on the cover
@@ -323,30 +308,30 @@ programming languages, metaprogramming, type systems, extensibility, heterogeneo
 %
 % For peerreview papers, this IEEEtran command inserts a page break and
 % creates the second title. It will be ignored for other modes.
-\IEEEpeerreviewmaketitle
+%\IEEEpeerreviewmaketitle
 
 
 
 \section{Introduction}
 
-Computer-aided simulations and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware and about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of these platforms, however, these {\em professional end-user developers} \cite{segal2007some} must write parallel programs.
+Computer-aided simulations and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware, while about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of these platforms, however, these {\em professional end-user developers} \cite{segal2007some} must increasingly write parallel programs.
 
-Professional end-users today generally use high-level scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where these interpretted languages are too slow, they will typically call into code written in a statically-typed, low-level language like C or Fortran and use low-level parallel abstractions like pthreads or MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously error-prone and difficult to use, even for expert programmers.
+Professional end-users today generally use dynamically-typed scripting languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where these interpretted languages are too slow, they will typically call into code written in a statically-typed, low-level language like C or Fortran that uses low-level parallel abstractions like pthreads or MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously difficult to use properly, even for expert programmers.
 
-The research community has proposed dozens of novel language features and parallel programming abstractions that aim to  more equitably balance important concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users are hesitant to adopt these, with many being generally skeptical regarding the practicality of new approaches that come from the research community. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by researchers working to advance high-performance computing. 
+The research community has responded with dozens of language features and parallel programming abstractions that aim to  more equitably balance various concerns relating to performance, portability, verifiability and ease-of-use. Unfortunately, professional end-users have become skeptical that new approaches that originate in the research community are practical. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although this sentiment is easy to dismiss as paradoxical, we believe that it demands direct examination by researchers working to advance high-performance computing. 
 
-Many of the barriers to adoption faced by new abstractions stem from the fact that new abstractions are often developed and distributed together with a new programming language. Some prominent examples where this {\em language-oriented approach} has been followed include:
+We argue that many of the barriers to adoption faced by new abstractions stem from the fact that new abstractions are too-often developed and distributed together with a new programming language. Some prominent cases where such a {\em language-oriented approach} \cite{languageoriented} has been followed include:
 \begin{itemize}
 \item UPC, CAF, X10 and Chapel, built around first-class support for a partitioned global address space (PGAS) programming model; 
-\item Erlang, Charm++, Occam and Axum, built around first-class support for message passing;
-\item Cilk and NESL, built around first-class support for nested data parallelism; and
-\item {\color{red} Add something about automatic parallelization of functional programs.}
-\item {\color{red} Add something about CSP like Go.}
+\item Go, Erlang, Charm++, Occam and Axum, built around first-class support for message passing; and
+\item CUDA, OpenCL, Cilk and NESL, built around first-class support for data parallelism.
 \end{itemize}
 
-There is indeed evidence suggesting that developers would prefer first-class support for a parallel abstraction over a library-based solution, when all else is held constant \cite{ppfirstclass}. Unfortunately, adopting a specialized research language comes with a host of ancillary challenges \cite{adoptionTR,socioplt}. Indeed, the most widely {\em adopted} parallel programming abstractions have been those that are distributed as libraries for an existing, widely-used language, such as MapReduce, Global Arrays and MPI. This {\em library-oriented approach} has proven more practical because it allows developers to progressively introduce parallelism into existing programs, leverage a familiar and well-developed general-purpose programming language when not directly invoking parallel primitives, and utilize different abstractions within a single program without encountering the friction inherent to language boundaries. 
+The benefits of taking this approach are clear: first-class language, compiler and run-time support for a programming abstraction can improve performance and enable a more natural programming style. Empirical evidence also supports this notion that developers prefer first-class support for a parallel abstraction over a library-based solution, if other factors are held constant \cite{ppfirstclass}. 
 
-Ace aims to bridge these two approaches by allowing developers to define and distribute new {\em first-class language constructs} directly within user libraries, using a mechanism we introduce called {\em active typechecking and translation (\ATT)}. Specifically, \ATT~allows developers to  extend the semantics of a language that has a fixed, but flexible, grammar. The Ace grammar is a nearly-complete subset of Python's  and we show that it is flexible enough to support all of the primitives of the C99 and OpenCL languages in a natural manner, when aided by a form of type inference that we describe. We further supplement these primitives with higher-level user-defined primitives, examples of which we discuss in Section \ref{abstractions}. Notably, all of these primitives are imported via the normal library loading mechanism; they are not defined within domain-specific languages, nor as extensions for a particular compiler implementation.
+Unfortunately, adopting a specialized research language comes with a host of ancillary challenges  \cite{adoptionTR,socioplt}. These are significant enough that programming abstractions that are distributed as libraries for a well-established language, such as MapReduce, Global Arrays and MPI, have prevailed in practice, despite the limited expressivity of library-based abstractions. This is balanced by several factors: developers can progressively introduce parallelism into existing programs, leverage a familiar and well-developed general-purpose programming language when not directly invoking parallel primitives, and utilize arbitrary combinations of  abstractions within a single program without needing to navigate the friction inherent to language boundaries. 
+
+Ace aims to bridge the language-oriented and library-oriented approaches by allowing developers to define and distribute a broad range of new {\em first-class} types and their operations directly within user libraries, using a mechanism called {\em active typechecking and translation (\ATT)}. Based on the notion of active libraries \cite{activelibraries}, \ATT~is designed to allow developers to  extend the semantics, but not the syntax, of a language. The Ace grammar is a nearly-complete subset of Python's  and we show that it is flexible enough to support all of the primitives of the C99 and OpenCL languages in a natural manner, when aided by a form of type inference that we describe. We further supplement these primitives with higher-level user-defined primitives, examples of which we discuss in Section \ref{abstractions}. Notably, all of these primitives are imported via the normal library loading mechanism; they are not defined within domain-specific languages, nor as extensions for a particular compiler implementation.
 
 Although the \ATT~mechanism, a key feature of Ace, is designed primarily for use by researchers and domain experts, Ace is intended to be highly practical and ready for adoption by professional end-user developers today. It is based on the Python programming language, which enjoys broad adoption in this community. Indeed, the language itself is implemented entirely as a Python library, and many existing tools, such as editor modes, documentation tools and style checkers, can be used without modification.
 Ace functions are generated programmatically and can be called directly from Python, with numeric arrays as arguments, so developers can integrate Ace immediately within their existing workflows for portions of code that may benefit from static compilation and support for parallelism.
@@ -360,8 +345,8 @@ We demonstrate the practicality of Ace in Section \ref{clegans} by describing an
 \begin{codelisting}
 \begin{lstlisting}[style=Bash]
 $ `acec hello.py`
-Hello, compile-time world.
-Goodbye, compile-time world.
+Hello, compile-time world!
+Goodbye, compile-time world!
 $ `cat hello.cl`
 __kernel void main() {
     printf("Hello, run-time world.");
