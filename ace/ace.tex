@@ -52,6 +52,7 @@
 \usepackage{color}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
 \definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{light-gray}{gray}{0.75}
 \usepackage{listings}
 \lstset{
   language=Python,
@@ -62,7 +63,7 @@
   basicstyle=\ttfamily\scriptsize,
   morekeywords={lambda, self, assert, as},
   numbers=left,
-  numberstyle=\footnotesize\color{gray}\textsf,
+  numberstyle=\scriptsize\color{light-gray}\textsf,
   xleftmargin=2em,
   stringstyle=\color{mauve}
 }
@@ -286,13 +287,18 @@ Cyrus Omar and Jonathan Aldrich\\
 \maketitle
 
 \begin{abstract}
-Ace %, evaluates it against several design and adoption criteria, and describes several use cases as well as a realistic case study involving parallelizing neurobiological circuit simulations on clusters of GPUs. 
-is an extensible statically-typed programming language embedded within the ubiquitous scripting language Python. Python serves as a {metalanguage}, enabling programmatic control over several aspects of language specification and compilation. The central innovation is a novel reification of types as first-class objects in the metalanguage, a refinement to the concept of active libraries that we call \emph{active types}. 
-We demonstrate the power of this design for HPC by defining all of the primitives of the OpenCL kernel language as a library of user-defined types in Ace, then extending this core with several higher-level first-class abstractions. The target of translation, called the \emph{backend}, is user-defined as well, allowing us to implement the semantics of these primitives by direct translation to OpenCL, CUDA or C99.
+Researchers developing languages and abstractions for high-performance computing must consider a number of design criteria, including performance, verifiability, portability and ease-of-use. Despite the deficiencies of today's tools and the availability of apparently superior options, end-users have been reluctant to adopt new language-based abstractions. We argue that this can be largely attributed to a failure to consider three critical criteria: continuity, extensibility and interoperability. This paper introduces Ace, a language that incorporates several novel mechanisms and makes principled design choices in order to satisfy this more comprehensive set of criteria. Ace builds upon existing standards in HPC, particularly Python and OpenCL, and it can be modularly extended with abstractions drawn from several previously disparate paradigms. The core innovation supporting this is a novel reification of types as first-class objects at compile-time, a refinement to the concept of active libraries that we call \emph{active types}. We validate our overall design with a case study of a simulation framework enabling the modular specification and efficient execution of ensembles of neural simulations across clusters of GPUs.
 
-Although Ace is built around a static type discipline, it supports a novel form of generic programming based on type propagation that, together with a form of extensible local type inference, eliminates most of the syntactic overhead usually associated with statically-typed languages. A companion host API allows type information from \verb|numpy| arrays to directly propagate into Ace kernels, supporting seamless adoption of Ace into current scientific workflows.
-
-We validate our overall design by developing a simulation framework that uses the features of Ace to allow users to specify, compile and orchestrate the execution of ensembles of neural simulations on clusters of GPUs.
+%in the context of the applications and architectures that the language may need to target.
+%
+%Programming languages targeted toward end-users in high-performance computing must consider a number of issues in addition to performance. Typically, researchers have focused verifiability, portability and ease-of-use, and the right balance often depends on the particular uses that they are put toward.
+%
+%Ace %, evaluates it against several design and adoption criteria, and describes several use cases as well as a realistic case study involving parallelizing neurobiological circuit simulations on clusters of GPUs. 
+%is an extensible statically-typed programming language embedded within the ubiquitous scripting language Python. Python serves as a {metalanguage}, enabling programmatic control over several aspects of language specification and compilation. 
+%We demonstrate the power of this design for HPC by defining all of the primitives of the OpenCL kernel language as a library of user-defined types in Ace, then extending this core with several higher-level first-class abstractions. The target of translation, called the \emph{backend}, is user-defined as well, allowing us to implement the semantics of these primitives by direct translation to OpenCL, CUDA or C99.
+%
+%Although Ace is built around a static type discipline, it supports a novel form of generic programming based on type propagation that, together with a form of extensible local type inference, eliminates most of the syntactic overhead usually associated with statically-typed languages. A companion host API allows type information from \verb|numpy| arrays to directly propagate into Ace kernels, supporting seamless adoption of Ace into current scientific workflows.
+%
 \end{abstract}
 
 %\begin{IEEEkeywords}
@@ -316,10 +322,10 @@ We validate our overall design by developing a simulation framework that uses th
 
 Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware, while about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of these platforms, however, these so-called {\em professional end-user developers} \cite{segal2007some} must increasingly write parallel programs.
 
-Professional end-users today generally use dynamically-typed high-level languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where the performance overhead of dynamic type checking and automatic memory management is too high, they will typically call into code written in a statically-typed, low-level language like C or Fortran that uses low-level parallel abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously difficult to use properly because verifying code written with them remains a difficult (and often ill-specified) problem.
+Professional end-users today generally use dynamically-typed high-level languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where the performance overhead of dynamic type checking and automatic memory management is too high, they will typically call into code written in a statically-typed, low-level language, most commonly C or Fortran, that uses low-level parallel abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously difficult to use and code correctness cannot be automatically verified in general.
 
 Researchers and domain experts often respond to these challenges by proposing novel language features that aim to strike an intermediate balance between \textbf{performance}, \textbf{verifiability\-}, \textbf{portability} and \textbf{ease-of-use}.
-Unfortunately, professional end-users rarely adopt new languages, even when they have been actively developed. Indeed, many end-users have become skeptical that novel approaches that originate in the research community can be  practical. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding}, who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although it may seem paradoxical, the ubiquity of this sentiment demands direct examination by researchers proposing novel abstractions and languages for professional end-users in HPC.
+Unfortunately, professional end-users rarely adopt new languages. Indeed, many end-users have become skeptical that novel approaches that originate in the research community can be  practical. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding} who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although it may seem paradoxical, the ubiquity of this sentiment demands direct examination by researchers proposing novel abstractions and languages for eventual use by professional end-users in HPC.
 
 We suggest three mutually-related {design criteria} that, unlike those in bold above, many languages and language-integrated abstractions have failed to adequately consider: \textbf{continuity}, \textbf{extensibility} and \textbf{interoperability}. These criteria encompass the intuitions that new abstractions will not be adopted in a vacuum, that programming systems must  support change, and that interacting components of an application or workflow should be able to make use of different abstractions naturally and without the possibility of conflict arising at their interface boundaries.
 %that this is far from being a superfluous issue. These criteria can influence the core design of a language or abstraction.
