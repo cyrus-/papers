@@ -368,55 +368,61 @@ __kernel void main() {
 \caption{Compiling \texttt{hello.py} using the \texttt{acec} compiler.}
 \label{helloout}
 \end{codelisting}
-\subsection{High-Level Design}
+A variant of the standard ``Hello, World!'' example written in Ace is shown in Listing \ref{hello} and its compilation to statically-typed OpenCL kernel code is demonstrated in Listing \ref{helloout}. The OpenCL kernel language is a variant of C99 with some additions and restrictions to facilitate execution on GPUs and other accelerators, in addition to conventional CPUs \cite{opencl}. We will discuss it further in subsequent examples.
+We emphasize that this module, which we use throughout the paper, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed together with Ace for convenience. Aspects of its implementation will be described  in Section \ref{att}.
+
+This example demonstrates several key design decisions that characterize Ace: static typing of run-time behavior, a Python-based syntax, a phase distinction between compile-time and run-time logic, and programmatic compilation. We discuss each of these in the next three sections. 
+\subsection{Static Typing and Syntax}
 Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions. Many parallel programming abstractions are defined in terms of, or benefit from, a type system that enforces a communication protocol, ensures the consistency of data and simplifies the dynamics of the run-time system (see Section \ref{usecases} for examples). Because \textbf{verifiability} and \textbf{performance} are key criteria and static typing is a core technique, Ace is fundamentally statically-typed.
 
-It is legitimate to ask, however, why dynamically-typed languages are so widely-used in HPC. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identifies the principle of \emph{conciseness} with elimination of
-redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that HPC programmers are exposed to, can be verbose, requiring explicit and often redundant type annotations on each function and variable declaration,  the use of separate header files, explicit template instantiation and other annotations.  The dynamically-typed languages used in HPC, on the other hand, avoid most of this overhead by relying on support from the run-time system. Ace was originally conceived to explore the question: does conciseness require run-time mechanisms, or can one design a statically-typed language with the same low-level semantics of C with syntactic overhead comparable to a high-level scripting language?
+It is legitimate to ask, however, why dynamically-typed languages are so widely-used in HPC. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
+redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that HPC programmers are exposed to, are verbose, requiring explicit and often redundant type annotations on each function and variable declaration, separate header files, explicit template headers and  instantiation and other sorts of annotations.  The dynamically-typed languages used in HPC, on the other hand, avoid most of this overhead by relying on support from the run-time system. Ace was first conceived to explore the question: does conciseness require run-time mechanisms, or can one develop a statically-typed language with the same low-level memory and execution model of C but syntactic overhead comparable to a high-level scripting language? 
 
-Rather than designing a new syntax, or modifying the syntax of C, we chose to directly use, \emph{without modification}, an existing syntax, Python's. This was not an arbitrary choice but rather a key decision by which Ace achieves both \textbf{ease-of-use} and \textbf{continuity}. Python's whitespace-delimited syntax is widely regarded as both concise and readable, and Python is amongst the most widely-adopted languages in computational science \cite{pythonhpc}. By directly adopting Python's syntax, Ace's syntax is immediately \emph{familiar} and \emph{acceptable} to a significant segment of the intended audience. Moreover, a key benefit of adopting it without modifications is that any {tools} that handle Python source code, including parsers, editors, style checkers and documentation generators, can be used directly without modification as well. 
+Rather than designing a new syntax, or modifying the syntax of C, we chose to utilize, \emph{without modification}, the syntax of an existing language, Python. This choice was not arbitrary, but rather a key means by which Ace achieves both \textbf{ease-of-use} and \textbf{continuity}. Python's whitespace-delimited syntax is widely regarded as both concise and readable, and Python is amongst the most widely-adopted languages in computational science \cite{pythonhpc}. By directly adopting Python's syntax, Ace's syntax is immediately \emph{familiar} and \emph{acceptable} to a significant segment of the intended audience. Moreover, a key benefit of adopting it without modifications is that any {tools} that handle Python source code, including parsers, editors, style checkers and documentation generators, can be used on Ace code without modification.
 
-\subsection{Example: Two-Phase ``Hello, World!''}
-Ace's \textbf{continuity} with Python does not stop at its syntax. 
-
-A variant of the standard ``Hello, World!'' example written in Ace is shown in Listing \ref{hello} and its compilation to statically-typed OpenCL code is demonstrated in Listing \ref{helloout}.
-
-To demonstrate the somewhat unconventional structure of Ace programs and libraries, we begin in Listing \ref{hello} with a variant of the canonical ``Hello, World!'' example written using the \verb|OpenCL| module. We note that this module, which we use throughout the paper in examples, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed with Ace for convenience. Aspects of its implementation will be described in Section \ref{att}.
-
-Perhaps the most immediately apparent departure from the standard ``Hello, World!'' example comes on lines 3 and 10 of Listing \ref{hello}, which contain \verb|print| statements that are executed at {\em compile-time}. Indeed, Ace programs are Python scripts at the top-level, rather than a list of declarations as in most conventional languages. In other words, Python is the {\em compile-time metalanguage} of Ace; Ace programs are embedded within Python. A consequence of this choice is that Ace can leverage Python's well-developed package system and  distribution infrastructure directly (Line 1). 
-
-The \verb|main| function defined on Lines 5-7 contains a single call to the \verb|printf| primitive, imported from the \verb|ace.OpenCL| module on Line 1. The function is introduced using the \verb|@OpenCL.fn| decorator, which indicates that it is a statically-typed Ace function containing run-time logic targeting the \verb|OpenCL| backend, also imported on Line 1. Without this decorator, the function would simply be a conventional Python function that could be called only at compile-time (doing so would fail here: \verb|printf| is not a Python primitive.)
-
-On Line 8, this {\em generic function} defined on Lines 5-7, is compiled to produce a {\em concrete function} that we also identify as \verb|main| (overwriting the previous definition). The distinction between generic and concrete functions will be explained in our next example. For now, we note that only concrete functions are exported when running the Ace compiler, called \verb|acec|, shown operating at the shell in Listing \ref{helloout}. The \verb|acec| compiler operates as follows:
-\begin{enumerate}
-\item Executes the provided Python module (\verb|hello.py|)
-\item Produces source code associated with any concrete functions (functions produced using the \verb|compile| method on Line 8 of Listing \ref{hello}) that are in the top-level environment. Each backend may produce one or more files (here, \verb|hello.cl| is produced).
-\end{enumerate}
-
-Using the \verb|acec| executable is simply a convenience; the generated code is also available as an attribute of the concrete function immediately after it has been defined, accessed as \verb|main.code|. We will show in Section \ref{pyopencl} that, for backend languages with Python bindings, such as OpenCL and C, generic functions can be executed directly, without the intermediate compilation step, if desired.
-
-\subsection{Example 2: Higher-Order Map for OpenCL}
+\subsection{Phase Separation}
 \begin{codelisting}
 \lstinputlisting{listing3.py}
 \caption{[\texttt{listing\ref{map}.py}] A generic data-parallel higher-order map function written using the OpenCL user module.}
 \label{map}
 \end{codelisting}
-
 \begin{codelisting}
 \lstinputlisting{listing4.py}
 \caption{[\texttt{listing\ref{mapadd5dbl}.py}] The generic \texttt{map} function compiled to map the \texttt{add5} function over two  types of input.}
 \label{mapadd5dbl}
 \end{codelisting}
-
 \begin{codelisting}
 \lstinputlisting[style=OpenCL]{listing5.cl}
 \caption{[\texttt{listing\ref{mapout}.cl}] The OpenCL code generated by running \texttt{acec listing2.py}.}
 \label{mapout}
 \end{codelisting}
 
-The ``Hello, World!'' example demonstrates the basic structure of Ace programs, but it does not require working with types. Listing \ref{map} shows an imperative, data-parallel map primitive written using the OpenCL library introduced above. In OpenCL, users can define functions, called {\em kernels}, that execute across thousands of threads. Each kernel has access to a unique index, called its {\em global id}, which can be used by the programmer to ensure that each thread operates on different parts of the input data (Line 5). The \verb|map| kernel defined in Listing \ref{map} applies a transfer function, \verb|f|, to the element of the input array, \verb|input|, corresponding to its global id. It writes the result of this call into the corresponding location in the provided output array, \verb|output|.
 
-As above, \verb|map| is a {\em generic function} (specifically, an instance of the class \verb|ace.GenericFn|). This means that it's arguments have not been assigned types. Indeed, the functionality given by the \verb|map| definition is applicable to many combinations of types for \verb|input| and \verb|output| and functions, \verb|f|. In this sense, \verb|map| is actually a family of functions defined for all types assignments for \verb|input|, \verb|output| and \verb|f| for which the operations in the function's body are well-defined.
+%To demonstrate the somewhat unconventional structure of Ace programs and libraries, we begin in Listing \ref{hello} with a variant of the canonical ``Hello, World!'' example written using the \verb|OpenCL| module. 
+
+
+Ace's \textbf{continuity} with Python does not stop at its syntax. 
+Perhaps the most immediately apparent departure from the standard ``Hello, World!'' example comes on lines 3 and 10 of Listing \ref{hello}, which contain Python \verb|print| statements that are executed at {\em compile-time}.  Ace programs and libraries are Python scripts at the top-level, rather than a list of declarations as in most conventional languages. In other words, Python is the {\em compile-time metalanguage} of Ace. 
+
+A consequence of this choice is that Ace can leverage Python's well-developed package system and associated distribution infrastructure directly (e.g. Line 1). This serves to address another key \textbf{ease-of-use} issue often associated with C-based languages: the fragility of the preprocessor-based packaging system they historically have relied upon. 
+
+Ace functions defining run-time logic are introduced by a decorator. The \verb|@OpenCL.fn| decorator on Line 5 indicates that the \verb|main| function is a statically-typed Ace function targeting the OpenCL backend for code generation (Section \ref{backend}). Without this decorator, the function would simply be a conventional Python function that could be called only at compile-time. Doing so would fail here: \verb|printf| is not a Python function. Rather, it is a compile-time Python object representing an OpenCL primitive residing in the \verb|OpenCL| module. It has an associated Ace type that controls what types of input it can receive and the type of its output given its input type (see Section \ref{att}).
+
+\subsection{Programmatic Compilation}
+As defined on Lines 5-7, \verb|main| is a \emph{generic function}. This terminology in Ace is used to indicate a function for which types have not yet been assigned to arguments. Invoking the \verb|compile| method on a generic function with a sequence of argument types invokes the active typechecking and translation mechanism we will describe in Section 3 to produce a \emph{concrete function} -- one with a single type for each argument, internal variable (such as \verb|hello|) and the return value. In Listing \ref{hello}, we name this concrete function \verb|main|, overwriting the generic function of the same name that it is derived from. The compiler does nothing apparently interesting: there are no arguments, the single internal variable takes the OpenCL string type \verb|char*| from its value and the return type is \verb|void|. 
+
+Before moving on to more interesting examples, let us discuss the \verb|acec| compiler shown operating at the shell in Listing \ref{helloout}. The \verb|acec| compiler operates in two steps:
+\begin{enumerate}
+\item Executes the provided Python file (\verb|hello.py|) which contains Ace functions and (in future examples) types and compile-time code generation logic.
+\item Produces source code for concrete functions (produced using the \verb|compile| method) in the top-level Python environment and any other concrete functions, type declarations and other program items required by or generated by these functions. This may produce one or more files (here, just \verb|hello.cl|).
+\end{enumerate}
+
+We will show in Section \ref{pyopencl} that for backends with Python bindings, such as OpenCL, CUDA and C, generic functions can be executed directly, without this explicit compilation step to concrete functions, if desired.
+
+\subsection{Example 2: Higher-Order Map}
+The ``Hello, World!'' example demonstrates the structure of Ace programs, but it does not require working with types. Listing \ref{map} shows an imperative, data-parallel map primitive written using the OpenCL library introduced above. To review, in OpenCL users can define functions, called {\em kernels}, that execute across thousands of threads. Each kernel has access to a unique index, called its {\em global id}, which can be used by the programmer to ensure that each thread operates on different parts of the input data (Line 5). The \verb|map| kernel defined in Listing \ref{map} applies a transfer function, \verb|f|, to the element of the input array, \verb|input|, corresponding to its global id. It writes the result of this call into the corresponding location in the provided output array, \verb|output|.
+
+As above, \verb|map| is a {\em generic function} (specifically, it is an instance of the class \verb|ace.GenericFn|). This means that it's arguments have not been assigned types. Indeed, the functionality given by the \verb|map| definition is applicable to many combinations of types for \verb|input| and \verb|output| and functions, \verb|f|. In this sense, \verb|map| is actually a family of functions defined for all types assignments for \verb|input|, \verb|output| and \verb|f| for which the operations in the function's body are well-defined.
 
 Running \verb|acec listing3.py| would produce no output, however. To create a {\em concrete function} (an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments of any externally callable functions. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in two different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL has a notion of four different memory spaces). Line 9 produces a version specialized for arrays of \verb|double|s and Line 10 produces a version for arrays of \verb|int|s. The output of compilation is shown in Figure \ref{mapout}.
 
