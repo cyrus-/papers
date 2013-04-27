@@ -1,7 +1,7 @@
 import numpy as np
 import ace.OpenCL.bindings as cl
-from listing1 import map
-from listing2 import add5
+from listing3 import map
+from listing4 import add5
 
 cl.ctx = cl.Context.for_device(0, 0)
 
@@ -13,4 +13,4 @@ map(d_in, d_out, add5,
     global_size=d_in.shape, local_size=(128,))
 
 out = cl.from_device(d_out)
-assert (out == a + 5).all()
+assert (out == input + 5).all()

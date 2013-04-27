@@ -1,6 +1,6 @@
-class SpikingModel(Model):
+class ReduceLIF(ModelNode):
   """Base class for spiking neuron models."""
-  def in_model_code(self, g):
+  def in_model_code(self, g): # g is the code generator
     "idx_state = idx_model + count*" << g
     "(realization_n - realization_start)" << g
     self.insert_hook("read_incoming", g)

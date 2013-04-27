@@ -1,8 +1,8 @@
-import ace, ace.astx as astx
+import ace
 
 class PtrType(ace.Type):
-  def __init__(self, T, addr_space):
-    self.target_type = T
+  def __init__(self, target_type, addr_space):
+    self.target_type = target_type
     self.addr_space = addr_space
         
   def resolve_Subscript(self, context, node):
@@ -15,12 +15,11 @@ class PtrType(ace.Type):
   def translate_Subscript(self, context, node):
     value = context.translate(node.value)
     slice = context.translate(node.slice)
-    return astx.copy_node(node, 
+    return ace.copy_node(node, 
       value=value, slice=slice,    
-      code=value.code + '[' + slice.code + ']')
-      
+      code=value.code + '[' + slice.code + ']')      
+  
   # ...
-   
-class GlobalPtrType(PtrType):
-  def __init__(self, T):
-    PtrType.__init__(self, T, '__global')
+  
+def gptr(target_type):
+    return PtrType(target_type, "__global")
