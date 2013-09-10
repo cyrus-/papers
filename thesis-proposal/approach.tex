@@ -5,65 +5,111 @@
 \newcommand{\natrec}[3]{\textbf{natrec}(#1, #2, #3)}
 \renewcommand{\ttdefault}{txtt}
 
-\section{Approach}
-The mechanism we propose builds upon and refines the notion of active libraries described above \todo{describe active libraries} by focusing on user-defined types as the primary constructs around which new system behaviors are defined. More specifically, users specify first-class behavior by equipping a type declaration with executable specifications, in the form of compile-time functions, of new behaviors. These are selectively invoked by tools, including the type checker, compiler and components of the code editor, to provide information as they work with expressions of that type (but not necessarily to handle the expression directly). We refer to such types as \emph{active types}, and to a system designed around this extensibility mechanism as an \emph{actively-typed programming system}, due to this connection with active libraries.
+\section{Background: Active Libraries}\label{alibs}\todo{move into separate tex file}
+The term \emph{active libraries} was first used by Veldhuizen et al. \cite{atthesis, atpaper} to describe ``libraries that take an active role in compilation, rather than being passive collections of subroutines''. The authors went on to suggest a number of concrete reasons libraries might benefit from closer interactions with the programming system, including program optimization, checking programs for correctness against specialized criteria, reporting domain-specific errors and warnings, and ``rendering domain-specific textual and non-textual program representations and for interacting with such representations'' (anticipating interactions between libraries and tools other than just the compiler. Our definition, given in Section \ref{motivation}, differs  from theirs for this reason.) 
 
-This mechanism expresses a fundamental \emph{inversion of control} relative to monolithic programming systems. Rather than centralizing behaviors within the tools themselves, the tools instead selectively delegate control to the relevant user-provided function according to some well-defined protocol. These functions are responsible for implementing the domain-specific aspects of the behavior. This leads to a system design where the distinction between first-class constructs and user-defined constructs is far less distinct. 
+% This stuff isn't actually hooking into the compiler...
+The first concrete realizations of active libraries, prompting the introduction of the term, were scientific libraries that performed domain-specific program optimization at compile-time by exploiting language mechanisms, like C++ templates, that require compile-time computation. A prominent example in the literature is Blitz++, a numerics library that uses C++ template metaprogramming to optimize compound operations on vectors and matrices by eliminating intermediate allocations \cite{blitzpp}. Although this and a number of other interesting optimizations\- are possible by this family of techniques, their expressiveness is limited because template expansion supports only substitution of compile-time constants into pre-written code, and templates are notoriously difficult to read, write and debug. %They are, however, composable, because templates are associated with a single function or class, and  the only metatheoretic issue is that template expansion can be non-terminating.
 
-\subsection{Example: First-Class Natural Numbers}
-To make our approach more concrete and emphasize its foundational character, let us begin with a very simple example, first-class natural numbers. If a programming system included first-class support for natural numbers, it might support behaviors like the following:
+More powerful compile-time \emph{term rewriting mechanisms} integrated into some languages can also be used for optimization, as well as for inserting specialized error checking and reporting\- logic and extending the language with powerful domain-specific abstractions. These mechanisms are highly expressive because they allow users to programmatically manipulate syntax trees directly, but they suffer from problems of composability and safety. Macros, such as those in MetaML \cite{metaml}, Template Haskell \cite{template_haskell} and others\todo{reference other macro systems}, can take full control over all the code that they enclose, so there is no way to guarantee that nested macros will compose as intended. Outer macros can neglect to invoke or  manipulate the output of inner macros in ways that can cause conflicts or weaken important guarantees. Once data escapes a macro's scope, there is no way to rely on the guarantees and features that were available within its scope -- the output of a macro is a value in the underlying language, so the underlying language is all that governs it (a problem related to the interoperability problem of Section 1). It can also be difficult to reason about the semantics of code when a number of enclosing macros may be manipulating it.
+
+Some rewriting systems go beyond the block scoping of macros. Xroma (pronounced ``Chroma''), for example, is designed around active libraries and allows users to insert custom rewriting and error checking passes into the compiler from within libraries \cite{xroma}. Similarly, the derivative of Haskell implemented by the Glasgow Haskell Compiler (GHC) allows libraries to define custom compile-time term rewriting logic if an appropriate flag is passed in \cite{haskell-rewrite}. In both cases, the user-defined logic can dispatch on arbitrary patterns of code throughout the component or program the extension is active in, so these mechanisms are highly expressive and avoid some of the difficulties of block-scoped macros. But libraries containing such global rewriting logic cannot be safely composed because two different libraries may attempt to rewrite the same piece of code differently. It is also difficult to guarantee that such logic is correct and difficult for users to reason about code when simply importing a library can change the semantics of the program in a non-local manner.
+% http://www.haskell.org/ghc/docs/latest/html/users_guide/rewrite-rules.html
+
+Another example of an active library approach to extensibility is SugarJ \cite{sugarj}. SugarJ allows libraries to extend the base syntax of Java in a nearly-arbitrary manner, and these extensions are imported transitively throughout a program. SugarJ libraries are thus also not safely composable. For example, a library that defines a literal syntax for HTML would conflict with another that defines a literal syntax for XML because they define differing semantics for some of the same syntactic forms. And again, it can be difficult for users to predict what an unfamiliar piece of syntax desugars into, leading to readability issues.
+
+%Another example comes from the Tau package for tuning and analyzing parallel programs, which allows libraries to instrument themselves declaratively so that internal details can be hidden from users of the tool \cite{tau}. 
+
+%The researchers behind these tools often claim that such conflicts are rare. There have, to our knowledge, been no studies of this claim. Nevertheless, the core fact remains: conflicts can arise, which makes it difficult to rely on such libraries 
+
+%There also does not appear to be a clear, well-founded theoretical foundation for this approach, nor for active libraries in general.
+
+\section{Active Types}
+Developers specify type-specific compile-time and edit-time features by equipping type families, when they are defined, with functions written in an appropriate metalanguage. These are selectively invoked by tools, such as the parser, type checker, translator and editor, when they work with expressions of that type, and only in those situations.
+
+\subsection{Example: Regular Expressions}
+To make our approach more concrete, let us begin with a simple example that demonstrates the use cases examined in this thesis. If a programming system included full compile-time and edit-time support for regular expressions, it might support features like the following:
 
 \begin{enumerate}
-\item type checking rules that constrain uses of the three operators associated with the $\nat$ type, as defined in G\"{o}del's System \textbf{T} \cite{tapl}: $\natz$, $\nats{e}$ and $\natrec{e_1}{e_2}{e_3}$\todo{phrasing of his}
-\item type checker error messages that provide domain-specific assistance, like detecting when the trailing $\textbf{z}$ in a constant has been omitted: \todo{phrasing / merge this into 1?}
-\begin{verbatim}
-    s(s(s))
-        ^ (Line 1, Character 5)
-    Error: Operator s requires 1 argument of type nat. Provided 0 arguments.
-    Did you mean s(z)?
-\end{verbatim}
-\item translation into an efficient integer representation at run-time
-\item syntax support \todo{elaborate on syntax support for nat literals}
-\item editor support, such as the ability to instantiate nat constants more easily \todo{elaborate on this / reference Graphite section}
-%generate statistical predictions useful for code completion (e.g. biasing smaller constants) and other editor interactions, customized syntactic/visual representations and so on.
+\item \textbf{built-in syntax for regex literals} so that malformed regular expression patterns result in intelligible compile-time parsing errors. One study found that malformed regular expressions are a common problem in Java \cite{regex-type-system}.
+\item \textbf{type checking logic} that ensures that key constraints related to regular expressions are not violated, such as that out-of-bounds group indices are not used \cite{regex-type-system} and that only values with correct types are spliced into regular expressions. When a type error is found, the error message should be intelligible.
+\item \textbf{translation logic} that partially or fully compiles regular expressions into the efficient internal representation that will be used by the regular expression matching engine at run-time. In most languages, this compilation step occurs at run-time, even if the pattern is fully known at compile-time, thereby introducing latency into programs. If the developer is not careful, regular expressions used repeatedly in a program might be needlessly re-compiled on each use. By performing this step ahead-of-time, these dangers can be avoided.
+\item \textbf{editor-integrated tooling} for interactively testing patterns against example strings, quickly referring to documentation, searching databases of common patterns and other domain-specific edit-time facilities.
 \end{enumerate}
 
-In a conventional monolithic programming system, each of these behaviors would need to be specified beforehand by the system designer. In the absence of such support, a library-based implementation of natural numbers would need to use a more general language mechanism (such as algebraic datatypes or an object system) to simulate the desired behavior. In this case, the type checking behavior of natural numbers would likely be supported, but the remaining behaviors would be more difficult to simulate.
-% the typechecker would have a fixed set of base types that it could work with, the representation for these types would be determined by the compiler and the editor would need to be equipped with explicit support for any  language constructs. [[elaborate a bit]]
 
-Each of these behaviors relate specifically to expressions of type $\nat$. This suggests that a natural place where these behaviors can be defined is with the declaration of the type itself, rather than centrally in the core of the language and tool implementations. An \emph{actively-typed} declaration of $\nat$ would thus be equipped with functions, written using an appropriately constrained type-level language, that described how the type checker (items 1 and 2 above), compiler (item 3) and editor (item 4) should operate when encountering expressions of type $\nat$. We can abstractly denote this declaration, as it would exist within a user-defined library, as follows:
-\begin{equation*}
-{\sf type}~\nat[f_{\text{editor}}]\{
-\textbf{z}[f_{\text{resolve-z}}, f_{\text{compile-z}}], 
-\textbf{s}[f_{\text{resolve-s}}, f_{\text{compile-s}}], 
-\textbf{natrec}[f_{\text{resolve-rec}}, f_{\text{compile-rec}}]\}
-\end{equation*}
+%\subsection{Example: First-Class Natural Numbers}
+%To make our approach more concrete and emphasize its foundational character, let us begin with a very simple example, first-class natural numbers. If a programming system included first-class support for natural numbers, it might support behaviors like the following:
+%
+%\begin{enumerate}
+%\item type checking rules that constrain uses of the three operators associated with the $\nat$ type, as defined in G\"{o}del's System \textbf{T} \cite{tapl}: $\natz$, $\nats{e}$ and $\natrec{e_1}{e_2}{e_3}$\todo{phrasing of his}
+%\item type checker error messages that provide domain-specific assistance, like detecting when the trailing $\textbf{z}$ in a constant has been omitted: \todo{phrasing / merge this into 1?}
+%\begin{verbatim}
+%    s(s(s))
+%        ^ (Line 1, Character 5)
+%    Error: Operator s requires 1 argument of type nat. Provided 0 arguments.
+%    Did you mean s(z)?
+%\end{verbatim}
+%\item translation into an efficient integer representation at run-time
+%\item syntax support \todo{elaborate on syntax support for nat literals}
+%\item editor support, such as the ability to instantiate nat constants more easily \todo{elaborate on this / reference Graphite section}
+%%generate statistical predictions useful for code completion (e.g. biasing smaller constants) and other editor interactions, customized syntactic/visual representations and so on.
+%\end{enumerate}
+%
+In a conventional \emph{monolithic} programming system, support for each of these features would need to be built into the language and tools. No such system today has support for all of the features above. Instead, libraries  provide support for regular expressions by leveraging general-purpose abstractions. Unfortunately, it is impossible to fully encode the syntax and the specialized static and dynamic semantics described above in terms of standard general-purpose notations and abstractions. These libraries have thus needed to compromise, typically by representing regular expressions using strings and deferring parsing, typechecking and translation to run-time. This introduces performance overhead and can lead to unanticipated run-time errors (as shown in \cite{regex-type-system}) and security vulnerabilities (due to injection attacks when splicing is used, for example). Similarly, edit-time tools that make working with regular expressions easier, as described above, are rarely integrated into editors, and never in a way that facilitates their discovery and use directly when manipulating regular expressions. In most cases, such tools must discovered independently and accessed externally (for example, via a browser), making their use both less common and more awkward than necessary (we provide evidence for this \cite{active-code-completion}, see Section \ref{acc}).
 
-When type checking an expression like $\nats{\nats{\natz}}$, the type checker delegates to the user-provided type-level function $f_{\text{resolve-s}}$. This function would be tasked with assigning a type to expression as a whole, given information including the \emph{types} (but not necessarily the full syntax trees) of all its subexpressions, or if a type cannot be assigned, producing a specific error message. Similarly, the compiler calls the $f_{\text{compile-s}}$ function to determine a representation in the target language for the expression, checking to ensure that it is well-formed and type-correct with respect to the target type system. Finally, elements of the editor may call into the $f_{\text{editor}}$ function (or one of several such functions, more generally) to control behaviors like code completion and code prediction when an expression of type $\nat$ is being entered. 
+Existing active library approaches could be used to implement some of these features, but the composition issues described in Section 2 make such solutions suboptimal. For example, if SugarJ was used by two different regular expression engines to provide literal syntax for regular expression patterns, there could easily be conflicts at link-time because both will introduce many of the same standard notations but back them with differing implementations. 
 
-Note that these functions are \emph{not} to be conflated with methods or run-time functions -- they are functions written in a type-level language that are called at compile-time and edit-time to define the basic behaviors associated with the type that they are associated with.
+We can observe, however, that each of these features relates specifically to how terms representing regular expression patterns are processed by tools, and that such terms are always classified by a particular user-defined type\footnote{More generally, several different types within an indexed type family. For example, \texttt{Pattern(}$n$\texttt{)}  represents a pattern containing $n$ matching groups, so \texttt{Pattern} is  a type family indexed by a natural number, $n$ \cite{regex-type-system}. We will return to this distinction in Section \ref{att}.}. We will refer to it by a simple name, \verb|Pattern|, but it would need to have a fully-qualified name to ensure that conflicts due to name clashes cannot occur. It is only when creating, editing or compiling expressions of this type that the logic enumerated above would ever need to be invoked. Indeed, this is a common pattern -- types are widely seen as a natural organizational unit around which the semantics of programming languages and logics are defined (e.g. in both TAPL \cite{tapl} and PFPL \cite{pfpl}, most chapters simply describe the semantics and metatheory of a few new types without reference to other types). This suggests a principled alternative to the mechanisms described earlier that preserves most of their expressiveness but eliminates the possibility of conflict and makes it easier to reason locally about a piece of code: associating extension logic to a single type or type family as it is defined and scoping it only to expressions, or basic operations on expressions, in that type or type family. This is the common motif behind all of the {actively-typed} mechanisms proposed in this dissertation.
 
-\subsection{Characteristics of an Actively-Typed Programming System}
-An actively-typed programming system can be characterized by its choice of type-level language, source grammar, target language and dispatch protocols.
+\subsection{Proposed Contributions}
+In Section \ref{att}, we will describe how to extend the core static and dynamic semantics of a language in an actively-typed and safe manner. We will distill the essence of our approach, which we call \textbf{active typechecking and translation (AT\&T)}, by specifying an actively-typed lambda calculus called @$\lambda$, proving several key safety theorems, and examining the connections between active types and type-level computation, type abstraction and typed compilation techniques. We will then go on to demonstrate the expressiveness of this mechanism by designing and implementing a full-scale language, Ace, and implementing a number of interesting type families from existing full-scale languages as active libraries within Ace. A primary focus of these is on high-performance  programming abstractions, but we will also show some uses of Ace for other domains.
 
-\paragraph{Type-Level Language} The type-level language is the language within which the type definitions and the functions that define their behaviors are defined. This language must be constrained so that different definitions do not interfere with one another and so that desirable safety properties for the system as a whole are maintained, as we discuss below.
+In both @$\lambda$ and Ace, semantic extensions operate over a fixed syntax. In Section \ref{aparsing}, we will show how domain-specific syntax can also be introduced in an actively-typed and safely composable manner. Our technique is called \textbf{actively-typed parsing} and it will be implemented within the Wyvern language. Our novel contributions include the design of a second parsing phase that runs in tandem with typechecking, a method for using whitespace to delimit domain-specific syntax, a generalization of standard literal forms so that they can be used for more than one type, an underlying mechanism for associating compile-time data and functionality with structural types, and a recursive use of the active parsing technique to introduce a domain-specific syntax for defining new actively-typed grammars. We will describe each of these contributions as implemented in Wyvern, give minimal formalisms showing how the core syntax and the type system of Wyvern support actively-typed parsing,  and show a number of examples expressible by this technique.
 
-\paragraph{Source Language} The source language is the language with which run-time behavior is defined. In our example above, terms like $\nats{\nats{\natz}}$ are part of the source language. In the purest case, the source language is simply a grammar; its semantics are given entirely by active type specifications.
+Finally, in Section \ref{acc}, we will show how editor-integrated domain-specific tooling for working with expressions of a single type can be introduced from within active libraries, by a technique known as \textbf{active code completion}. Developers associate
+domain-specific user interfaces, called \emph{palettes}, with types. Users discover and invoke palettes from the code completion menu at edit-time, populated according to an actively-typed mechanism similar to that of actively-typed parsing. When they are done, the palette generates a term of that type based on the information received from the user. Using several empirical
+methods, we survey\- the expressive power of this approach, describe the design and safety constraints governing
+the system architecture as well as particular palette user 
+interfaces, and develop one such system for the Java language\footnote{In Graphite, palettes are associated with Java classes, which are technically different from types. However, active code completion could also be implemented just as well in non-object-oriented languages.}, based on these constraints, called Graphite. Using Graphite,
+we implement a palette for working with regular expressions to conduct a pilot study to provide evidence for the usefulness of this approach, and of contextually-relevant editor-integrated tooling generally.
 
-\paragraph{Dispatch Protocol} For each syntactic form in the source language, there is a dispatch protocol that determines which type is delegated responsibility over it, and which specific function(s) are called for each behavior the system supports. This fixed protocol makes it possible for users to predict the meaning of a construct using information local to the term, a key differentiator of this approach compared to term-rewriting systems where there can be action at a distance.
+Together, ...\todo{write something about a unified mechanism that can be used across concerns}
 
-\paragraph{Target Language} The target language is the language that the front-end compilation phase of the system targets. The limitations and constraints imposed by the target language are final, because all constructs ultimately translate into terms in the target language. In other words, active type specifications can only add additional invariants to the language; they cannot violate invariants imposed by the target language.
+%
+%This suggests that a natural place where these features can be defined is in the library containing the declaration of \verb|Pattern| itself, rather than in the language and tool implementations. An \emph{actively-typed} definition of \verb|Pattern| would thus be equipped with	 functions that described how the parser (item 1), type checker (item 2), translator (item 3) and editor (item 4) should operate when working with expressions of type \verb|Pattern|. We can abstractly denote this declaration, as it would exist within a user-defined library, as follows:
+%\begin{equation*}
+%{\sf type}~Pattern[f_{\text{editor}}]\{
+%\textbf{z}[f_{\text{resolve-z}}, f_{\text{compile-z}}], 
+%\textbf{s}[f_{\text{resolve-s}}, f_{\text{compile-s}}], 
+%\textbf{natrec}[f_{\text{resolve-rec}}, f_{\text{compile-rec}}]\}
+%\end{equation*}
+%
+%When type checking an expression like $\nats{\nats{\natz}}$, the type checker delegates to the user-provided type-level function $f_{\text{resolve-s}}$. This function would be tasked with assigning a type to expression as a whole, given information including the \emph{types} (but not necessarily the full syntax trees) of all its subexpressions, or if a type cannot be assigned, producing a specific error message. Similarly, the compiler calls the $f_{\text{compile-s}}$ function to determine a representation in the target language for the expression, checking to ensure that it is well-formed and type-correct with respect to the target type system. Finally, elements of the editor may call into the $f_{\text{editor}}$ function (or one of several such functions, more generally) to control behaviors like code completion and code prediction when an expression of type $\nat$ is being entered. 
+%
+%Note that these functions are \emph{not} to be conflated with methods or run-time functions -- they are functions written in a type-level language that are called at compile-time and edit-time to define the basic behaviors associated with the type that they are associated with.
+%
+%\subsection{Characteristics of an Actively-Typed Programming System}
+%An actively-typed programming system can be characterized by its choice of type-level language, source grammar, target language and dispatch protocols.
+%
+%\paragraph{Type-Level Language} The type-level language is the language within which the type definitions and the functions that define their behaviors are defined. This language must be constrained so that different definitions do not interfere with one another and so that desirable safety properties for the system as a whole are maintained, as we discuss below.
+%
+%\paragraph{Source Language} The source language is the language with which run-time behavior is defined. In our example above, terms like $\nats{\nats{\natz}}$ are part of the source language. In the purest case, the source language is simply a grammar; its semantics are given entirely by active type specifications.
+%
+%\paragraph{Dispatch Protocol} For each syntactic form in the source language, there is a dispatch protocol that determines which type is delegated responsibility over it, and which specific function(s) are called for each behavior the system supports. This fixed protocol makes it possible for users to predict the meaning of a construct using information local to the term, a key differentiator of this approach compared to term-rewriting systems where there can be action at a distance.
+%
+%\paragraph{Target Language} The target language is the language that the front-end compilation phase of the system targets. The limitations and constraints imposed by the target language are final, because all constructs ultimately translate into terms in the target language. In other words, active type specifications can only add additional invariants to the language; they cannot violate invariants imposed by the target language.
 
-\subsection{Research Challenges}
-The example of natural numbers given above is relatively simple, and the solution we outline remains abstract. A key challenge is then to demonstrate that this approach is able to express the behaviors of more sophisticated language constructs that span diverse problem domains, and be implemented in the context of a realistic collection of tools. The resulting system should be usable by developers who lack the expertise needed to define new language constructs themselves.
-
-Simultaneously, we must also demonstrate that this model is well-motivated theoretically, place it within the broader context of the theory of typed programming languages, and demonstrate that it is possible for desirable system safety properties to be maintained. In particular, we are interested in properties like:
-
-\begin{itemize}
-\item Correctness of active type specifications, so that users of a library need not be forced to debug errors arising within the specifications themselves.
-\item Correctness of translations, so that the results of translation are guaranteed to be well-typed and consistent with respect to the target language.
-\item Termination of active type specifications, so that evaluation of the type-level functions cannot cause the compiler or editor to hang.
-\item Composability of active type specifications, so that the behaviors defined by one type cannot interfere with those defined by another, no matter the order in which they are imported. This property is essential if we wish to place these specifications within normal libraries.
-\end{itemize}
+%\subsection{Research Challenges}
+%The example of natural numbers given above is relatively simple, and the solution we outline remains abstract. A key challenge is then to demonstrate that this approach is able to express the behaviors of more sophisticated language constructs that span diverse problem domains, and be implemented in the context of a realistic collection of tools. The resulting system should be usable by developers who lack the expertise needed to define new language constructs themselves.
+%
+%Simultaneously, we must also demonstrate that this model is well-motivated theoretically, place it within the broader context of the theory of typed programming languages, and demonstrate that it is possible for desirable system safety properties to be maintained. In particular, we are interested in properties like:
+%
+%\begin{itemize}
+%\item Correctness of active type specifications, so that users of a library need not be forced to debug errors arising within the specifications themselves.
+%\item Correctness of translations, so that the results of translation are guaranteed to be well-typed and consistent with respect to the target language.
+%\item Termination of active type specifications, so that evaluation of the type-level functions cannot cause the compiler or editor to hang.
+%\item Composability of active type specifications, so that the behaviors defined by one type cannot interfere with those defined by another, no matter the order in which they are imported. This property is essential if we wish to place these specifications within normal libraries.
+%\end{itemize}
 
 
