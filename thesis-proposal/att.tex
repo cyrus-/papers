@@ -1,5 +1,86 @@
 % !TEX root = omar-thesis-proposal.tex
-\section{Active Typechecking and Translation}
-\subsection{Theory}
+\section{Active Typechecking and Translation}\label{att}
 
-\subsection{Ace}
+In this section, we will restrict our focus to actively-typed mechanisms for implementing extensions to the static and dynamic semantics of programming languages. Programming languages are typically designed around a monolithic collection of primitive type families and operators. Consider, as a simple example, Godel\todo{fix umlaut on Godel}'s T \cite{pfpl}, a typed lambda calculus with recursion on primitive natural numbers\todo{figure with statics and dynamics of Godel's T + sums + products?}. Although a researcher may casually speak of ``extending Godel's T with primitive product and sum types'', modularly adding these new primitive type families and their corresponding operators to this kind of language from within is impossible. That is, Godel's T is not \emph{internally extensible}.
+
+The only recourse researchers have in such situations is to attempt to encode new constructs in terms of existing constructs. Such encodings, collections of which are often called \emph{embedded domain-specific languages (DSLs)} \cite{fowler2010domain}, must creatively combine the constructs available in the host ``general-purpose'' language. Unfortunately, such encodings are at times impossible, and even if possible, often impractical and unintuitive. For our example of adding products or sums to Godel's T, a full encoding is impossible. Weak Church encodings are possible \cite{pfpl}, but they require a reasonable level of creativity\footnote{Anecdotally, Church encodings in System F were among the most challenging topics for students in our undergraduate programming languages course, 15-312.}. Moreover, because sums and products are represented directly as lambda terms, they cannot be distinguished from other lambda terms and so they will not offer the same static safety guarantees as a primitive encoding, nor will they obey the same universal laws\todo{mention the stuff Bob mentioned}. They are also likely to incur performance overhead by their use of closures rather than a more direct and better optimized internal representation. 
+
+This is not only a problem for simple languages like Godel's T. Several embedded DSLs for Haskell have also needed to make significant compromises at times. For example... \todo{find a good example.} \todo{Scala/Delite examples?}
+
+%creating a new language. If this is not practical, the best one can attempt to do is encode the new types in terms of existing types (by a Church encoding, for example). This is generally unsatisfactory -- 
+
+%Languages implemented using these common patterns are central planning by a language designer or design committee. 
+
+%Researchers or domain experts who cannot work around such limitations must develop new standalone languages. In our simple scenario, we may simply copy our implementation of Godel's T or even edit it directly (a pernicious technique for implementing a new language where the prior one is overwritten). In a more complex scenario, we may instead employ a tool like a compiler generator or DSL framework \cite{fowler2010domain} that can generate a standalone implementation from declarative specifications of language constructs. Some of these tools allow you to package and reuse these specifications (with the important caveat that not all combinations of constructs are valid and free of conflicts, an important modularity issue that we will return to several times in this paper).
+%
+%The increasing sophistication and ease-of-use of these tools have led many to suggest a {\it language-oriented approach} \cite{journals/stp/Ward94} to software development where different components of an application are written in different languages. Unfortunately, this leads to problems at language boundaries: a library's external interface must only use constructs that can reasonably be expressed in \emph{all possible calling languages}. This can restrict domain-specific languages by, for example, precluding constructs that rely on statically-checked invariants stronger than those their underlying representation in a common target language normally supports. At best, constructs like these can be exposed by generating a wrapper where run-time checks have been inserted to guarantee necessary invariants. This compromises both verifiability and performance and requires the development of an interoperability layer for every DSL. Moreover, library clients must work with verbose and unnatural ``glue code'' when interfacing across languages, defeating the primary purpose of high-level programming languages: hiding the low-level details from the end-users of abstractions. We diagram this fundamental \emph{compatibility problem} in Figure \ref{approaches}(a).
+%\begin{figure*}
+%\begin{center}
+%\includegraphics[scale=0.5]{approaches.pdf}
+%\end{center}
+%\vspace{-20px}
+%\caption{\small (a) With a language-oriented approach, novel constructs are packaged into separate languages. Users can only safely and naturally call into languages consisting of common constructs (often only the common target language, such as C or Java bytecode). (b) With a language-internal extensibility approach, there is one system providing a common internal language, where additional primitive constructs that strictly strengthen its static guarantees or perform specialized code generation are specified and distributed within libraries. \label{approaches}}
+%\end{figure*}
+
+%As a result, domain-specific languages and new general-purpose abstractions alike have experienced relatively slow adoption in practice.
+%
+%Porting large codebases to new languages is difficult, and the dominant programming languages innovate slowly, so programming language.
+%
+%More specifically, such languages are neither \emph{internally extensible} because the language itself exposes only natural numbers and functions to its users, nor are they \emph{externally extensible} because no new behaviors can be added to the language's  implementation in a separate module from the one containing the initial implementation.
+
+%This is the essence of a monolithic language implementation: it is impossible for anyone to modularly extend languages defined in this way. 
+
+
+An internally-extensible programming language could address these problems by providing a language mechanism for extending, directly, its static and dynamic semantics, so as to support domain-specific type systems and implementation strategies in libraries. 
+%Library developers need only consider which abstractions are most appropriate for their domain, without also considering whether these constructs can be exposed using abstractions appropriate to the domains of client code. Clients can simply import any necessary constructs when using a library that relies on them, preserving safety and ease-of-use without the use of  wrappers and glue code. We show this competing approach in Figure \ref{approaches}(b).
+%Researchers and domain experts thus gain the ability to distribute new ideas for evaluation to a broader development community without requiring the approval of maintainers of mainstream languages, large-scale porting of code or explicit interoperability layers. 
+But a significant challenge must be addressed before introducing such a mechanism into a language: balancing  expressiveness with concerns about maintaining safety properties in the presence of arbitrary combinations of user-defined  extensions. \todo{better transition here} Correctness properties of an extension itself should be modularly verifiable, so that its users can rely on it for verifying and compiling their own code. The mechanism must also ensure that desirable metatheoretic properties and global safety guarantees of the language cannot be weakened by extensions. And with multiple independently-developed extensions used at once, the mechanism must further guarantee that they cannot interfere with one another. 
+
+\subsection{Theory}\label{atlam}
+In this section, we will describe a minimal calculus supporting a language-internal extensibility mechanism called \emph{active typechecking and translation (AT\&T)} that allows developers to specify new primitive type families, associate operators with them, and implement their static semantics as well as their dynamic semantics by translation to a typed internal language. The AT\&T mechanism utilizes type-level computation of higher kind and integrates typed compilation techniques into the language to provide strong safety guarantees, while remaining straightforward and expressive.
+
+%AT\&T is general with respect to many choices about the type-level language, the typed internal language and syntax. Choices along these dimensions can affect both expressiveness and ease-of-use. We will begin in Sec. 2 by introducing a minimal system called $@\lambda$ (the ``actively-typed lambda calculus'') that distills the essence of the mechanism in a simply-typed, simply-kinded setting. This will allow us to fully and concisely formalize the language and compiler and give several key safety theorems. We will then continue in Sec. 3 by discussing variants of this mechanism based on other basic paradigms, considering dependently-typed functional languages and object-oriented languages, discussing trade-offs between expressivity and safety when doing so. We have developed a simple prototype called Ace and have used it to develop a number of full-scale language extensions as libraries. We will briefly discuss this language and these extensions in Sec. 4.
+
+%We note at the outset that AT\&T focuses on extending the static semantics of languages with fixed, though flexible, syntax. Language-internal syntax extension mechanisms have been developed in the past (e.g. SugarJ \cite{sugarj}) but they have also suffered from safety problems because grammar composition is not always safe when done in an  unconstrained manner. Constrained approaches that provide stronger safety guarantees have recently been outlined (e.g. Wyvern \cite{globaldsl13}) but we will leave integration of syntax extensions with semantic extensions as future work.
+
+\subsubsection{From Externally-Extensible Implementations to Internally-Extensible Languages}
+To understand the genesis of our internal extensibility mechanism, it is helpful to begin by considering why most implementations of programming languages are not even \emph{externally extensible}. Let us consider again Godel's T. 
+In a functional implementation, its types and operators will invariably be represented using {closed} datatypes. For example, a simple implementation in Standard ML may be based around these datatypes:
+\begin{lstlisting}
+datatype Type = Nat | Arrow of Type * Type
+datatype Exp = Var of var 
+               | Lam of var * Type * Exp
+               | Ap of Exp * Exp 
+               | Z | S of Exp 
+               | Natrec of Exp * Exp * Exp
+\end{lstlisting}
+
+The logic governing the typechecking phase as well as the initial compilation phase (we call this phase \emph{translation} to distinguish it from subsequent optimization phases) will proceed by exhaustive case analysis.
+In an object-oriented implementation of Godel's T, we could instead represent types and operators as instances of subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. If typechecking and translation then proceed by the ubiquitous \emph{visitor pattern} \cite{visitor}, by dispatching against a {fixed} collection of known subclasses of \lstinline{Exp}, the same basic issue is encountered: there is no modular way to add new primitive types or operators to the implementation.
+Indeed, this basic issue is the canonical example of the widely-discussed \emph{expression problem} \cite{wadler-expression}.
+
+A number of language mechanisms have been proposed that allow new cases to be added to datatypes and functions  in a modular way. In functional languages, these are known as \emph{open datatypes} \cite{open-datatypes}. The language might allow you to add types and operators for products to an open variant of the above definitions  like this: 
+\begin{lstlisting}
+  newcase Prod of Type * Type extends Type
+  newcase Pair of Exp * Exp extends Exp
+  newcase PrL of Exp extends Exp
+  newcase PrR of Exp extends Exp
+\end{lstlisting}
+
+The corresponding logic for functionality like typechecking and translation can then be specified for only the new cases, e.g.:
+\begin{lstlisting}
+  typeof PrL(e) = 
+    case typeof e of 
+      Prod(t1, _) => t1 
+    | _ => raise TypeError("<message>")
+\end{lstlisting}
+
+If we allow users to define new modules containing definitions like these and link them into our compiler, we have succeeded in creating an externally-extensible language implementation, albeit one where safety is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language, because other implementations of the language will not necessarily support the same mechanism. 
+If our newly-introduced constructs are used at library interface boundaries, we introduce the same compatibility problems that developing a new standalone language can create. That is, \textbf{extending a language by extending a single implementation of it is equivalent to creating a new language}. Several prominent language ecosystems today are in a state where a prominent compiler has introduced extensions that many libraries have come to rely on, including the Glasgow Haskell Compiler and the GNU compilers for C and C++. We argue that this practice should be considered harmful.
+
+A more appropriate and useful place for extensions like this is directly within libraries. To enable such use cases, the language must provide a mechanism that allows expert users to declare new type families, like \lstinline{Prod}, their associated operators, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and their associated typechecking and translation logic. When a compiler encounters these declarations, it adds them to its internal representation of types and operators, as if they had been primitives of the language, so that when user-defined operators are used in expressions, the compiler can temporarily hand control over the typechecking and translation phases to them. Because the mechanism is {language-internal}, all compilers must support it to satisfy the language specification. Thus, library developers can use new primitive constructs at external interfaces more freely.
+
+Statically-typed languages typically make a distinction between the expression language, where run-time logic is expressed, and the type-level language where, for example, datatypes and type aliases are statically declared. The description above suggests we may now need another layer in our language, an {extension language}, where users provide extension specifications. In fact, we will show that \textbf{the natural place for type system extensions is within the type-level language}. The intuition is that extensions will need to introduce and statically manipulate types and type families. Many languages already support notions of \emph{type-level computation} where types are manipulated as values at compile-time (see Sec. \ref{related} for examples of such languages). These are precisely the properties that such an extension language would have, so we unify the two.
+
+
+\subsection{Ace}\label{ace}
