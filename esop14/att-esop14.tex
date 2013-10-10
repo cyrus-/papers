@@ -299,12 +299,12 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 \begin{flalign}
 &\family{Nat}{\kunit}{\\
 &\quad\tops{z}{\kunit}{i}{a}{
-	\tapp{\tapp{\tvar{no\_args}}{\tvar{a}}}{
+	\tapp{\tapp{\tvar{const}}{\tvar{a}}}{
 		\tlam{\_}{\kunit}{\tden{\titerm{0}}{\ttype{Nat}{\tunit}}}
 	}};\\
 &\quad\tops{s}{\kunit}{i}{a}{
 	\tapp{
-		\tapp{\tvar{last\_arg}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{
+		\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{
 			\\
 			&\quad\quad\tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t1}}}{\ttype{Nat}{\tunit}}}{
 				\tden{\titerm{\iup{\tvar{v1}}+1}}{\ttype{Nat}{\tunit}}
@@ -313,18 +313,35 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 		}
 	};\\
 &\quad\tops{rec}{\kunit}{i}{a}{
-	\tapp{\tapp{\tvar{next\_arg}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
-	&\quad\quad\tapp{\tapp{\tvar{next\_arg}}{\tvar{a}}}{\tlam{t2}{\kTypeBlur}{\tlam{v2}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
-	&\quad\quad \tapp{\tapp{\tvar{last\_arg}}{\tvar{a}}}{\tlam{t3}{\kTypeBlur}{\tlam{v3}{\kITerm}{\\
+	\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
+	&\quad\quad\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{t2}{\kTypeBlur}{\tlam{v2}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
+	&\quad\quad \tapp{\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{t3}{\kTypeBlur}{\tlam{v3}{\kITerm}{\\
 	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t1}}}{\ttype{Nat}{\tunit}}}{(\\
-	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t3}}}{\ttype{Arrow}{(\ttype{Nat}{\tunit},\ttype{Arrow}{(\tvar{t2},\tvar{t2})})}}}{(\\
-		&\quad\quad c
+	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t3}}}{\ttype{Arrow}{(\ttype{Nat}{\tunit},\ttype{Arrow}{(\tvar{t2},\tvar{t2})})}}}{\\
+		&\quad\quad \tden{\iapp{(\ifix{f}{\darrow{\dint}{\trepof{\tvar{t2}}}}{\ilam{x}{\dint}{\\
+		&\quad\quad\quad \iIfEq{x}{0}{\dint}{\iup{\tvar{v2}}}{\iapp{\iapp{\iup{\tvar{v3}}}{(x-1)}}{(\iapp{f}{(x-1)})}}}})}{\iup{\tvar{v1}}}}{\tvar{t2}}
 	)}}
 	}}}}}}}}}}}}
 \\
-&}{XXX}{i}{\titype{\dint}}
+&}{XXX}{i}{\titype{\dint}};\\
+&\pdef{nat}{\kTypeBlur}{\ttype{Nat}{\tunit}}{\\
+&(\elam{plus}{\ttype{Arrow}{(\tvar{nat}, \ttype{Arrow}{(\tvar{nat}, \tvar{nat}))}}}{
+	\elam{two}{\tvar{nat}}{\\
+	&\quad\quad \eopapp{\eopapp{plus}{two}}{two}}})
+}\\
+&\quad \elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{
+	\eop{Nat}{rec}{\tunit}{x; y; \elam{p}{\tvar{nat}}{\elam{r}{\tvar{nat}}{
+	\eop{Nat}{s}{\tunit}{r}
+	}}}}}\\
+&\quad  \eop{Nat}{s}{\tunit}{\eop{Nat}{s}{\tunit}{\eop{Nat}{z}{\tunit}{ }}}
+%{\\&\elet{two}{\tvar{nat}}{\eop{Nat}{s}{\tunit}{\eop{Nat}{s}{\tunit}{\eop{Nat}{z}{\tunit}{ }}}}{\eapp{\eapp{plus}{two}}{two}}}
+%}
+%\elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{\\
+	%&\quad \eop{Nat}{rec}{\tunit}{x; y; \elam{p}{\tvar{nat}}{\elam{r}{\tvar{nat}}{
+	%\eop{Nat}{s}{\tunit}{r}
+	%}}}}
 \end{flalign}
-\caption{Example: primitive natural numbers and $n$-ary ($n > 1$) products in \atlam.}
+\caption{Example: primitive natural numbers in \atlam. Type-level helper functions $\tvar{const}$, $\tvar{pop}$, $\tvar{pop\_final}$ and $\tvar{check\_type}$ are given in Appendix \ref{helper}.}
 \label{example}
 \end{figure}
 To make our discussion of each of these components of the calculus concrete, we will begin with an example showing how to introduce primitive natural numbers, implemented as integers internally, as a user-defined extension. 
@@ -495,7 +512,7 @@ $\fbox{\inferrule{}{\ecompilesX{e}{\tau}{\ghat}}}$
 \end{figure}
 \begin{figure}[t]
 \small
-\vspace{-15pt}
+%\vspace{-15pt}
 $\fbox{\inferrule{}{\tKindX{\tau}{\kappa}}}$
 \begin{mathpar}
 \small
@@ -1084,8 +1101,8 @@ $\fbox{\inferrule{}{\eraseX{\ghat}{\gamma}}}$
 }
 
 \inferrule[deabs i-lam]{
-	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\
-	\eraseX{\dbar}{\sigma}\\
+	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\\\
+	\eraseX{\dbar}{\sigma}\\\\
 	\eraseX{\ghat}{\gamma}
 }{
 	\eraseX{\ilam{x}{\dhat}{\ghat}}{\ilam{x}{\sigma}{\gamma}}
@@ -1099,8 +1116,8 @@ $\fbox{\inferrule{}{\eraseX{\ghat}{\gamma}}}$
 %}
 %
 \inferrule[deabs i-fix]{
-	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\
-	\eraseX{\dbar}{\sigma}\\
+	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\\\
+	\eraseX{\dbar}{\sigma}\\\\
 	\eraseX{\ghat}{\gamma}
 }{
 	\eraseX{\ifix{x}{\dhat}{\ghat}}{\ifix{x}{\sigma}{\gamma}}
@@ -1172,5 +1189,9 @@ CANT GUARANTEE THAT SPECIFICATIONS ARE ACTUALLY DECIDABLE
 \section{Discussion}\label{discussion}
 \bibliographystyle{abbrv}
 \bibliography{../research}
+\appendix
+\section{Appendix}
+\subsection{Helper Functions}\label{helper}
+
 \end{document}
 
