@@ -1,10 +1,10 @@
 \documentclass{llncs}
-\usepackage{llncsdoc}
-\usepackage{mathpartir}
 \usepackage{amsmath}
+\usepackage{llncsdoc}
 \usepackage{amssymb} 
 %\usepackage{amsthm}
 \usepackage{ stmaryrd }
+\usepackage{mathpartir}
 %\usepackage{cite}
 %\renewcommand{\citepunct}{,\,} % IEEEtran wants to use ],\,[ for this but that looks dumb...
 
@@ -91,13 +91,13 @@ AT\&T leverages type-level computation, typed compilation techniques and a form 
 \end{abstract}
 
 \section{Motivation}
-When designing and implementing a new abstraction, experts typically begin by attempting to define its new constructs in terms of existing language constructs.
-By leveraging the {general-purpose} abstraction mechanisms available in modern languages, such as inductive datatypes and object systems, this approach can be quite effective.  
+When designing and implementing a new abstraction, experts typically begin by attempting to define new constructs in terms of existing language constructs.
+This approach is often effective because modern {general-purpose} abstraction mechanisms, like inductive datatypes and object systems, are highly expressive.  
 For example, the Delite framework leverages Scala's powerful general-purpose mechanisms to enable a variety of interesting \emph{embedded domain-specific languages} \cite{delite}. 
-Unfortunately, there remain situations of interest where general-purpose abstractions fall short. 
+Unfortunately, there remain some situations of interest where general-purpose abstractions fall short. 
 For instance, it is difficult to adequately encode advanced type systems in terms of the simpler rules governing general-purpose abstractions (e.g. reasoning about units of measure requires built-in language support in F\# \cite{units-of-measure}). 
-Moreover, an encoding must not only be correct, but also sufficiently concise and natural. Regular expressions encoded using inductive datatypes, for example, are often considered overly verbose, so most functional languages support them via strings, which is less safe. \todo{sentence about custom error messages}
-Finally, general-purpose abstractions are implemented in a uniform manner. Domain knowledge is thus not applied to eliminate overhead or perform optimizations, and implementations designed for typical application workloads may not be satisfactory in parts of a program where performance is a key criteria, particularly when targeting heterogeneous hardware platforms (e.g. programmable GPUs) and distributed computing resources.
+Even if a full encoding is possible, it may not be useful if it is overly verbose or unnatural, or if the error messages are overly abstract. For example, regular expressions encoded using inductive datatypes are often considered overly verbose, so most functional languages support them via strings, which is less safe. 
+Finally, general-purpose abstractions are also implemented in a uniform manner. Domain knowledge is thus not applied to eliminate overhead or perform optimizations, and implementations designed for typical application workloads may not be satisfactory in parts of a program where performance is a key criteria, particularly when targeting heterogeneous hardware platforms (e.g. programmable GPUs) and distributed computing resources.
 
 % are at times impossible or impractical. In our example of adding products or sums to Godel's T, although Church encodings are possible \cite{pfpl}, they require a reasonable level of creativity\footnote{Anecdotally, Church encodings are among the more difficult-to-explain topics covered in our undergraduate programming languages course.}. Moreover, they will not offer the same static safety guarantees as a primitive encoding, they are more verbose and they will incur performance overhead by their use of closures rather than a more direct representation. This is not only a problem for simple languages like Godel's T. Several Haskell-based embedded DSLs have also needed to make significant compromises at times \cite{haskellDSLs}. {\color{red} examples? Scala?}
 
@@ -105,13 +105,13 @@ Finally, general-purpose abstractions are implemented in a uniform manner. Domai
 
 %Languages implemented using these common patterns are central planning by a language designer or design committee. 
 
-Researchers or domain experts who run into situations like these, where more direct control over a language's semantics and implementation are needed, have little choice but to realize new abstractions by creating a new language of some form. They might develop a new standalone language from scratch, modify an implementation of an existing language, or use tools like compiler generators, DSL frameworks and language workbenches \cite{fowler2010domain}. 
+Researchers or domain experts who run into situations like these, where more direct control over a language's semantics and implementation are needed, have little choice today but to realize new abstractions by creating a new language of some form. They might develop a new standalone language from scratch, modify an implementation of an existing language, or use tools like compiler generators, DSL frameworks and language workbenches \cite{fowler2010domain}. 
 %In our simple scenario, we may simply fork our implementation of Godel's T or even edit it directly (a pernicious technique for implementing a new language where the prior one is overwritten). 
 %In a more complex scenario, we may instead employ a tool like a compiler generator or DSL framework \cite{fowler2010domain} that can generate a standalone implementation from declarative specifications of language constructs. Some of these tools allow you to package and reuse these specifications (with the important caveat that not all combinations of constructs are valid and free of conflicts, an important modularity issue that we will return to several times in this paper).
 The increasing sophistication and ease-of-use of these tools have led to calls for a {\it language-oriented approach} to software development, where different components of an application are written in different specialized languages \cite{journals/stp/Ward94}. Indeed, a number of software ecosystems are now explicitly designed to support many different languages, both general-purpose and domain-specific, atop a common intermediate language. The Java virtual machine (JVM), the Common Language Infrastructure (CLI) and LLVM are prominent examples of such ecosystems.
 
-Unfortunately, this leads to a critical problem at language boundaries: a library's external interface must only use constructs that can reasonably be expressed in \emph{all possible client languages}. This restricts the design of  languages by precluding constructs that rely on statically-checked invariants stronger than those supported by their underlying implementation in the common intermediate language\todo{F\# example?}. At best, constructs like these can be exposed by generating a wrapper where run-time checks have been inserted to guarantee these invariants. This compromises both verifiability and performance. %requires the development of an interoperability layer for every pair of DSLs. 
-Moreover, this approach exposes the internals of an implementation to clients, making the abstraction awkward to work with and causing code breakage when implementation details change. This defeats a primary purpose of high-level programming languages: hiding low-level details from clients of an abstraction. We diagram this fundamental \emph{interoperability problem} in Figure \ref{approaches}(a).
+Unfortunately, this leads to a critical problem at language boundaries: a library's external interface must only use constructs that can reasonably be expressed in \emph{all possible client languages}. This discourages languages from including constructs that rely on statically-checked invariants stronger than those supported by their underlying implementation in the common intermediate language. At best, constructs like these can be exposed by generating a wrapper where run-time checks have been inserted to guarantee these invariants. This compromises both verifiability and performance. For%requires the development of an interoperability layer for every pair of DSLs. 
+Moreover, this approach exposes the internals of an implementation to clients, making the abstraction awkward to work with and causing code breakage when implementation details change. This defeats a primary purpose of high-level programming languages: hiding low-level details from clients of an abstraction. We diagram this fundamental \emph{interoperability problem} in Figure \ref{approaches}(a). As an example, F\#'s type system prevents \lstinline{null} values from occurring within data structures, but because it's type system is not available when calling into F\# code from another language, like C\#, run-time null checks must still be inserted.
 \begin{figure}[t]
 \vspace{-15px}
 \includegraphics[scale=0.415]{approaches.pdf}
@@ -133,7 +133,7 @@ Moreover, this approach exposes the internals of an implementation to clients, m
 
 \emph{Internally-extensible programming languages} promise to avoid these problems by providing researchers and domain experts with a mechanism for implementing the semantics of new primitive constructs directly within libraries\todo{mention active libraries}.
 %Developers of libraries need only determine whether they are appropriate for their domain, without also considering whether these constructs can be exposed in terms of abstractions appropriate to client code. 
-Because primitive constructs are granularly available, rather than packaged into monolithic collections, clients can simply import any necessary primitive constructs when using code that relies on them, and thus achieve full safety, ease-of-use and performance without requiring wrappers or glue code. Providers of components thus need only consider whether primitives that they use are appropriate for their domain, without also considering whether their code might be used in a context where these primitives are not available. We diagram this competing approach in Figure \ref{approaches}(b).
+As a result, clients can granularly import any necessary primitive constructs when using code that relies on them, and thus achieve full safety, ease-of-use and performance due to the absence of wrappers and glue code. Providers of components thus need only consider whether primitives that they use are appropriate for their domain, without also considering whether their code might be used in a context where these primitives are not otherwise appropriate. Libraries containing logic that is invoked at compile-time have been called \emph{active libraries} \cite{activelibraries}. We diagram this competing approach in Figure \ref{approaches}(b).
 
 %Researchers and domain experts thus gain the ability to distribute new ideas for evaluation to a broader development community without requiring the approval of maintainers of mainstream languages, large-scale porting of code or explicit interoperability layers. 
 
@@ -145,7 +145,7 @@ We argue that this can be accomplished by enriching the type-level language, rat
 To make this proposal concrete, we begin by introducing a simple core calculus, called \atlam~(for the ``actively-typed lambda calculus''), in Section \ref{atlam}. 
 This calculus uses type-level computation of higher kind, along with techniques borrowed from the typed compilation literature and a form of type abstraction that ensures that the implementation details of an extension are not externally visible to guarantee the safety of the language, the decidability of typechecking and compilation and composability of extensions.
 
-In Section \ref{examples}, we show that despite these constraints, this mechanism is expressive enough to admit, within libraries, a number of general-purpose and domain specific abstractions that normally require built-in language support. Our core calculus uses a uniform abstract syntax for primitive operators to simplify our presentation and analysis, but this syntax would be too verbose to be practical. Thus, we begin this section by showing how a key design choice made in the calculus -- to associate operators with type families, forming what we call \emph{active types} -- enables a novel type-directed desugaring mechanism that permits the use of conventional concrete syntax for language extensions. 
+In Section \ref{examples}, we show that despite these constraints, this mechanism is expressive enough to admit, within libraries, a number of general-purpose and domain-specific abstractions that normally require built-in language support. Our core calculus uses a uniform abstract syntax for primitive operators to simplify our presentation and analysis, but this syntax is too verbose to be practical. Thus, we begin this section by showing how a key design choice made in the calculus -- to associate operators with type families, forming what we call \emph{active type families} -- supports a novel type-directed desugaring mechanism that permits the use of conventional concrete syntax for language extensions. 
 
 Our choice of a simply-typed, simply-kinded calculus where expressions are given meaning by translation to a simply-typed internal language appears to occupy a ``sweet spot'' in the design space, and relates closely to how simply-typed functional languages like  ML and Haskell are specified and implemented today. In Section \ref{design}, we briefly discuss other points in the design space of actively-typed languages and describe the sorts of abstractions that the mechanism as we have introduced it is not capable of expressing, suggesting several directions for future research. We conclude with a discussion of related work in Section \ref{related-work}.
 %dependently-typed and object-oriented type-level languages, as well as the constraints governing the design of the internal language.  
@@ -158,27 +158,25 @@ Our choice of a simply-typed, simply-kinded calculus where expressions are given
 %We note at the outset that AT\&T focuses on extending the static semantics of languages with fixed, though flexible, syntax. Language-internal syntax extension mechanisms have been developed in the past (e.g. SugarJ \cite{sugarj}) but they have also suffered from safety problems because grammar composition is not always safe when done in an  unconstrained manner. Constrained approaches that provide stronger safety guarantees have recently been outlined (e.g. Wyvern \cite{globaldsl13}) but we will leave integration of syntax extensions with semantic extensions as future work.
 \section{From Extensible Compilers to Extensible Languages}\label{evolution}
 To understand the genesis of our internal extension mechanism, it is helpful to begin by considering why most implementations of programming languages cannot even be  externally extended. 
-Let us consider, as a simple example, an implementation of G\"odel's T, a typed lambda calculus with recursion on primitive natural numbers  \cite{pfpl}\todo{put statics in Appendix?}. 
-A compiler for this language written using a functional language will invariably represent the primitive type families and operators of the object language using {closed} inductive datatypes. 
+Let us consider, as a simple example, an implementation of G\"odel's T, a typed lambda calculus with recursion on primitive natural numbers (see Appendix \ref{T}). 
+A compiler for this language written using a functional language will invariably represent the primitive type families and operators using {closed} inductive datatypes. 
 For example, a simple implementation in Standard ML may be based around these datatypes:
 \begin{lstlisting}
   datatype Type = Nat | Arrow of Type * Type
   datatype Exp = Var of var 
-               | Lam of var * Type * Exp
-               | Ap of Exp * Exp 
-               | Z | S of Exp 
-               | Natrec of Exp * Exp * Exp
+               | Lam of var * Type * Exp | Ap of Exp * Exp 
+               | Z | S of Exp | Natrec of Exp * Exp * Exp
 \end{lstlisting}
 
-The logic governing typechecking and translation to an intermediate language (which suitable for optimization by later phases of compilation) will be implemented by exhaustive case analysis over the constructors of \lstinline{Exp}.
+The logic governing typechecking and translation to a suitable intermediate language (for subsequent optimization and compilation by some back-end) will proceed by exhaustive case analysis over the constructors of \lstinline{Exp}.
 
-In an object-oriented implementation of Godel's T, we might instead encode types and operators as subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. Typechecking and translation will proceed by the ubiquitous \emph{visitor pattern} \cite{visitor} by dispatching against a set of {known} subclasses of \lstinline{Exp}. 
+In an object-oriented implementation of Godel's T, we might instead encode types and operators as subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. Typechecking and translation will proceed by the ubiquitous \emph{visitor pattern} \cite{visitor} by dispatching against a fixed collection of {known} subclasses of \lstinline{Exp}. 
 
-In either case, we encounter the same basic issue: there is no way to modularly extend the representation of primitive type families and operators and implement their associated typechecking and translation logic. 
-This issue is related to the widely-discussed \emph{expression problem} (we do not consider the case of adding new functions entirely here) \cite{wadler-expression}.
+In either case, we encounter the same basic issue: there is no way to modularly add new primitive type families and operators and implement their associated typechecking and translation logic. 
+This issue is related to the widely-discussed \emph{expression problem} (in a restricted sense -- we do not consider adding new functions beyond typechecking and translation here, only adding logic to these) \cite{wadler-expression}.
 
 A number of language mechanisms have been proposed that allow new cases to be added to datatypes and the functions that operate over them in a modular manner. 
-In functional languages, we might use \emph{open datatypes} \cite{open-datatypes}. For example, if we wish to extend G\"odel's T with product types, a language supporting open datatypes might allow you to add types and operators for products to the above definitions, if they have been declared open, like this: 
+In functional languages, we might use \emph{open datatypes} \cite{open-datatypes}. For example, if we wish to extend G\"odel's T with product types and we have written our compiler in a language supporting open inductive datatypes, it might be possible to add new cases like this: 
 \begin{lstlisting}
   newcase Prod of Type * Type extends Type
   newcase Pair of Exp * Exp extends Exp    (* Intro *)
@@ -186,28 +184,27 @@ In functional languages, we might use \emph{open datatypes} \cite{open-datatypes
   newcase PrR of Exp extends Exp           (* Elim Right *)
 \end{lstlisting}
 
-The logic for functionality like typechecking and translation might then be specified for only the new cases. For example, a function \lstinline{typeof} that assigns a type to an expression could be extended to support the \lstinline{PrL} operator like so:
+The logic for functionality like typechecking and translation could then be implemented for only these new cases. For example, the \lstinline{typeof} function that assigns a type to an expression could be extended like so:
 \begin{lstlisting}
-  typeof PrL(e) = 
-    case typeof e of 
+  typeof PrL(e) = case typeof e of 
       Prod(t1, _) => t1 
     | _ => raise TypeError("<appropriate error message>")
 \end{lstlisting}
 
-If we allow users to define new modules containing definitions like these and link them into our compiler, we have succeeded in creating an externally-extensible language implementation, albeit one where safety is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language, because other implementations of the language will not necessarily support the same mechanism. 
-If our newly-introduced constructs are exposed at a library's  interface boundary, clients using different compilers face the same problems with interoperability that those using different languages face. That is, \textbf{extending a language by extending a single implementation of it is equivalent to creating a new language}. Several prominent language ecosystems today are in a state where a prominent compiler has introduced or supported the introduction of extensions that many libraries have come to rely on, including the Glasgow Haskell Compiler, SML/NJ and the GNU compilers for C and C++. We argue that this practice should be considered harmful.
+If we allowed users to define new modules containing definitions like these and link them into our compiler, we will have succeeded in creating an externally-extensible compiler, albeit one where safety is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language, for two reasons. First, compiler extensions are distributed and activated separately from libraries, so dependencies become more difficult to manage. Second, other compilers for the same language will not necessarily support the same extensions. 
+If our newly-introduced constructs are exposed at a library's  interface boundary, clients using different compilers face the same problems with interoperability that those using different languages face. That is, \textbf{extending a language by extending a single compiler for it is morally equivalent to creating a new language}. Several prominent language ecosystems today are in a state where a prominent compiler has introduced or enabled the introduction of extensions that many libraries have come to rely on, including the Glasgow Haskell Compiler, SML/NJ and the GNU compilers for C and C++. We argue that this practice should be considered harmful.
 
-A more appropriate and useful place for extensions like this is directly within libraries. To enable this, the language must include an appropriately-constrained mechanism to introduce new type families, like \lstinline{Prod}, and operators, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and implement the associated typechecking and translation logic. When encountering these new operators in expressions, the compiler must effectively  hand control over typechecking and translation to user-defined logic. Because this mechanism is {language-internal}, all compilers must support it to satisfy the language specification, and extensions are packaged directly within  libraries.
+A more appropriate and useful place for extensions like this is directly within libraries, alongside abstractions that do not require this level of control. To enable this, the language must allow for the introduction new primitive type families, like \lstinline{Prod}, operators, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and associated typechecking and translation logic, without allowing so much control that the reliability of the system suffers. When encountering these new operators in expressions, the compiler must effectively  hand control over typechecking and translation to the appropriate user-defined logic. Because this mechanism is {language-internal}, all compilers must support it to satisfy the language specification.
 
-Statically-typed languages typically make a distinction between \emph{expressions}, which describe run-time computations, and static constructs like types and datatype declarations. The design described above suggests we may now need to add another layer to our language, an {extension language}, where extensions can be declared and implemented. In fact, we will show that \textbf{the natural place for type system extensions is within the type-level language}. The intuition is that extensions to a language's static semantics will need to manipulate types as values at compile-time. Many languages already allow users to write functions over types, effectively manipulating them as values at compile-time (see Sec. \ref{related-work} for examples). The type-level language is often constrained by its own type system (where the types of type-level values are called \emph{kinds} for clarity) that prevents type-level functions from causing problems during compilation. This is precisely the structure that a distinct extension layer would have, and so we will show that it is quite naturally to unify the two in this work.
+Statically-typed languages typically make a distinction between \emph{expressions}, which describe run-time computations, and type-level constructs like types, type aliases and datatype declarations. The design described above suggests we may now need to add another layer to our language, an {extension language}, where extensions can be declared and implemented. In fact, we will show that \textbf{the most natural place for type system extensions is within the type-level language}. The intuition is that extensions to a language's static semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time (see Sec. \ref{related-work} for examples). The type-level language is often constrained by its own type system (where the types of type-level values are called \emph{kinds} for clarity) that prevents type-level functions from causing problems during compilation. This is precisely the structure that a distinct extension layer would have, and so we will demonstrate that it is quite natural to unify the two in this work.
 
 \section{\atlam}\label{atlam}
 \begin{figure}[t]
 \small
 $$\begin{array}{rccl}	
 \textbf{programs} & \rho & ::= & \pfam{\familyDf}{\progsort} \pipe \pdef{t}{\kappa}{\tau}{\progsort} \pipe e\\
-\text{primitive ops}		&	\theta	&	::= &	\topsempty \pipe 
-												\topp{\theta}{\tops{op}{\kappai}{i}{a}{\tau}}\\
+\text{primitive ops}		&	\theta	&	::= &	\tops{op}{\kappaidx}{i}{a}{\tau} \pipe 
+												\topp{\theta}{\theta}\\
 \\
 \textbf{expressions} 				&	e	&	::=	&	\evar{x} \pipe 
 														\elam{\evar{x}}{\tau}{e} \pipe 
@@ -222,7 +219,7 @@ $$\begin{array}{rccl}
 														\tlam{t}{\kappa}{\tau} \pipe 
 														\tapp{\tau_1}{\tau_2} \pipe
 														\tnil{\kappa} \pipe \tcons{\tau_1}{\tau_2} \pipe 
-									                     \tfold{\tau_1}{\tau_2}{x}{y}{\tau_3}
+									                     \tfold{\tau_1}{\tau_2}{h}{t}{r}{\tau_3}
 														\\
 												
 \text{type-level data}	 			& 		& \pipe	& 	 \iintlit \pipe \iop{\tau_1}{\tau_2} \pipe \tstr{str} \pipe \tunit \pipe 
@@ -236,12 +233,12 @@ $$\begin{array}{rccl}
 \text{types} 						& 		& \pipe	& 	\ttypestd \pipe \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
 						%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
 																								
-\text{denotations} 				& 		 & 	\pipe	&	\tden{\tau_2}{\tau_1} \pipe \terr \pipe \tdencase{\tau}{y}{x}{\tau_1}{\tau_2}\\
+\text{denotations} 				& 		 & 	\pipe	&	\tden{\tauiterm}{\tautype} \pipe \terr \pipe \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
  %& & \pipe & 
 %														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
 %														 \\
 
-\text{quoted IL}		&		&	\pipe	&	\titerm{\gamma} \pipe \titype{\sigma} \\
+\text{reified IL}		&		&	\pipe	&	\titerm{\gamma} \pipe \titype{\sigma} \\
 
 												\\
 \textbf{kinds} 					& \kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \dint \pipe
@@ -265,7 +262,7 @@ $$\begin{array}{rccl}
 							& 		& 	\pipe	& 
 												\iintlit \pipe \iop{\gamma_{1}}{\gamma_{2}} \pipe \iIfEq{\gamma_{1}}{\gamma_{2}}{\dint}{\gamma_{3}}{\gamma_{4}}  
 												\\
- &  & \pipe & \tvalof{\tau_2}{\tau_1} \pipe \iup{\tau} \\
+ &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
 %\text{deabstracted}& \gamma & ::= & \mathcal{G}[\gamma, \sigma]\\
 \textbf{internal types}			&	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe
 												\dint \pipe
@@ -276,15 +273,15 @@ $$\begin{array}{rccl}
 \caption{\small Syntax of \atlam. Variables $x$ are used in expressions and internal terms and are distinct from type-level variables, $\tvar{t}$. Names $\fvar{Fam}$ are family names (we assume that unique family names can be generated by some external mechanism) and $\opvar{op}$ are operator names. $\tstr{str}$ denotes string literals, $\iintlit$ denotes integer literals and $\oplus$ stands for binary operations over integers. %The productions related to the internal language are written using generators $\mathcal{G}$ and $\mathcal{S}$ to avoid duplicating the syntax of common terms.
 \label{grammar}}
 \end{figure}
-We will now develop a core calculus, called @$\lambda$ for the ``actively-typed lambda calculus'', and discuss how to address safety concerns that arise when giving users this level of control over the semantics of a language and its implementation. 
+In this section, we will develop a core calculus, called @$\lambda$ for the ``actively-typed lambda calculus'', by way of a semantics and a simple example, and discuss how it addresses the safety concerns that arise when giving users this level of control over the semantics of a language and its implementation. 
 \subsection{Overview}
 \todo{remove $\Theta$ from family}The grammar of \atlam~is shown in Figure \ref{grammar}. The language is a simply-typed lambda calculus with simply-kinded type-level computation. Kinds, $\kappa$, classify type-level terms, $\tau$. 
-Types classify expressions, $e$, and are type-level values of kind $\star$ (following System $F_{\omega}$ \cite{fomega}). The type-level language also includes other kinds of terms, such as type-level functions and other type-level data structures. We include lists (required by our mechanism) as well as type-level integers, strings and products for the sake of our examples (see Sec. \ref{termination} for design constraints in general).
+Types are type-level values of kind $\star$ (following System $F_{\omega}$ \cite{fomega}) and classify expressions, $e$. The type-level language also includes other kinds of terms, such as type-level functions and other type-level data structures. We include lists (required by our mechanism) as well as type-level integers, strings and products for the sake of our examples (see Sec. \ref{termination} for design constraints in general). It also includes constructs for developing extensions, which we will discuss below.
 %Some kinds of type-level values (including types themselves, but excluding type-level functions) can be compared for structural equality\todo{describe this later?}.
 
-At the top level, programs, $\rho$, consist of a series of declarations followed by an expression. Declarations can be either bindings of type-level terms to type-level variables using \textsf{def} or a declaration of a new primitive type family using \textsf{family} (Sec. \ref{families}). Expressions can be either variables, lambdas, or applications of operators (Sec. \ref{operators}), and are ultimately given meaning by translation to a typed internal language. This language has been chosen, for simplicity, to be a variant of Plotkin's PCF with primitive integers and products, but in practice would include other constructs consistent with its role as a high-level intermediate language. Terms of this language are denoted $\gamma$ and types are denoted $\sigma$. Both of these productions also include additional forms containing type-level terms, $\tau$; these are used during compilation and will be explained below.
+At the top level, programs, $\rho$, consist of a series of declarations followed by an expression. Declarations can be either bindings of type-level terms to type-level variables using \textsf{def} or a declaration of a new primitive type family using \textsf{family} (Sec. \ref{families}). Expressions can be either variables, lambdas, or applications of operators (Sec. \ref{operators}), and are ultimately given meaning by translation to a typed internal language. This language has been chosen, for simplicity, to be a variant of Plotkin's PCF with primitive integers and products, but in practice would include other constructs consistent with its role as a high-level intermediate language. Terms of this language are denoted $\gamma$ and its types are denoted $\sigma$. Both of these productions also include additional forms containing type-level terms, $\tau$; these are used for developing extensions and during compilation and will be explained in the sections below.
 
-\subsection{Example: Natural Numbers}
+\subsection{Example: G\"odel's T as an Active Type Family}
 \begin{figure}[t]
 \small
 %\begin{lstlisting}
@@ -297,43 +294,43 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 %}
 %\end{lstlisting}
 \begin{flalign}
-&\family{Nat}{\kunit}{\\
-&\quad\tops{z}{\kunit}{i}{a}{
+\label{natfam}&\family{Nat}{\kunit}{\\
+\label{z}&\quad\tops{z}{\kunit}{i}{a}{
 	\tapp{\tapp{\tvar{const}}{\tvar{a}}}{
-		\tlam{\_}{\kunit}{\tden{\titerm{0}}{\ttype{Nat}{\tunit}}}
+		\tden{\titerm{0}}{\ttype{Nat}{\tunit}}
 	}};\\
-&\quad\tops{s}{\kunit}{i}{a}{
+\label{s}&\quad\tops{s}{\kunit}{i}{a}{
 	\tapp{
-		\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{
+		\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{x}{\kITerm}{\tlam{t}{\kTypeBlur}{
 			\\
-			&\quad\quad\tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t1}}}{\ttype{Nat}{\tunit}}}{
-				\tden{\titerm{\iup{\tvar{v1}}+1}}{\ttype{Nat}{\tunit}}
+			&\quad\quad\tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t}}}{\ttype{Nat}{\tunit}}}{
+				\tden{\titerm{\iup{\tvar{x}}+1}}{\ttype{Nat}{\tunit}}
 			}
 		}}
 		}
 	};\\
-&\quad\tops{rec}{\kunit}{i}{a}{
-	\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{t1}{\kTypeBlur}{\tlam{v1}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
-	&\quad\quad\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{t2}{\kTypeBlur}{\tlam{v2}{\kITerm}{\tlam{a}{\klist{\kDen}}{\\
-	&\quad\quad \tapp{\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{t3}{\kTypeBlur}{\tlam{v3}{\kITerm}{\\
+\label{rec}&\quad\tops{rec}{\kunit}{i}{a}{
+	\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{x1}{\kITerm}{\tlam{t1}{\kTypeBlur}{\tlam{a}{\klist{\kDen}}{\\
+	&\quad\quad\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{x2}{\kITerm}{\tlam{t2}{\kTypeBlur}{\tlam{a}{\klist{\kDen}}{\\
+	&\quad\quad \tapp{\tapp{\tvar{pop\_final}}{\tvar{a}}}{\tlam{x3}{\kITerm}{\tlam{t3}{\kTypeBlur}{\\
 	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t1}}}{\ttype{Nat}{\tunit}}}{(\\
 	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t3}}}{\ttype{Arrow}{(\ttype{Nat}{\tunit},\ttype{Arrow}{(\tvar{t2},\tvar{t2})})}}}{\\
-		&\quad\quad \tden{\iapp{(\ifix{f}{\darrow{\dint}{\trepof{\tvar{t2}}}}{\ilam{x}{\dint}{\\
-		&\quad\quad\quad \iIfEq{x}{0}{\dint}{\iup{\tvar{v2}}}{\iapp{\iapp{\iup{\tvar{v3}}}{(x-1)}}{(\iapp{f}{(x-1)})}}}})}{\iup{\tvar{v1}}}}{\tvar{t2}}
+		\label{fix}&\quad\quad \tden{\titerm{\iapp{(\ifix{f}{\darrow{\dint}{\trepof{\tvar{t2}}}}{\ilam{x}{\dint}{\\
+		&\quad\quad\quad \iIfEq{x}{0}{\dint}{\iup{\tvar{x2}}}{\iapp{\iapp{\iup{\tvar{x3}}}{(x-1)}}{(\iapp{f}{(x-1)})}}}})}{\iup{\tvar{x1}}}}}{\tvar{t2}}
 	)}}
 	}}}}}}}}}}}}
 \\
 &}{XXX}{i}{\titype{\dint}};\\
-&\pdef{nat}{\kTypeBlur}{\ttype{Nat}{\tunit}}{\\
-&(\elam{plus}{\ttype{Arrow}{(\tvar{nat}, \ttype{Arrow}{(\tvar{nat}, \tvar{nat}))}}}{
+\label{nattype}&\pdef{nat}{\kTypeBlur}{\ttype{Nat}{\tunit}}{\\
+\label{plus}&(\elam{plus}{\ttype{Arrow}{(\tvar{nat}, \ttype{Arrow}{(\tvar{nat}, \tvar{nat}))}}}{
 	\elam{two}{\tvar{nat}}{\\
-	&\quad\quad \eopapp{\eopapp{plus}{two}}{two}}})
+\label{ap}	&\quad\quad \eopapp{\eopapp{plus}{two}}{two}}})
 }\\
-&\quad \elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{
+\label{recuse}&\quad (\elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{
 	\eop{Nat}{rec}{\tunit}{x; y; \elam{p}{\tvar{nat}}{\elam{r}{\tvar{nat}}{
 	\eop{Nat}{s}{\tunit}{r}
-	}}}}}\\
-&\quad  \eop{Nat}{s}{\tunit}{\eop{Nat}{s}{\tunit}{\eop{Nat}{z}{\tunit}{ }}}
+	}}}}})\\
+\label{two}&\quad  \eop{Nat}{s}{\tunit}{\eop{Nat}{s}{\tunit}{\eop{Nat}{z}{\tunit}{ }}}
 %{\\&\elet{two}{\tvar{nat}}{\eop{Nat}{s}{\tunit}{\eop{Nat}{s}{\tunit}{\eop{Nat}{z}{\tunit}{ }}}}{\eapp{\eapp{plus}{two}}{two}}}
 %}
 %\elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{\\
@@ -341,12 +338,35 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 	%\eop{Nat}{s}{\tunit}{r}
 	%}}}}
 \end{flalign}
-\caption{Example: primitive natural numbers in \atlam. Type-level helper functions $\tvar{const}$, $\tvar{pop}$, $\tvar{pop\_final}$ and $\tvar{check\_type}$ are given in Appendix \ref{helper}.}
+\vspace{-15pt}
+\caption{G\"odel's T in \atlam, used to calculate 2+2. The statics we implement here are shown in Appendix \ref{T}. Simple helper functions for working with argument lists ($\tvar{const}$, $\tvar{pop}$, $\tvar{pop\_final}$) and types ($\tvar{check\_type}$) are defined in Appendix \ref{helper}.}
 \label{example}
 \end{figure}
-To make our discussion of each of these components of the calculus concrete, we will begin with an example showing how to introduce primitive natural numbers, implemented as integers internally, as a user-defined extension. 
+To make our explanation of each of the constructs in the calculus concrete, we will work through an example showing how to introduce primitive natural numbers with bounded recursion in the style of G\"odel's T \cite{pfpl}. These will be implemented internally as integers (that is, translation will always produce internal terms of internal type $\dint$). Figure \ref{example} shows how the indexed type family $\fvar{Nat}$ is defined. This family is indexed by a unit value (of kind $\kunit$), so it contains only one type, $\ttype{Nat}{\tunit}$, which we alias by defining the type-level variable $\tvar{nat}$. We define the typechecking and translation logic for the operators associated with this family (\opvar{z}, \opvar{s} and \opvar{rec}) and use these to define an add function and compute 2+2.
 
-\subsection{Central Compilation Judgement}
+\subsection{Indexed Type Families and Types}\label{families}
+The syntactic form $\familyDf$ declares a new primitive type family named $\fvar{Fam}$ indexed by type-level values of kind $\kappaidx$ (line \ref{natfam}). This can be compared to adding a new constructor to the compiler-internal datatype \lstinline{Type}, as suggested in Sec. \ref{evolution}. The index represents the data associated with the constructor. A base type like $\tvar{nat}$ can be thought of as being the only type in the family $\fvar{Nat}$ trivially indexed by the unit value, of kind $\kunit$, while families like $\fvar{Ntuple}$ might be indexed by a list of types, of kind $\klist{\kTypeBlur}$. A type (that is, a type-level term of kind $\kTypeBlur$) is constructed by naming a family in scope and providing a type-level term of the appropriate kind as an index. For example, $\ttype{Ntuple}{\tcons{\tvar{nat}}{\tcons{\tvar{nat}}{\tnil{\kTypeBlur}}}}$ might be the type of a pair of natural numbers. It is important that type equality be decidable, so only kinds for which equivalence coincides with syntactic equality can be used as type family indices. The main  consequence of this restriction is that indices cannot contain type-level functions.
+
+As we will discuss further below, it is important that all expressions classified by a type compile to internal terms of consistent internal type\todo{mention compiler correctness history here?}. For this reason, we require that every type have an associated internal type. This is computed by substituting the type index for the bound variable $\tvar{i}$ in the term $\taurep$, called the \emph{representation schema}, associated with the type family and reducing to a value representing an internal type. Internal types, $\sigma$, are reified as type-level terms of kind $\kIType$ using the introductory form $\titype{\sigma}$ (as we will see, an  elimination form  is not necessary). 
+
+
+\subsection{Indexed Operator Families and Denotations}\label{operators}
+Type families also have a collection of primitive operator families associated with them. An operator family named $\opvar{op}$ is declared using the form $\tops{op}{\kappaidx}{i}{a}{\tauop}$. Like type families, operator families are indexed by values of some specified kind, $\kappaidx$. Operators are not first-class type-level values in our calculus, so there are no restrictions related to equality. In the example in Fig. \ref{example}, all the operators are trivially indexed by the kind $\kunit$, so each family is only inhabited by one operator. However, a family like $\fvar{Ntuple}$ would have a family of projection operators, $\opvar{pr}$, indexed by a position (e.g. an integer in our calculus). A family implementing record types or object types might have a similar operator indexed by a type-level string representing the field being accessed.
+
+An operator application is an expression of the form $\eop{Fam}{op}{\tauidx}{e_1; \ldots; e_n}$, where $n \geq 0$. The typechecking and translation of an expression of this form is controlled by the declaration of $\opvar{op}$ in family $\fvar{Fam}$, as determined by the type-level term $\tauop$. It must evaluate to a \emph{denotation}, which is a type-level value of kind $\kDen$, when the index, $\tauidx$, and a list containing the denotations recursively assigned to each argument, $e_1$ through $e_n$, are bound to $\tvar{i}$ and $\tvar{a}$, respectively.
+
+There are two forms of denotations. A \emph{valid denotation} has the form $\tden{\tau_1}{\tau_2}$, where $\tau_1$ represents the \emph{translation} of an expression to an internal term and $\tau_2$ is the type. The translation must have kind $\kITerm$ of  reified internal language terms. The only introductory form for this is $\titerm{\gamma}$, just as with $\kIType$. There is no elimination form. Types, as before, have kind $\kTypeBlur$.
+%(indeed, in \atlam, terms are never  syntactically analyzed directly by extensions, unlike macro systems and other forms of term rewriting; see Sec. \ref{related-work})
+If a type cannot be assigned to an operation according to the specification of the operator being implemented, then the \emph{error denotation}, $\terr$, should be returned instead of a valid denotation. In a practical implementation, a specialized error message and other diagnostic information could be associated with $\terr$, but we omit such details for the sake of simplicity in our core calculus. Terms of kind $\kDen$ can be \textsf{case} analyzed to determine if they are valid, and if so, to extract the translation and type.
+
+In the example in Fig. \ref{example}, the operator $\opvar{z}$ checks that no arguments were provided using the simple helper function $\tvar{const}$ (shown in Appendix \ref{helper}). If so, it returns a valid denotation by pairing the translation $\titerm{0}$ with the type $\ttype{Nat}{\tunit}$, as expected\footnote{In fact, there is no theoretical barrier to a different ``zero'' being used, since integers and natural numbers are both of countably infinite cardinality!}. If not, the helper function returns $\terr$. The successor operator, $\opvar{s}$, does take an argument, so it pops a denotation off the argument list, making sure there are no more, and binds its translation and type to $\tvar{x}$ and $\tvar{t}$ respectively, all using the helper function $\tvar{pop\_final}$. It then checks that the argument's type is also $\ttype{Nat}{\tunit}$, returning a denotation pairing the translation $\titerm{\iup{\tvar{x}} + 1}$ with the type $\ttype{Nat}{\tunit}$ if so. The internal language includes a special form $\iup{\tau}$ which is used to ``un-reify'' reified internal terms, of kind $\kITerm$ (thus serving as the left-inverse of $\titerm{\gamma}$). In this case, $\tvar{x}$ is a type-level variable of kind $\kITerm$ representing the translation of the argument to the successor operator. Because we have checked that it is a natural number, and natural numbers always translate to integers by the representation schema, we know that it is safe to add 1 to this internal term. The result remains an integer according to the type system of the internal language so it is safe to give the entire expression type $\ttype{Nat}{\tunit}$ without violating the schema. Indeed, the extension mechanism will check that these consistencies hold (though not the kind system; see Sec. \ref{repcon}). If any of these steps fail, the various helper functions we use simply return $\terr$ (in practice, it would be prudent to equip each failure condition with a different error message).
+
+% The operator index, $\tauidx$, and . 
+
+\subsection{Functions, Variables and Arrow Types}
+The recursor operator, $\opvar{rec}$, proceeds similarly, extracting the translations and types of each of its three arguments. The third argument, the recursive case, binds two variables (the predecessor and the result of recursing on it). In \atlam, the build-in $\lambda$ operator serves as the primitive mechanism for working with bound variables. While lambda terms conventionally have types of the form $\tau_1 \rightarrow \tau_2$, \atlam~instead includes a built-in type family, $\fvar{Arrow}$,  that is always in scope. This family is indexed by a pair of types, $\kpair{\kTypeBlur}{\kTypeBlur}$, and its representation schema simply maps to the corresponding internal arrow type, $\tvar{i}.\titype{\darrow{\trepof{\tfst{\tvar{i}}}}{\trepof{\tsnd{\tvar{i}}}}}$. The special form $\trepof{\tau}$ is used to refer, abstractly, to the representation of another type (we also see this used on line \ref{fix}). Although $\lambda$ is built-in, application is an operator associated with the $\fvar{Arrow}$ family, $\opvar{ap}$, as we see on line \ref{ap}. \todo{figure for arrow types}
+
+\subsection{Compilation}
 \begin{figure}[t]
 \small
 \begin{mathpar}
@@ -361,28 +381,21 @@ To make our discussion of each of these components of the calculus concrete, we 
 \caption{\small Central Compilation Judgement of \atlam.}
 \label{ccj}
 \end{figure}
-The \emph{central compilation judgement}, shown in Figure \ref{ccj}, captures the two phases of compilation: kind checking and active typechecking and translation. The latter phase requires normalizing type-level terms to type-level values, so the  kind checking phase preceding it will ensure that this process not ``get stuck'', as we will elaborate upon when discussing safety and decidability in Sec. \ref{safety}.
-
-\subsection{Indexed Type Families and Types}\label{families}
-Declaring a new primitive indexed type family by using \textsf{family} can be compared to adding a new constructor to the compiler's \lstinline{Type} datatype, as suggested in Section \ref{evolution}. The kind of type-level data that the family is indexed by is specified by $\kappaidx$. For example, a base type like $\tvar{nat}$ can be thought of as being the only type in a family, $\fvar{Nat}$, trivially indexed by the unit value, of kind $\kunit$, while families like $\fvar{Pair}$ might be indexed by a pair of types, of kind $\kpair{\kTypeBlur}{\kTypeBlur}$. A type (that is, a type-level term of kind $\kTypeBlur$) is created by naming a family that has been previously been introduced and providing an index of the appropriate kind. For example, $\ttype{Prod}{\tpair{\tvar{nat}}{\tvar{nat}}}$ is the type of a pair of natural numbers in a context where the families $\fvar{Prod}$ and $\fvar{Nat}$ have been introduced as described above and the type-level variable $\tvar{nat}$ has been bound to the type $\ttype{Nat}{\tunit}$.
-
-\subsection{Indexed Operator Families and Active Types}\label{operators}
-We build in lambdas as the only binding structure in the language to simplify the core calculus. All other operators are associated with a type. For example, nat / tuples / records.
-
-Operator families. 
+The \emph{central compilation judgement}, shown in Figure \ref{ccj}, captures the two phases of compilation: kind checking and active typechecking and translation. 
+The first phase ensures that all type-level terms in the program are well-kinded and that all expressions and internal terms are closed. The kinding rules for programs are given in Figure \ref{kindprog}, and they rely on the kinding rules for type-level terms given in Figure \ref{tlkind}. These rules use contexts $\Sigma$ and $\Theta$ to track family and operator signatures but beyond that, these rules are largely consistent with those of a simply-typed lambda calculus, with the addition of the handful of special forms described in the previous sections. The reader is encouraged to verify that the example in Fig. \ref{example} is well-kinded. Active typechecking and translation requires normalizing type-level terms to type-level values at various points, so the kind checking phase ensures that no simple mistakes have been made and that this process will not ``get stuck'' (see Sec. \ref{safety}).
 
 \subsection{Active Typechecking and Translation}
 
 \subsection{Abstract Representations}
-
+Note that there is no elimination form that could be used to determine the internal type associated with a type, but the special internal type $\trepof{\tau}$, where $\tau$ is a type, can be used to refer to it abstractly
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{\progOKX{\progsort}}}$
 ~~~$\tvarCtx ::= \emptyctx \pipe \tvarCtxX{t}{\kappa}$~~~
 $\fCtx ::= \Sigma_0	 \pipe \fvarCtxX$
 \begin{mathpar}
-\inferrule[family decl kinding]{
-	\fvar{Fam} \notin \fvarCtx\\
+\inferrule[family kinding]{
+	\fvar{Fam} \notin \text{dom}(\fvarCtx)\\
 	\kEq{\kappaidx}\\
 	\opType{\tvarCtx}{\fvarCtxX}{\theta}{\Theta}\\\\
 	\tKind{\tvarCtx, \tvar{i}:{\kappaidx}}{\fvarCtxX}{\tau}{\kIType}\\
@@ -406,17 +419,19 @@ $\fCtx ::= \Sigma_0	 \pipe \fvarCtxX$
 \end{mathpar}
 $\fbox{$\tKindX{\theta}{\Theta}$}$
 \begin{mathpar}
-\inferrule[no ops]{ }{
-	\tKindX{\topsempty}{\kOpEmpty}
+\inferrule[op]{
+	\tKind{\tvarCtx, \tOfKind{\tvar{i}}{\kappai}, \tOfKind{\tvar{a}}{\klist{\kDen}}}{\fvarCtx}{\tau}{\kDen}
+}{
+	\opType{\tvarCtx}{\fvarCtx}{{\tops{op}{\kappai}{i}{a}{\tau}}}{
+	\kOpS{op}{\kappai}}
 }
 
 \inferrule[ops]{
-	\opType{\tvarCtx}{\fvarCtx}{\theta}{\Theta}\\
-	\opvar{op} \notin \theta\\
-	\tKind{\tvarCtx, \tOfKind{\tvar{i}}{\kappai}, \tOfKind{\tvar{a}}{\klist{\kDen}}}{\fvarCtx}{\tau}{\kDen}
+	\tKindX{\theta_1}{\Theta_1}\\
+	\tKindX{\theta_2}{\Theta_2}\\\\
+	\text{dom}(\theta_1) \cap \text{dom}(\theta_2) = \emptyset
 }{
-	\opType{\tvarCtx}{\fvarCtx}{\topp{\theta}{\tops{op}{\kappai}{i}{a}{\tau}}}{
-	\kOp{\Theta}{op}{\kappai}}
+	\tKindX{\theta_1; \theta_2}{\Theta_1, \Theta_2}
 }
 \end{mathpar}
 $\fbox{$\exprOKX{e}$}$
@@ -444,7 +459,8 @@ $\fbox{$\exprOKX{e}$}$
 	\exprOKX{\eop{Fam}{op}{\taui}{\splat{e}{1}{n}}}
 }
 \end{mathpar}
-\caption{\small Kinding for programs. Variable contexts $\tvarCtx$ and $\itvarCtx$ obey standard structural properties. Kinding for type-level terms in Figure \ref{kindtl}. \ \label{kindprof}}
+\caption{\small Kinding for programs. Variable contexts $\tvarCtx$ and $\itvarCtx$ obey standard structural properties. Kinding for type-level terms in Figure \ref{kindtl}.}
+\label{kindprog}
 \end{figure}
 \begin{figure}[t]
 \small
@@ -740,6 +756,7 @@ $\fbox{$\isItypeX{\dhat}$}$
 }
 \end{mathpar}
 \caption{\small Kinding for type-level terms}
+\label{tlkind}
 \end{figure}
 
 \begin{figure}
@@ -903,6 +920,7 @@ $\fbox{$\tiEvalX{\sigma}{\sigma'}$}$
 }
 \end{mathpar}
 \caption{\small Evaluation semantics for type-level terms}
+\label{tleval}
 \end{figure}
 
 \begin{figure}
@@ -1062,6 +1080,7 @@ $\fbox{\inferrule{}{\checkRCX{\ghat}{\dbar}}}$
 }
 \end{mathpar}
 \caption{\small Abstracted internal typing}
+\label{ait}
 \end{figure}
 \begin{figure}[t]
 \small
@@ -1138,6 +1157,7 @@ $\fbox{\inferrule{}{\eraseX{\ghat}{\gamma}}}$
 }
 \end{mathpar}
 \caption{\small Deabstraction rules}
+\label{deabs}
 \end{figure}
 %
 %family RECORD of (string, type) dict {
@@ -1191,7 +1211,97 @@ CANT GUARANTEE THAT SPECIFICATIONS ARE ACTUALLY DECIDABLE
 \bibliography{../research}
 \appendix
 \section{Appendix}
-\subsection{Helper Functions}\label{helper}
+\subsection{Statics of G\"odel's T}\label{T}
+\newcommand{\lam}[3]{\lambda #1{:}#2.#3}
+\newcommand{\ap}[2]{#1~#2}
+\newcommand{\z}{\textsf{z}}
+\newcommand{\s}[1]{\textsf{s}(#1)}
+\newcommand{\natrec}[5]{\textsf{natrec}(#1; #2; #3,#4.#5)}
+\newcommand{\pair}[2]{(#1, #2)}
+\newcommand{\fst}[1]{\textsf{fst}(#1)}
+\newcommand{\snd}[1]{\textsf{snd}(#1)}
 
+\newcommand{\tArrow}[2]{#1 \rightarrow #2}
+\newcommand{\nat}{\texttt{nat}}
+\renewcommand{\prod}[2]{#1 \times #2}
+
+%\newcommand{\eCtx}{\Gamma}
+\newcommand{\eCtxX}[3]{#1, #2 : #3}
+\newcommand{\jet}[3]{#1 \vdash #2 : #3}
+\newcommand{\jetX}[2]{\jet{\eCtx}{#1}{#2}}
+%\begin{figure}
+%\small
+\begin{mathpar}
+\small
+\inferrule[var]{ }{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{x}{\tau}
+}
+
+\inferrule[Arrow-I]{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{e}{\tau'}	
+}{
+	\jetX{\lam{x}{\tau}{e}}{\tArrow{\tau}{\tau'}}
+}
+
+\inferrule[Arrow-E]{
+	\jetX{e_1}{\tArrow{\tau}{\tau'}}\\
+	\jetX{e_2}{\tau}
+}{
+	\jetX{\ap{e_1}{e_2}}{\tau'}
+}
+
+\inferrule[Nat-I1]{ }{
+	\jetX{\z}{\nat}
+}
+~~~~~~~~
+\inferrule[Nat-I2]{
+	\jetX{e}{\nat}
+}{
+	\jetX{\s{e}}{\nat}
+}
+~~~~~~~~
+\inferrule[Nat-E]{
+	\jetX{e_1}{\nat}\\
+	\jetX{e_2}{\tau}\\
+	\jetX{e_3}{\tArrow{\nat}{\tArrow{\tau}{\tau}}}
+}{
+	\jetX{\natrec{e_1}{e_2}{x}{y}{e_3}}{\tau}
+}
+\end{mathpar}
+%\caption{Static semantics of G\"odel's T}
+%\end{figure}
+% \begin{figure}
+% \small
+% \begin{mathpar}
+% \inferrule[Prod-I]{
+% 	\jetX{e_1}{\tau_1}\\
+% 	\jetX{e_2}{\tau_2}
+% }{
+% 	\jetX{\pair{e_1}{e_2}}{\prod{\tau_1}{\tau_2}}
+% }
+
+% \inferrule[Prod-E1]{
+% 	\jetX{e}{\prod{\tau_1}{\tau_2}}
+% }{
+% 	\jetX{\fst{e}}{\tau_1}
+% }
+
+% \inferrule[Prod-E2]{
+% 	\jetX{e}{\prod{\tau_1}{\tau_2}}
+% }{
+% 	\jetX{\snd{e}}{\tau_2}
+% }
+% \end{mathpar}
+% \caption{Static semantics of products}\label{prods}
+% \end{figure}
+\subsection{Helper Functions}\label{helper}
+\todo{describe these}
+\[\begin{array}{rcl}
+\tvar{const} & := & (\tlam{a}{\klist{\kDen}}{\tlam{d}{\kDen}{\tfold{\tvar{a}}{\tvar{d}}{\_}{\_}{\_}{\terr}}})\\
+\tvar{pop} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\karrow{\klist{\kDen}}{\kDen}}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\tdencase{\tvar{d}}{x}{t}{
+	\tapp{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\tvar{b}}}{\terr}}}})\\
+\tvar{pop\_final} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\kDen}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\\& & \quad \tfold{\tvar{b}}{\tdencase{\tvar{d}}{x}{t}{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\terr}}{\_}{\_}{\_}{\terr}}}})\\
+\tvar{check\_type} & := & (\tlam{t1}{\kTypeBlur}{\tlam{t2}{\kTypeBlur}{\tlam{d}{\kDen}{\tifeq{\tvar{t1}}{\tvar{t2}}{\kTypeBlur}{\tvar{d}}{\terr}}}})
+\end{array}\]
 \end{document}
 
