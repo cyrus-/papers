@@ -97,7 +97,7 @@ For example, the Delite framework leverages Scala's powerful general-purpose mec
 Unfortunately, there remain some situations of interest where general-purpose abstractions fall short. 
 For instance, it is difficult to adequately encode advanced type systems in terms of the simpler rules governing general-purpose abstractions (e.g. reasoning about units of measure requires built-in language support in F\# \cite{units-of-measure}). 
 Even if a full encoding is possible, it may not be useful if it is overly verbose or unnatural, or if the error messages are overly abstract. For example, regular expressions encoded using inductive datatypes are often considered overly verbose, so most functional languages support them via strings, which is less safe. 
-Finally, general-purpose abstractions are also implemented in a uniform manner. Domain knowledge is thus not applied to eliminate overhead or perform optimizations, and implementations designed for typical application workloads may not be satisfactory in parts of a program where performance is a key criteria, particularly when targeting heterogeneous hardware platforms (e.g. programmable GPUs) and distributed computing resources.
+Finally, general-purpose abstractions are implemented in a uniform manner. Domain knowledge is not easily applied to eliminate overhead or perform optimizations, and implementations designed for typical application workloads may not be satisfactory in parts of a program where performance is a key criteria, particularly when targeting heterogeneous hardware platforms (e.g. programmable GPUs) and distributed computing resources. Using variants of familiar abstractions backed by specialized implementation strategies are quite useful in these cases.
 
 % are at times impossible or impractical. In our example of adding products or sums to Godel's T, although Church encodings are possible \cite{pfpl}, they require a reasonable level of creativity\footnote{Anecdotally, Church encodings are among the more difficult-to-explain topics covered in our undergraduate programming languages course.}. Moreover, they will not offer the same static safety guarantees as a primitive encoding, they are more verbose and they will incur performance overhead by their use of closures rather than a more direct representation. This is not only a problem for simple languages like Godel's T. Several Haskell-based embedded DSLs have also needed to make significant compromises at times \cite{haskellDSLs}. {\color{red} examples? Scala?}
 
@@ -111,7 +111,7 @@ Researchers or domain experts who run into situations like these, where more dir
 The increasing sophistication and ease-of-use of these tools have led to calls for a {\it language-oriented approach} to software development, where different components of an application are written in different specialized languages \cite{journals/stp/Ward94}. Indeed, a number of software ecosystems are now explicitly designed to support many different languages, both general-purpose and domain-specific, atop a common intermediate language. The Java virtual machine (JVM), the Common Language Infrastructure (CLI) and LLVM are prominent examples of such ecosystems.
 
 Unfortunately, this leads to a critical problem at language boundaries: a library's external interface must only use constructs that can reasonably be expressed in \emph{all possible client languages}. This discourages languages from including constructs that rely on statically-checked invariants stronger than those supported by their underlying implementation in the common intermediate language. At best, constructs like these can be exposed by generating a wrapper where run-time checks have been inserted to guarantee these invariants. This compromises both verifiability and performance. For%requires the development of an interoperability layer for every pair of DSLs. 
-Moreover, this approach exposes the internals of an implementation to clients, making the abstraction awkward to work with and causing code breakage when implementation details change. This defeats a primary purpose of high-level programming languages: hiding low-level details from clients of an abstraction. We diagram this fundamental \emph{interoperability problem} in Figure \ref{approaches}(a). As an example, F\#'s type system prevents \lstinline{null} values from occurring within data structures, but because it's type system is not available when calling into F\# code from another language, like C\#, run-time null checks must still be inserted.
+Moreover, this approach exposes the internals of an implementation to clients, making the abstraction awkward to work with and causing code breakage when implementation details change. This defeats a primary purpose of high-level programming languages: hiding low-level details from clients of an abstraction. We diagram this fundamental \emph{interoperability problem} in Figure \ref{approaches}(a). As an example, F\#'s type system prevents \lstinline{null} values from occurring within data structures, but because it's type system is not available when calling into F\# code from another language, like C\#, run-time null checks must still be included in the implementation.
 \begin{figure}[t]
 \vspace{-15px}
 \includegraphics[scale=0.415]{approaches.pdf}
@@ -131,9 +131,9 @@ Moreover, this approach exposes the internals of an implementation to clients, m
 
 %Programming languages are typically designed around a monolithic collection of primitive type families and operators. Consider, as a simple example, Godel's T \cite{pfpl}, a typed lambda calculus with recursion on primitive natural numbers\todo{add statics to Appendix A}. Although a language designer may casually speak of ``extending Godel's T with primitive product and sum types'', adding these type families and associated operators to this kind of language from within is impossible. That is, Godel's T is not \emph{internally extensible}.
 
-\emph{Internally-extensible programming languages} promise to avoid these problems by providing researchers and domain experts with a mechanism for implementing the semantics of new primitive constructs directly within libraries\todo{mention active libraries}.
+\emph{Internally-extensible programming languages} promise to avoid these problems by providing researchers and domain experts with a mechanism for implementing the semantics of new primitive constructs directly within libraries.
 %Developers of libraries need only determine whether they are appropriate for their domain, without also considering whether these constructs can be exposed in terms of abstractions appropriate to client code. 
-As a result, clients can granularly import any necessary primitive constructs when using code that relies on them, and thus achieve full safety, ease-of-use and performance due to the absence of wrappers and glue code. Providers of components thus need only consider whether primitives that they use are appropriate for their domain, without also considering whether their code might be used in a context where these primitives are not otherwise appropriate. Libraries containing logic that is invoked at compile-time have been called \emph{active libraries} \cite{activelibraries}. We diagram this competing approach in Figure \ref{approaches}(b).
+As a result, clients can granularly import any necessary primitive constructs when using code that relies on them, and thus achieve full safety, ease-of-use and performance due to the absence of wrappers and glue code. Providers of components thus need only consider whether primitives that they use are appropriate for their domain, without also considering whether their code might be used in a context where these primitives are not otherwise appropriate. Libraries containing logic that is invoked at compile-time, as extension logic would be, have been called \emph{active libraries} \cite{activelibraries}. We adopt this terminology and diagram this competing approach in Figure \ref{approaches}(b).
 
 %Researchers and domain experts thus gain the ability to distribute new ideas for evaluation to a broader development community without requiring the approval of maintainers of mainstream languages, large-scale porting of code or explicit interoperability layers. 
 
@@ -275,11 +275,10 @@ $$\begin{array}{rccl}
 \end{figure}
 In this section, we will develop a core calculus, called @$\lambda$ for the ``actively-typed lambda calculus'', by way of a semantics and a simple example, and discuss how it addresses the safety concerns that arise when giving users this level of control over the semantics of a language and its implementation. 
 \subsection{Overview}
-\todo{remove $\Theta$ from family}The grammar of \atlam~is shown in Figure \ref{grammar}. The language is a simply-typed lambda calculus with simply-kinded type-level computation. Kinds, $\kappa$, classify type-level terms, $\tau$. 
-Types are type-level values of kind $\star$ (following System $F_{\omega}$ \cite{fomega}) and classify expressions, $e$. The type-level language also includes other kinds of terms, such as type-level functions and other type-level data structures. We include lists (required by our mechanism) as well as type-level integers, strings and products for the sake of our examples (see Sec. \ref{termination} for design constraints in general). It also includes constructs for developing extensions, which we will discuss below.
-%Some kinds of type-level values (including types themselves, but excluding type-level functions) can be compared for structural equality\todo{describe this later?}.
+The grammar of \atlam~is shown in Figure \ref{grammar}. The language is a simply-typed lambda calculus with simply-kinded type-level computation. Kinds, $\kappa$, classify type-level terms, $\tau$. 
+Types are type-level values of kind $\star$ (following System $F_{\omega}$ \cite{fomega}) and classify expressions, $e$. The type-level language also includes other kinds of terms, such as type-level functions, lists (required by our mechanism) and integers, strings and products for the sake of our examples (see Sec. \ref{termination} for a discussion on other acceptable kinds of type-level data). It also includes constructs for developing extensions -- denotations and reified internal terms and types -- which we will discuss in the sections below.
 
-At the top level, programs, $\rho$, consist of a series of declarations followed by an expression. Declarations can be either bindings of type-level terms to type-level variables using \textsf{def} or a declaration of a new primitive type family using \textsf{family} (Sec. \ref{families}). Expressions can be either variables, lambdas, or applications of operators (Sec. \ref{operators}), and are ultimately given meaning by translation to a typed internal language. This language has been chosen, for simplicity, to be a variant of Plotkin's PCF with primitive integers and products, but in practice would include other constructs consistent with its role as a high-level intermediate language. Terms of this language are denoted $\gamma$ and its types are denoted $\sigma$. Both of these productions also include additional forms containing type-level terms, $\tau$; these are used for developing extensions and during compilation and will be explained in the sections below.
+At the top level, programs, $\rho$, consist of a series of declarations followed by an expression. Declarations can be either bindings of type-level terms to type-level variables using \textsf{def} or a declaration of a new primitive type family using \textsf{family}. Expressions can be either variables, lambdas, or applications of operators, and are ultimately given meaning by translation to a typed internal language. This language has been chosen, for simplicity, to be a variant of Plotkin's PCF with primitive integers and products, but in practice would include other constructs consistent with its role as a high-level intermediate language. The grammars of internal terms, $\gamma$, and internal types, $\sigma$, also include special forms containing type-level terms; these are used for developing extensions and during compilation and will be erased before compilation ends, as we will explain below.
 
 \subsection{Example: G\"odel's T as an Active Type Family}
 \begin{figure}[t]
@@ -316,7 +315,7 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t1}}}{\ttype{Nat}{\tunit}}}{(\\
 	&\quad\quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tvar{t3}}}{\ttype{Arrow}{(\ttype{Nat}{\tunit},\ttype{Arrow}{(\tvar{t2},\tvar{t2})})}}}{\\
 		\label{fix}&\quad\quad \tden{\titerm{\iapp{(\ifix{f}{\darrow{\dint}{\trepof{\tvar{t2}}}}{\ilam{x}{\dint}{\\
-		&\quad\quad\quad \iIfEq{x}{0}{\dint}{\iup{\tvar{x2}}}{\iapp{\iapp{\iup{\tvar{x3}}}{(x-1)}}{(\iapp{f}{(x-1)})}}}})}{\iup{\tvar{x1}}}}}{\tvar{t2}}
+		\label{lastop}&\quad\quad\quad \iIfEq{x}{0}{\dint}{\iup{\tvar{x2}}}{\iapp{\iapp{\iup{\tvar{x3}}}{(x-1)}}{(\iapp{f}{(x-1)})}}}})}{\iup{\tvar{x1}}}}}{\tvar{t2}}
 	)}}
 	}}}}}}}}}}}}
 \\
@@ -326,7 +325,7 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 	\elam{two}{\tvar{nat}}{\\
 \label{ap}	&\quad\quad \eopapp{\eopapp{plus}{two}}{two}}})
 }\\
-\label{recuse}&\quad (\elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{
+\label{add}&\quad (\elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{
 	\eop{Nat}{rec}{\tunit}{x; y; \elam{p}{\tvar{nat}}{\elam{r}{\tvar{nat}}{
 	\eop{Nat}{s}{\tunit}{r}
 	}}}}})\\
@@ -341,30 +340,33 @@ At the top level, programs, $\rho$, consist of a series of declarations followed
 \vspace{-15pt}
 \caption{G\"odel's T in \atlam, used to calculate 2+2. The statics we implement here are shown in Appendix \ref{T}. Simple helper functions for working with argument lists ($\tvar{const}$, $\tvar{pop}$, $\tvar{pop\_final}$) and types ($\tvar{check\_type}$) are defined in Appendix \ref{helper}.}
 \label{example}
+\vspace{-10pt}
 \end{figure}
-To make our explanation of each of the constructs in the calculus concrete, we will work through an example showing how to introduce primitive natural numbers with bounded recursion in the style of G\"odel's T \cite{pfpl}. These will be implemented internally as integers (that is, translation will always produce internal terms of internal type $\dint$). Figure \ref{example} shows how the indexed type family $\fvar{Nat}$ is defined. This family is indexed by a unit value (of kind $\kunit$), so it contains only one type, $\ttype{Nat}{\tunit}$, which we alias by defining the type-level variable $\tvar{nat}$. We define the typechecking and translation logic for the operators associated with this family (\opvar{z}, \opvar{s} and \opvar{rec}) and use these to define an add function and compute 2+2.
+To make our explanation of each of the constructs in the calculus concrete, we will work through an example showing how to introduce primitive natural numbers with bounded recursion in the style of G\"odel's T \cite{pfpl}. These will be implemented internally as integers (internal terms of internal type $\dint$). Figure \ref{example} shows how the indexed type family $\fvar{Nat}$ is defined. This family is indexed by a unit value (of kind $\kunit$), so it contains only one type, $\ttype{Nat}{\tunit}$, which we alias on line \ref{nattype} by defining the type-level variable $\tvar{nat}$. We define the typechecking and translation logic for the operators associated with this family (\opvar{z}, \opvar{s} and \opvar{rec}) on lines \ref{z}-\ref{lastop} and use these to define a $plus$ function on line \ref{add} and compute 2+2.
 
 \subsection{Indexed Type Families and Types}\label{families}
-The syntactic form $\familyDf$ declares a new primitive type family named $\fvar{Fam}$ indexed by type-level values of kind $\kappaidx$ (line \ref{natfam}). This can be compared to adding a new constructor to the compiler-internal datatype \lstinline{Type}, as suggested in Sec. \ref{evolution}. The index represents the data associated with the constructor. A base type like $\tvar{nat}$ can be thought of as being the only type in the family $\fvar{Nat}$ trivially indexed by the unit value, of kind $\kunit$, while families like $\fvar{Ntuple}$ might be indexed by a list of types, of kind $\klist{\kTypeBlur}$. A type (that is, a type-level term of kind $\kTypeBlur$) is constructed by naming a family in scope and providing a type-level term of the appropriate kind as an index. For example, $\ttype{Ntuple}{\tcons{\tvar{nat}}{\tcons{\tvar{nat}}{\tnil{\kTypeBlur}}}}$ might be the type of a pair of natural numbers. It is important that type equality be decidable, so only kinds for which equivalence coincides with syntactic equality can be used as type family indices. The main  consequence of this restriction is that indices cannot contain type-level functions.
+The syntactic form $\familyDf$ declares a new primitive type family named $\fvar{Fam}$ indexed by type-level values of kind $\kappaidx$ with representation schema $\tvar{i}.\taurep$ and operators $\theta$. This can be compared to adding a new constructor to the compiler-internal datatype \lstinline{Type}, as suggested in Sec. \ref{evolution}. 
+The index represents the data associated with the constructor. A base type like $\tvar{nat}$ can be thought of as being the only type in the family $\fvar{Nat}$ trivially indexed by the unit value, of kind $\kunit$, while families like $\fvar{Ntuple}$ might be indexed by a list of types, having kind $\klist{\kTypeBlur}$. 
+A type (that is, a type-level term of kind $\kTypeBlur$) is constructed by naming a family in scope and providing a type-level term of the appropriate kind as an index. For example, $\ttype{Ntuple}{\tcons{\tvar{nat}}{\tcons{\tvar{nat}}{\tnil{\kTypeBlur}}}}$ might be the type of a pair of natural numbers. It is important that type equality be decidable, so only kinds for which equivalence coincides with syntactic equality can be used as type family indices. The main  consequence of this restriction is that indices cannot contain type-level functions. Given a type, its family can be \textsf{case} analyzed to extract its index.
 
-As we will discuss further below, it is important that all expressions classified by a type compile to internal terms of consistent internal type\todo{mention compiler correctness history here?}. For this reason, we require that every type have an associated internal type. This is computed by substituting the type index for the bound variable $\tvar{i}$ in the term $\taurep$, called the \emph{representation schema}, associated with the type family and reducing to a value representing an internal type. Internal types, $\sigma$, are reified as type-level terms of kind $\kIType$ using the introductory form $\titype{\sigma}$ (as we will see, an  elimination form  is not necessary). 
+\subsection{Representation Schemas}
+As we will discuss further below, it is important that all expressions classified by a type compile to consistently-typed internal terms\todo{mention compiler correctness history here?}. For this reason, we require that every type have associated with it a single internal type. This is computed by substituting the type index for the bound variable $\tvar{i}$ in the term $\taurep$, called the \emph{representation schema}, associated with the type family and evaluating to a value representing an internal type. Internal types, $\sigma$, are reified into type-level terms of kind $\kIType$ using the introductory form $\titype{\sigma}$.
 
 
 \subsection{Indexed Operator Families and Denotations}\label{operators}
-Type families also have a collection of primitive operator families associated with them. An operator family named $\opvar{op}$ is declared using the form $\tops{op}{\kappaidx}{i}{a}{\tauop}$. Like type families, operator families are indexed by values of some specified kind, $\kappaidx$. Operators are not first-class type-level values in our calculus, so there are no restrictions related to equality. In the example in Fig. \ref{example}, all the operators are trivially indexed by the kind $\kunit$, so each family is only inhabited by one operator. However, a family like $\fvar{Ntuple}$ would have a family of projection operators, $\opvar{pr}$, indexed by a position (e.g. an integer in our calculus). A family implementing record types or object types might have a similar operator indexed by a type-level string representing the field being accessed.
+Type families also have a collection of primitive operator families associated with them. An operator family named $\opvar{op}$ is declared using the form $\tops{op}{\kappaidx}{i}{a}{\tauop}$. Like type families, operator families are indexed by values of some kind, $\kappaidx$. Operators are not first-class type-level values in our calculus, so there are no restrictions on this kind related to equality. In the example in Fig. \ref{example}, all the operators are trivially indexed by the kind $\kunit$, so each family only contains one operator. However, a type family like $\fvar{Ntuple}$ would be equipped with a family of projection operators, $\opvar{pr}$, indexed by a position (e.g. an integer in our calculus). A family implementing record types or object types might have a similar operator indexed by a type-level string representing the field being accessed.
 
-An operator application is an expression of the form $\eop{Fam}{op}{\tauidx}{e_1; \ldots; e_n}$, where $n \geq 0$. The typechecking and translation of an expression of this form is controlled by the declaration of $\opvar{op}$ in family $\fvar{Fam}$, as determined by the type-level term $\tauop$. It must evaluate to a \emph{denotation}, which is a type-level value of kind $\kDen$, when the index, $\tauidx$, and a list containing the denotations recursively assigned to each argument, $e_1$ through $e_n$, are bound to $\tvar{i}$ and $\tvar{a}$, respectively.
-
-There are two forms of denotations. A \emph{valid denotation} has the form $\tden{\tau_1}{\tau_2}$, where $\tau_1$ represents the \emph{translation} of an expression to an internal term and $\tau_2$ is the type. The translation must have kind $\kITerm$ of  reified internal language terms. The only introductory form for this is $\titerm{\gamma}$, just as with $\kIType$. There is no elimination form. Types, as before, have kind $\kTypeBlur$.
+To select an operator from a family by providing an index and apply it to $n$ arguments, the grammar provides a uniform form: $\eop{Fam}{op}{\tauidx}{e_1; \ldots; e_n}$, where $n \geq 0$. The typechecking and translation of an expression of this form is controlled by the implementation, $\tauop$. It must evaluate to a \emph{denotation}, which is a type-level value of kind $\kDen$, when given the operator index, $\tauidx$, and a list constructed from the denotations recursively assigned to each argument, $e_1$ through $e_n$. 
+There are two forms of denotations that an expression can have. A \emph{valid denotation} has the form $\tden{\tauiterm}{\tautype}$, where $\tauiterm$ represents the \emph{translation} of the expression to an internal term and $\tautype$ is the type assigned to it. Internal terms are reified as type-level terms using the form $\titerm{\gamma}$, and have kind $\kITerm$ (similar to $\kIType$). It is important to note that there are no elimination form for reified terms or types.
 %(indeed, in \atlam, terms are never  syntactically analyzed directly by extensions, unlike macro systems and other forms of term rewriting; see Sec. \ref{related-work})
-If a type cannot be assigned to an operation according to the specification of the operator being implemented, then the \emph{error denotation}, $\terr$, should be returned instead of a valid denotation. In a practical implementation, a specialized error message and other diagnostic information could be associated with $\terr$, but we omit such details for the sake of simplicity in our core calculus. Terms of kind $\kDen$ can be \textsf{case} analyzed to determine if they are valid, and if so, to extract the translation and type.
+If a type cannot be assigned to an operation according to the specification of the operator being implemented, then the \emph{error denotation}, $\terr$, is returned instead of a valid denotation. In a more practical implementation, a specialized error message and other diagnostic information could be associated with $\terr$, but we omit such details for the sake of simplicity in our core calculus. Terms of kind $\kDen$ can be \textsf{case} analyzed to determine if they are valid or errors, and if valid, to extract the translation and type.
 
 In the example in Fig. \ref{example}, the operator $\opvar{z}$ checks that no arguments were provided using the simple helper function $\tvar{const}$ (shown in Appendix \ref{helper}). If so, it returns a valid denotation by pairing the translation $\titerm{0}$ with the type $\ttype{Nat}{\tunit}$, as expected\footnote{In fact, there is no theoretical barrier to a different ``zero'' being used, since integers and natural numbers are both of countably infinite cardinality!}. If not, the helper function returns $\terr$. The successor operator, $\opvar{s}$, does take an argument, so it pops a denotation off the argument list, making sure there are no more, and binds its translation and type to $\tvar{x}$ and $\tvar{t}$ respectively, all using the helper function $\tvar{pop\_final}$. It then checks that the argument's type is also $\ttype{Nat}{\tunit}$, returning a denotation pairing the translation $\titerm{\iup{\tvar{x}} + 1}$ with the type $\ttype{Nat}{\tunit}$ if so. The internal language includes a special form $\iup{\tau}$ which is used to ``un-reify'' reified internal terms, of kind $\kITerm$ (thus serving as the left-inverse of $\titerm{\gamma}$). In this case, $\tvar{x}$ is a type-level variable of kind $\kITerm$ representing the translation of the argument to the successor operator. Because we have checked that it is a natural number, and natural numbers always translate to integers by the representation schema, we know that it is safe to add 1 to this internal term. The result remains an integer according to the type system of the internal language so it is safe to give the entire expression type $\ttype{Nat}{\tunit}$ without violating the schema. Indeed, the extension mechanism will check that these consistencies hold (though not the kind system; see Sec. \ref{repcon}). If any of these steps fail, the various helper functions we use simply return $\terr$ (in practice, it would be prudent to equip each failure condition with a different error message).
 
 % The operator index, $\tauidx$, and . 
 
 \subsection{Functions, Variables and Arrow Types}
-The recursor operator, $\opvar{rec}$, proceeds similarly, extracting the translations and types of each of its three arguments. The third argument, the recursive case, binds two variables (the predecessor and the result of recursing on it). In \atlam, the build-in $\lambda$ operator serves as the primitive mechanism for working with bound variables. While lambda terms conventionally have types of the form $\tau_1 \rightarrow \tau_2$, \atlam~instead includes a built-in type family, $\fvar{Arrow}$,  that is always in scope. This family is indexed by a pair of types, $\kpair{\kTypeBlur}{\kTypeBlur}$, and its representation schema simply maps to the corresponding internal arrow type, $\tvar{i}.\titype{\darrow{\trepof{\tfst{\tvar{i}}}}{\trepof{\tsnd{\tvar{i}}}}}$. The special form $\trepof{\tau}$ is used to refer, abstractly, to the representation of another type (we also see this used on line \ref{fix}). Although $\lambda$ is built-in, application is an operator associated with the $\fvar{Arrow}$ family, $\opvar{ap}$, as we see on line \ref{ap}. \todo{figure for arrow types}
+The recursor operator, $\opvar{rec}$, proceeds similarly, extracting the translations and types of each of its three arguments. The interesting part comes when analyzing the third argument, the recursive case, which binds two variables (the predecessor and the result of recursing on it). In \atlam, the built-in $\lambda$ operator serves as the sole mechanism for introducing bound variables. In most calculi, lambda terms have types of the form $\tau_1 \rightarrow \tau_2$, which in \atlam~corresponds to a built-in type family, $\fvar{Arrow}$, indexed by a pair of types, $\kpair{\kTypeBlur}{\kTypeBlur}$, that is always in scope. Its representation schema simply maps to the corresponding internal arrow type, $\tvar{i}.\titype{\darrow{\trepof{\tfst{\tvar{i}}}}{\trepof{\tsnd{\tvar{i}}}}}$. The special form $\trepof{\tau}$ is used to refer, abstractly, to the representation of the two types it is indexed by (we also see this used on line \ref{fix}). Although $\lambda$ is built-in, application is an operator associated with the $\fvar{Arrow}$ family, $\opvar{ap}$, as is seen on line \ref{ap}. \todo{figure for arrow types}
 
 \subsection{Compilation}
 \begin{figure}[t]
@@ -382,19 +384,15 @@ The recursor operator, $\opvar{rec}$, proceeds similarly, extracting the transla
 \label{ccj}
 \end{figure}
 The \emph{central compilation judgement}, shown in Figure \ref{ccj}, captures the two phases of compilation: kind checking and active typechecking and translation. 
-The first phase ensures that all type-level terms in the program are well-kinded and that all expressions and internal terms are closed. The kinding rules for programs are given in Figure \ref{kindprog}, and they rely on the kinding rules for type-level terms given in Figure \ref{tlkind}. These rules use contexts $\Sigma$ and $\Theta$ to track family and operator signatures but beyond that, these rules are largely consistent with those of a simply-typed lambda calculus, with the addition of the handful of special forms described in the previous sections. The reader is encouraged to verify that the example in Fig. \ref{example} is well-kinded. Active typechecking and translation requires normalizing type-level terms to type-level values at various points, so the kind checking phase ensures that no simple mistakes have been made and that this process will not ``get stuck'' (see Sec. \ref{safety}).
-
-\subsection{Active Typechecking and Translation}
-
-\subsection{Abstract Representations}
-Note that there is no elimination form that could be used to determine the internal type associated with a type, but the special internal type $\trepof{\tau}$, where $\tau$ is a type, can be used to refer to it abstractly
+The first phase ensures that all type-level terms in the program are well-kinded and that all expressions and internal terms are closed. The kinding rules for programs are given in Figure \ref{kindprog}, and they rely on the kinding rules for type-level terms given in Figure \ref{tlkind}. These rules use contexts $\Sigma$ and $\Theta$ to track family and operator signatures, but beyond that, the rules are largely consistent with those of a simply-typed lambda calculus, with the addition of the handful of special forms constrained as described in the previous sections. The reader is encouraged to verify that the example in Fig. \ref{example} is well-kinded. 
+% As we will see, the kind checking phase ensures that many kinds of errors are ruled out and that this process will not ``get stuck'' (see Sec. \ref{safety}). The evaluation semantics for type-level terms are given in Fig. \ref{tleval}.
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{\progOKX{\progsort}}}$
 ~~~$\tvarCtx ::= \emptyctx \pipe \tvarCtxX{t}{\kappa}$~~~
 $\fCtx ::= \Sigma_0	 \pipe \fvarCtxX$
 \begin{mathpar}
-\inferrule[family kinding]{
+\inferrule[family-kinding]{
 	\fvar{Fam} \notin \text{dom}(\fvarCtx)\\
 	\kEq{\kappaidx}\\
 	\opType{\tvarCtx}{\fvarCtxX}{\theta}{\Theta}\\\\
@@ -404,29 +402,30 @@ $\fCtx ::= \Sigma_0	 \pipe \fvarCtxX$
 	\progOKX{\pfam{\familyDf}{\rho}}
 }
 
-\inferrule[type-level bind kinding]{
+\inferrule[def-kinding]{
 	\tKindX{\tau}{\kappa}\\
 	\progOK{\tvarCtxX{t}{\kappa}}{\fvarCtx}{\rho}
 }{
 	\progOKX{\pdef{t}{\kappa}{\tau}{\rho}}
 }
 
-\inferrule[exp kinding]{
+\inferrule[exp-kinding]{
 	\exprOK{\tvarCtx}{\emptyctx}{\fvarCtx}{e}
 }{
 	\progOKX{e}
 }
 \end{mathpar}
 $\fbox{$\tKindX{\theta}{\Theta}$}$
+~~~$\Theta ::= \kOpS{op}{\kappaidx} \pipe \Theta, \Theta$~~~
 \begin{mathpar}
-\inferrule[op]{
+\inferrule[op-kinding]{
 	\tKind{\tvarCtx, \tOfKind{\tvar{i}}{\kappai}, \tOfKind{\tvar{a}}{\klist{\kDen}}}{\fvarCtx}{\tau}{\kDen}
 }{
-	\opType{\tvarCtx}{\fvarCtx}{{\tops{op}{\kappai}{i}{a}{\tau}}}{
-	\kOpS{op}{\kappai}}
+	\opType{\tvarCtx}{\fvarCtx}{{\tops{op}{\kappaidx}{i}{a}{\tau}}}{
+	\kOpS{op}{\kappaidx}}
 }
 
-\inferrule[ops]{
+\inferrule[ops-kinding]{
 	\tKindX{\theta_1}{\Theta_1}\\
 	\tKindX{\theta_2}{\Theta_2}\\\\
 	\text{dom}(\theta_1) \cap \text{dom}(\theta_2) = \emptyset
@@ -437,18 +436,18 @@ $\fbox{$\tKindX{\theta}{\Theta}$}$
 $\fbox{$\exprOKX{e}$}$
 ~~~$\itvarCtx ::= \emptyctx \pipe \itvarCtx, \evar{x}$
 \begin{mathpar}
-\inferrule[e-var-kind]{ }{
+\inferrule[e-var-kinding]{ }{
 	\exprOK{\tvarCtx}{\itvarCtx, \evar{x}}{\fvarCtx}{\evar{x}}
 }
 
-\inferrule[e-lam-kind]{
+\inferrule[e-lam-kinding]{
 	\tKindX{\tau}{\kTypeBlur}\\
 	\exprOK{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{e}
 }{
 	\exprOKX{\elam{\evar{x}}{\tau}{e}}
 }
 
-\inferrule[e-op-kind]{
+\inferrule[e-op-kinding]{
 	\fvarOfType{Fam}{\kappaidx}{\Theta} \in \fvarCtx\\
 	\kOpS{op}{\kappai} \in \Theta\\
 	\tKindX{\taui}{\kappai}\\\\
@@ -459,9 +458,23 @@ $\fbox{$\exprOKX{e}$}$
 	\exprOKX{\eop{Fam}{op}{\taui}{\splat{e}{1}{n}}}
 }
 \end{mathpar}
-\caption{\small Kinding for programs. Variable contexts $\tvarCtx$ and $\itvarCtx$ obey standard structural properties. Kinding for type-level terms in Figure \ref{kindtl}.}
+\caption{\small Kinding for programs. Variable contexts $\tvarCtx$ and $\itvarCtx$ obey standard structural properties. Kinding rules for type-level terms are given in Figure \ref{tlkind}.}
 \label{kindprog}
 \end{figure}
+\subsection{Active Typechecking and Translation}
+The second phase of compilation involves typechecking and translating the program to produce an internal term, invoking the user-defined logic encoded in the introduced operator families when needed. The rules for active typechecking and translation are given in Fig. \ref{att}. The context $\fvalCtx$ tracks the operator definitions and representation schemas associated with families in scope. Because the logic inside operators must be invoked during this phase, we provide an evaluation semantics for type-level terms in Fig. \ref{tleval}. 
+
+The key rule is \textsc{att-exp}, which assigns a type, $\tau$, and an \emph{abstract translation}, $\gabs$, to an expression, $e$, as specified by the judgement $\ecompilesX{e}{\tau}{\gabs}$, then \emph{deabstracts} the translation to produce the final translation. Deabstraction is specified in Fig. \ref{deabs} by the judgement $\eraseX{\gabs}{\gamma}$. The purpose of the abstract translation is to ensure that the implementation details of a type cannot be observed by operators associated with a different type, ensuring that invariants maintained by that type cannot be violated by operators in a different type family. For example, the implementation of natural numbers as integers in Fig. \ref{example} maintains the invariant that the translation is non-negative. If the knowledge that natural numbers are implemented as integers was externally visible, a different extension could introduce an operator like $\tops{badnum}{\kunit}{i}{a}{\tapp{\tvar{const}}{\tapp{\tvar{a}}{\tden{\titerm{-1}}{\ttype{Nat}{\tunit}}}}}$.
+
+This is prevented by a mechanism quite similar to the mechanism by which abstract types in ML-style modules operate \cite{atapl} -- by keeping the representation schema hidden outside the type family it is associated with. As a result, it cannot be shown given the knowledge available in the type family containing $\opvar{badnum}$ that the internal type associated with $\ttype{Nat}{\tunit}$ is $\dint$, and so $-1$ is not valid according to the rules we will describe below. The only way to produce a term of this type in an operator not associated with the type is to extract it from an input argument, where the invariants are guaranteed inductively to have been  maintained. We will make this more concrete in Sec. \ref{safety}.
+
+Our representation schema abstraction mechanism is specified syntactically, so it relates to previous work on syntactic type abstraction \cite{syntypeabs}. While that work was focused on abstracting away the identity of a particular type outside of a ``host'', we focus on abstracting away the knowledge of how a primitive type family is implemented outside of the operators associated with it.
+
+Variables translate directly to variables in the internal language, with the type determined by the typing context, $\Gamma$ (rule \textsc{att-var}). Lambda terms translate to lambda terms in the internal language.  
+
+\subsection{Abstract Representations}
+Note that there is no elimination form that could be used to determine the internal type associated with a type, but the special internal type $\trepof{\tau}$, where $\tau$ is a type, can be used to refer to it abstractly
+
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{\pcompilesX{\rho}}}$
@@ -481,13 +494,13 @@ $\fbox{\inferrule{}{\pcompilesX{\rho}}}$
 }
 
 \inferrule[att-exp]{
-	\ecompiles{\emptyctx}{\fvalCtx}{e}{\tau}{\ghat}\\
-	\eraseX{\ghat}{\gamma}
+	\ecompiles{\emptyctx}{\fvalCtx}{e}{\tau}{\gabs}\\
+	\eraseX{\gabs}{\gamma}
 }{
 	\pcompilesX{e}
 }
 \end{mathpar}
-$\fbox{\inferrule{}{\ecompilesX{e}{\tau}{\ghat}}}$
+$\fbox{\inferrule{}{\ecompilesX{e}{\tau}{\gabs}}}$
 ~~~$\etCtx ::= \emptyctx \pipe \etCtxX{x}{\tau}$
 \begin{mathpar}
 \inferrule[att-var]{ }{
@@ -495,36 +508,37 @@ $\fbox{\inferrule{}{\ecompilesX{e}{\tau}{\ghat}}}$
 }
 
 \inferrule[att-lam]{
-	\tEvalX{\tau_1}{\ttype{Fam}{\tauidx}}\\
-	\ecompiles{\etCtxX{x}{\ttype{Fam}{\tauidx}}}{\fvalCtx}{e}{\tau_2}{\ghat}\\\\
-	\tauisdel{Arrow}{\fvalCtx}{Fam}{\tauidx}{\dbar}\\
+	\tEvalX{\tau_1}{\tau_1'}\\
+	\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+	\ecompiles{\etCtxX{x}{\tau_1'}}{\fvalCtx}{e}{\tau_2}{\gabs}
 }{
-	\ecompiles{\etCtx}{\fvalCtx}{\elam{\evar{x}}{\tau_1}{e}}{\ttype{Arrow}{\tpair{\ttype{Fam}{\tauidx}}{\tau_2}}}{\ilam{\evar{x}}{\dbar}{\ghat}}
+	\ecompiles{\etCtx}{\fvalCtx}{\elam{\evar{x}}{\tau_1}{e}}{\ttype{Arrow}{\tpair{\tau_1'}{\tau_2}}}{\ilam{\evar{x}}{\sabs}{\gabs}}
 }
 
 \inferrule[att-op]{
 	\fvalDf \in \fvalCtx\\
 	\tops{op}{\kappai}{i}{a}{\tauop} \in \theta\\
 	\tEvalX{\taui}{\taui'}\\\\
-	\ecompiles{\etCtx}{\fvalCtx}{e_1}{\tau_1}{\ghat_1}~~~~
+	\ecompiles{\etCtx}{\fvalCtx}{e_1}{\tau_1}{\gamma_1}~~~~
 	\cdots~~~~
-	\ecompiles{\etCtx}{\fvalCtx}{e_n}{\tau_n}{\ghat_n}\\
+	\ecompiles{\etCtx}{\fvalCtx}{e_n}{\tau_n}{\gamma_n}\\
 	\text{$\begin{array}{c}
 		\left[\text{$\begin{array}{r}
 			\taui'/\tvar{i}\\
-			\tden{\titerm{\ghat_1}}{\tau_1} :: \cdots :: \tden{\titerm{\ghat_n}}{\tau_n} :: \tnil{\kDen}/\tvar{a}
+			\tden{\titerm{\gamma_1}}{\tau_1} :: \cdots :: \tden{\titerm{\gamma_n}}{\tau_n} :: \tnil{\kDen}/\tvar{a}
 			\end{array}$}\right]\tauop
 		\Downarrow
-		\tden{\titerm{\ghat}}{\ttype{Fam'}{\tauidx}}
+		\tden{\titerm{\gamma}}{\ttype{Fam'}{\tauidx}}
 		\end{array}$}\\
-	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\dbar}\\
+	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\sigma}\\
 	\eCtxTogCtx{Fam}{\fvalCtx}{\etCtx}{\gtCtx}\\
-	\checkRC{\gtCtx}{Fam}{\fvalCtx}{\ghat}{\dbar}
+	\checkRC{\gtCtx}{Fam}{\fvalCtx}{\gamma}{\sigma}
 }{
-	\ecompiles{\etCtx}{\fvalCtx}{\eop{Fam}{op}{\taui}{\splat{e}{1}{n}}}{\ttype{Fam'}{\tauidx}}{\ghat}
+	\ecompiles{\etCtx}{\fvalCtx}{\eop{Fam}{op}{\taui}{\splat{e}{1}{n}}}{\ttype{Fam'}{\tauidx}}{\gamma}
 }
 \end{mathpar}
-\caption{\small Active typechecking and translation}
+\caption{\small Active typechecking and translation of programs. Evaluation semantics for type-level terms are given in Fig. \ref{tleval}}
+\label{att}
 \end{figure}
 \begin{figure}[t]
 \small
@@ -532,25 +546,25 @@ $\fbox{\inferrule{}{\ecompilesX{e}{\tau}{\ghat}}}$
 $\fbox{\inferrule{}{\tKindX{\tau}{\kappa}}}$
 \begin{mathpar}
 \small
-\inferrule[var kind]{
+\inferrule[var-kind]{
 }{
   \tKind{\tvarCtxX{t}{\kappa}}{\fvarCtx}{\tvar{t}}{\kappa}
 }
 
-\inferrule[k-arrow intro]{
+\inferrule[k-arrow-intro]{
   \tKind{\tvarCtxX{t}{\kappa_1}}{\fvarCtx}{\tau}{\kappa_2}
 }{
   \tKindX{\tlam{t}{\kappa_1}{\tau}}{\karrow{\kappa_1}{\kappa_2}}
 }
 
-\inferrule[k-arrow elim]{
+\inferrule[k-arrow-elim]{
   \tKindX{\tau_1}{\karrow{\kappa_1}{\kappa_2}}\\
   \tKindX{\tau_2}{\kappa_1}
 }{
   \tKindX{\tapp{\tau_1}{\tau_2}}{\kappa_2}
 }
 \\
-\text{\color{gray} (standard statics for integers, strings, products and lists omitted)}
+\text{\color{gray} (standard statics for lists, integers, strings and products  omitted)}
 \\
 %%
 %%\inferrule{ }{
@@ -600,7 +614,7 @@ $\fbox{\inferrule{}{\tKindX{\tau}{\kappa}}}$
 %%}~(\text{snd}_\tau)
 %%
 %% TODO: list
-\inferrule[eq kind]{
+\inferrule[tl-equality]{
 	\kEq{\kappa}\\
 	\tKindX{\tau_1}{\kappa}\\
 	\tKindX{\tau_2}{\kappa}\\\\
@@ -610,14 +624,14 @@ $\fbox{\inferrule{}{\tKindX{\tau}{\kappa}}}$
 	\tKindX{\tifeq{\tau_1}{\tau_2}{\kappa}{\tau_3}{\tau_4}}{\kappa'}
 }
 
-\inferrule[type intro]{
+\inferrule[type-intro]{
 	\fvarOfTypeDf \in \fvarCtx\\\\
 	\tKind{\tvarCtx}{\fvarCtx}{\tauidx}{\kappaidx}
 }{
 	\tKindX{\ttype{Fam}{\tauidx}}{\kTypeBlur}
 }
 
-\inferrule[type elim]{
+\inferrule[type-elim]{
 	\fvarOfTypeDf \in \fvarCtx\\
 	\tKindX{\tau}{\kTypeBlur}\\\\
 	\tKind{\tvarCtxX{x}{\kappaidx}}{\fvarCtx}{\tau_0}{\kappa}\\
@@ -625,36 +639,36 @@ $\fbox{\inferrule{}{\tKindX{\tau}{\kappa}}}$
 }{
 	\tKind{\tvarCtx}{\fvarCtx}{\tfamcase{\tau}{Fam}{x}{\tau_0}{\tau_1}}{\kappa}
 }
-
-\inferrule[den intro valid]{
-	\tKindX{\tautype}{\kTypeBlur}\\\\
-	\tKindX{\tauval}{\kITerm}
+~~~~~~
+\inferrule[den-intro-valid]{
+	\tKindX{\tau_1}{\kITerm}\\\\
+	\tKindX{\tau_2}{\kTypeBlur}
 }{
-	\tKindX{\tden{\tauval}{\tautype}}{\kDen}
+	\tKindX{\tden{\tau_1}{\tau_2}}{\kDen}
 }
-
-\inferrule[den intro err]{ }{
+~~~~~~
+\inferrule[den-intro-err]{ }{
 	\tKindX{\terr}{\kDen}
 }
 
-\inferrule[den elim]{
-	\tKindX{\tauden}{\kDen}\\
-	\tKind{\tvarCtx, \tOfKind{\tvar{x}}{\kITerm}, \tOfKind{\tvar{y}}{\kTypeBlur}}{\fvarCtx}{\tau_1}{\kappa}\\
+\inferrule[den-elim]{
+	\tKindX{\tau}{\kDen}\\\\
+	\tKind{\tvarCtx, \tOfKind{\tvar{x}}{\kITerm}, \tOfKind{\tvar{t}}{\kTypeBlur}}{\fvarCtx}{\tau_1}{\kappa}\\
 	\tKindX{\tau_2}{\kappa}
 }{
-	\tKindX{\tdencase{\tauden}{y}{x}{\tau_1}{\tau_2}}{\kappa}
+	\tKindX{\tdencase{\tau}{x}{t}{\tau_1}{\tau_2}}{\kappa}
 }
 
-\inferrule[iterm intro]{
-	\isIterm{\tvarCtx}{\emptyctx}{\fvarCtx}{\ghat}
+\inferrule[iterm-intro]{
+	\isIterm{\tvarCtx}{\emptyctx}{\fvarCtx}{\gamma}
 }{
-	\tKindX{\titerm{\ghat}}{\kITerm}
+	\tKindX{\titerm{\gamma}}{\kITerm}
 }
 
 \inferrule[itype intro]{
-	\isItype{\tvarCtx}{\fvarCtx}{\dhat}
+	\isItype{\tvarCtx}{\fvarCtx}{\sigma}
 }{
-	\tKindX{\titype{\dhat}}{\kIType}
+	\tKindX{\titype{\sigma}}{\kIType}
 }
 \end{mathpar}
 $\fbox{$\kEq{\kappa}$}$
@@ -667,7 +681,7 @@ $\fbox{$\kEq{\kappa}$}$
 	\kEq{\dint}
 }
 
-\inferrule[str-eq]{ }{
+\inferrule[s-eq]{ }{
 	\kEq{\kstr}
 }
 
@@ -675,81 +689,81 @@ $\fbox{$\kEq{\kappa}$}$
 	\kEq{\kunit}
 }
 
-\inferrule[prod-eq]{
+\inferrule[p-eq]{
 	\kEq{\kappa_1}\\
 	\kEq{\kappa_2}
 }{
 	\kEq{\kpair{\kappa_1}{\kappa_2}}
 }
 
-\inferrule[list-eq]{
+\inferrule[l-eq]{
 	\kEq{\kappa}
 }{
 	\kEq{\klist{\kappa}}
 }
 \end{mathpar}
-$\fbox{$\isItermX{\ghat}$}$
+$\fbox{$\isItermX{\gamma}$}$
 \begin{mathpar}
-\inferrule[i-var kind]{ }{
+\inferrule[i-var-kinding]{ }{
 	\isIterm{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{\evar{x}}
 }
 
-\inferrule[i-lam kind]{
-	\isItypeX{\dhat}\\\\
-	\isIterm{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{\ghat}
+\inferrule[i-lam-kinding]{
+	\isItypeX{\sigma}\\\\
+	\isIterm{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{\gamma}
 }{
-	\isItermX{\ilam{\evar{x}}{\dhat}{\ghat}}
+	\isItermX{\ilam{\evar{x}}{\sigma}{\gamma}}
 }
 
-\inferrule[i-fix kind]{
-	\isItypeX{\dhat}\\\\
-	\isIterm{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{\ghat}
+\inferrule[i-fix-kinding]{
+	\isItypeX{\sigma}\\\\
+	\isIterm{\tvarCtx}{\eivarCtxX{x}}{\fvarCtx}{\gamma}
 }{
-	\isItermX{\ifix{\evar{f}}{\dhat}{\ghat}}
+	\isItermX{\ifix{\evar{f}}{\sigma}{\gamma}}
 }
 \\
 \text{\color{gray} (omitted forms have trivially recursive rules)}\\\vspace{-3pt}
 \\
-\inferrule[iterm unquote kind]{
+\inferrule[iterm-dereify-kinding]{
 	\tKindX{\tau}{\kITerm}
 }{
 	\isItermX{\iup{\tau}}
 }
 
-\inferrule[val from den kind]{
-	\tKindX{\tautype}{\kTypeBlur}\\
-	\tKindX{\tauval}{\kITerm}
+\inferrule[abs-trans-kinding]{
+	\tKindX{\tauiterm}{\kITerm}\\
+	\tKindX{\tautype}{\kTypeBlur}
 }{
-	\isItermX{\tvalof{\tauval}{\tautype}}
+	\isItermX{\tvalof{\tauiterm}{\tautype}}
 }
 \end{mathpar}
-$\fbox{$\isItypeX{\dhat}$}$
+$\fbox{$\isItypeX{\sigma}$}$
 \begin{mathpar}
-\inferrule[i-int kind]{ }{
+\inferrule[i-int-kinding]{ }{
 	\isItypeX{\dint}
 }
 
-\inferrule[i-prod kind]{
-	\isItypeX{\dhat_1}\\\\
-	\isItypeX{\dhat_2}
+\inferrule[i-prod-kinding]{
+	\isItypeX{\sigma_1}\\\\
+	\isItypeX{\sigma_2}
 }{
-	\isItypeX{\dpair{\dhat_1}{\dhat_2}}
+	\isItypeX{\dpair{\sigma_1}{\sigma_2}}
 }
 
-\inferrule[i-arrow kind]{
-	\isItypeX{\dhat_1}\\\\
-	\isItypeX{\dhat_2}
+\inferrule[i-arrow-kinding]{
+	\isItypeX{\sigma_1}\\\\
+	\isItypeX{\sigma_2}
 }{
-	\isItypeX{\darrow{\dhat_1}{\dhat_2}}
+	\isItypeX{\darrow{\sigma_1}{\sigma_2}}
 }
 
-\inferrule[itype unquote kind]{
+\inferrule[itype-dereify-kinding]{
 	\tKindX{\tau}{\kIType}
 }{
 	\isItypeX{\dup{\tau}}
 }
 
-\inferrule[rep from type kind]{
+\inferrule[abs-rep-kinding]{
 	\tKindX{\tau}{\kTypeBlur}
 }{
 	\isItypeX{\trepof{\tau}}
@@ -763,11 +777,11 @@ $\fbox{$\isItypeX{\dhat}$}$
 \small
 $\fbox{$\tEvalX{\tau}{\tau'}$}$
 \begin{mathpar}
-\inferrule[tl-lam eval]{ }{
+\inferrule[tl-lam-eval]{ }{
 	\tEvalX{\tlam{t}{\kappa}{\tau}}{\tlam{t}{\kappa}{\tau}}
 }
 
-\inferrule[tl-ap eval]{
+\inferrule[tl-ap-eval]{
 	\tEvalX{\tau_1}{\tlam{t}{\kappa}{\tau}}\\
 	\tEvalX{\tau_2}{\tau_2'}\\
 	\tEvalX{\subst{\tau_2'}{\tvar{t}}{\tau}}{\tau'}
@@ -777,7 +791,7 @@ $\fbox{$\tEvalX{\tau}{\tau'}$}$
 
 \text{\color{gray} (standard evaluation rules for integers, strings, products and lists omitted)}
 
-\inferrule[tl-eq eval eq]{
+\inferrule[tl-eq-eval-equal]{
 	\tEvalX{\tau_1}{\tau_1'}\\
 	\tEvalX{\tau_2}{\tau_1'}\\
 	\tEvalX{\tau_3}{\tau_3'}
@@ -785,7 +799,7 @@ $\fbox{$\tEvalX{\tau}{\tau'}$}$
 	\tEvalX{\tifeq{\tau_1}{\tau_2}{\kappa}{\tau_3}{\tau_4}}{\tau_3'}
 }
 
-\inferrule[tl-eq eval neq]{
+\inferrule[tl-eq-eval-inequal]{
 	\tEvalX{\tau_1}{\tau_1'}\\
 	\tEvalX{\tau_2}{\tau_2'}\\
 	\tau_1' \neq \tau_2'\\
@@ -794,20 +808,20 @@ $\fbox{$\tEvalX{\tau}{\tau'}$}$
 	\tEvalX{\tifeq{\tau_1}{\tau_2}{\kappa}{\tau_3}{\tau_4}}{\tau_4'}
 }
 
-\inferrule[type eval]{
+\inferrule[type-eval]{
 	\tEvalX{\tauidx}{\tauidx'}
 }{
 	\tEvalX{\ttype{Fam}{\tauidx}}{\ttype{Fam}{\tauidx'}}
 }
 
-\inferrule[famcase eval match]{
+\inferrule[famcase-eval-match]{
 	\tEvalX{\tau}{\ttype{Fam}{\tauidx}}\\
 	\tEvalX{\subst{\tauidx}{\tvar{x}}{\tau_1}}{\tau_1'}
 }{
 	\tEvalX{\tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}}{\tau_1'}
 }
 
-\inferrule[famcase eval fail]{
+\inferrule[famcase-eval-fail]{
 	\tEvalX{\tau}{\ttype{Fam'}{\tauidx}}\\
 	\fvar{Fam} \neq \fvar{Fam'}\\
 	\tEvalX{\tau_2}{\tau_2'}
@@ -815,61 +829,61 @@ $\fbox{$\tEvalX{\tau}{\tau'}$}$
 	\tEvalX{\tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}}{\tau_2'}
 }
 
-\inferrule[den eval]{
-	\tEvalX{\tautype}{\tautype'}\\
-	\tEvalX{\tauval}{\tauval'}
+\inferrule[den-valid-eval]{
+	\tEvalX{\tau_1}{\tau_1'}\\
+	\tEvalX{\tau_2}{\tau_2'}
 }{
-	\tEvalX{\tden{\tauval}{\tautype}}{\tden{\tauval'}{\tautype'}}
+	\tEvalX{\tden{\tau_1}{\tau_2}}{\tden{\tau_1'}{\tau_2'}}
 }
 
-\inferrule[err eval]{ }{
+\inferrule[den-err-eval]{ }{
 	\tEvalX{\terr}{\terr}
 }
 
 \inferrule[dencase eval valid]{
-	\tEvalX{\tauden}{\tden{\tauval}{\tautype}}\\
-	\tEvalX{[\tautype/\tvar{x}, \titerm{\tvalof{\tauval}{\tautype}}/\tvar{y}]\tau_1}{\tau_1'}
+	\tEvalX{\tau}{\tden{\tauiterm}{\tautype}}\\\\
+	\tEvalX{[\titerm{\tvalof{\tauiterm}{\tautype}}/\tvar{x}, \tautype/\tvar{t}]\tau_1}{\tau_1'}
 }{
-	\tEvalX{\tdencase{\tauden}{y}{x}{\tau_1}{\tau_2}}{\tau_1'}
+	\tEvalX{\tdencase{\tau}{x}{t}{\tau_1}{\tau_2}}{\tau_1'}
 }
 
-\inferrule[dencase eval err]{
-	\tEvalX{\tauden}{\terr}\\
+\inferrule[dencase-eval-err]{
+	\tEvalX{\tau}{\terr}\\
 	\tEvalX{\tau_2}{\tau_2'}
 }{
 	\tEvalX{\tdencase{\tauden}{y}{x}{\tau_1}{\tau_2}}{\tau_2'}
 }
 
-\inferrule[iterm quote eval]{
-	\tiEvalX{\ghat}{\ghat'}
+\inferrule[iterm-reify]{
+	\tiEvalX{\gamma}{\gamma'}
 }{
-	\tEvalX{\titerm{\ghat}}{\titerm{\ghat'}}
+	\tEvalX{\titerm{\gamma}}{\titerm{\gamma'}}
 }
 
-\inferrule[itype quote eval]{
-	\tiEvalX{\dhat}{\dhat'}
+\inferrule[itype-reify]{
+	\tiEvalX{\sigma}{\sigma'}
 }{
-	\tEvalX{\titype{\dhat}}{\titype{\dhat'}}
+	\tEvalX{\titype{\sigma}}{\titype{\sigma'}}
 }
 \end{mathpar}
-$\fbox{$\tiEvalX{\ghat}{\ghat'}$}$
+$\fbox{$\tiEvalX{\gamma}{\gamma'}$}$
 \begin{mathpar}
-\inferrule[i-var eval]{ }{
+\inferrule[i-var-eval]{ }{
 	\tiEvalX{\evar{x}}{\evar{x}}
 }
 
-\inferrule[i-lam eval]{
-	\tiEvalX{\dhat}{\dhat'}\\
-	\tiEvalX{\ghat}{\ghat'}
+\inferrule[i-lam-eval]{
+	\tiEvalX{\sigma}{\sigma'}\\
+	\tiEvalX{\gamma}{\gamma'}
 }{
-	\tiEvalX{\ilam{\evar{x}}{\dhat}{\ghat}}{\ilam{\evar{x}}{\dhat'}{\ghat'}}
+	\tiEvalX{\ilam{\evar{x}}{\sigma}{\gamma}}{\ilam{\evar{x}}{\sigma'}{\gamma'}}
 }
 
-\inferrule[i-fix eval]{
-	\tiEvalX{\dhat}{\dhat'}\\
-	\tiEvalX{\ghat}{\ghat'}
+\inferrule[i-fix-eval]{
+	\tiEvalX{\sigma}{\sigma'}\\
+	\tiEvalX{\gamma}{\gamma'}
 }{
-	\tiEvalX{\ifix{\evar{f}}{\dhat}{\ghat}}{\ifix{\evar{f}}{\dhat'}{\ghat'}}
+	\tiEvalX{\ifix{\evar{f}}{\sigma}{\gamma}}{\ifix{\evar{f}}{\sigma'}{\gamma'}}
 }
 \\
 \text{\color{gray} (omitted forms have trivially recursive rules)}
@@ -881,39 +895,39 @@ $\fbox{$\tiEvalX{\ghat}{\ghat'}$}$
 }
 
 \inferrule[val from den eval]{
-	\tEvalX{\tautype}{\tautype'}\\
-	\tEvalX{\tauval}{\tauval'}
+	\tEvalX{\tauiterm}{\tauiterm'}\\
+	\tEvalX{\tautype}{\tautype'}
 }{
-	\tiEvalX{\tvalof{\tauval}{\tautype}}{\tvalof{\tauval'}{\tautype'}}
+	\tiEvalX{\tvalof{\tauiterm}{\tautype}}{\tvalof{\tauiterm'}{\tautype'}}
 }
 \end{mathpar}
 $\fbox{$\tiEvalX{\sigma}{\sigma'}$}$
 \begin{mathpar}
-\inferrule[i-int eval]{ }{
+\inferrule[i-int-eval]{ }{
 	\tiEvalX{\dint}{\dint}
 }
 
-\inferrule[i-prod eval]{
-	\tiEvalX{\dhat_1}{\dhat_1'}\\
-	\tiEvalX{\dhat_2}{\dhat_2'}
+\inferrule[i-prod-eval]{
+	\tiEvalX{\sigma_1}{\sigma_1'}\\
+	\tiEvalX{\sigma_2}{\sigma_2'}
 }{
-	\tiEvalX{\dpair{\dhat_1}{\dhat_2}}{\dpair{\dhat_1'}{\dhat_2'}}
+	\tiEvalX{\dpair{\sigma_1}{\sigma_2}}{\dpair{\sigma_1'}{\sigma_2'}}
 }
 
-\inferrule[i-arrow eval]{
-	\tiEvalX{\dhat_1}{\dhat_1'}\\
-	\tiEvalX{\dhat_2}{\dhat_2'}
+\inferrule[i-arrow-eval]{
+	\tiEvalX{\sigma_1}{\sigma_1'}\\
+	\tiEvalX{\sigma_2}{\sigma_2'}
 }{
-	\tiEvalX{\darrow{\dhat_1}{\dhat_2}}{\darrow{\dhat_1'}{\dhat_2'}}
+	\tiEvalX{\darrow{\sigma_1}{\sigma_2}}{\darrow{\sigma_1'}{\sigma_2'}}
 }
-
-\inferrule[itype unquote eval]{
+\\
+\inferrule[itype-eval]{
 	\tEvalX{\tau}{\tau'}
 }{
 	\tiEvalX{\dup{\tau}}{\dup{\tau'}}
 }
 
-\inferrule[rep from type eval]{
+\inferrule[abs-rep-eval]{
 	\tEvalX{\tau}{\tau'}
 }{
 	\tiEvalX{\trepof{\tau}}{\trepof{\tau'}}
@@ -925,49 +939,39 @@ $\fbox{$\tiEvalX{\sigma}{\sigma'}$}$
 
 \begin{figure}
 \small
-$\fbox{\inferrule{}{\delfromtau{Fam}{\fvalCtx}{\tau}{\dbar}}}$
+$\fbox{\inferrule{}{\ddbarX{\sigma}{\sigma'}}}$
 ~~~$\fvalCtx ::= \fvalCtx_0 \pipe \fvalCtx, \fvalDf$
-\begin{mathpar}
-\inferrule[abs rep from type]{
-	\fval{Fam'}{\theta}{i}{\tau} \in \fvalCtx\\
-	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\dhat}}\\
-	\ddbarX{\dhat}{\dbar}
-}{
-	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\dbar}
-}
-\end{mathpar}
-$\fbox{\inferrule{}{\ddbarX{\dhat}{\dbar}}}$
 \begin{mathpar}
 \inferrule[abs int]{ }{
 	\ddbarX{\dint}{\dint}
 }
 
 \inferrule[abs arrow]{
-	\ddbarX{\dhat_1}{\dbar_1}\\
-	\ddbarX{\dhat_2}{\dbar_2}
+	\ddbarX{\sigma_1}{\sigma_1'}\\
+	\ddbarX{\sigma_2}{\sigma_2'}
 }{
-	\ddbarX{\darrow{\dhat_1}{\dhat_2}}{\darrow{\dbar_1}{\dbar_2}}
+	\ddbarX{\darrow{\sigma_1}{\sigma_2}}{\darrow{\sigma_1'}{\sigma_2'}}
 }
 
 \inferrule[abs prod]{
-	\ddbarX{\dhat_1}{\dbar_1}\\
-	\ddbarX{\dhat_2}{\dbar_2}
+	\ddbarX{\sigma_1}{\sigma_1'}\\
+	\ddbarX{\sigma_2}{\sigma_2'}
 }{
-	\ddbarX{\dpair{\dhat_1}{\dhat_2}}{\dpair{\dbar_1}{\dbar_2}}
+	\ddbarX{\dpair{\sigma_1}{\sigma_2}}{\dpair{\sigma_1'}{\sigma_2'}}
 }
 
 \inferrule[abs+cancel unquote]{
-	\ddbarX{\dhat}{\dbar}
+	\ddbarX{\sigma}{\sigma'}
 }{
-	\ddbarX{\dup{\titype{\dhat}}}{\dbar}
+	\ddbarX{\dup{\titype{\sigma}}}{\sigma'}
 }
 
 \inferrule[abs rep from type visible]{
 	\fvalDf \in \fvalCtx\\
-	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\dhat}}\\
-	\ddbarX{\dhat}{\dbar}
+	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\sigma}}\\
+	\ddbarX{\sigma}{\sigma}
 }{
-	\ddbarX{\trepof{\ttype{Fam}{\tauidx}}}{\dbar}
+	\ddbarX{\trepof{\ttype{Fam}{\tauidx}}}{\sigma}
 }
 
 \inferrule[abs rep from type hidden]{
@@ -976,8 +980,18 @@ $\fbox{\inferrule{}{\ddbarX{\dhat}{\dbar}}}$
 	\ddbarX{\trepof{\ttype{Fam'}{\tauidx}}}{\trepof{\ttype{Fam'}{\tauidx}}}
 }
 \end{mathpar}
+$\fbox{\inferrule{}{\delfromtau{Fam}{\fvalCtx}{\tau}{\sigma}}}$
+\begin{mathpar}
+\inferrule[abs rep from type]{
+	\fval{Fam'}{\theta}{i}{\tau} \in \fvalCtx\\
+	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\sigma}}\\
+	\ddbarX{\sigma}{\sigma}
+}{
+	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\sigma}
+}
+\end{mathpar}
 $\fbox{\inferrule{}{\eCtxTogCtxX{\etCtx}{\gtCtx}}}$
-~~~$\gtCtx ::= \emptyctx \pipe \gtCtxX{x}{\dbar}$
+~~~$\gtCtx ::= \emptyctx \pipe \gtCtxX{x}{\sigma}$
 \begin{mathpar}
 \inferrule[abs empty]{ }{
 	\eCtxTogCtxX{\emptyctx}{\emptyctx}
@@ -985,36 +999,36 @@ $\fbox{\inferrule{}{\eCtxTogCtxX{\etCtx}{\gtCtx}}}$
 
 \inferrule[abs ctx]{
 	\eCtxTogCtxX{\etCtx}{\gtCtx}\\
-	\delfromtau{Fam}{\fvalCtx}{\tau}{\dbar}
+	\delfromtau{Fam}{\fvalCtx}{\tau}{\sigma}
 }{
-	\eCtxTogCtxX{\etCtxX{x}{\tau}}{\gtCtxX{x}{\dbar}}
+	\eCtxTogCtxX{\etCtxX{x}{\tau}}{\gtCtxX{x}{\sigma}}
 }
 \end{mathpar}
-$\fbox{\inferrule{}{\checkRCX{\ghat}{\dbar}}}$
+$\fbox{\inferrule{}{\checkRCX{\gamma}{\sigma}}}$
 \begin{mathpar}
 \inferrule[abs i-var]{ }{
-	\checkRC{\gtCtxX{x}{\dbar}}{Fam}{\fvalCtx}{\evar{x}}{\dbar}
+	\checkRC{\gtCtxX{x}{\sigma}}{Fam}{\fvalCtx}{\evar{x}}{\sigma}
 }
 
 \inferrule[abs i-lam]{
-	\ddbarX{\dhat_1}{\dbar_1}\\
-	\checkRC{\gtCtxX{x}{\dbar_1}}{Fam}{\fvalCtx}{\gamma}{\dbar_2}
+	\ddbarX{\sigma_1}{\sigma_1}\\
+	\checkRC{\gtCtxX{x}{\sigma_1}}{Fam}{\fvalCtx}{\gamma}{\sigma_2}
 }{
-	\checkRCX{\ilam{x}{\dhat_1}{\gamma}}{\darrow{\dbar_1}{\dbar_2}}
+	\checkRCX{\ilam{x}{\sigma_1}{\gamma}}{\darrow{\sigma_1}{\sigma_2}}
 }
 
 \inferrule[abs i-ap]{
-	\checkRCX{\ghat_1}{\darrow{\dbar_1}{\dbar_2}}\\\\
-	\checkRCX{\ghat_2}{\dbar_1}
+	\checkRCX{\gamma_1}{\darrow{\sigma_1}{\sigma_2}}\\
+	\checkRCX{\gamma_2}{\sigma_1}
 }{
-	\checkRCX{\iapp{\ghat_1}{\ghat_2}}{\dbar_2}
+	\checkRCX{\iapp{\gamma_1}{\gamma_2}}{\sigma_2}
 }
 
 \inferrule[abs i-fix]{
-	\ddbarX{\dhat}{\dbar}\\
-	\checkRC{\gtCtxX{x}{\dbar}}{Fam}{\fvalCtx}{\ghat}{\dbar}
+	\ddbarX{\sigma}{\sigma}\\
+	\checkRC{\gtCtxX{x}{\sigma}}{Fam}{\fvalCtx}{\gamma}{\sigma}
 }{
-	\checkRCX{\ifix{x}{\dhat}{\ghat}}{\dbar}
+	\checkRCX{\ifix{x}{\sigma}{\gamma}}{\sigma}
 }
 \\
 \text{\color{gray} (standard statics for integers and products omitted)}
@@ -1031,52 +1045,52 @@ $\fbox{\inferrule{}{\checkRCX{\ghat}{\dbar}}}$
 %}
 %
 %\inferrule[abs pair]{
-%	\checkRCX{\gamma_1}{\dbar_1}\\
-%	\checkRCX{\gamma_2}{\dbar_2}
+%	\checkRCX{\gamma_1}{\sigma_1}\\
+%	\checkRCX{\gamma_2}{\sigma_2}
 %}{
-%	\checkRCX{\ipair{\gamma_1}{\gamma_2}}{\dpair{\dbar_1}{\dbar_2}}
+%	\checkRCX{\ipair{\gamma_1}{\gamma_2}}{\dpair{\sigma_1}{\sigma_2}}
 %}
 %
 %\inferrule[abs fst]{
-%	\checkRCX{\gamma}{\dpair{\dbar_1}{\dbar_2}}
+%	\checkRCX{\gamma}{\dpair{\sigma_1}{\sigma_2}}
 %}{
-%	\checkRCX{\ifst{\gamma}}{\dbar_1}
+%	\checkRCX{\ifst{\gamma}}{\sigma_1}
 %}
 %
 %\inferrule[abs snd]{
-%	\checkRCX{\gamma}{\dpair{\dbar_1}{\dbar_2}}
+%	\checkRCX{\gamma}{\dpair{\sigma_1}{\sigma_2}}
 %}{
-%	\checkRCX{\isnd{\gamma}}{\dbar_2}
+%	\checkRCX{\isnd{\gamma}}{\sigma_2}
 %}
 %
 \inferrule[abs if eq]{
-	\checkRCX{\ghat_1}{\dint}\\
-	\checkRCX{\ghat_2}{\dint}\\\\
-	\checkRCX{\ghat_3}{\dbar}\\
-	\checkRCX{\ghat_4}{\dbar}
+	\checkRCX{\gamma_1}{\dint}\\
+	\checkRCX{\gamma_2}{\dint}\\\\
+	\checkRCX{\gamma_3}{\sigma}\\
+	\checkRCX{\gamma_4}{\sigma}
 }{
-	\checkRCX{\iIfEq{\ghat_1}{\ghat_2}{\dint}{\ghat_3}{\ghat_4}}{\dbar}
+	\checkRCX{\iIfEq{\gamma_1}{\gamma_2}{\dint}{\gamma_3}{\gamma_4}}{\sigma}
 }
 
 \inferrule[abs iterm unquote]{
-	\checkRCX{\ghat}{\dbar}
+	\checkRCX{\gamma}{\sigma}
 }{
-	\checkRCX{\iup{\titerm{\ghat}}}{\dbar}
+	\checkRCX{\iup{\titerm{\gamma}}}{\sigma}
 }
 
 \inferrule[abs val from den visible]{
-	\tauisdel{Fam}{\fvalCtx}{Fam}{\tauidx}{\dbar}\\
-	\checkRCX{\ghat}{\dbar}
+	\tauisdel{Fam}{\fvalCtx}{Fam}{\tauidx}{\sigma}\\
+	\checkRCX{\gamma}{\sigma}
 }{
-	\checkRCX{\tvalof{\titerm{\ghat}}{\ttype{Fam}{\tauidx}}}{\dbar}
+	\checkRCX{\tvalof{\titerm{\gamma}}{\ttype{Fam}{\tauidx}}}{\sigma}
 }
 
 \inferrule[abs val from den hidden]{
 	\fvar{Fam} \neq \fvar{Fam'}\\
-	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\dbar}\\
-	\checkRCX{\ghat}{\dbar}
+	\tauisdel{Fam}{\fvalCtx}{Fam'}{\tauidx}{\sigma}\\
+	\checkRCX{\gamma}{\sigma}
 }{
-	\checkRCX{\tvalof{\titerm{\ghat}}{\ttype{Fam'}{\tauidx}}}{\trepof{\ttype{Fam'}{\tauidx}}}
+	\checkRCX{\tvalof{\titerm{\gamma}}{\ttype{Fam'}{\tauidx}}}{\trepof{\ttype{Fam'}{\tauidx}}}
 }
 \end{mathpar}
 \caption{\small Abstracted internal typing}
@@ -1084,76 +1098,76 @@ $\fbox{\inferrule{}{\checkRCX{\ghat}{\dbar}}}$
 \end{figure}
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{\eraseX{\dbar}{\sigma}}}$
+$\fbox{\inferrule{}{\eraseX{\sigma}{\sigma}}}$
 \begin{mathpar}
 \inferrule[deabs int]{ }{
 	\eraseX{\dint}{\dint}
 }
 
 \inferrule[deabs arrow]{
-	\eraseX{\dbar_1}{\sigma_1}\\\\
-	\eraseX{\dbar_2}{\sigma_2}
+	\eraseX{\sigma_1}{\sigma_1}\\\\
+	\eraseX{\sigma_2}{\sigma_2}
 }{
-	\eraseX{\darrow{\dbar_1}{\dbar_2}}{\darrow{\sigma_1}{\sigma_2}}
+	\eraseX{\darrow{\sigma_1}{\sigma_2}}{\darrow{\sigma_1}{\sigma_2}}
 }
 
 \inferrule[deabs prod]{
-	\eraseX{\dbar_1}{\sigma_1}\\\\
-	\eraseX{\dbar_2}{\sigma_2}
+	\eraseX{\sigma_1}{\sigma_1}\\\\
+	\eraseX{\sigma_2}{\sigma_2}
 }{
-	\eraseX{\dpair{\dbar_1}{\dbar_2}}{\dpair{\sigma_1}{\sigma_2}}
+	\eraseX{\dpair{\sigma_1}{\sigma_2}}{\dpair{\sigma_1}{\sigma_2}}
 }
 
 \inferrule[deabs  rep from type hidden]{
 	\fvalDf \in \fvalCtx\\
-	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\dhat}}\\\\
-	\ddbarX{\dhat}{\dbar}\\
-	\eraseX{\dbar}{\sigma}
+	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\sigma}}\\\\
+	\ddbarX{\sigma}{\sigma}\\
+	\eraseX{\sigma}{\sigma}
 }{
 	\eraseX{\trepof{\ttype{Fam}{\tauidx}}}{\sigma}
 }
 \end{mathpar}
-$\fbox{\inferrule{}{\eraseX{\ghat}{\gamma}}}$
+$\fbox{\inferrule{}{\eraseX{\gamma}{\gamma}}}$
 \begin{mathpar}
 \inferrule[deabs i-var]{ }{
 	\eraseX{\evar{x}}{\evar{x}}
 }
 
 \inferrule[deabs i-lam]{
-	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\\\
-	\eraseX{\dbar}{\sigma}\\\\
-	\eraseX{\ghat}{\gamma}
+	\ddbar{\_}{\fvalCtx}{\sigma}{\sigma}\\\\
+	\eraseX{\sigma}{\sigma}\\\\
+	\eraseX{\gamma}{\gamma}
 }{
-	\eraseX{\ilam{x}{\dhat}{\ghat}}{\ilam{x}{\sigma}{\gamma}}
+	\eraseX{\ilam{x}{\sigma}{\gamma}}{\ilam{x}{\sigma}{\gamma}}
 }
 
 %\inferrule[deabs ap]{
-%	\eraseX{\ghat_1}{\ghat_1}\\
-%	\eraseX{\ghat_2}{\ghat_2}
+%	\eraseX{\gamma_1}{\gamma_1}\\
+%	\eraseX{\gamma_2}{\gamma_2}
 %}{
-%	\eraseX{\iapp{\ghat_1}{\ghat_2}}{\iapp{\ghat_1}{\ghat_2}}
+%	\eraseX{\iapp{\gamma_1}{\gamma_2}}{\iapp{\gamma_1}{\gamma_2}}
 %}
 %
 \inferrule[deabs i-fix]{
-	\ddbar{\_}{\fvalCtx}{\dhat}{\dbar}\\\\
-	\eraseX{\dbar}{\sigma}\\\\
-	\eraseX{\ghat}{\gamma}
+	\ddbar{\_}{\fvalCtx}{\sigma}{\sigma}\\\\
+	\eraseX{\sigma}{\sigma}\\\\
+	\eraseX{\gamma}{\gamma}
 }{
-	\eraseX{\ifix{x}{\dhat}{\ghat}}{\ifix{x}{\sigma}{\gamma}}
+	\eraseX{\ifix{x}{\sigma}{\gamma}}{\ifix{x}{\sigma}{\gamma}}
 }
 \\
 \text{\color{gray} (omitted forms have trivially recursive rules)}
 \\
 \inferrule[deabs unquote]{
-	\eraseX{\ghat}{\gamma}
+	\eraseX{\gamma}{\gamma}
 }{
-	\eraseX{\iup{\titerm{\ghat}}}{\gamma}
+	\eraseX{\iup{\titerm{\gamma}}}{\gamma}
 }
 
 \inferrule[deabs val from den hidden]{
-	\eraseX{\ghat}{\gamma}
+	\eraseX{\gamma}{\gamma}
 }{
-	\eraseX{\tvalof{\titerm{\ghat}}{\ttype{Fam}{\tauidx}}}{\gamma}
+	\eraseX{\tvalof{\titerm{\gamma}}{\ttype{Fam}{\tauidx}}}{\gamma}
 }
 \end{mathpar}
 \caption{\small Deabstraction rules}
