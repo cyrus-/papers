@@ -1,0 +1,171 @@
+\subsection{Statics of G\"odel's T}\label{T}
+\newcommand{\lam}[3]{\lambda #1{:}#2.#3}
+\newcommand{\ap}[2]{#1~#2}
+\newcommand{\z}{\textsf{z}}
+\newcommand{\s}[1]{\textsf{s}(#1)}
+\newcommand{\natrec}[5]{\textsf{natrec}(#1; #2; #3,#4.#5)}
+\newcommand{\pair}[2]{(#1, #2)}
+\newcommand{\fst}[1]{\textsf{fst}(#1)}
+\newcommand{\snd}[1]{\textsf{snd}(#1)}
+
+\newcommand{\tArrow}[2]{#1 \rightarrow #2}
+\newcommand{\nat}{\texttt{nat}}
+\renewcommand{\prod}[2]{#1 \times #2}
+
+%\newcommand{\eCtx}{\Gamma}
+\newcommand{\eCtxX}[3]{#1, #2 : #3}
+\newcommand{\jet}[3]{#1 \vdash #2 : #3}
+\newcommand{\jetX}[2]{\jet{\eCtx}{#1}{#2}}
+%\begin{figure}
+%\small
+\begin{mathpar}
+\small
+\inferrule[var]{ }{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{x}{\tau}
+}
+
+\inferrule[Arrow-I]{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{e}{\tau'}	
+}{
+	\jetX{\lam{x}{\tau}{e}}{\tArrow{\tau}{\tau'}}
+}
+
+\inferrule[Arrow-E]{
+	\jetX{e_1}{\tArrow{\tau}{\tau'}}\\
+	\jetX{e_2}{\tau}
+}{
+	\jetX{\ap{e_1}{e_2}}{\tau'}
+}
+
+\inferrule[Nat-I1]{ }{
+	\jetX{\z}{\nat}
+}
+~~~~~~~~
+\inferrule[Nat-I2]{
+	\jetX{e}{\nat}
+}{
+	\jetX{\s{e}}{\nat}
+}
+~~~~~~~~
+\inferrule[Nat-E]{
+	\jetX{e_1}{\nat}\\
+	\jetX{e_2}{\tau}\\
+	\jetX{e_3}{\tArrow{\nat}{\tArrow{\tau}{\tau}}}
+}{
+	\jetX{\natrec{e_1}{e_2}{x}{y}{e_3}}{\tau}
+}
+\end{mathpar}
+%\caption{Static semantics of G\"odel's T}
+%\end{figure}
+% \begin{figure}
+% \small
+% \begin{mathpar}
+% \inferrule[Prod-I]{
+% 	\jetX{e_1}{\tau_1}\\
+% 	\jetX{e_2}{\tau_2}
+% }{
+% 	\jetX{\pair{e_1}{e_2}}{\prod{\tau_1}{\tau_2}}
+% }
+
+% \inferrule[Prod-E1]{
+% 	\jetX{e}{\prod{\tau_1}{\tau_2}}
+% }{
+% 	\jetX{\fst{e}}{\tau_1}
+% }
+
+% \inferrule[Prod-E2]{
+% 	\jetX{e}{\prod{\tau_1}{\tau_2}}
+% }{
+% 	\jetX{\snd{e}}{\tau_2}
+% }
+% \end{mathpar}
+% \caption{Static semantics of products}\label{prods}
+% \end{figure}
+\subsection{Helper Functions}\label{helper}
+\todo{describe these}
+\[\begin{array}{rcl}
+\tvar{const} & := & (\tlam{a}{\klist{\kDen}}{\tlam{d}{\kDen}{\tfold{\tvar{a}}{\tvar{d}}{\_}{\_}{\_}{\terr}}})\\
+\tvar{pop} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\karrow{\klist{\kDen}}{\kDen}}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\tdencase{\tvar{d}}{x}{t}{
+	\tapp{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\tvar{b}}}{\terr}}}})\\
+\tvar{pop\_final} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\kDen}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\\& & \quad \tfold{\tvar{b}}{\tdencase{\tvar{d}}{x}{t}{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\terr}}{\_}{\_}{\_}{\terr}}}})\\
+\tvar{check\_type} & := & (\tlam{t1}{\kTypeBlur}{\tlam{t2}{\kTypeBlur}{\tlam{d}{\kDen}{\tifeq{\tvar{t1}}{\tvar{t2}}{\kTypeBlur}{\tvar{d}}{\terr}}}})
+\end{array}\]
+
+\subsection{Deabstraction}\label{deabstraction}
+\begin{figure}[t]
+\small
+$\fbox{\inferrule{}{\eraseX{\sigma}{\sigma}}}$
+\begin{mathpar}
+\inferrule[deabs int]{ }{
+	\eraseX{\dint}{\dint}
+}
+
+\inferrule[deabs arrow]{
+	\eraseX{\sigma_1}{\sigma_1}\\
+	\eraseX{\sigma_2}{\sigma_2}
+}{
+	\eraseX{\darrow{\sigma_1}{\sigma_2}}{\darrow{\sigma_1}{\sigma_2}}
+}
+
+\inferrule[deabs prod]{
+	\eraseX{\sigma_1}{\sigma_1}\\
+	\eraseX{\sigma_2}{\sigma_2}
+}{
+	\eraseX{\dpair{\sigma_1}{\sigma_2}}{\dpair{\sigma_1}{\sigma_2}}
+}
+
+\inferrule[deabs  rep from type hidden]{
+	\fvalDf \in \fvalCtx\\
+	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\sigma}}\\
+	\ddbarX{\sigma}{\sigma'}\\
+	\eraseX{\sigma'}{\sigma''}
+}{
+	\eraseX{\trepof{\ttype{Fam}{\tauidx}}}{\sigma''}
+}
+\end{mathpar}
+$\fbox{\inferrule{}{\eraseX{\gamma}{\gamma}}}$
+\begin{mathpar}
+\inferrule[deabs i-var]{ }{
+	\eraseX{\evar{x}}{\evar{x}}
+}
+
+\inferrule[deabs i-lam]{
+	\ddbar{\_}{\fvalCtx}{\sigma}{\sigma}\\
+	\eraseX{\sigma}{\sigma}\\\\
+	\eraseX{\gamma}{\gamma}
+}{
+	\eraseX{\ilam{x}{\sigma}{\gamma}}{\ilam{x}{\sigma}{\gamma}}
+}
+
+%\inferrule[deabs ap]{
+%	\eraseX{\gamma_1}{\gamma_1}\\
+%	\eraseX{\gamma_2}{\gamma_2}
+%}{
+%	\eraseX{\iapp{\gamma_1}{\gamma_2}}{\iapp{\gamma_1}{\gamma_2}}
+%}
+%
+\inferrule[deabs i-fix]{
+	\ddbar{\_}{\fvalCtx}{\sigma}{\sigma}\\
+	\eraseX{\sigma}{\sigma}\\\\
+	\eraseX{\gamma}{\gamma}
+}{
+	\eraseX{\ifix{x}{\sigma}{\gamma}}{\ifix{x}{\sigma}{\gamma}}
+}
+\\
+\text{\color{gray} (omitted forms have trivially recursive rules)}
+\\
+\inferrule[deabs unquote]{
+	\eraseX{\gamma}{\gamma}
+}{
+	\eraseX{\iup{\titerm{\gamma}}}{\gamma}
+}
+
+\inferrule[deabs val from den hidden]{
+	\eraseX{\gamma}{\gamma}
+}{
+	\eraseX{\tvalof{\titerm{\gamma}}{\ttype{Fam}{\tauidx}}}{\gamma}
+}
+\end{mathpar}
+\caption{\small Deabstraction rules}
+\label{deabs}
+\end{figure}
