@@ -1,27 +1,25 @@
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
-
-double add5(double x) {
-    return x + 5;
+float add_5__0_(float x) {
+  return x + 5;
 }
 
-__kernel void map_add5_dbl(
-  __global double* input, 
-  __global double* output) 
-{
-    size_t gid;
-    gid = get_global_id(0);
-    output[gid] = add5(input[gid]);
+kernel void map_add5_float(global float* in, 
+	global float* out) {
+  size_t thread_idx = get_global_id();
+  out[thread_idx] = add_5__0_(in[thread_idx]);
+  if (thread_idx == 0) {
+  	printf("Hello, run-time world!");
+  }
 }
 
-int add5__1(int x) {
-    return x + 5;
+int2 add_5__1_(int2 x) {
+  return (int2)(x.s0 + 5, x.s1);
 }
 
-__kernel void map_add5_int(
-  __global int* input,
-  __global int* output)
-{
-    size_t = gid;
-    gid = get_global_id(0);
-    output[gid] = add5__1(input[gid]);
+kernel void map_add5_c_int(global int2* in, 
+	global int2* out) {
+  size_t thread_idx = get_global_id();
+  out[thread_idx] = add_5__1_(in[thread_idx]);
+  if (thread_idx == 0) {
+  	printf("Hello, run-time world!");
+  }
 }

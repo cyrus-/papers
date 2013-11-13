@@ -20,6 +20,116 @@
 \definecolor{mauve}{rgb}{0.58,0,0.82}
 \definecolor{light-gray}{gray}{0.75}
 \usepackage{listings}
+
+    \makeatletter
+%
+% \btIfInRange{number}{range list}{TRUE}{FALSE}
+%
+% Test if int number <number> is element of a (comma separated) list of ranges
+% (such as: {1,3-5,7,10-12,14}) and processes <TRUE> or <FALSE> respectively
+%
+        \newcount\bt@rangea
+        \newcount\bt@rangeb
+
+        \newcommand\btIfInRange[2]{%
+            \global\let\bt@inrange\@secondoftwo%
+            \edef\bt@rangelist{#2}%
+            \foreach \range in \bt@rangelist {%
+                \afterassignment\bt@getrangeb%
+                \bt@rangea=0\range\relax%
+                \pgfmathtruncatemacro\result{ ( #1 >= \bt@rangea) && (#1 <= \bt@rangeb) }%
+                \ifnum\result=1\relax%
+                    \breakforeach%
+                    \global\let\bt@inrange\@firstoftwo%
+                \fi%
+            }%
+            \bt@inrange%
+        }
+
+        \newcommand\bt@getrangeb{%
+            \@ifnextchar\relax%
+            {\bt@rangeb=\bt@rangea}%
+            {\@getrangeb}%
+        }
+
+        \def\@getrangeb-#1\relax{%
+            \ifx\relax#1\relax%
+                \bt@rangeb=100000%   \maxdimen is too large for pgfmath
+            \else%
+                \bt@rangeb=#1\relax%
+            \fi%
+        }
+
+%
+% \btLstHL{range list}
+%
+        \newcommand{\btLstHL}[1]{%
+            \btIfInRange{\value{lstnumber}}{#1}%
+            {\color{black!10}}%
+            {\def\lst@linebgrd}%
+        }%
+
+%
+% \btInputEmph[listing options]{range list}{file name}
+%
+        \newcommand{\btLstInputEmph}[3][\empty]{%
+            \lstset{%
+                linebackgroundcolor=\btLstHL{#2}%
+                \lstinputlisting{#3}%
+            }% \only
+        }
+
+% Patch line number key to call line background macro
+        \lst@Key{numbers}{none}{%
+            \def\lst@PlaceNumber{\lst@linebgrd}%
+            \lstKV@SwitchCases{#1}{%
+                none&\\%
+                left&\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+                right&\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+            }{%
+                \PackageError{Listings}{Numbers #1 unknown}\@ehc%
+            }%
+        }
+
+% New keys
+        \lst@Key{linebackgroundcolor}{}{%
+            \def\lst@linebgrdcolor{#1}%
+        }
+        \lst@Key{linebackgroundsep}{0pt}{%
+            \def\lst@linebgrdsep{#1}%
+        }
+        \lst@Key{linebackgroundwidth}{\linewidth}{%
+            \def\lst@linebgrdwidth{#1}%
+        }
+        \lst@Key{linebackgroundheight}{\ht\strutbox}{%
+            \def\lst@linebgrdheight{#1}%
+        }
+        \lst@Key{linebackgrounddepth}{\dp\strutbox}{%
+            \def\lst@linebgrddepth{#1}%
+        }
+        \lst@Key{linebackgroundcmd}{\color@block}{%
+            \def\lst@linebgrdcmd{#1}%
+        }
+
+% Line Background macro
+        \newcommand{\lst@linebgrd}{%
+            \ifx\lst@linebgrdcolor\empty\else
+                \rlap{%
+                    \lst@basicstyle
+                    \color{-.}% By default use the opposite (`-`) of the current color (`.`) as background
+                    \lst@linebgrdcolor{%
+                        \kern-\dimexpr\lst@linebgrdsep\relax%
+                        \lst@linebgrdcmd{\lst@linebgrdwidth}{\lst@linebgrdheight}{\lst@linebgrddepth}%
+                    }%
+                }%
+            \fi
+        }
+
+    \makeatother
+
 \lstset{
   language=Python,
   showstringspaces=false,
@@ -35,17 +145,21 @@
 }
 \lstdefinestyle{Bash}{
     language={}, 
+    numbers=left,
+    numberstyle=\scriptsize\color{light-gray}\textsf,
     moredelim=**[is][\color{blue}\bf\ttfamily]{`}{`},
 }
 \lstdefinestyle{OpenCL}{
 	language=C++,
-	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin}
+	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
 }
 
 \usepackage{float}
 \floatstyle{ruled}
 \newfloat{codelisting}{tp}{lop}
 \floatname{codelisting}{Listing}
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
 
 \usepackage{url}
 
@@ -54,6 +168,12 @@
 \usepackage{placeins}
 
 \usepackage{textpos}
+
+\renewcommand\topfraction{0.85}
+\renewcommand\bottomfraction{0.85}
+\renewcommand\textfraction{0.1}
+\renewcommand\floatpagefraction{0.85}
+
 \begin{document}
 
 \conferenceinfo{-}{-} 
@@ -75,9 +195,28 @@
 
 \maketitle
 \begin{abstract}
-Evidence suggests that programmers are reluctant to adopt new programming languages to gain access to new abstractions, even when they agree that these abstractions could be valuable for their work. This suggests a need for languages designed to satisfy two related design criteria: \emph{compatibility} with existing languages, tools and ecosystems; and \emph{extensibility}, so that adopting new abstractions does not require adopting a new language.
+%Evidence suggests that programmers are reluctant to adopt new languages to
+%gain access to new abstractions, even when they agree that these abstractions
+%could be valuable. This suggests a need for languages that satisfy two key
+%growth criteria: compatibility with existing programming ecosystems; and
+%internal extensibility, so that new abstractions do not require new
+%languages.
+%
+%We introduce Ace, a language compatible with the popular Python ecosystem.
+%While Python, like other similar languages, is satisfactory for simple
+%scripting, Ace is designed for more complex situations where static
+%typechecking is beneficial. Unlike most statically-typed languages, Ace's type
+%system can be extended from within, by associating compile-time functions with
+%type definitions. The compiler selectively invokes these according to a
+%type-directed protocol, avoiding interference problems. Despite these design
+%constraints, active types in Ace can express the static and dynamic semantics
+%of a range of functional, object-oriented, parallel and domain-specific
+%abstractions, all within libraries.
 
-In this paper, we introduce \Ace, a language compatible with the tools and infrastructure developed for Python, among the most  widely-adopted dynamically-typed language today. While Python and other similar languages have proven satisfactory for small-scale scripting tasks, \Ace~is designed for situations where correctness and performance are particularly important, offering static typechecking and more granular control over compilation. Unlike most statically-typed languages, \Ace's type system can be extended from within. The extension mechanism guarantees that extensions cannot interfere with one another by organizing extension logic around types. We show that such \emph{active types} can express the static and dynamic semantics of several primitive functional, object-oriented and parallel programming abstractions, as well as domain-specific abstractions, all from within libraries. 
+Evidence suggests that programmers are reluctant to adopt new programming languages to gain access to new abstractions, even when they agree that these abstractions would be valuable to them. This suggests a need for languages that are  \emph{compatible} with existing languages, tools and infrastructure and \emph{internally extensible}, so that adopting a new  primitive abstraction requires only importing a library in the usual way.
+
+In this paper, we introduce Ace, a language compatible with tools and infrastructure developed for Python, one of the most  widely-adopted dynamically-typed languages today. While Python, like other similar languages, was designed for simple scripting tasks, Ace is designed for more complex situations where static typechecking and programmatic control over compilation may be beneficial. Unlike most statically-typed languages, however, Ace's type system and semantics can be extended from within by novel mechanisms that avoid key interference issues faced by previous mechanisms.  
+We show that these can be used to implement a range of statically-typed functional, object-oriented, parallel, low-level and domain-specific abstractions, as well as safe interoperability layers with existing languages, as orthogonal libraries. 
 %Ace can be used from the shell or interactively from within Python\todo{take this sentence out?}.
 %Researchers developing languages and abstractions for high-performance computing must consider a number of design criteria, including performance, verifiability, portability and ease-of-use. Despite the deficiencies of legacy tools and the availability of seemingly superior options, end-users have been reluctant to adopt new language-based abstractions. We argue that this can be largely attributed to a failure to consider three additional criteria: continuity, extensibility\- and interoperability. This paper introduces Ace, a language that aims to satisfy this more comprehensive set of design criteria. To do so, Ace introduces several novel compile-time mechanisms, makes principled design choices, and builds upon existing standards in HPC, particularly Python and OpenCL. OpenCL support, rather than being built into the language, is implemented atop an extensibility mechanism that also admits abstractions drawn from other seemingly disparate paradigms. The core innovation underlying this and other features of Ace is a novel reification of types as first-class objects at compile-time, representing a refinement to the concept of active libraries that we call \emph{active types}. We validate our overall design by considering a case study of a simulation framework enabling the modular specification and efficient execution of ensembles of neural simulations across a cluster of GPUs.
 \end{abstract}
@@ -88,95 +227,98 @@ In this paper, we introduce \Ace, a language compatible with the tools and infra
 %\keywords
 %type-level computation, typed compilation
 \section{Introduction}
-Computer-aided simulation and data analysis techniques have transformed science and engineering. Surveys show that scientists and engineers now spend up to 40\% of their time writing software \cite{howison2011scientific, hannay2009scientists}. Most of this software targets desktop hardware, while about 20\% of scientists also target either local clusters or super\-computers for more numerically-intensive computations \cite{hannay2009scientists}. To fully harness the power of these platforms, however, these so-called {\em professional end-user developers} \cite{segal2007some} must increasingly write parallel programs.
+Asking programmers to import a new library is far more practical than asking them to  adopt a new programming language. Indeed, recent empirical studies underscore  the difficulties of driving new languages into adoption, finding that extrinsic factors like compatibility with existing codebases and libraries, team familiarity and tool support are at least as important as intrinsic factors \cite{Meyerovich:2013:EAP:2509136.2509515,chen05,nguyen2010survey}. As a result, many developers cannot use  abstractions they might prefer because these abstractions are only available in languages they cannot adopt \cite{Meyerovich:2012:SDR:2414721.2414724,Meyerovich:2013:EAP:2509136.2509515}. This issue was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding} who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.''
 
-Professional end-users today generally use dynamically-typed high-level languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where the performance overhead of dynamic type checking and automatic memory management is too high, they will typically call into code written in a statically-typed, low-level language, most commonly C or Fortran, that uses low-level parallel abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously difficult to use and automatic verification is intractable in general.
+Unfortunately, researchers and domain experts who design and develop potentially useful new abstractions can find it difficult to implement them in terms of the general-purpose abstraction mechanisms available in mainstream languages. This is particularly salient for abstractions that require support from the typechecker or compiler, such as those focused on correctness and performance, as well as those that  introduce more concise or natural notations for existing abstractions. For example, a recent controlled study comparing a new language, Habanero-Java (HJ), with a comparable library, \verb|java.util.concurrent|, found that the language-based approach was more concise, correct and easy-to-use, but concluded that the library-based approach was more practical outside the classroom because HJ introduced new constructs and keywords into Java, requiring the adoption of a new toolchain, which could lead to compatibility issues with plain Java code \cite{cave2010comparing}.
 
-Researchers and domain experts often respond to these challenges by proposing novel language features that aim to strike an intermediate balance between \textbf{performance}, \textbf{verifiability\-}, \textbf{portability} and \textbf{ease-of-use}.
-Unfortunately, professional end-users rarely adopt new languages. Indeed, many end-users have become skeptical that novel approaches that originate in the research community can be  practical. This viewpoint was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding} who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.'' Although it may seem paradoxical, the ubiquity of this sentiment demands direct examination by researchers proposing novel abstractions and languages for eventual use by professional end-users in HPC.
+Internally-extensible languages promise to reduce the need for new standalone languages by giving abstraction providers more direct control over a base language's syntax and semantics from within libraries. By using such a language, programmers  gain the ability to granularly import the primitive abstractions best suited to each part of their application or library. The research community thus gains the ability to more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
 
-We suggest three mutually-related {design criteria} that, unlike those in bold above, many languages and language-integrated abstractions have failed to adequately consider: \textbf{continuity}, \textbf{extensibility} and \textbf{interoperability}. These criteria encompass the intuitions that new abstractions will not be adopted in a vacuum, that programming systems must  support change, and that interacting components of an application or workflow should be able to make use of different abstractions naturally and without the possibility of conflict arising at their interface boundaries.
-%that this is far from being a superfluous issue. These criteria can influence the core design of a language or abstraction.
+%Indeed, abstractions could compete on their individual merit, rather than  by the serious adoption barriers mentioned above.
 
-In this paper, we introduce Ace, a programming language targeting professional end-users as well as researchers across high-performance computing and related domains. Ace has followed a principled design methodology guided by this more comprehensive set of design criteria in order to avoid many of the issues that have hindered previous language-based approaches in high-performance computing. These criteria, this design methodology, and the novel mechanisms and designs developed to satisfy these criteria constitute the generalizable contributions of this paper. We also hope that Ace itself will be useful to the HPC community\footnote{\small Ace is openly available at http://acelang.org/.}, and we describe several use cases and an initial case study in order to preliminarily validate it's utility. 
+Unfortunately, internally-extensible languages available today have several problems. First, an extension mechanism itself may require modifying a base language with constructs for defining, importing and using extensions. The extension mechanism is not itself a library, so it faces many of the same extrinsic issues as other new languages like HJ, leading to a ``bootstrapping'' problem. The extension mechanisms available today also have several intrinsic problems related to safety and expressiveness that require technical solutions before it would be appropriate to widely rely on them. We evaluate related work in Section \ref{related}.
 
- We begin in Section \ref{usage} with simple examples that show how Ace can be used for low-level GPU programming and introduce the fundamental decisions made in its design. We discuss the motivations, based on the criteria above, behind key design decisions, including the use of static typing, a fixed syntax based on Python, a novel type propagation and inference scheme, and an explicit phase separation between compile-time and run-time logic. Each of these can be seen in Listings 1 and 2, which we will discuss further below.
- 
-The examples in Section \ref{usage} are based on an internalization of the OpenCL kernel programming language \cite{opencl11} as a library. This library is built atop a novel extensibility mechanism that we call \emph{active typechecking and translation} (AT\&T) and detail in Section \ref{att}. This mechanism relies on the core idea of representing types as first-class objects at compile-time. We refer to these objects as \emph{active types} by analogy with \emph{active libraries} \cite{activelibraries} (see Section \ref{related}). Unlike prior approaches to extensibility where users globally modify the grammar or semantics of a language, and thus introduce conflicts between extensions, AT\&T guarantees that extensions are composable by construction by pairing new rules with new types and limiting their scope to expressions of that type.
+This paper describes the design and implementation of Ace, an internally-extensible language designed considering both extrinsic and intrinsic criteria. To solve the bootstrapping problem, Ace is implemented entirely as a library within the popular Python programming language. Ace and Python share a common syntax and package system, allowing Ace to leverage its well-established tools and infrastructure directly. Python serves as the compile-time metalanguage for Ace, but Ace functions themselves do not operate according to Python's fixed dynamically-typed semantics  (cf. \cite{Politz:2013:PFM:2509136.2509536,python}). Instead, Ace has a statically-typed semantics that can be extended by users from within libraries. 
 
-%Despite its simplicity and safety, this mechanism is flexible enough to define the entirety of the OpenCL kernel language (which is derived directly from C99) and, combined with Ace's type propagation scheme, substantially enhance it's ease-of-use. 
-To demonstrate the flexibility of this mechanism beyond OpenCL, we continue in Section \ref{usecases} by outlining examples of other, higher-level parallel abstractions that can be cleanly implemented using AT\&T, including global address spaces, message passing and functional data parallelism. First-class support for each of these has required a new language in the past. AT\&T allows compile-time logic to be safely included within libraries, and thus these first-class abstractions can be coexist naturally within a single program or workflow.
+More specifically, each Ace function can be annotated with a base semantics that determines the meaning of simple expressions like literals and certain statements. The semantics of the remaining expressions and statements are governed by logic associated with the type of a designated subexpression. We call the user-defined base semantics \emph{active bases} and the types in Ace \emph{active types}, borrowing terminology from \emph{active libraries} (\cite{activelibraries}, see Sec. \ref{related}). Both are objects that can be defined and manipulated at compile-time using Python. An important consequence of this mechanism is that it permits \emph{compositional} reasoning -- active bases and active types govern only specific non-overlapping portions of a program. As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur (unlike many previous approaches, as we discuss in Sec. \ref{related}).
 
+The \emph{target} of compilation is also user-defined. We will show examples of Ace targeting Python as well as OpenCL and CUDA, lower-level languages often used to program graphics hardware. An active base or type can support multiple target languages. Ace functions targeting a language with Python bindings can be called directly from Python scripts, with compilation occurring implicitly. In some cases, types can propagate from Python into Ace. We show how this can be used to streamline the kinds of interactive workflows that Python is often used for. Ace can also be used non-interactively from the shell, producing source files that can be further compiled and executed by external tools.
 
-Ace can be used as a standalone language via the \verb|acec| compiler and also as an interactive compilation environment. This mode of use, described in Section \ref{compenv}, uses just-in-time specialization to  integrate the widely-adopted \verb|numpy| library (including its internal type system) and OpenCL's host API (by a mechanism also available to other host APIs, such as CUDA's) with the Ace compiler itself to enable the direct invocation of Ace functions from within Python scripts with minimal overhead. Achieving this deep level of integration makes use of Ace's novel type representation as well.
- 
-To demonstrate the utility of Ace for scientific workloads, we describe in Section \ref{casestudy} a case study where Ace was used in this mode to develop a scientific simulation framework. This framework has been used to  specify and efficiently execute thousands of realizations of a large stochastic neural circuit model on clusters of GPUs, achieving the same performance as raw OpenCL code while being more modular and concise than was feasible before.
-
-We conclude in Sections \ref{related} and 7 with related work and a discussion of the limitations of Ace at the time of writing, as well as a discussion of planned future work further validating Ace and building upon the concept of active typing.
-
-% a programming language intended to be used by professional end-users as well as researchers in areas related to high-performance computing and computational science. The primary contribution of this paper consists of describing several novel language mechanisms and novel combinations of existing mechanisms that Ace uses to cohesively address the design criteria above. We anticipate that many of these mechanisms and choices will also influence other languages in the future. 
-%Following a principled design methodology, we justify each design decision by appeal to this full set of design criteria and citations to relevant literature. These criteria and methodology constitute another contribution of this work that we hope  will lead to fewer \emph{ad hoc} designs and serve as a foundation for evaluating competing designs in HPC and related domains in the future.
+The remainder of the paper is organized as follows: in Sec. \ref{usage}, we describe the basic structure and usage of Ace with an example library that internalizes and extends the OpenCL language. Then in Sec. \ref{att}, we show how this and other libraries are implemented by detailing the extension mechanisms within Ace. To explain and demonstrate the expressiveness of these mechanisms (in particular, active types) further, we continue in Sec.  \ref{examples} by showing a diverse collection of abstractions drawn from different language paradigms that can be implemented as orthogonal libraries in Ace. We include functional datatypes, objects, macros, and typesafe format strings and regular expressions. In Sec.  \ref{related}, we compare Ace to related work on language extensibility and metaprogramming. We conclude in Sec. \ref{discussion} by summarizing our contributions, discussing the essential features needed by a host language to support these mechanisms, and discuss limitations and potential future work. 
 
 \section{Language Design and Usage}\label{usage}
+Listing \ref{map} shows an example of an Ace file. As promised, the top level of an Ace file is written directly in Python, requiring no modifications to the language (versions 2.6+ or 3.3+) nor features specific to CPython (so Ace supports alternative implementations like Jython and IronPython). This choice pays immediate dividends on line 1: Ace's package system is Python's package system, so Python's build tools (e.g. \verb|pip|) and package repostories (e.g. \verb|PyPI|) are directly available for distributing Ace libraries. 
+
+The top-level statements in an Ace file, like the \verb|print| statement on line 10, are executed to control the compile-time behavior, rather than the run-time behavior, of the program. That is, Python serves as the \emph{compile-time metalanguage} (and, as we will see shortly, the \emph{type-level language}) of Ace. %For readers familiar with C/C++, Python can be thought of as serving a role similar to (but more general than) its preprocessor and template system (as we will see).
+Functions containing run-time behavior, like \verb|map|, are governed by a semantics that can differ from Python's (in ways that we will describe below), but they share Python's syntax. As a consequence, users of Ace  immediately benefit from an ecosystem of well-developed tools that work with Python code, including parsers, code highlighters, editor modes, style checkers and documentation generators. 
+
+\subsection{OpenCL as an Active Library}
+The code in this section uses \verb|clx|, an example library implementing the semantics of the OpenCL programming language and extending it with some additional useful types, which we will discuss shortly. Ace itself provides no built-in support for OpenCL.
+
+To briefly review, in OpenCL, developers can define functions, called {\em kernels}, that execute on \emph{devices} like GPUs or multi-core CPUs \cite{opencl11}. Code on the host CPU launches a kernel over tens of thousands of threads. Each thread executes the same kernel but has access to a unique index, called its \emph{global id} (a data-parallel SPMD programming model). Kernel code is written in a variant of C99 extended with some new primitive types and operators, which we will introduce as needed in our examples below.
+
+\subsection{Generic Functions}
 \begin{codelisting}
-\lstinputlisting{hello.py}
-\caption{\texttt{[hello.py]} A basic Ace program demonstrating the two-phase structure of Ace programs and libraries.}
-\label{hello}
-\end{codelisting}
-\begin{codelisting}
-\begin{lstlisting}[style=Bash]
-$ `acec hello.py`
-Hello, compile-time world!
-Goodbye, compile-time world!
-$ `cat hello.cl`
-__kernel void main() {
-    char* hello = "Hello, run-time world!";
-    printf(hello);
-}\end{lstlisting}
-\caption{Compiling \texttt{hello.py} using the \texttt{acec} compiler.}
-\label{helloout}
-\end{codelisting}
-A variant of the standard ``Hello, World!'' example written in Ace is shown in Listing \ref{hello} and its compilation to statically-typed OpenCL kernel code is demonstrated in Listing \ref{helloout}. The OpenCL kernel language is a variant of C99 with some additions and restrictions to facilitate execution on GPUs and other accelerators, in addition to conventional CPUs. We will discuss it further in subsequent examples.
-We emphasize that this module, which we use throughout the paper, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed together with Ace for convenience. Aspects of its implementation will be described  in Section \ref{att}.
-
-This example demonstrates several key design decisions that characterize Ace: static typing of run-time behavior, a Python-based syntax, a phase distinction between compile-time and run-time logic, and programmatic compilation. We discuss each of these in the next three sections. 
-\subsection{Static Typing and Syntax}
-Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions. Many parallel programming abstractions are defined in terms of, or benefit from, a type system that enforces a communication protocol, ensures the consistency of data and simplifies the dynamics of the run-time system (see Section \ref{usecases} for examples). Because \textbf{verifiability} and \textbf{performance} are key criteria and static typing is a core technique, Ace is fundamentally statically-typed.
-
-It is legitimate to ask, however, why dynamically-typed languages are so widely-used in HPC. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
-redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that HPC programmers are exposed to, are verbose, requiring explicit and often redundant type annotations on each function and variable declaration, separate header files, explicit template headers and  instantiation and other sorts of annotations.  The dynamically-typed languages used in HPC, on the other hand, avoid most of this overhead by relying on support from the run-time system. Ace was first conceived to explore the question: \emph{does conciseness require run-time mechanisms, or can one develop a statically-typed language with the same low-level memory and execution model of C but syntactic overhead comparable to a high-level scripting language? }
-
-Rather than designing a new syntax, or modifying the syntax of C, we chose to utilize, \emph{without modification}, the syntax of an existing language, Python. This choice was not arbitrary, but rather a key means by which Ace achieves both \textbf{ease-of-use} and \textbf{continuity}. Python's whitespace-delimited syntax is widely regarded as both concise and readable, and Python is amongst the most widely-adopted languages in computational science \cite{oliphant2007python}. By directly adopting Python's syntax, Ace's syntax is immediately \emph{familiar} and \emph{acceptable} to a significant segment of the intended audience. Moreover, a key benefit of adopting it without modifications is that any {tools} that handle Python source code, including parsers, editors, style checkers and documentation generators, can be used on Ace code without modification.
-
-\subsection{Phase Separation}
-\begin{codelisting}
-\lstinputlisting{listing3.py}
+\lstinputlisting[linebackgroundcolor={\btLstHL{5-8}}]{listing3.py}
 \caption{[\texttt{listing\ref{map}.py}] A generic data-parallel higher-order map function written using the OpenCL user module.}
 \label{map}
 \end{codelisting}
+Lines 3 and 4 introduce the definition of  \verb|map|, an Ace function taking three arguments, \verb|input|, \verb|output| and \verb|f|, governed by the active base \verb|clx.std_base|. The body of this function, highlighted in grey for emphasis, does not have Python's semantics. Instead, it will be governed by the active base as well as logic associated with the types of the arguments and expressions it contains. 
+
+Generic functions in Ace are instances of \verb|ace.GenericFn|. Generic functions consist of an abstract syntax tree, an active base and an active target\todo{call it this in intro}. The job of the \emph{decorator} on line 3 is to replace the Python function on lines 4-8 with an Ace generic function having the same syntax tree and the specified active base and active target. Because no active target was provided, the active base  provides a default target in this case. The default target provided by \verb|clx.std_base| is \verb|clx.opencl|, but, as we will discuss in Sec. \ref{bases}, other bases, like \verb|clx.cuda|, a vendor-specific language similar to OpenCL, as well as Python itself (\verb|ace.python|), can also be defined in libraries. One base can support multiple targets.
+
+Python decorators are simply syntactic sugar for applying a function (here, the result of \verb|ace.fn(clx.std_base)|) directly to the function definition being decorated \cite{python-decorators}. In other words, line 3 could be removed and replaced by inserting the equivalent statement \verb|map = ace.fn(clx.std_base)(map)| to line 9. 
+ The decorator applied here extracts the abstract syntax tree from \verb|map| using the Python standard  library packages  \verb|inspect| (to retrieve source code) and \verb|ast| (to parse it into a syntax tree). 
+ 
+\subsection{Concrete Functions}
+The definition of \verb|map| in Listing \ref{map} could be meaningful for many different type assignments to \verb|input|, \verb|output| and \verb|f|. The body of the function imposes certain constraints on these types, but there is not necessarily a unique type assignment that satisfies them. In a sense, then, \verb|map| is a \emph{family} of functions. Any type assignment for which the operations in the function's body are well-defined can be generated from \verb|map|. We call an Ace function for which types have been assigned a \emph{concrete function}. Concrete functions are instances of \verb|ace.ConcreteFn|. We will show different ways types can be assigned to the arguments of a generic function, and how this, in tandem with the active base, controls the semantics and compilation of the function body in Secs. \ref{procedural} and \ref{implicit}. First, we must understand how types are defined and used in Ace.
+
+\subsection{Types}
+In Ace, types are themselves values that can be manipulated at compile-time (unlike most contemporary languages, where user-defined types are simply declared at compile-time and cannot be defined or manipulated programmatically). In particular, types are instances of a Python class that implements the \verb|ace.ActiveType| interface. Python, then, serves also as the \emph{type-level language} of Ace (see related work in Sec. \ref{related}). 
+
+Listing 2 shows three types, on lines 7-9, being assigned to variables for convenience (this is similar to \verb|typedef| in C-like languages or \verb|type| in Haskell). These types all come from the \verb|clx| library imported on line 1, none are built into Ace itself.
+
+The type named \verb|F| on line 7 corresponds to a type in OpenCL, \verb|global float*|: a pointer to a 32-bit floating point number stored in the compute device's global memory (one of four memory spaces defined by OpenCL, see \cite{opencl11}). Here, \verb|clx.float| is an Ace type corresponding to \verb|float| in OpenCL, and \verb|clx.Ptr| is an Ace type family corresponding to pointer types, indexed by both an address space (here, \verb|clx.global_|) and the type being pointed to. The \verb|clx| library contains a complete implementation of the OpenCL type system, which is based on C99. We will return to how this works in Section \ref{att}. We note that we are being more verbose than necessary for pedagogical reasons. The \verb|clx| library defines more concise naming schemas for OpenCL's built-in types: \verb|F| could be written \verb|clx.gp(clx.f32)|. We also note that Ace is \emph{unopinionated} about issues like memory safety. We will show how to implement safer alternatives to raw pointers in Sec. \ref{examples}, but we allow users to choose a low level of abstraction when they wish.(see Sec. \ref{discussion}).
+
+Listing \ref{mapadd5dbl} shows how to assign types to the arguments of \verb|map| so that this logic can be typechecked and compiled. 
+
+This notion of types as metalanguage objects is key to the Ace compilation model and also enables other mechanisms that we will discuss in subsequent sections.
+
+
+Running \verb|acec listing3.py| would produce no output. To create a {\em concrete function} (that is, an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in \emph{two} different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL associates a memory space with pointer types). Line 9 results in a version specialized for arrays of \verb|double|s and Line 10 results in a version for arrays of \verb|int|s. The output of compilation is shown in Listing \ref{mapout}.
+
+The \verb|map| function defined in Listing \ref{map} will compile to one or more kernels that applies a transfer function, \verb|f|, to the element of the input array, \verb|input|, corresponding to its global id. It writes the result of this call into the corresponding location in the provided output array, \verb|output|. If the kernel is running in thread 0, it prints a message. The functions \verb|get_global_id| and \verb|printf| are OpenCL primitive functions. To emphasize again that the semantics of this code differs from Python's, we note that these functions have no meaning in Python.
+
+
+%\begin{codelisting}
+%\lstinputlisting{hello.py}
+%\caption{\texttt{[hello.py]} A basic Ace program demonstrating the two-phase structure of Ace programs and libraries.}
+%\label{hello}
+%\end{codelisting}
+%A variant of the standard ``Hello, World!'' example written in Ace is shown in Listing \ref{hello} and its compilation to statically-typed OpenCL kernel code is demonstrated in Listing \ref{helloout}. The OpenCL kernel language is a variant of C99 with some additions and restrictions to facilitate execution on GPUs and other accelerators, in addition to conventional CPUs. We will discuss it further in subsequent examples.
+%We emphasize that this module, which we use throughout the paper, is simply a library like any other. The core of Ace gives no special treatment to it; it is distributed together with Ace for convenience. Aspects of its implementation will be described  in Section \ref{att}.
+
+This example demonstrates several key design decisions that characterize Ace: static typing of run-time behavior, a Python-based syntax, a phase distinction between compile-time and run-time logic, and programmatic 
+\subsection{Programmatic Compilation}
 \begin{codelisting}
-\lstinputlisting{listing4.py}
-\caption{[\texttt{listing\ref{mapadd5dbl}.py}] The generic \texttt{map} function compiled to map the \texttt{add5} function over two  types of input.}
+\lstinputlisting[linebackgroundcolor={\btLstHL{5-5}}]{listing4.py}
+\caption{[\texttt{listing\ref{mapadd5dbl}.py}] The generic \texttt{map} function compiled to map the \texttt{add\_5} function over two  types of input.}
 \label{mapadd5dbl}
+\end{codelisting}
+
+\begin{codelisting}
+\begin{lstlisting}[style=Bash]
+$ `acec listing2.py`
+Hello, compile-time world!
+[acec] listing2.cl successfully generated.
+\end{lstlisting}
+\caption{Compiling \texttt{listing2.py} using the \texttt{acec} compiler.}
+\label{mapc}
 \end{codelisting}
 \begin{codelisting}
 \lstinputlisting[style=OpenCL]{listing5.cl}
-\caption{[\texttt{listing\ref{mapadd5dbl}.cl}] The OpenCL code generated by running \texttt{acec listing\ref{mapadd5dbl}.py}.}
+\caption{[\texttt{listing\ref{mapadd5dbl}.cl}] The OpenCL file generated by Listing \ref{mapc}.}
 \label{mapout}
 \end{codelisting}
-
-
-%To demonstrate the somewhat unconventional structure of Ace programs and libraries, we begin in Listing \ref{hello} with a variant of the canonical ``Hello, World!'' example written using the \verb|OpenCL| module. 
-
-
-Ace's \textbf{continuity} with Python does not stop at its syntax. 
-Perhaps the most immediately apparent departure from the standard ``Hello, World!'' example comes on lines 3 and 10 of Listing \ref{hello}, which contain Python \verb|print| statements that are executed at {\em compile-time}.  Ace programs and libraries are Python scripts at the top-level, rather than a list of declarations as in most conventional languages. In other words, Python is the {\em compile-time metalanguage} of Ace. 
-
-A consequence of this choice is that Ace can leverage Python's well-developed package system and associated distribution infrastructure directly (e.g. Line 1). This serves to address another key \textbf{ease-of-use} issue often associated with C-based languages: the fragility of the preprocessor-based packaging system they historically have relied upon. 
-
-Ace functions defining run-time logic are introduced by a decorator. The \verb|@OpenCL.fn| decorator on Line 5 indicates that the \verb|main| function is a statically-typed Ace function targeting the OpenCL backend for code generation (Section \ref{backend}). Without this decorator, the function would simply be a conventional Python function that could be called only at compile-time. Doing so would fail here: \verb|printf| is not a Python function. Rather, it is a compile-time Python object representing an OpenCL primitive residing in the \verb|OpenCL| module. It has an associated Ace type that controls what types of input it can receive and the type of its output given its input type (see Section \ref{att}).
-
-\subsection{Programmatic Compilation}
 As defined on Lines 5-7, \verb|main| is a \emph{generic function}. This terminology in Ace is used to indicate a function for which types have not yet been assigned to arguments. Invoking the \verb|compile| method on a generic function with a sequence of argument types invokes the active typechecking and translation mechanism we will describe in Section 3 to produce a \emph{concrete function} -- one with a single type for each argument, internal variable (such as \verb|hello|) and the return value. In Listing \ref{hello}, we name this concrete function \verb|main|, overwriting the generic function of the same name that it is derived from. The compiler does nothing apparently interesting: there are no arguments, the single internal variable takes the OpenCL string type \verb|char*| from its value and the return type is \verb|void|. 
 
 Before moving on to more interesting examples, let us discuss the \verb|acec| compiler shown operating at the shell in Listing \ref{helloout}. The \verb|acec| compiler operates in two steps:
@@ -187,18 +329,7 @@ Before moving on to more interesting examples, let us discuss the \verb|acec| co
 
 We will show in Section \ref{backend} that for backends with Python bindings, such as OpenCL, CUDA and C, generic functions can be executed directly, without this explicit compilation step to concrete functions, if desired.
 
-\subsection{Example 2: Higher-Order Map}
-The ``Hello, World!'' example demonstrates the structure of Ace programs, but it does not require working with types. Listing \ref{map} shows an imperative, data-parallel map primitive written using the OpenCL library introduced above. To review, in OpenCL users can define functions, called {\em kernels}, that execute across thousands of threads. Each kernel has access to a unique index, called its {\em global id}, which can be to ensure that each thread operates on different parts of the input data (Line 5). The \verb|map| kernel defined in Listing \ref{map} applies a transfer function, \verb|f|, to the element of the input array, \verb|input|, corresponding to its global id. It writes the result of this call into the corresponding location in the provided output array, \verb|output|.
-
-As above, \verb|map| is a {\em generic function} (specifically, it is an instance of the class \verb|ace.GenericFn|). This means that its arguments have not been assigned types. The functionality given by the \verb|map| definition is in fact applicable to many combinations of types for \verb|input| and \verb|output| and functions, \verb|f|. In this sense, \verb|map| is actually a \emph{family} of functions defined for all types assignments for \verb|input|, \verb|output| and \verb|f| such that the operations in the function's body are well-defined.
-
-Running \verb|acec listing3.py| would produce no output. To create a {\em concrete function} (that is, an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in \emph{two} different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL associates a memory space with pointer types). Line 9 results in a version specialized for arrays of \verb|double|s and Line 10 results in a version for arrays of \verb|int|s. The output of compilation is shown in Listing \ref{mapout}.
-
-\subsection{Types as Metalanguage Objects}
-The \verb|compile| method assigns types to the arguments of a generic function. In Listing \ref{mapadd5dbl}, the types we are using are given shorter names, for convenience, on Line 8 (that is, variables in the metalanguage can be used like \verb|typedef| is used in a C-like language). The types \verb|int| and \verb|double| imported from the \verb|OpenCL| module correspond to the OpenCL types of the same name. The types \verb|gptr(int)| and \verb|gptr(double)| correspond to \verb|__global int*| and \verb|__global double*|.
-
-These types are \emph{objects in the metalanguage}, Python. More specifically, types are {instances} of user-defined classes that inherit from the Ace-provided \verb|ace.Type| class. For example, \verb|gptr(double)| is an instance of \verb|OpenCL.PtrType| instantiated with the target type, \verb|double|, and memory space, \verb|__global|, as constructor arguments. The types \verb|double| and \verb|int| are instances of \verb|OpenCL.FloatType| and \verb|OpenCL.IntegerType|, respectively. This notion of types as metalanguage objects is key to the Ace compilation model and also enables other mechanisms that we will discuss in subsequent sections.
-
+These types are \emph{objects in the metalanguage}, Python. More specifically, types are {instances} of user-defined classes that inherit from the Ace-provided \verb|ace.Type| class. For example, \verb|gptr(double)| is an instance of \verb|OpenCL.PtrType| instantiated with the target type, \verb|double|, and memory space, \verb|__global|, as constructor arguments. The types \verb|double| and \verb|int| are instances of \verb|OpenCL.FloatType| and \verb|OpenCL.IntegerType|, respectively. 
 \subsection{Type Propagation}
 The type assigned to the third argument, \verb|f|, on both Lines 4.9 and 4.10, is \verb|add5.ace_type|. The \verb|ace_type| attribute of a generic function is an instance of \verb|ace.GenericFnType|, the type of Ace generic functions. Ace generic functions are compiled to concrete functions automatically at all internal call sites. That is, when the compiler encounters the call to \verb|f| inside \verb|map| when compiling \verb|map_add5_double|, it compiles a version of \verb|add5| specialized to the \verb|double| type (seen on Line 5.3), and similarly when compiling \verb|map_add5_int| (on Line 5.16, automatically given a unique name to avoid conflicts). This mechanism is called {\em type propagation}. We did not need to use \verb|add5.compile(double)| before compiling \verb|map_add5_dbl| because only functions that are never called in the process of compiling other functions in a module need type information explicitly provided, supporting \textbf{ease-of-use} by increasing conciseness.
 
@@ -210,15 +341,50 @@ Type propagation via generic functions can be compared to template specializatio
 % Is this really any more concise than using C + templates? Etc. relation to types. Conciseness.
 
 \subsection{Whole-Function Type Inference}
-\begin{codelisting}
-\lstinputlisting{listing6.py}
-\caption{\texttt{[listing6.py]} A function demonstrating whole-function type inference when multiple values with differing types are assigned to a single identifier, \texttt{y}.}
-\label{inference}
+\begin{codelisting}[t]
+\lstinputlisting[commentstyle=\color{mauve}]{listing7.py}
+\caption{[\texttt{listing\ref{metaprogramming}.py}] Metaprogramming with Ace, showing how to construct generic functions from both strings and abstract syntax trees, and how to manipulate syntax trees at compile-time.}
+\label{metaprogramming}
 \end{codelisting}
+\begin{codelisting}
+\lstinputlisting{listing8.py}
+\caption{[\texttt{listing\ref{py}.py}] A full OpenCL program using the \texttt{Ace.OpenCL} Python bindings, including data transfer to and from a device and direct invocation of a generic function, \texttt{map}, as a kernel without explicit compilation.}
+\label{py}
+\end{codelisting}
+
+%\begin{codelisting}
+\lstinputlisting{listing6.py}
+%\caption{\texttt{[listing6.py]} A function demonstrating whole-function type inference when multiple values with differing types are assigned to a single identifier, \texttt{y}.}
+%\label{inference}
+%\end{codelisting}
 
 On Line 5 in the generic \verb|map| function in Listing \ref{map}, the variable \verb|gid| is initialized with the result of calling the OpenCL primitive \verb|get_global_id|.  The type for \verb|gid| is never given explicitly. This is a simple case of Ace's more general {\em whole-function type inference}. In this case, \verb|gid| will be inferred to have type \verb|size_t| because that is the return type of \verb|get_global_id| (as defined in the OpenCL specification, which the \verb|ace.OpenCL| module follows). The result can be observed on Lines 11 and 24 in Listing \ref{mapout}. 
 
 Inference is not restricted within single assignments, as in the \verb|map| example, however. Multiple assignments to the same identifier with values of differing types, or multiple return statements, can be combined if the types in each case are compatible with one another (e.g. by a subtyping relation or an implicit coercion). In Listing \ref{inference}, the \verb|threshold_scale| function assigns different values to \verb|y| in each branch of the conditional. In the first branch, the value \verb|0| is an \verb|int| literal. However, in the second branch of the loop, the type depends on the types of both arguments, \verb|x| and \verb|scale|. We show two choices for these types on Lines 11 and 12. Type inference correctly combines these two types according to OpenCL's C99-derived rules governing numeric types (defined by the user in the \verb|OpenCL| module, as we will describe in Section \ref{att}). We can verify this programmatically on Lines 12 and 13. Note that this example would also work correctly if the assignments to \verb|y| were replaced with \verb|return| statements (in other words, the return value of a function is treated as an assignable for the purpose of type inference).
+
+\subsection{Implicit Compilation and Execution}\label{compenv}\label{backend}
+Professional end-users today generally use dynamically-typed high-level languages like MATLAB, Python, R or Perl for tasks that are not performance-sensitive, such as small-scale data analysis and plotting \cite{nguyen2010survey}. For portions of their analyses where the performance overhead of dynamic type checking and automatic memory management is too high, they will typically call into code written in a statically-typed, low-level language, most commonly C or Fortran, that uses low-level parallel abstractions like pthreads and MPI \cite{4222616,basili2008understanding}. Unfortunately, these low-level languages and abstractions are notoriously difficult to use and automatic verification is intractable in general.\todo{integrate this}
+
+
+As discussed in the Introduction, a common workflow for professional end-users is to use a high-level scripting language for orchestration, small-scale data analysis and visualization and call into a low-level language for performance-critical sections. Python is designed for this style of use \cite{sanner1999python} and is widely used by professional end-users in HPC as a high-level scripting language. It features mature support for calling into code written in low-level languages. Developers can call into native libraries using its foreign function interface (FFI),  or by using a wrapper library like \verb|pycuda| for code compiled with CUDA \cite{klockner2011pycuda} or \verb|weave| for C and C++. 
+
+Although C, C++ and CUDA's compilers are separate executables on the system, the OpenCL language was also designed for this workflow, in that it exposes the compiler and memory management directly as an API, called the \emph{host API}. The \verb|pyopencl| module exposes this API and supports basic interoperability with \verb|numpy|, the low-level linear algebra package for Python. With both \verb|pyopencl| and \verb|pycuda|, users generate OpenCL or CUDA source code as strings, compile it programmatically, then execute it using the run-time APIs that each library provides \cite{klockner2011pycuda}. This mode of use can be considered one where Python serves as an \emph{interactive compilation environment}.
+
+Ace supports a refinement to this workflow, as an alternative to the \verb|acec| compiler described above. In other words, \verb|acec| can generate source code for kernels but it does not specify how and from what language thet will be called. This mode of use allows Python to be the calling language.
+
+At the time of writing, this is only supported with the OpenCL backend, but other backends can implement this feature as well by satisfying a simple interface specification. The OpenCL host API wraps and is a superset of the \verb|pyopencl|, adding a simpler type-aware API. Both generic functions and concrete functions can then be called like regular Python functions, with additional keyword arguments specifying the global and local size (i.e. the number of threads and how they are grouped). Device buffers can carry type information, unlike in the basic OpenCL host API, and this type information can be propagated from Python to Ace functions directly, as if the call had been within a kernel,  eliminating the \verb|compile| step that we have been using thus far and thus all mention of types. 
+
+An example of this for the generic \verb|map| function defined in Listing \ref{map} is shown in Listing \ref{py}, with the call itself on Lines 12-13. 
+The first two arguments to \verb|map| are OpenCL buffers, generated using a simplified wrapper to the \verb|pyopencl| APIs on Lines 9-10. This wrapper associates type information with each buffer, based on the type of the \verb|numpy| array, and this is used to implicitly compile \verb|map| as appropriate the first time it is called for any given combination of input types. Notice also that \verb|add5| is passed in directly.
+
+By way of comparison, the same program written using the OpenCL C API directly is an order of magnitude larger and significantly more difficult to read and understand. It does not support higher-order functions nor is there any way to write \verb|map| in a type-generic way. A full implementation of the logic of \verb|map| written using the \verb|pyopencl| bindings and metaprogramming techniques as described in \cite{klockner2011pycuda} is still twice as large and more difficult to comprehend than the code we have shown thus far. Not shown are several additional conveniences, such as delegated kernel sizing and \verb|In| and \verb|Out| constructs that can reduce the size and improve the clarity of this code further; due to a lack of space, the reader is referred to the language documentation.
+
+
+
+\subsection{Metaprogramming in Ace}
+Metaprogramming refers to the practice of writing programs that manipulate other programs. There are a number of use cases for this technique, including domain-specific optimizations and code generation for programs with a repetitive structure that cannot easily be captured using available abstractions \cite{klockner2011pycuda}. OpenCL in particular relies on code generation as a fundamental mechanism, which is cited as justification for its lack of support for higher-order programming. Ace supports programmatic compilation, higher-order functions and a flexible language extension mechanism, so many use cases for metaprogramming have been eliminated. 
+
+However, there are still valid uses for this feature and Ace fully supports it. On Lines 4-7 of Listing \ref{metaprogramming}, an Ace function is constructed from a string containing its source using the \verb|from_str| variant of the \verb|OpenCL.fn| method. It can also be constructed directly from an abstract syntax tree (AST), as implemented by the Python standard \verb|ast| package, using the \verb|from_ast| variant of \verb|fn|, demonstrated on Line 10. The AST here is generated programmatically by calling the \verb|specialize| function, which produces a copy of the syntax tree of the \verb|plus| function with the argument, \verb|b|, eliminated and its uses replaced with a constant, \verb|5|. This transformation as well as some others are distributed in \verb|ace.astx| for convenience.
 
 \section{Extensibility}\label{att}
 Thus far, we have been discussing the \verb|OpenCL| module in our examples. This module faithfully implements all the types and operations of the OpenCL kernel language, a portable standard for writing low-level code on multi-core processors and accelerators \cite{opencl11}. The functions we wrote have used these primitives with the \verb|OpenCL.OpenCL| backend, so the translation has been direct and no run-time overhead has been introduced. Thus, as described so far, Ace has affirmatively resolved the question it was originally conceived to address, discussed in Section 2.1. 
@@ -273,7 +439,7 @@ In addition to the OpenCL backend, preliminary C99 and CUDA backends are availab
 \subsubsection{Composability and Interoperability}\label{safety}
 Because a type can only exert control over typechecking and translation of operations where an expression of that type is the primary operand, extensions defined using AT\&T can not interfere with one another by construction. This does not imply that there are no \textbf{interoperability} issues to consider, however. A type may need to know about other types (e.g. pointer types need to know about integer types) and if this is done without consideration of future extensions, it may be difficult to integrate data produced by one type system with another. These issues cannot easily be addressed by a language design, however.
 
-\subsection{Use Cases}\label{usecases}
+\section{Examples}\label{examples}
 The development of the full OpenCL language using only the extension mechanisms described above provides evidence of the power of this approach. However, to be truly useful, the mechanism must be able to express a wide array of higher-level primitive abstractions. We briefly describe a number of other abstractions that are possible using this mechanism. Many of these are currently available in existing languages either via libraries or as primitives of some specialized language. A study comparing a language-based concurrency solution for Java with an equivalent, though less clean, library-based solution found that language support is preferable but leads to many of the issues we have described \cite{cave2010comparing}.
 
 \subsubsection{Parallel Programming}
@@ -311,40 +477,22 @@ Several sophisticated feedback-directed optimizations and adaptive run-time prot
 This ability could also be used to collect data useful for more rigorous usability and usage studies of languages and abstractions, and we plan on following up on this line of research going forward.
 
 
-\section{Ace: a Compilation Environment}\label{compenv}\label{backend}
-\begin{codelisting}
-\lstinputlisting{listing8.py}
-\caption{[\texttt{listing\ref{py}.py}] A full OpenCL program using the \texttt{Ace.OpenCL} Python bindings, including data transfer to and from a device and direct invocation of a generic function, \texttt{map}, as a kernel without explicit compilation.}
-\label{py}
-\end{codelisting}
-
-As discussed in the Introduction, a common workflow for professional end-users is to use a high-level scripting language for orchestration, small-scale data analysis and visualization and call into a low-level language for performance-critical sections. Python is designed for this style of use \cite{sanner1999python} and is widely used by professional end-users in HPC as a high-level scripting language. It features mature support for calling into code written in low-level languages. Developers can call into native libraries using its foreign function interface (FFI),  or by using a wrapper library like \verb|pycuda| for code compiled with CUDA \cite{klockner2011pycuda} or \verb|weave| for C and C++. 
-
-Although C, C++ and CUDA's compilers are separate executables on the system, the OpenCL language was also designed for this workflow, in that it exposes the compiler and memory management directly as an API, called the \emph{host API}. The \verb|pyopencl| module exposes this API and supports basic interoperability with \verb|numpy|, the low-level linear algebra package for Python. With both \verb|pyopencl| and \verb|pycuda|, users generate OpenCL or CUDA source code as strings, compile it programmatically, then execute it using the run-time APIs that each library provides \cite{klockner2011pycuda}. This mode of use can be considered one where Python serves as an \emph{interactive compilation environment}.
-
-Ace supports a refinement to this workflow, as an alternative to the \verb|acec| compiler described above. In other words, \verb|acec| can generate source code for kernels but it does not specify how and from what language thet will be called. This mode of use allows Python to be the calling language.
-
-At the time of writing, this is only supported with the OpenCL backend, but other backends can implement this feature as well by satisfying a simple interface specification. The OpenCL host API wraps and is a superset of the \verb|pyopencl|, adding a simpler type-aware API. Both generic functions and concrete functions can then be called like regular Python functions, with additional keyword arguments specifying the global and local size (i.e. the number of threads and how they are grouped). Device buffers can carry type information, unlike in the basic OpenCL host API, and this type information can be propagated from Python to Ace functions directly, as if the call had been within a kernel,  eliminating the \verb|compile| step that we have been using thus far and thus all mention of types. 
-
-An example of this for the generic \verb|map| function defined in Listing \ref{map} is shown in Listing \ref{py}, with the call itself on Lines 12-13. 
-The first two arguments to \verb|map| are OpenCL buffers, generated using a simplified wrapper to the \verb|pyopencl| APIs on Lines 9-10. This wrapper associates type information with each buffer, based on the type of the \verb|numpy| array, and this is used to implicitly compile \verb|map| as appropriate the first time it is called for any given combination of input types. Notice also that \verb|add5| is passed in directly.
-
-By way of comparison, the same program written using the OpenCL C API directly is an order of magnitude larger and significantly more difficult to read and understand. It does not support higher-order functions nor is there any way to write \verb|map| in a type-generic way. A full implementation of the logic of \verb|map| written using the \verb|pyopencl| bindings and metaprogramming techniques as described in \cite{klockner2011pycuda} is still twice as large and more difficult to comprehend than the code we have shown thus far. Not shown are several additional conveniences, such as delegated kernel sizing and \verb|In| and \verb|Out| constructs that can reduce the size and improve the clarity of this code further; due to a lack of space, the reader is referred to the language documentation.
-
-
-
-\subsection{Metaprogramming in Ace}
-\begin{codelisting}
-\lstinputlisting[commentstyle=\color{mauve}]{listing7.py}
-\caption{[\texttt{listing9.py}] Metaprogramming with Ace, showing how to construct generic functions from both strings and abstract syntax trees, and how to manipulate syntax trees at compile-time.}
-\label{metaprogramming}
-\end{codelisting}
-Metaprogramming refers to the practice of writing programs that manipulate other programs. There are a number of use cases for this technique, including domain-specific optimizations and code generation for programs with a repetitive structure that cannot easily be captured using available abstractions \cite{klockner2011pycuda}. OpenCL in particular relies on code generation as a fundamental mechanism, which is cited as justification for its lack of support for higher-order programming. Ace supports programmatic compilation, higher-order functions and a flexible language extension mechanism, so many use cases for metaprogramming have been eliminated. 
-
-However, there are still valid uses for this feature and Ace fully supports it. On Lines 4-7 of Listing \ref{metaprogramming}, an Ace function is constructed from a string containing its source using the \verb|from_str| variant of the \verb|OpenCL.fn| method. It can also be constructed directly from an abstract syntax tree (AST), as implemented by the Python standard \verb|ast| package, using the \verb|from_ast| variant of \verb|fn|, demonstrated on Line 10. The AST here is generated programmatically by calling the \verb|specialize| function, which produces a copy of the syntax tree of the \verb|plus| function with the argument, \verb|b|, eliminated and its uses replaced with a constant, \verb|5|. This transformation as well as some others are distributed in \verb|ace.astx| for convenience.
-
 
 \section{Related Work}\label{related}
+\begin{figure*}
+\begin{tabular}[t]{ l | l | c c c c c }
+\textbf{Approach} & \textbf{Examples} & Library & {Extensible} & Extensible & Composable & Alternative \\
+\hline
+Active Types & Ace & x & ~ & x & x & x\\
+Desugaring & SugarJ, Sugar* & ~ & x & ~ & ~ & ~\\
+Rule Injection & Qi, Typed Racket/Clojure, A? & 1+2 & ~ & x & ~ & ~\\
+Static metaprogramming & Scala macros, OJ, OC++ & ~ & ~ & ~ & x & ~\\
+Cross-compilation & Delite & x & ~ & ~ & ~ & x\\
+EDSL frameworks & ? & x & x & x & ~ & ~\\
+Type-specific literals & Wyvern & ~ & x & ~ & x & ~\\
+\end{tabular}
+\caption{Comparison to related approaches}
+\end{figure*}
 \subsection{Active Libraries}
 Libraries that contain compile-time logic have been called {\it active libraries} in prior proposals \cite{activelibraries}. A number of  projects, such as Blitz++, have taken advantage of the C++ preprocessor and template-based metaprogramming system to implement domain-specific optimizations \cite{veldhuizen2000blitz++}. In Ace, we replace these brittle mini-languages with a general-purpose language and significantly expand the notion of active libraries by consideration of types as objects in the metalanguage. We thus call these types \emph{active types}.
 
@@ -366,11 +514,24 @@ When the mechanisms available in an existing language prove insufficient, resear
 \subsection{Extensible Languages}
 Extensible languages like SugarJ \cite{erdweg2011sugarj} afford some of the extensibility benefits of Ace, but are not targeted toward HPC. They have largely focused on syntactic extensibility, while Ace relies on a fixed syntax and emphasizes semantic extensibility. They also generally allow users to extend languages globally, which leads to conflicts when multiple extensions are used. AT\&T does not admit such conflicts.
 
-\section{Conclusion}
+\section{Discussion}\label{discussion}
+Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions. Many parallel programming abstractions are defined in terms of, or benefit from, a type system that enforces a communication protocol, ensures the consistency of data and simplifies the dynamics of the run-time system (see Section \ref{usecases} for examples). Because \textbf{verifiability} and \textbf{performance} are key criteria and static typing is a core technique, Ace is fundamentally statically-typed.
+
+It is legitimate to ask, however, why dynamically-typed languages are so widely-used in HPC. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
+redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that HPC programmers are exposed to, are verbose, requiring explicit and often redundant type annotations on each function and variable declaration, separate header files, explicit template headers and  instantiation and other sorts of annotations.  The dynamically-typed languages used in HPC, on the other hand, avoid most of this overhead by relying on support from the run-time system. Ace was first conceived to explore the question: \emph{does conciseness require run-time mechanisms, or can one develop a statically-typed language with the same low-level memory and execution model of C but syntactic overhead comparable to a high-level scripting language? }
+
+Rather than designing a new syntax, or modifying the syntax of C, we chose to utilize, \emph{without modification}, the syntax of an existing language, Python. This choice was not arbitrary, but rather a key means by which Ace achieves both \textbf{ease-of-use} and \textbf{continuity}. Python's whitespace-delimited syntax is widely regarded as both concise and readable, and Python is amongst the most widely-adopted languages in computational science \cite{oliphant2007python}. By directly adopting Python's syntax, Ace's syntax is immediately \emph{familiar} and \emph{acceptable} to a significant segment of the intended audience. Moreover, a key benefit of adopting it without modifications is that any {tools} that handle Python source code, including parsers, editors, style checkers and documentation generators, can be used on Ace code without modification. Researchers often dismiss the importance of syntax. By using a well-developed syntax, they no longer need to worry about the equally ``trivial'' task of implementing tools for it.
 
 Professional end-users demand much from new languages and abstractions. In this paper, we began by generating a concrete set of design and adoption criteria that we hope will be of interest and utility to the research community. Based on these constraints, we designed a new language, Ace, making several pragmatic design decisions and introducing several novel techniques, including type propagation via generic functions, extensible type inference, active typechecking and translation and type-aware Python-Ace-OpenCL bindings to uniquely satisfy many of the criteria we discussed, particularly the three criteria that are typically overlooked in other languages. We validated the extension mechanism with a mature implementation of  the entirety of the OpenCL type system, as well as outlined a number of other use cases. Finally, we demonstrated that this language was useful in practice, drastically improving performance without negatively impacting the high-level scientific workflow of a large-scale neurobiological circuit simulation project. 
 
+
+
 Ace has some limitations at the moment. Debugging is only supported on the generated code, so if code generation introduces significant complexity, this can be an issue. The OpenCL library we have implemented is a reasonably straightforward internalization of OpenCL itself, however, so debugging has not been a problem thusfar. We believe that active types can be useful to control debugging, and plan to explore this in the future. We will also further explore the use cases and case studies that we have described to validate the design we propose here. We hope that Ace will be developed further by the community to strengthen the foundations upon which new abstractions are implemented and deployed into the HPC professional end-user community.
+
+We suggest three mutually-related {design criteria} that, unlike those in bold above, many languages and language-integrated abstractions have failed to adequately consider: \textbf{continuity}, \textbf{extensibility} and \textbf{interoperability}. These criteria encompass the intuitions that new abstractions will not be adopted in a vacuum, that programming systems must  support change, and that interacting components of an application or workflow should be able to make use of different abstractions naturally and without the possibility of conflict arising at their interface boundaries.
+
+
+ We anticipate that coding guidelines mandating the use of abstractions that can be shown to have certain desirable properties will replace language-mandated enforcement opinions 
 
 %\acks
 %The author is grateful to Jonathan Aldrich, Robert Bocchino and anonymous referees for their useful suggestions. This work was funded by the DOE Computational Science Graduate Fellowship under grant number DE-FG02-97ER25308.

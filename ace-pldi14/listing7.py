@@ -1,10 +1,6 @@
-from ace.OpenCL import OpenCL
-import ace.astx as astx
+import astx, ace, examples.clx as clx
 
-plus = OpenCL.fn.from_str("""
-def plus(a, b):
-    return a + b
-""")
-
-add5_ast = astx.specialize(plus.ast, b=5)
-add5 = OpenCL.fn.from_ast(add5_ast)
+plus = ace.fn(clx.std_base)("""def plus(a, b):
+    return a + b""")
+add_5_ast = astx.specialize(plus.ast, b=5)
+add_5 = ace.fn(clx.std_base)(add5_ast)

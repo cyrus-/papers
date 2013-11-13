@@ -1,16 +1,12 @@
-import numpy as np
-import ace.OpenCL.bindings as cl
-from listing3 import map
-from listing4 import add5
+import examples.clx as clx, numpy, listing1, listing5
 
-cl.ctx = cl.Context.for_device(0, 0)
+clx.default_ctx = clx.Context.for_device(0, 0)
 
-input = np.ones((1024,))
-d_in = cl.to_device(input)
-d_out = cl.alloc(like=d_in)
+input = numpy.ones((1024,))
+d_input = clx.to_device(input)
+d_output = clx.alloc(like=input)
 
-map(d_in, d_out, add5, 
-    global_size=d_in.shape, local_size=(128,))
+listing1.map(d_input, d_output, listing5.add_5, 
+  global_size=d_in.shape, local_size=(128,))
 
-out = cl.from_device(d_out)
-assert (out == input + 5).all()
+assert (cl.from_device(d_out) == input + 5).all()

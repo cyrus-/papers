@@ -1,10 +1,12 @@
-from listing3 import map
-from ace.OpenCL import gptr, double, int
+import listing1, ace, examples.clx as clx
 
-@OpenCL.fn
-def add5(x):
+@ace.fn(clx.std_base)
+def add_5(x):
     return x + 5
 
-D = gptr(double); I = gptr(int); A = add5.ace_type
-map_add5_dbl = map.compile(D, D, A)
-map_add5_int = map.compile(I, I, A)
+F = clx.Ptr(clx.global_, clx.float)
+C = clx.Ptr(clx.global_, clx.cplx(clx.int))
+A = add_5.ace_type
+
+map_add5_float = listing1.map[[F, F, A]]
+map_add5_c_int = listing1.map[[C, C, A]]

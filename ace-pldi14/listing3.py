@@ -1,6 +1,10 @@
-from ace.OpenCL import OpenCL, get_global_id
+import ace, examples.clx as clx
 
-@OpenCL.fn
+@ace.fn(clx.std_base)
 def map(input, output, f):
-    gid = get_global_id(0)
-    output[gid] = f(input[gid])
+    thread_idx = get_global_id()
+    output[thread_idx] = f(input[thread_idx])
+    if thread_idx == 0:
+    	printf("Hello, run-time world!")
+
+print "Hello, compile-time world!"
