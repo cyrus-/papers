@@ -1,6 +1,6 @@
 import ace, examples.clx as clx
 
-@ace.fn(clx.std_base)
+@ace.fn(clx.base, clx.opencl)
 def map(input, output, f):
     thread_idx = get_global_id()
     output[thread_idx] = f(input[thread_idx])

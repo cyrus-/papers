@@ -1,6 +1,9 @@
-import astx, ace, examples.clx as clx
+import ace, examples.clx as clx, ast, astx
 
-plus = ace.fn(clx.std_base)("""def plus(a, b):
-    return a + b""")
-add_5_ast = astx.specialize(plus.ast, b=5)
-add_5 = ace.fn(clx.std_base)(add5_ast)
+cl_fn = ace.fn(clx.base, clx.opencl)
+thresh_scale = cl_fn(ast.parse("""
+def thresh_scale(x, s):
+	return x * s if x >= 0 else 0"""))
+
+thresh_dbl = cl_fn(astx.specialize(thresh_scale.ast, 
+	"thresh_dbl", s=ast.parse("2.0"))

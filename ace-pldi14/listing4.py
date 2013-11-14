@@ -1,12 +1,8 @@
-import listing1, ace, examples.clx as clx
+import listing1, listing2, examples.clx as clx
 
-@ace.fn(clx.std_base)
-def add_5(x):
-    return x + 5
+T1 = clx.Ptr(clx.global_, clx.float)
+T2 = clx.Ptr(clx.global_, clx.cplx(clx.int))
+TF = listing2.thresh_dbl.ace_type
 
-F = clx.Ptr(clx.global_, clx.float)
-C = clx.Ptr(clx.global_, clx.cplx(clx.int))
-A = add_5.ace_type
-
-map_add5_float = listing1.map[[F, F, A]]
-map_add5_c_int = listing1.map[[C, C, A]]
+map_add5_float = listing1.map[[T1, T1, TF]]
+map_add5_c_int = listing1.map[[T2, T2, TF]]
