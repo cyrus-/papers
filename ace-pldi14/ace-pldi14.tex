@@ -279,23 +279,55 @@ Decorators in Python are simply syntactic sugar for applying the decorator funct
 The abstract syntax tree for \verb|map| is extracted using the Python standard  library packages  \verb|inspect| (to retrieve its source code) and \verb|ast| (to parse it into a syntax tree). 
 
 \subsection{Metaprogramming in Ace}
-Generic functions can be generated directly from ASTs as well, providing Ace with support for  straightforward metaprogramming. Listing \ref{metaprogramming} shows how to generate two more generic functions, \verb|scale| and \verb|double|. The latter is derived from the former using a library for manipulating Python syntax trees, \verb|astx|. In particular, its \verb|specialize| function replaces uses of the second argument of \verb|scale| with the literal \verb|2| (and changes the function's name), leaving a function of one argument.
+Generic functions can be generated directly from ASTs as well, providing Ace with support for  straightforward metaprogramming. Listing \ref{metaprogramming} shows how to generate two more generic functions, \verb|scale| and \verb|negate|. The latter is derived from the former by using a library for manipulating Python syntax trees, \verb|astx|. In particular, the \verb|specialize| function replaces uses of the second argument of \verb|scale| with the literal \verb|-1| (and changes the function's name), leaving a function of one argument.
  
+\subsection{Explicit Type Assignment}
+To compile a generic function to a particular \emph{concrete function}, a type must be provided for each argument, so that typechecking and translation can proceed. Listing \ref{compscript} shows how to explicitly provide type assignments to \verb|map| via the subscript operator. We attempt to do so three times in Listing \ref{compscript}. The first, on line \ref{compscript}.7, fails due to a type error, which we handle so that the script can proceed. The error occurred  because the ordering of types was incorrect. We provide a valid ordering on line \ref{compscript}.9 to generate the concrete function \verb|map_neg_f32|. We then provide a different type assignment to generate the concrete function \verb|map_neg_ci32|.
+Concrete functions are instances of \verb|ace.ConcreteFn|, consisting of an abstract syntax tree annotated with types and translations along with a reference to the original generic function. %The typing and translation process is mediated by the logic in the active base, types and target that have been provided, as we will describe in more detail below. 
+
+To produce an output file from an Ace compilation script like \verb|listing|\texttt{\ref{compscript}}\verb|.py|, the command \verb|acec| can be invoked from the shell, as shown in Listing \ref{mapc}. The \verb|acec| compiler operates in two steps:
+\begin{enumerate}
+\item Executes the provided Python file (\verb|listing3.py|).
+\item Extracts the translation from concrete functions and other top-level constructs (e.g. types requiring declarations, or generated imports and pragmas) in the top-level Python environment.  This may produce one or more files (here, just \verb|listing3.cl|) as determined by the active targets that were used (for example, a web framework built upon Ace might produce separate HTML, CSS and JavaScript files; see Sec. \ref{active-targets}).
+\end{enumerate}
+
+In this case, step 1 prints the output on lines \ref{mapc}.2-\ref{mapc}.4. The type error printed on lines \ref{mapc}.3-\ref{mapc}.4 will be explained in the next section. The compiler (which is a simple Python script) concludes with the message on line \ref{mapc}.5 to indicate that one file was generated. This file is shown in Listing \ref{mapout} and can be used by any programs that consume OpenCL code (e.g. a C file that invokes the generated kernels via the OpenCL host API). 
+We will show in Section \ref{backend} that for targets with Python bindings, such as OpenCL, CUDA, C, Java or Python itself, generic functions can be executed directly, without any of the explicit compilation steps in Listings \ref{compscript}-\ref{mapout}.
+
 \subsection{Types}
-To go from a generic function to a \emph{concrete function}, we must provide a type assignment for its arguments. We will show different ways to do this in Secs. \ref{procedural} and \ref{implicit}. Before we can do this, however, we must understand what types are.
+\begin{codelisting}
+\lstinputlisting{listing4.py}
+\caption{[\texttt{listing\ref{compscript}.py}] The generic \texttt{map} function compiled to map the \texttt{negate} function over two  types of input.}
+\label{compscript}
+\end{codelisting}
+\begin{codelisting}
+\begin{lstlisting}[style=Bash]
+$ `acec listing3.py`
+Hello, compile-time world!
+[ace] TypeError in listing1.py (line 6, col 28): 
+      'GenericFnType(negate)' does not support [].
+[acec] listing3.cl successfully generated.
+\end{lstlisting}
+\caption{Compiling \texttt{listing\ref{compscript}.py} using the \texttt{acec} compiler.}
+\label{mapc}
+\end{codelisting}
+\begin{codelisting}
+\lstinputlisting[style=OpenCL]{listing5.cl}
+\caption{[\texttt{listing\ref{compscript}.cl}] The OpenCL file generated by Listing \ref{mapc}.}
+\label{mapout}
+\end{codelisting}
+Lines 3-5 of Listing \ref{compscript} construct the types used on lines 7-10. In Ace, types are themselves values that can be manipulated at compile-time, in contrast to most  contemporary languages, where user-defined types are simply declared at compile-time but cannot be defined, inspected or passed around programmatically. More specifically, types are instances of a Python class that implements the \verb|ace.ActiveType| interface (see Sec. \ref{extensions}). Python, then, serves as the \emph{type-level language} of Ace. 
+Being Python values, types can be assigned to variables for convenience (a construct similar to \verb|typedef| in C or \verb|type| in Haskell). Types, like all compile-time mechanisms in Ace, do not have mutable state and operate in a referentially transparent manner.% These types are all implemented in the \verb|clx| library imported on line 1, none are built into Ace itself.
 
-In Ace, types are themselves values that can be manipulated at compile-time (unlike most contemporary languages, where user-defined types are simply declared at compile-time and cannot be defined or manipulated programmatically). In particular, types are instances of a Python class that implements the \verb|ace.ActiveType| interface. Python, then, serves also as the \emph{type-level language} of Ace (see related work in Sec. \ref{related}). 
+The type named \verb|T1| on line 7 corresponds to the OpenCL type \verb|global float*|: a pointer to a 32-bit floating point number stored in the compute device's global memory (one of four memory spaces defined by OpenCL \cite{opencl11}). It is constructed by applying \verb|clx.Ptr|, which is an Ace type constructor corresponding to pointer types, to an address space (here, \verb|clx.global_|) and the type being pointed to, \verb|clx.float|, the Ace type corresponding to \verb|float| in OpenCL. 
+The \verb|clx| library contains a full implementation of the OpenCL type system. We will return to how types are implemented in Section \ref{att}. We note that we are being more verbose than necessary for the sake of pedagogy. The \verb|clx| library includes a concise shorthand for OpenCL's built-in types: \verb|T1| could be written \verb|clx.gp(clx.f32)|. We also note that Ace is \emph{unopinionated} about issues like memory safety. We will show how to implement safer alternatives to raw pointers in Sec. \ref{examples}, but we allow users to choose a low level of abstraction if they wish (e.g. for compatibility with existing code).
 
-Listing 2 shows three types, on lines 7-9, being assigned to variables for convenience (a construct similar to \verb|typedef| in C-like languages or \verb|type| in Haskell). These types all come from the \verb|clx| library imported on line 1, none are built into Ace itself.
-
-The type named \verb|F| on line 7 corresponds to a type in OpenCL, \verb|global float*|: a pointer to a 32-bit floating point number stored in the compute device's global memory (one of four memory spaces defined by OpenCL, see \cite{opencl11}). Here, \verb|clx.float| is an Ace type corresponding to \verb|float| in OpenCL, and \verb|clx.Ptr| is an Ace type family corresponding to pointer types, indexed by both an address space (here, \verb|clx.global_|) and the type being pointed to. The \verb|clx| library contains a complete implementation of the OpenCL type system, which is based on C99. We will return to how this works in Section \ref{att}. We note that we are being more verbose than necessary for pedagogical reasons. The \verb|clx| library defines more concise naming schemas for OpenCL's built-in types: \verb|F| could be written \verb|clx.gp(clx.f32)|. We also note that Ace is \emph{unopinionated} about issues like memory safety. We will show how to implement safer alternatives to raw pointers in Sec. \ref{examples}, but we allow users to choose a low level of abstraction when they wish.(see Sec. \ref{discussion}).
-
-Listing \ref{mapadd5dbl} shows how to assign types to the arguments of \verb|map| so that this logic can be typechecked and compiled. 
+The type \verb|T2| on line 8 does not correspond to an OpenCL type directly. Rather, it is a global pointer to a user-defined primitive type representing complex numbers (integers, in this case). OpenCL does not include primitive support for complex numbers (as of this writing) 
 
 This notion of types as metalanguage objects is key to the Ace compilation model and also enables other mechanisms that we will discuss in subsequent sections.
 
 
-Running \verb|acec listing3.py| would produce no output. To create a {\em concrete function} (that is, an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments. Listing \ref{mapadd5dbl} shows how to use the \verb|compile| method to specialize \verb|map| in \emph{two} different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL associates a memory space with pointer types). Line 9 results in a version specialized for arrays of \verb|double|s and Line 10 results in a version for arrays of \verb|int|s. The output of compilation is shown in Listing \ref{mapout}.
+Running \verb|acec listing3.py| would produce no output. To create a {\em concrete function} (that is, an instance of the class \verb|ace.ConcreteFn|) that can be emitted by the compiler, types must be assigned to each of the arguments. Listing \ref{compscript} shows how to use the \verb|compile| method to specialize \verb|map| in \emph{two} different ways to apply the \verb|add5| function, defined on Lines 4-6, to arrays  that reside in global memory (OpenCL associates a memory space with pointer types). Line 9 results in a version specialized for arrays of \verb|double|s and Line 10 results in a version for arrays of \verb|int|s. The output of compilation is shown in Listing \ref{mapout}.
 
 The \verb|map| function defined in Listing \ref{map} will compile to one or more kernels that applies a transfer function, \verb|f|, to the element of the input array, \verb|input|, corresponding to its global id. It writes the result of this call into the corresponding location in the provided output array, \verb|output|. If the kernel is running in thread 0, it prints a message. The functions \verb|get_global_id| and \verb|printf| are OpenCL primitive functions. To emphasize again that the semantics of this code differs from Python's, we note that these functions have no meaning in Python.
 
@@ -310,37 +342,9 @@ The \verb|map| function defined in Listing \ref{map} will compile to one or more
 
 This example demonstrates several key design decisions that characterize Ace: static typing of run-time behavior, a Python-based syntax, a phase distinction between compile-time and run-time logic, and programmatic 
 \subsection{Programmatic Compilation}\label{procedural}
-\begin{codelisting}
-\lstinputlisting[linebackgroundcolor={\btLstHL{5-5}}]{listing4.py}
-\caption{[\texttt{listing\ref{mapadd5dbl}.py}] The generic \texttt{map} function compiled to map the \texttt{add\_5} function over two  types of input.}
-\label{mapadd5dbl}
-\end{codelisting}
-
-\begin{codelisting}
-\begin{lstlisting}[style=Bash]
-$ `acec listing3.py`
-Hello, compile-time world!
-[ace] TypeError in listing1.py (line 6, col 28): 
-      'GenericFnType(negate)' does not support [].
-[acec] listing3.cl successfully generated.
-\end{lstlisting}
-\caption{Compiling \texttt{listing\ref{mapadd5dbl}.py} using the \texttt{acec} compiler.}
-\label{mapc}
-\end{codelisting}
-\begin{codelisting}
-\lstinputlisting[style=OpenCL]{listing5.cl}
-\caption{[\texttt{listing\ref{mapadd5dbl}.cl}] The OpenCL file generated by Listing \ref{mapc}.}
-\label{mapout}
-\end{codelisting}
 As defined on Lines 5-7, \verb|main| is a \emph{generic function}. This terminology in Ace is used to indicate a function for which types have not yet been assigned to arguments. Invoking the \verb|compile| method on a generic function with a sequence of argument types invokes the active typechecking and translation mechanism we will describe in Section 3 to produce a \emph{concrete function} -- one with a single type for each argument, internal variable (such as \verb|hello|) and the return value. In Listing \ref{hello}, we name this concrete function \verb|main|, overwriting the generic function of the same name that it is derived from. The compiler does nothing apparently interesting: there are no arguments, the single internal variable takes the OpenCL string type \verb|char*| from its value and the return type is \verb|void|. 
 
-Before moving on to more interesting examples, let us discuss the \verb|acec| compiler shown operating at the shell in Listing \ref{helloout}. The \verb|acec| compiler operates in two steps:
-\begin{enumerate}
-\item Executes the provided Python file (\verb|hello.py|) which contains Ace functions and (in future examples) types and compile-time code generation logic.
-\item Produces source code for concrete functions (produced using the \verb|compile| method) in the top-level Python environment and any other concrete functions, type declarations and other program items required by or generated by these functions. This may produce one or more files (here, just \verb|hello.cl|).
-\end{enumerate}
-
-We will show in Section \ref{backend} that for backends with Python bindings, such as OpenCL, CUDA and C, generic functions can be executed directly, without this explicit compilation step to concrete functions, if desired.
+Before moving on to more interesting examples, let us discuss the \verb|acec| compiler shown operating at the shell in Listing \ref{helloout}. 
 
 These types are \emph{objects in the metalanguage}, Python. More specifically, types are {instances} of user-defined classes that inherit from the Ace-provided \verb|ace.Type| class. For example, \verb|gptr(double)| is an instance of \verb|OpenCL.PtrType| instantiated with the target type, \verb|double|, and memory space, \verb|__global|, as constructor arguments. The types \verb|double| and \verb|int| are instances of \verb|OpenCL.FloatType| and \verb|OpenCL.IntegerType|, respectively. 
 \subsection{Type Propagation}
@@ -414,7 +418,7 @@ The two phases of compilation that can be controlled by users are together refer
 %We now explain how new primitive types and operators can be defined in Ace. 
 When the compiler encounters an expression, it must first verify its validity by either assigning it a type or raising a meaningful type error. Rather than defining fixed logic for this, Ace defers control to the {type} of the \emph{primary operand} according to a {\em dispatch protocol}. Because types are metalanguage instances of user-defined types derived from \verb|ace.Type| (cf. Section 2.5), dispatch corresponds to calling a method of this base class.
 
-Let us again consider the data-parallel map example of Section 2. When \verb|map| is compiled on Line 9 of Listing \ref{mapadd5dbl}, the first two argument types are \verb|gptr(double)|. This type is an instance of the user-defined \verb|OpenCL.PtrType| which inherits from \verb|ace.Type|. When the compiler encounters the expression \verb|input[gid]| on Line 6, the dispatch protocol is to defer control to the type of \verb|input| by invoking the method named \verb|resolve_Subscript|.
+Let us again consider the data-parallel map example of Section 2. When \verb|map| is compiled on Line 9 of Listing \ref{compscript}, the first two argument types are \verb|gptr(double)|. This type is an instance of the user-defined \verb|OpenCL.PtrType| which inherits from \verb|ace.Type|. When the compiler encounters the expression \verb|input[gid]| on Line 6, the dispatch protocol is to defer control to the type of \verb|input| by invoking the method named \verb|resolve_Subscript|.
 
 The relevant portion of \verb|OpenCL.PtrType| as well as \verb|gptr| is shown in Listing \ref{pointers}. The \verb|resolve_Subscript| method on Line 8 receives a context and the syntax tree of the node being considered. The context contains information about variables in scope and other contextual information, and also exposes a method, \verb|resolve_type|, that this method uses to recursively resolve the types of other subexpressions, here the slice which will be \verb|gid|, as needed. The context will have that \verb|gid| is the machine-dependent integer type \verb|size_t| as discussed in Section 2. On Line 10, it confirms that this type is an instance of an integer type and thus, it assigns the whole expression, \verb|input[gid]|, the target type of the pointer, \verb|double|. Had the function attempted to index \verb|input| using a non-integer expression, the method would take the other branch of the conditional and raise a type error, with a custom error message, on Line 13. We note that error messages are an important component of \textbf{ease-of-use} \cite{marceau2011measuring}. Indeed, a widely-reported frustration with C++ is that it produces overly verbose and cryptic error messages, particularly when templates are used in clever ways.
 
@@ -536,6 +540,8 @@ We suggest three mutually-related {design criteria} that, unlike those in bold a
 
 
  We anticipate that coding guidelines mandating the use of abstractions that can be shown to have certain desirable properties will replace language-mandated enforcement opinions 
+ 
+ Future work: integrate with something like scalad http://lampwww.epfl.ch/~hmiller/scala2013/resources/pdfs/paper8.pdf.
 
 %\acks
 %The author is grateful to Jonathan Aldrich, Robert Bocchino and anonymous referees for their useful suggestions. This work was funded by the DOE Computational Science Graduate Fellowship under grant number DE-FG02-97ER25308.
