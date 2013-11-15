@@ -386,28 +386,26 @@ The core of Ace consists of about 1500 lines of Python code implementing its pri
 Active types are the primary means for extending Ace, and motivate active bases, so we will describe them first. An active type, as mentioned above, is an instance of a class implementing the \verb|ace.ActiveType| interface. Listing \ref{pointers} shows an example of such a class: the \verb|clx.Ptr| class used in Listing \ref{compscript}, which implements the logic of OpenCL's pointer types. The class takes two arguments in its constructor: an address space and the target type of the pointer.
 OpenCL pointers support several operations: they can be indexed by an integer type to extract the value being pointed to; one can perform pointer arithmetic on them; and two pointers can be subtracted to produce a value of type \verb|ptrdiff_t| (a device-dependent integer type) if they are in the same address space \cite{opencl11}.
 
-In a compiler for a monolithic language, there would be a \emph{syntax-directed} protocol governing typechecking and translation. For example, in a functional language, one would declare datatypes that captured all forms of types and expressions, and the typechecker would perform exhaustive case analysis over the expression forms, implementing the logic described above in the cases for subscript (\verb|e1[e2]|) and addition (\verb|e1 + e2|). The visitor pattern typically used in object-oriented languages implements essentially the same protocol. This does not work for an extensible language: new cases need to be added, and the corresponding logic must be included. In Ace, new types reuse existing forms, so this requires that the logic inside each case be modifiable by extensions (in a safely composable way).
+In a compiler for a monolithic language, there would be a \emph{syntax-directed} protocol governing typechecking and translation. For example, in a functional language, one would declare datatypes that captured all forms of types and expressions, and the typechecker would perform exhaustive case analysis over the expression forms, implementing the logic described above in the cases for subscript (\verb|e1[e2]|) and addition (\verb|e1 + e2|). The visitor pattern typically used in object-oriented languages implements essentially the same protocol. This does not work for an extensible language because new cases cannot be added to the types and functions (in a modular, safely composable manner).
 
-Instead of taking a syntax-directed approach, the Ace compiler's typechecking and translation phases take a \emph{type-directed approach}. When encountering a compound expression (e.g. \verb|e1[e2]|), Ace defers control over typechecking and translation to the active type of a designated subexpression. The choice of subexpression is fixed by the language, motivated by considerations of Python's semantics for the same form. Collectively, these choices comprise the \emph{dispatch protocol} of Ace. Below are examples of these choices. Due to space constraints, we do not show the full protocol, consisting of a rule for each compound form in the grammar \cite{pythonast}.
+Instead of taking a syntax-directed approach, the Ace compiler's typechecking and translation phases take a \emph{type-directed approach}. When encountering a compound expression (e.g. \verb|e1[e2]|), Ace defers control over typechecking and translation to the active type of a designated subexpression. The choice of subexpression is determined by Ace's fixed \emph{dispatch protocol}, which is designed taking into consideration Python's semantics for the same form. Below are examples of these choices. Due to space constraints, we do not show the full protocol.
 \begin{itemize}
 \item Responsibility over {\bf attribute access} (\texttt{e.attr}), {\bf subscripting} (\texttt{e[e1]}\todo{is it n-ary?}) and \textbf{calls} (\verb|e(e1, ..., en)|) and {\bf unary operations} (e.g. \verb|-e|) is handed to the type recursively assigned to \texttt{e}.
 \item Responsibility over {\bf binary operations} (e.g. \verb|e1 + e2|) is first handed to the type assigned to the left operand. If it indicates a type error, the type assigned to the right operand is handed responsibility, via a different method call. {Note that this operates like the corresponding rule in Python's \emph{dynamic} operator overloading mechanism; see Sec. \ref{related} for a discussion.}
-\item Responsibility over {\bf simple assignment statements}, is handed to the type of the variable on the left (which, as we will see below, is determined by the active base). If this type does not provide special assignment semantics, the base handles it. %Destructuring assignment is also supported by a somewhat more complex protocol.\todo{clarify}
+\item Responsibility over {\bf simple assignment statements}, is handed to the type of the variable on the left (which, as we will see below, is determined by the active base). If this type does not provide special assignment semantics, the base must handle it.%Destructuring assignment is also supported by a somewhat more complex protocol.\todo{clarify}
 \end{itemize}
 
-\subsubsection{Active Typechecking}
+\subsubsection{Typechecking}
+When typechecking a compound expression or statement, the Ace compiler calls a method of the form \verb|type_|$X$ on the active type that has responsibility over it according to the dispatch protocol, where $X$ is typically the name of the syntactic form, taken from the Python grammar \cite{pythonast}. For example, the typing logic for the \verb|Subscript| and \verb|BinOp| forms when operating on OpenCL pointers are shown beginning on lines \ref{pointers}.8 and \ref{pointers}.20, respectively.  The typing methods are provided a \verb|context| and the abstract syntax tree of the \verb|node| being considered. The context is an instance of \verb|ace.Context| and tracks information like variable types, as coordinated by the base. It also includes a method \verb|type| that can be used to assign  type to subexpressions as needed. For example, line \ref{pointers}.8 checks if the type of the slice is an integer type. \verb|Integer| is simply another class in the \verb|clx| library that implements the \verb|ace.ActiveType| interface. Specific integer types like \verb|int| and \verb|ptrdiff_t| are instances of this class (details not shown). Note that the subexpressions are not \emph{automatically} assigned types. This is useful because it allows types to contextually reinterpret them to support more complex constructs (e.g. pattern matching on datatypes, see Sec. \ref{datatypes}).
+
+If a type error is detected, \verb|ace.TypeError| can be raised with an appropriate error message and a reference to the node that produced it (so that Ace can extract line and column numbers). We note that error messages are an important and sometimes overlooked facet of {ease-of-use} \cite{marceau2011measuring}. A common frustration with general-purpose abstraction mechanisms is that they can produce  verbose and cryptic error messages revealing implementation details of the abstraction being encoded (e.g. template metaprogramming \cite{template-metaprogramming}). 
+
 \begin{codelisting}
 \lstinputlisting{listing9.py}
-\caption{\texttt{[]} A portion of the implementation of OpenCL pointer types implementing subscripting logic using the Ace extension mechanism, AT\&T.}
+\caption{\texttt{[}in \texttt{examples/clx.py]} The active type family \texttt{Ptr} implements the semantics of OpenCL pointer types.}
 \label{pointers}
 \end{codelisting}
-When the compiler encounters an expression, it must first verify its validity by either assigning it a type or raising a meaningful type error. Rather than defining fixed logic for this, Ace defers control to the {type} of the \emph{primary operand} according to a {\em dispatch protocol}. Because types are metalanguage instances of user-defined types derived from \verb|ace.Type| (cf. Section 2.5), dispatch corresponds to calling a method of this base class.
-
-Let us again consider the data-parallel map example of Section 2. When \verb|map| is compiled on Line 9 of Listing \ref{compscript}, the first two argument types are \verb|gptr(double)|. This type is an instance of the user-defined \verb|OpenCL.PtrType| which inherits from \verb|ace.Type|. When the compiler encounters the expression \verb|input[gid]| on Line 6, the dispatch protocol is to defer control to the type of \verb|input| by invoking the method named \verb|resolve_Subscript|.
-
-The relevant portion of \verb|OpenCL.PtrType| as well as \verb|gptr| is shown in Listing \ref{pointers}. The \verb|resolve_Subscript| method on Line 8 receives a context and the syntax tree of the node being considered. The context contains information about variables in scope and other contextual information, and also exposes a method, \verb|resolve_type|, that this method uses to recursively resolve the types of other subexpressions, here the slice which will be \verb|gid|, as needed. The context will have that \verb|gid| is the machine-dependent integer type \verb|size_t| as discussed in Section 2. On Line 10, it confirms that this type is an instance of an integer type and thus, it assigns the whole expression, \verb|input[gid]|, the target type of the pointer, \verb|double|. Had the function attempted to index \verb|input| using a non-integer expression, the method would take the other branch of the conditional and raise a type error, with a custom error message, on Line 13. We note that error messages are an important component of \textbf{ease-of-use} \cite{marceau2011measuring}. Indeed, a widely-reported frustration with C++ is that it produces overly verbose and cryptic error messages, particularly when templates are used in clever ways.
-
-\subsubsection{Active Translation}
+\subsubsection{Translation}
 Once typechecking a method is complete, the compiler must subsequently translate each Ace source expression into an expression in the target language. This has been OpenCL in the examples thus far, but we describe a generalization of this in the next section. 
 
 It does so by again applying the dispatch protocol to call a method of the form \verb|translate_|$X$, where $X$ is the syntactic form of the expression. This method is responsible for returning a copy of the expression's ast node with an additional attribute, \verb|code|, containing the source code of the translation, represented here as a string though it may also be represented in a structured manner. In our example, it is simply a direct translation to the corresponding OpenCL attribute access (Line 20), using the recursively-determined translations of the operands (Lines 16-17).  More sophisticated abstractions may insert arbitrarily complex statements and expressions during this phase. The context also provides some support for non-local insertions, such as new top-level type declarations, imports and helper code (not shown).
@@ -479,7 +477,7 @@ This ability could also be used to collect data useful for more rigorous usabili
 \begin{longtable}{l l@{}l c@{}c c@{}c c@{}c c@{}c c@{}c}
 %\toprule%
 
-&&  &&  && {\bfseries Extensible} && {\bfseries Extensible} &&  && {\bfseries Alternative}\\
+&&  &&  && {\bfseries Extensible} && {\bfseries Extensible} && {\bfseries Extensions} && {\bfseries Alternative}\\
 
 {\bfseries Approach} && {\bfseries Examples} && {\bfseries Library} && {\bfseries Syntax} && {\bfseries Type System} && {\bfseries Compositional} && {\bfseries Targets}  \\
 
@@ -491,15 +489,15 @@ This ability could also be used to collect data useful for more rigorous usabili
 Active Types && Ace && \CIRCLE && \Circle && \CIRCLE && \CIRCLE && \CIRCLE \\
 
 \myrowcolour%
-Desugaring && SugarJ \cite{erdweg2011sugarj}, Sugar* && \Circle && \CIRCLE && \Circle && \Circle && \Circle \\
+Desugaring && SugarJ \cite{erdweg2011sugarj}, Sugar* \cite{sugarstar} && \Circle && \CIRCLE && \Circle && \Circle && \Circle \\
 
 Rule Injection && Qi \cite{qi}, Typed Racket \cite{TypedScheme2008}, A? && 1+2 && \Circle && \CIRCLE && \Circle && \Circle \\
 
 \myrowcolour%
-Static macros /  && Scala macros \cite{ScalaMacros2013}, MorphJ \cite{MorphJ2011}, && \Circle && \Circle && \Circle && \CIRCLE && \Circle \\
+Static macros /  && Scala \cite{ScalaMacros2013}, MorphJ \cite{MorphJ2011}, OJ \cite{OpenJava2000} && \Circle && \Circle && \Circle && \CIRCLE && \Circle \\
 
 \myrowcolour
-Metaprogramming &&  OJ \cite{OpenJava2000}, Template Haskell \cite{template-haskell} && && && && && \\
+Metaprogramming &&  Template Haskell \cite{template-haskell} && && && && && \\
 
 Cross-Compilation && Delite \cite{Delite2011} && \CIRCLE && \Circle && \Circle && \Circle && \CIRCLE \\
 

@@ -1,5 +1,3 @@
-import ace
-
 class Ptr(ace.ActiveType):
   def __init__(self, addr_space, target_t):
     self.addr_space = addr_space
@@ -17,20 +15,23 @@ class Ptr(ace.ActiveType):
     slice_x = context.translate(node.slice)
     return context.target.Subscript(value_x, slice_x)
 
-  def type_BinOp(self, context, node):
-    if node.op == ast.Add:
+  def type_BinOp_left(self, context, node):
+    if isinstance(node.operator, ast.Add):
       right_t = context.type(node.right)
       if isinstance(right_t, Integer):
         return self
-    elif node.op == ast.Sub:
+    elif isinstance(node.operator, ast.Sub):
       right_t = context.type(node.right)
       if (isinstance(right_t, Ptr) and 
           right_t.addr_space == self.addr_space):
         return ptrdiff_t
-    else: raise ace.TypeError('<error message>', node)
+    raise ace.TypeError('<error message>', node)
 
-  def translate_BinOp(self, context, node):
+  def translate_BinOp_left(self, context, node):
     left_x = context.translate(node.left)
     right_x = context.translate(node.right)
     return context.target.BinOp(left_x, 
       node.operator, right_x)
+
+  # type_BinOp_right and translate_BinOp_right 
+  # (not shown) are symmetric
