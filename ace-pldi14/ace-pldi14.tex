@@ -413,34 +413,38 @@ Thus far, we have been discussing the \verb|OpenCL| module in our examples. This
 Because a type can only exert control over typechecking and translation of operations where an expression of that type is the primary operand, extensions defined using AT\&T can not interfere with one another by construction. This does not imply that there are no \textbf{interoperability} issues to consider, however. A type may need to know about other types (e.g. pointer types need to know about integer types) and if this is done without consideration of future extensions, it may be difficult to integrate data produced by one type system with another. These issues cannot easily be addressed by a language design, however.
 
 \section{Examples}\label{examples}
+
+\subsection{Parallel Programming}
+\subsubsection{OpenCL}
 The development of the full OpenCL language using only the extension mechanisms described above provides evidence of the power of this approach. However, to be truly useful, the mechanism must be able to express a wide array of higher-level primitive abstractions. We briefly describe a number of other abstractions that are possible using this mechanism. Many of these are currently available in existing languages either via libraries or as primitives of some specialized language. A study comparing a language-based concurrency solution for Java with an equivalent, though less clean, library-based solution found that language support is preferable but leads to many of the issues we have described \cite{cave2010comparing}.
 
-\subsubsection{Parallel Programming}
-\paragraph{OpenCL}
-\subparagraph{Annotation and Extension Inference}
-In addition to type annotations, OpenCL normally asks for additional annotations in a number of other situations.  Users can annotate functions that meet certain requirements  with the \verb|__kernel| attribute, indicating that they are callable from the host. The \verb|OpenCL| backend can check these and add this annotation automatically. Several types (notably, \verb|double|) and specialized primitive functions require that an OpenCL extension be enabled via a \verb|#pragma|. The OpenCL backend automatically detects many of these cases as well, adding the appropriate \verb|#pragma| declaration. An example of this can be seen in Listing \ref{mapout}, where the use of the \verb|double| type triggers the insertion of the \verb|cl_khr_f64| extension.
-
-\paragraph{Partitioned Global Address Spaces}
+%\subparagraph{Annotation and Extension Inference}
+%In addition to type annotations, OpenCL normally asks for additional annotations in a number of other situations.  Users can annotate functions that meet certain requirements  with the \verb|__kernel| attribute, indicating that they are callable from the host. The \verb|OpenCL| backend can check these and add this annotation automatically. Several types (notably, \verb|double|) and specialized primitive functions require that an OpenCL extension be enabled via a \verb|#pragma|. The OpenCL backend automatically detects many of these cases as well, adding the appropriate \verb|#pragma| declaration. An example of this can be seen in Listing \ref{mapout}, where the use of the \verb|double| type triggers the insertion of the \verb|cl_khr_f64| extension.
+%
+\subsubsection{Partitioned Global Address Spaces}
 A number of recent languages designed for clusters use a partitioned global address space model, including UPC \cite{upc}, Chapel \cite{chapel} and others. These languages provide first-class support for accessing data transparently across a massively parallel cluster. Their type systems track information about \emph{data locality} so that the compiler can emit more efficient code. The extension mechanism can also track this information in a manner analogous to how address space information is tracked in the OpenCL example above, and target an existing portable run-time such as GASNet \cite{bonachea2002gasnet}.
 
+\subsection{General-Purpose Abstractions}
 \paragraph{Object Models and Message Passing}
 Classes in object-oriented systems can be understood as inducing a type parameterized by a static type specification that emits code to perform dynamic dispatch by some protocol. In Ace, the object system would be a subclass of \verb|ace.Type| (e.g. \verb|JavaObject|), the specification would be a compile-time Python object (e.g. a dictionary mapping names to types, as is done with OpenCL \verb|struct|s, augmented with information about subtyping and methods in more complex systems). The code for checking field and method accesses against the specification would be be in \verb|resolve_Attribute| method and the dynamic dispatch mechanism would be emitted in \verb|translate_Attribute|. That is, Ace supports arbitrary object models, rather than fixing a single one that may not fit all needs, as in almost all other object-oriented languages.
 
 Many parallel programming abstractions can be understood as implementing object models with complex forms of dynamic dispatch. For example, in Charm++, dynamic dispatch involves message passing over a dynamically load-balanced network \cite{kale1993charm++}. While Charm++ is a very sophisticated system, and we do not anticipate that implementing it as an Ace extension would be easy, it is entirely possible to do so using a system like Adaptive MPI that exposes its runtime system \cite{kale2009charm++}. Erlang and other message-passing based systems can also be considered in this manner -- processes can be thought of as objects, channels as methods and messages as calls.
 
-\paragraph{Functional Parallelism}
+\subsubsection{Functional Datatypes}
+
+\subsubsection{Functional Parallelism}
 Another promising approach for parallel programming is in automatic parallelization of purely functional programs. These languages express computations that do not explicitly manipulate memory. They rely instead on the composition of primitives like \verb|map| and \verb|reduce| that transform components of persistent data structures like lists, trees and maps. Data dependencies are thus directly encoded in programs, and automatic parallelization techniques have shown promise in using this information to automatically schedule these parallel programs on concurrent hardware and networks.
 
 The Copperhead language, for example, is based on Python as well and allows users to express functional programs over lists using common functional primitives, compiling them to CUDA code \cite{catanzaro2011copperhead}. We believe that Ace can express precisely the same programming model, implemented as an extension. We have prototyped support for a number of common persistent data structures, including algebraic datatypes, in Ace. Perhaps surprisingly, Python's imperative syntax does not preclude writing programs in a reasonable functional style (due largely to its support for tuples).
 
-\subsubsection{Other Use Cases in HPC}
-\paragraph{Interoperability Layers}
+\subsection{Interoperability Layers}
 The design criteria of \textbf{continuity} and \textbf{interoperability} require consideration of the large body of codes written in a variety of existing languages, across a number of paradigms. Although it is often possible to call from one language to another using a foreign function interface (FFI), this is almost never natural or statically safe. In Ace, however, extensions could be written that internalize the foreign language's type system (note that dynamically-typed languages can be considered to have a single type, often called $\mathtt{dyn}$) and emit code that hides the FFI from users, achieving \textbf{verifiability} and \textbf{ease-of-use}.
 
-\paragraph{Specialized Optimizations}
-In many cases, specialized code optimizations requires statically tracking invariants throughout a program. Often these optimizations can be encoded as a type system for this reason. For instance, a course project using Ace  implemented substantial portions of the GPU-specific optimizations described in \cite{yang2010gpgpu} as a library, using types to track affine transformations of the global ID in order to construct a summary of the memory access patterns of the kernel. This information can be used both for single-kernel optimization (as in \cite{yang2010gpgpu}) and for future research on cross-kernel fusion and other optimizations.
+%\paragraph{Specialized Optimizations}
+%In many cases, specialized code optimizations requires statically tracking invariants throughout a program. Often these optimizations can be encoded as a type system for this reason. For instance, a course project using Ace  implemented substantial portions of the GPU-specific optimizations described in \cite{yang2010gpgpu} as a library, using types to track affine transformations of the global ID in order to construct a summary of the memory access patterns of the kernel. This information can be used both for single-kernel optimization (as in \cite{yang2010gpgpu}) and for future research on cross-kernel fusion and other optimizations.
 
-\paragraph{Domain-Specific Type Systems}
+\subsection{Domain-Specific Type Systems}
+\subsubsection{Units of Measure}
 Although not strictly related to HPC, a number of domain-specific type systems related to computational science can be implemented within Ace. For example, prior work has considered tracking units of measure (e.g. grams) statically to validate scientific code \cite{conf/cefp/Kennedy09}. This cannot easily be implemented using existing abstraction mechanisms because this information should only be maintained statically to avoid excessive run-time overhead associated with tagging. The Ace extension mechanism allows this information to be tracked in the type system, but not included during translation.
 
 
