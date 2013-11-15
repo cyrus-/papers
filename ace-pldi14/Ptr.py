@@ -1,27 +1,3 @@
-class Cplx(ace.ActiveType):
-  def __init__(self, t):
-    if not isinstance(t, Numeric):
-      raise ace.InvalidType("<error message>")
-    self.t = t
-
-  def translate_type(self, context, target):
-    return target.Vec(2, self.t.translate_type(context))
-
-  def type_BinOp_left(self, context, node):
-    right_t = context.type(node.right)
-    if isinstance(right_t, Numeric):
-      return Cplx(c99_binop_t(self.t, right_t))
-    elif isinstance(right_t, Cplx):
-      return Cplx(c99_binop_t(self.t, right.t))
-
-  def translate_BinOp_left(self, context, target, node):
-    right_t = context.type(node.right)
-    target = context.target
-    if isinstance(right_t, Numeric):
-      left_x = context.translate(node.left)
-      right_x = context.translate(node.right)
-      return target.BinOp()
-
 class Ptr(ace.ActiveType):
   def __init__(self, addr_space, t):
     self.addr_space = addr_space
