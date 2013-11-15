@@ -355,7 +355,7 @@ The OpenCL language was designed for this workflow, exposing a retargetable comp
 
 Ace supports a refinement to this workflow, as an alternative to the \verb|acec| compiler described above, for targets that have wrappers like this available, including \verb|clx.opencl|. Listing \ref{py} shows an example of this workflow where the user chooses a compute device (line \ref{py}.3),  constructs a \verb|numpy| array (line \ref{py}.5), transfers it to the device (line \ref{py}.6), allocates an empty equal-sized buffer for the result of the computation (line \ref{py}.7), launches the {generic} kernel \verb|map| from Listing \ref{map} with these device arrays as well as the function \verb|negate| from Listing \ref{metaprogramming} (line \ref{py}.9) choosing a number of threads equal to the number of elements in the input array (line \ref{py}.10), and transfers the result back into main memory to check that the device computed the expected result (line \ref{py}.12).
 
-For developers experienced with the usual OpenCL or CUDA workflow, the fact that this can be accomplished in a total of 6 statements may be surprising. This simplicity is enabled largely due to  implicit uses of types throughout the code. First, \verb|numpy| keeps track of the type, shape and order of its arrays. The type of \verb|input|, for example, is \verb|numpy.double| by default, its shape is \verb|(1024,)| and its order is row-major by default. The \verb|pyopencl| library that our mechanism is built atop uses this information to automatically call the underlying OpenCL host API function for transferring byte arrays to the device without requiring the user to calculate the size. Our wrapper of \verb|pyopencl| retains this information in the Python representations of the device arrays, \verb|d_input| and \verb|d_output|. An Ace type parameterized can use this metadata to typecheck and generate code for operations like indexing in Ace functions\todo{rephrase}.
+For developers experienced with the usual OpenCL or CUDA workflow, the fact that this can be accomplished in a total of 6 statements may be surprising. This simplicity is enabled largely due to  implicit tracking of types throughout the code. First, \verb|numpy| keeps track of the type, shape and order of its arrays. The type of \verb|input|, for example, is \verb|numpy.double| by default, its shape is \verb|(1024,)| and its order is row-major by default. The \verb|pyopencl| library that our mechanism is built atop uses this information to automatically call the underlying OpenCL host API function for transferring byte arrays to the device without requiring the user to calculate the size. Our wrapper of \verb|pyopencl| retains this information in the Python representations of the device arrays, \verb|d_input| and \verb|d_output|. An Ace type parameterized can use this metadata to typecheck and generate code for operations like indexing in Ace functions\todo{rephrase}.
 
 This allows us to call the generic function \verb|map| directly on these Python data structures (as well as the generic function \verb|negate|) without first requiring an explicit type assignment, like we needed when using \verb|acec| above. In other words, dynamic types and other metadata can propagate from Python data structures into an Ace generic function as static type information, in the same manner as it propagated \emph{between} generic functions in the previous section. In both cases, typechecking and translation of \verb|map| happens the first time a particular type assignment is encountered and cached for subsequent use. When called from Python, the generated OpenCL source code is also compiled for the device we selected using the OpenCL host API's compiler infrastructure, and cached. 
 
@@ -364,8 +364,35 @@ The same program written using the OpenCL C API directly is an order of magnitud
 %Not shown are several additional conveniences, such as delegated kernel sizing and \verb|In| and \verb|Out| constructs that can reduce the size and improve the clarity of this code further; due to a lack of space, the reader is referred to the language documentation.
 
 \section{Extensibility}\label{att}
-\subsection{Active Bases}\label{abases}
+The core of Ace consists of about 1500 lines of Python code implementing its primary concepts: generic functions, concrete functions, active bases, active types and active targets.  The latter three comprise Ace's extension mechanism. Extensions provide semantics to, and govern the compilation of, Ace functions, rather than logic in Ace's core. Indeed, the name ``Ace'' might itself be an acronym: it is an ``active compilation environment''.
+
 \subsection{Active Types}\label{atypes}
+Active types are the primary means for extending Ace, and motivate active bases, so we will describe them first. An active type, as mentioned above, is an instance of a class implementing the \verb|ace.ActiveType| interface. Listing \ref{pointers} shows an example of such a class: the \verb|clx.Ptr| class used in Listing \ref{compscript}, which implements the logic of OpenCL's pointer types. The class takes two arguments in its constructor: an address space and the target type of the pointer.
+OpenCL pointers support several operations: they can be indexed by an integer type to extract the value being pointed to; one can perform pointer arithmetic on them; and two pointers can be subtracted to produce a value of type \verb|ptrdiff_t| (a device-dependent integer type) if they are in the same address space \cite{opencl11}.
+
+In a compiler for a monolithic language, there would be a \emph{syntax-directed} protocol governing typechecking and translation. For example, in a functional language, one would declare datatypes that captured all forms of types and expressions, and the typechecker would perform exhaustive case analysis over the expression forms, implementing the logic described above in the cases for subscript (\verb|e1[e2]|) and addition (\verb|e1 + e2|). The visitor pattern typically used in object-oriented languages implements essentially the same protocol. This does not work for an extensible language: new cases need to be added, and the corresponding logic must be included. In Ace, new types reuse existing forms, so this requires that the logic inside each case be modifiable by extensions (in a safely composable way).
+
+Instead of taking a syntax-directed approach, the Ace compiler's typechecking and translation phases take a \emph{type-directed approach}. When encountering a compound expression (e.g. \verb|e1[e2]|), Ace defers control over typechecking and translation to a \emph{method} associated with the active type of a designated subexpression. The choice of subexpression is fixed by the language, motivated by a consideration of which expression plays a \emph{primary} role (for example, for subscripting, \verb|e1| is chosen). Collectively, these choices comprise the \emph{dispatch protocol} of Ace. Below are examples of these choices. Due to space constraints, we do not show the full protocol, consisting of a rule for each compound form in the grammar \cite{pythonast}.
+\begin{itemize}
+\item Responsibility over {\bf attribute access} (\texttt{e.attr}), {\bf subscripting} (\texttt{e[e1]}\todo{is it n-ary?}) and \textbf{calls} (\verb|e(e1, ..., en)|) and {\bf unary operations} (e.g. \verb|-e|) is handed to the type recursively assigned to \texttt{e}.
+\item Responsibility over {\bf binary operations} (e.g. \verb|e1 + e2|) is first handed to the type assigned to the left operand. If it indicates a type error, the type assigned to the right operand is handed responsibility, via a different method call. {Note that this operates like the corresponding rule in Python's \emph{dynamic} operator overloading mechanism; see Sec. \ref{related} for a discussion.}
+\item Responsibility over {\bf simple assignment statements}, is handed to the type of the variable on the left (which, as we will see below, is determined by the active base).
+\end{itemize}
+
+
+
+\subsection{Active Bases}\label{abases}
+\begin{codelisting}
+\lstinputlisting{listing9.py}
+\caption{\texttt{[ace.OpenCL]} A portion of the implementation of OpenCL pointer types implementing subscripting logic using the Ace extension mechanism, AT\&T.}
+\label{pointers}
+\end{codelisting}
+Each generic function is associated with an active base, which is an object implementing the \verb|ace.ActiveBase| interface. The active base specifies the \emph{base semantics} of that function -- the semantics of statements and expressions that do not have a clear ``primary'' subexpression. 
+
+For example, the type and translation of a numeric literal is determined by the active base. The active base \verb|clx.base|, for example, assigns integer literals the type \verb|clx.int32| while floating point literals have type \verb|clx.double|, to be consistent with the semantics of OpenCL and C99. The \verb|clx.base| object is an instance of \verb|clx.Base|. This class is written so that this choice can be made differently if desired. For example, the base \verb|clx.Base(flit_t=clx.float)| changes the base semantics so that floating point literals have type \verb|clx.float|. This is useful because some OpenCL devices do not support double-precision floating point, or impose a significant performance penalty for its use. For applications where this higher precision is not necessary, this is convenient. Similarly, a base where integer literals are represented using true integers, rather than 32-bit integers, might be useful in  applications where avoiding accidental overflows is more important than performance. True integers can be implemented as an active type (not shown).
+
+Indeed, to even use \verb|double| in OpenCL, an appropriate \verb|#pragma| must be inserted. The base detects uses of \verb|double| anywhere inside the function 
+
 \subsection{Active Targets}\label{atargets}
 
 If no active target is explicitly provided, as in our example, the active base  provides a default target. The default target provided by \verb|clx.base| is \verb|clx.opencl|, but other targets, like \verb|clx.cuda|, a vendor-specific language similar to OpenCL, as well as Python itself (\verb|ace.python|), can also be defined in libraries. One base can support multiple targets. We will discuss targets in Sec. \ref{targets}.
@@ -384,11 +411,6 @@ To achieve these criteria, Ace has been designed around a minimal, {extensible} 
 The two phases of compilation that can be controlled by users are together referred to as \emph{active typechecking and translation (AT\&T)}. They are invoked the first time the \verb|compile| method of a generic function is called, or when type propagation occurs, with a particular type assignment (a cached concrete function is returned subsequently).
 
 \subsubsection{Active Typechecking}
-\begin{codelisting}
-\lstinputlisting{listing9.py}
-\caption{\texttt{[ace.OpenCL]} A portion of the implementation of OpenCL pointer types implementing subscripting logic using the Ace extension mechanism, AT\&T.}
-\label{pointers}
-\end{codelisting}
 
 %We now explain how new primitive types and operators can be defined in Ace. 
 When the compiler encounters an expression, it must first verify its validity by either assigning it a type or raising a meaningful type error. Rather than defining fixed logic for this, Ace defers control to the {type} of the \emph{primary operand} according to a {\em dispatch protocol}. Because types are metalanguage instances of user-defined types derived from \verb|ace.Type| (cf. Section 2.5), dispatch corresponds to calling a method of this base class.
@@ -398,13 +420,7 @@ Let us again consider the data-parallel map example of Section 2. When \verb|map
 The relevant portion of \verb|OpenCL.PtrType| as well as \verb|gptr| is shown in Listing \ref{pointers}. The \verb|resolve_Subscript| method on Line 8 receives a context and the syntax tree of the node being considered. The context contains information about variables in scope and other contextual information, and also exposes a method, \verb|resolve_type|, that this method uses to recursively resolve the types of other subexpressions, here the slice which will be \verb|gid|, as needed. The context will have that \verb|gid| is the machine-dependent integer type \verb|size_t| as discussed in Section 2. On Line 10, it confirms that this type is an instance of an integer type and thus, it assigns the whole expression, \verb|input[gid]|, the target type of the pointer, \verb|double|. Had the function attempted to index \verb|input| using a non-integer expression, the method would take the other branch of the conditional and raise a type error, with a custom error message, on Line 13. We note that error messages are an important component of \textbf{ease-of-use} \cite{marceau2011measuring}. Indeed, a widely-reported frustration with C++ is that it produces overly verbose and cryptic error messages, particularly when templates are used in clever ways.
 
 \subsubsection{Dispatch Protocol}
-Below are examples of the rules that comprise the Ace dispatch protocol. Due to space constraints, we do not list the entire dispatch protocol, which contains a rule for each possible syntactic form in the language.
-\begin{itemize}
-\item Responsibility over {\bf unary operations} like \verb|-x| is given to the type assigned to the operand, \verb|x|.
-\item Responsibility over {\bf binary operations} is first handed to the type assigned to the left operand. If it indicates that it does not understand the operation, the type assigned to the right operand is handed responsibility, via a different method call. {Note that this operates similarly to the Python run-time operator overloading protocol; see Section \ref{related}.}
-\item Responsibility over {\bf attribute access} (\texttt{e.attr}), {\bf subscript access} (\texttt{e[idx]}) and \textbf{calls} (\verb|e(e1, ..., en)|) is handed to the type assigned to \texttt{e}.
-\item In support of the type inference mechanism described in Section \ref{inference}, responsibility to resolve a type given multiple assignments can be taken by any of the types of the assignments, with priority given to later types.
-\end{itemize}
+
 
 
 
