@@ -12,6 +12,7 @@
 \usepackage{amssymb} 
 \usepackage{amsthm}
 \usepackage{ stmaryrd }
+\usepackage{verbatimbox}
 
 \usepackage{alltt}
 \renewcommand{\ttdefault}{txtt}
@@ -128,6 +129,14 @@
             \fi
         }
 
+ % Heather-added packages for the fancy table
+ \usepackage{longtable}
+ \usepackage{booktabs}
+ \usepackage{pdflscape}
+ \usepackage{colortbl}%
+ \newcommand{\myrowcolour}{\rowcolor[gray]{0.925}}
+ \usepackage{wasysym}
+ 
     \makeatother
 
 \lstset{
@@ -272,9 +281,16 @@ Lines 3-4 introduce \verb|map|, an Ace function of three arguments that is gover
 The body of this function, highlighted in grey for emphasis, does not have Python's semantics. Instead, it will be governed by the active base together with the active types used within it. No such types have been provided explicitly, however. Because our type system is extensible, the code inside could be meaningful for many different assignments of types to the arguments. We call functions awaiting types \emph{generic functions}. Once types have been assigned, they are called \emph{concrete functions}.
 
 Generic functions are represented at compile-time as instances of \verb|ace.GenericFn| and consist of an abstract syntax tree, an {active base} and an {active target}. The purpose of the \emph{decorator} on line 3 is to replace the Python function on lines 4-8 with an Ace generic function having the same syntax tree and the provided active base and active target. 
-Decorators in Python are simply syntactic sugar for applying the decorator function directly to the function  being decorated \cite{python}. In other words, line 3 could be replaced by inserting the following  statement on line 9\todo{figure out how to center this}:
-
-\verb|map = ace.fn(clx.base, clx.opencl)(map)| 
+Decorators in Python are simply syntactic sugar for applying the decorator function directly to the function  being decorated \cite{python}. In other words, line 3 could be replaced by inserting the following  statement on line 9:
+\vspace{-0.2cm}
+\begin{verbbox}
+map = ace.fn(clx.base, clx.opencl)(map)
+\end{verbbox}
+\begin{figure}[h!]
+\centering
+\theverbbox
+\end{figure}
+\vspace{-0.2cm}
 
 The abstract syntax tree for \verb|map| is extracted using the Python standard  library packages  \verb|inspect| (to retrieve its source code) and \verb|ast| (to parse it into a syntax tree). 
 
@@ -456,19 +472,44 @@ This ability could also be used to collect data useful for more rigorous usabili
 
 
 \section{Related Work}\label{related}
+\parindent0pt
+%
 \begin{figure*}
-\begin{tabular}[t]{ l | l | c c c c c }
-\textbf{Approach} & \textbf{Examples} & Library & {Extensible} & Extensible & Composable & Alternative \\
-\hline
-Active Types & Ace & x & ~ & x & x & x\\
-Desugaring & SugarJ, Sugar* & ~ & x & ~ & ~ & ~\\
-Rule Injection & Qi, Typed Racket/Clojure, A? & 1+2 & ~ & x & ~ & ~\\
-Static metaprogramming & Scala macros, OJ, OC++ & ~ & ~ & ~ & x & ~\\
-Cross-compilation & Delite & x & ~ & ~ & ~ & x\\
-EDSL frameworks & ? & x & x & x & ~ & ~\\
-Type-specific literals & Wyvern & ~ & x & ~ & x & ~\\
-\end{tabular}
+\onecolumn
+\begin{longtable}{l l@{}l c@{}c c@{}c c@{}c c@{}c c@{}c}
+%\toprule%
+
+&&  &&  && {\bfseries Extensible} && {\bfseries Extensible} &&  && {\bfseries Alternative}\\
+
+{\bfseries Approach} && {\bfseries Examples} && {\bfseries Library} && {\bfseries Syntax} && {\bfseries Type System} && {\bfseries Compositional} && {\bfseries Targets}  \\
+
+\cmidrule(l){1-1} \cmidrule(l){2-3} \cmidrule(l){4-5} \cmidrule(l){6-7} \cmidrule(l){8-9} \cmidrule(l){10-11} \cmidrule(l){12-13}
+
+\endhead
+
+
+Active Types && Ace && \CIRCLE && \Circle && \CIRCLE && \CIRCLE && \CIRCLE \\
+
+\myrowcolour%
+Desugaring && SugarJ \cite{erdweg2011sugarj}, Sugar* && \Circle && \CIRCLE && \Circle && \Circle && \Circle \\
+
+Rule Injection && Qi \cite{qi}, Typed Racket \cite{TypedScheme2008}, A? && 1+2 && \Circle && \CIRCLE && \Circle && \Circle \\
+
+\myrowcolour%
+Static macros /  && Scala macros \cite{ScalaMacros2013}, MorphJ \cite{MorphJ2011}, && \Circle && \Circle && \Circle && \CIRCLE && \Circle \\
+
+\myrowcolour
+Metaprogramming &&  OJ \cite{OpenJava2000}, Template Haskell \cite{template-haskell} && && && && && \\
+
+Cross-Compilation && Delite \cite{Delite2011} && \CIRCLE && \Circle && \Circle && \Circle && \CIRCLE \\
+
+\myrowcolour%
+EDSL Frameworks && ? && \CIRCLE && \CIRCLE && \CIRCLE && \Circle && \Circle \\
+
+Type-Specific Literals && Wyvern \cite{globaldsl13} && \Circle && \CIRCLE && \Circle && \CIRCLE && \Circle \\
+\end{longtable}
 \caption{Comparison to related approaches}
+\twocolumn
 \end{figure*}
 \subsection{Active Libraries}
 Libraries that contain compile-time logic have been called {\it active libraries} in prior proposals \cite{activelibraries}. A number of  projects, such as Blitz++, have taken advantage of the C++ preprocessor and template-based metaprogramming system to implement domain-specific optimizations \cite{veldhuizen2000blitz++}. In Ace, we replace these brittle mini-languages with a general-purpose language and significantly expand the notion of active libraries by consideration of types as objects in the metalanguage. We thus call these types \emph{active types}.
@@ -514,7 +555,7 @@ We suggest three mutually-related {design criteria} that, unlike those in bold a
 
  We anticipate that coding guidelines mandating the use of abstractions that can be shown to have certain desirable properties will replace language-mandated enforcement opinions 
  
- Future work: integrate with something like scalad http://lampwww.epfl.ch/~hmiller/scala2013/resources/pdfs/paper8.pdf.
+ Future work: integrate with something like scalad http://lampwww.epfl.ch/~hmiller/scala2013/resources/pdfs/paper8.pdf. \todo{fix python lang reference citation}
 
 %\acks
 %The author is grateful to Jonathan Aldrich, Robert Bocchino and anonymous referees for their useful suggestions. This work was funded by the DOE Computational Science Graduate Fellowship under grant number DE-FG02-97ER25308.
@@ -522,7 +563,7 @@ We suggest three mutually-related {design criteria} that, unlike those in bold a
 
 % We recommend abbrvnat bibliography style.
 
-\bibliographystyle{abbrvnat}
+\bibliographystyle{abbrv}
 
 % The bibliography should be embedded for final submission.
 
