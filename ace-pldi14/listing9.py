@@ -10,7 +10,7 @@ class Cplx(ace.ActiveType):
     raise ace.TypeError("<error message>", node)
 
   def trans_Attribute(self, context, target, node):
-    value_x = context.translate(node.value)
+    value_x = context.trans(node.value)
     a = 's0' if node.attr == 'ni' else 's1'
     return target.Attribute(value_x, a)
 
@@ -30,8 +30,8 @@ class Cplx(ace.ActiveType):
 
   def trans_BinOp(self, context, target, node):
     r_t = context.type(node.right)
-    l_x = context.translate(node.left)
-    r_x = context.translate(node.right)
+    l_x = context.trans(node.left)
+    r_x = context.trans(node.right)
     make = lambda a, b: target.VecLit(
       self.trans_type(self, target), a, b)
     binop = lambda a, b: target.BinOp(
@@ -39,7 +39,7 @@ class Cplx(ace.ActiveType):
     si = lambda a, i: target.Attribute(a, 's'+str(i))
     if isinstance(r_t, Numeric):
       return make(binop(si(l_x, 0), r_x), si(r_x, 1))
-    elif isinstance(right_t, Cplx):
+    elif isinstance(r_t, Cplx):
       return make(binop(si(l_x, 0), si(r_x, 0)),
         binop(si(l_x, 1), si(r_x, 1)))
 
