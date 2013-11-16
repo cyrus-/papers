@@ -1,64 +1,63 @@
 class Cplx(ace.ActiveType):
   def __init__(self, t):
     if not isinstance(t, Numeric):
-      raise ace.InvalidType("<error message>")
+      raise ace.InvalidTypeError("<error message>")
     self.t = t
 
-  def translate_type(self, context, target):
-    return target.Vec(2, self.t.translate_type(context))
-
-  def type_BinOp_left(self, context, node):
-    right_t = context.type(node.right)
-    if isinstance(right_t, Numeric):
-      return Cplx(c99_binop_t(self.t, right_t))
-    elif isinstance(right_t, Cplx):
-      return Cplx(c99_binop_t(self.t, right.t))
-
-  def translate_BinOp_left(self, context, target, node):
-    right_t = context.type(node.right)
-    target = context.target
-    if isinstance(right_t, Numeric):
-      left_x = context.translate(node.left)
-      right_x = context.translate(node.right)
-      return target.BinOp()
-
-class Ptr(ace.ActiveType):
-  def __init__(self, addr_space, t):
-    self.addr_space = addr_space
-    self.t = t
-
-  def translate_type(self, context):
-    t_x = self.t.translate_type(context)
-    return target.Ptr(self.addr_space, t_x)
-        
-  def type_Subscript(self, context, node):
-    slice_t = context.type(node.slice)
-    if isinstance(slice_t, Integer):
+  def type_Attribute(self, context, node):
+    if node.attr == 'ni' or node.attr == 'i':
       return self.t
-    else:
-      raise ace.TypeError('<error message>', node)
-       
-  def translate_Subscript(self, context, node):
+    raise ace.TypeError("<error message>", node)
+
+  def trans_Attribute(self, context, target, node):
     value_x = context.translate(node.value)
-    slice_x = context.translate(node.slice)
-    return context.target.Subscript(value_x, slice_x)
+    a = 's0' if node.attr == 'ni' else 's1'
+    return target.Attribute(value_x, a)
 
   def type_BinOp_left(self, context, node):
-    if isinstance(node.operator, ast.Add):
-      right_t = context.type(node.right)
-      if isinstance(right_t, Integer):
-        return self
-    elif isinstance(node.operator, ast.Sub):
-      right_t = context.type(node.right)
-      if self == right_t:
-        return ptrdiff_t
-    raise ace.TypeError('<error message>', node)
+    return self._type_BinOp(context, node.right)
 
-  def translate_BinOp_left(self, context, node):
-    left_x = context.translate(node.left)
-    right_x = context.translate(node.right)
-    return context.target.BinOp(left_x, 
-      node.operator, right_x)
+  def type_BinOp_right(self, context, node):
+    return self._type_BinOp(context, node.left)
 
-  # type_BinOp_right and translate_BinOp_right 
-  # (not shown) are symmetric
+  def _type_BinOp(self, context, other):
+    other_t = context.type(other)
+    if isinstance(other_t, Numeric):
+      return Cplx(c99_binop_t(self.t, other_t))
+    elif isinstance(other_t, Cplx):
+      return Cplx(c99_binop_t(self.t, other.t))
+    raise ace.TypeError("<error message>", other)
+
+  def trans_BinOp(self, context, target, node):
+    r_t = context.type(node.right)
+    l_x = context.translate(node.left)
+    r_x = context.translate(node.right)
+    make = lambda a, b: target.VecLit(
+      self.trans_type(self, target), a, b)
+    binop = lambda a, b: target.BinOp(
+      a, node.operator, b)
+    si = lambda a, i: target.Attribute(a, 's'+str(i))
+    if isinstance(r_t, Numeric):
+      return make(binop(si(l_x, 0), r_x), si(r_x, 1))
+    elif isinstance(right_t, Cplx):
+      return make(binop(si(l_x, 0), si(r_x, 0)),
+        binop(si(l_x, 1), si(r_x, 1)))
+
+  @classmethod
+  def type_New(cls, context, node):
+    if len(node.args) == 2:
+      t0 = context.type(node.args[0])
+      t1 = context.type(node.args[1])
+      return cls(c99_promoted_t(t0, t1))
+    raise ace.TypeError("<error message>", node)
+
+  @classmethod
+  def trans_New(cls, context, target, node):
+    cplx_t = context.type(node)
+    x0 = context.trans(node.args[0])
+    x1 = context.trans(node.args[1])
+    return target.VecLit(cplx_t.trans_type(target), 
+      x0, x1)
+
+  def trans_type(self, target):
+    return target.VecType(self.t.trans_type(target),2)

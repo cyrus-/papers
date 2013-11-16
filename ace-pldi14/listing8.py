@@ -2,7 +2,7 @@ import listing1, listing2, examples.clx as clx, numpy
 
 clx.opencl.ctx = clx.Context.for_device(0, 0)
 
-input = numpy.ones((1024,))
+input = numpy.ones((1024,1024))
 d_input = clx.to_device(input)
 d_output = clx.alloc(like=input)
 
