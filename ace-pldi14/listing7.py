@@ -6,4 +6,4 @@ scale = _fn(ast.parse("""def scale(x, s):
 	return x * s""")
 
 negate = _fn(astx.specialize(scale.ast, "negate", 
-	s=ast.parse("-1"))
+	s=astx.parse_exp("-1"))
