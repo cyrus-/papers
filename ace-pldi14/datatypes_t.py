@@ -1,20 +1,17 @@
 import ace, ace.python as py, examples.fp as fp
 
-def Tree(name, a):
-  t = fp.Datatype(name)
-  t.cases = {
+Tree = lambda name, a: fp.Datatype(name, 
+  lambda tree: {
     'Empty': fp.unit,
     'Leaf': a,
-    'Node': fp.tuple(t, t)
-  }
-  t.close()
-  return t
+    'Node': fp.tuple(tree, tree)
+  })
 
 DT = Tree('DT', py.dyn)
 
 @ace.fn(py.Base(trailing_return=True))[[DT]]
-def depth_gt_2(t):
-  t.case({
+def depth_gt_2(x):
+  x.case({
     DT.Node(DT.Node(_), _): True,
     DT.Node(_, DT.Node(_)): True,
     _: False
