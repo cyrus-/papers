@@ -64,11 +64,11 @@
 \usepackage[english]{babel} 
 \def\UrlFont{\em} % Italicize all URLs.  
 \lstset{
-%	basicstyle=\tiny\ttfamily,
+	basicstyle=\footnotesize\ttfamily,
 	breaklines=true,
 	language=Python,
 	}
-\let\verbx\lstinline
+\newcommand{\verbx}[1]{\lstinline{#1}}
 \newcommand{\bfhead}[1]{\noindent \textbf{#1:}}
 
 \usepackage{alltt}
@@ -262,7 +262,7 @@
 %
 % paper title
 % can use linebreaks \\ within to get better formatting as desired
-\title{Collaborative Testing for Scientific Model Validation}
+\title{Collaborative Infrastructure for Test-Driven\\Scientific Model Validation}
 
 
 % author names and affiliations
@@ -327,7 +327,7 @@ We argue that a similar test-driven methodology would be valuable to scientific 
 \end{abstract}
 
 %\begin{IEEEkeywords}
-%extensible programming languages, heterogeneous computing, type systems
+%unit testing, validation, computer-supported collaborative work
 %\end{IEEEkeywords}
 
 
@@ -347,19 +347,19 @@ We argue that a similar test-driven methodology would be valuable to scientific 
 \centering
 \includegraphics[scale=0.45]{diagram1.pdf}
 \vspace{-40px}
-\caption{The central table summarizes the performance of a collection of models against a suite of tests. These are collaboratively curated in \emph{suite repositories} using social coding infrastructure -- Github -- combined with a portal that organizes and summarizes them. Tests are derived from data and models are derived from scientific theories, parameterized by \emph{training data}. Tests communicate with models using interface specifications that are also collaboratively developed in repositories that build upon the core SciUnit testing framework. These repositories can also contain common test and model families and bridges to existing infrastructure and tools.}  
+\caption{Tests are derived from data and models are derived from scientific theories. The score table summarizes the performance of a collection of models against a suite of tests. A table is contained in a \emph{suite repository} (e.g. \texttt{saturnsuite}), hosted on social coding infrastructure -- here, Github. SciDash is a portal that discovers and organizes these suite repositories  and provides tools for visualizing them. Tests interface with models using capabilities, as specified by the testing framework (\texttt{sciunit}). Common testing code, capabilities and bridges to external model and data repositories are also collaboratively developed (e.g. \texttt{cosmounit}).}  
 \label{fig:sciunit_overview}
 \end{figure*}
 
 
 Scientific theories often take the form of a \emph{quantitative model}: a formal structure that can generate predictions about observable quantities. Such a model is characterized by its \textit{scope}: the set of observable quantities that the model can predict, and by its \textit{validity}: the extent to which its predictions agree with experimental observations of these quantities. 
 
-Quantitative models are validated by \emph{peer review}. For a model to be accepted by the scientific community, scientists must submit a paper describing it and providing  evidence that it predicts some quantity of interest more accurately than previous models, or that it makes a desirable tradeoff  between accuracy and complexity \cite{box}. Other members of the relevant community are then tasked with ensuring that validity was measured properly and that relevant data and competing models were adequately considered, drawing on knowledge of statistical methods and the prior literature. Publishing is a primary motivator for most scientists \cite{howison2011scientific}.
+Quantitative models are validated by \emph{peer review}. For a model to be accepted by the scientific community, scientists must submit a paper describing it and providing  evidence that it predicts some quantity of interest more accurately than previous models, or that it makes a desirable tradeoff  between accuracy and complexity \cite{box1987empirical}. Other members of the relevant community are then tasked with ensuring that validity was measured properly and that relevant data and competing models were adequately considered, drawing on knowledge of statistical methods and the prior literature. Publishing is a primary motivator for most scientists \cite{howison2011scientific}.
 
-Quantitative scientific modeling and software development have much in common. Indeed, quantitative models are increasingly  implemented as computer programs and in some cases, the program \emph{is} the model (e.g. complex simulations). The peer review process for papers is similar in many ways to the \emph{code review} process used in many development teams, where team members look for errors, enforce style and architectural guidelines and check that the code is \emph{valid} (i.e. that achieves its intended goal \cite{validity}) before permitting it to be committed to the primary source code repository \cite{codereview}. 
+Quantitative scientific modeling and software development have much in common. Indeed, quantitative models are increasingly  implemented as computer programs and in some cases, the program \emph{is} the model (e.g. complex simulations). The peer review process for papers is similar in many ways to the \emph{code review} process used in many development teams, where team members look for errors, enforce style and architectural guidelines and check that the code is \emph{valid} (i.e. that it achieves its intended goal) before permitting it to be committed to the primary source code repository. 
 
 
-Code review can be quite effective \cite{creffectiveness1,creffectiveness2}, but this requires that developers  expend considerable effort \cite{effort}. Code review is also most effective for resolving  issues related to software architecture \cite{evolvability}. 
+Code review can be quite effective \cite{codereview}, but this requires that developers  expend considerable effort \cite{kemerer2009impact}. Code review is also most effective for resolving  issues related to software architecture. 
 Most development teams thus supplement code reviews with {automated} approaches to verification and validation, the most widely-used  of which is \emph{unit testing} \cite{beck2003}. In brief, unit tests are functions that check a single portion of a program against a single well-defined correctness criterion. A suite of such tests can be seen as a partial specification of a program or component.  Test suites complement code review by allowing developers to answer questions like these more easily:
 \begin{enumerate}
 \item Which functionality has been adequately implemented? What remains to be done?
@@ -372,19 +372,23 @@ Scientists ask analagous questions:
 \item Which observations are already well-explained by existing models? What is the state-of-the-art? What are the open modeling problems of interest?
 %\item How much better is a new model than the state of the art? What are the open problems in my field?
 \item What are the contemporary community standards for measuring goodness-of-fit?
-\item How do newly-made experimental observations impact the validity of previous models?
+\item How do newly-made experimental observations impact the validity of previously-published models?
 \end{enumerate}
-But while software engineers can rely on a program's test suite, scientists today must extract this information from a body of scientific publications. This is increasingly difficult. Each publication focuses on just one model and is frozen in time, so it does not consider the latest experimental data or statistical methods. Discovering, precisely characterizing and comparing several models to discover the state of the art and find open modeling problems can often require an encyclopedic knowledge of the literature. Senior scientists can attempt to fill this need by publishing review papers, but in many areas, the number of publications generated every year can be overwhelming \cite{jinha_article_2010}, and comprehensive reviews are published relatively infrequently for any given area. Statisticians commonly complain that scientists are not following best practices and that community standards evolve too slowly because canonical papers or popular reviews advocate outdated methods \cite{grumpystatisticians}. One might compare this process to a software development team relying primarily on carefully-prepared summaries of code review sessions, peppered with cross-references to previous summaries, to understand and validate a complex software project.
+But while software engineers can rely on a program's test suite, scientists today must extract this information from a body of scientific publications. This is increasingly difficult. Each publication focuses on just one model and is frozen in time, so it does not consider the latest experimental data or statistical methods. Discovering, precisely characterizing and comparing models to discover the state of the art and find open modeling problems  require an encyclopedic knowledge of the literature. Senior scientists can attempt to fill this need by publishing review papers, but in many areas, the number of publications generated every year can be overwhelming \cite{jinha_article_2010}, and comprehensive reviews of a particular area are published relatively infrequently. Statisticians often complain that scientists are not following best practices and that community standards evolve too slowly because a canonical paper or popular review used outdated methods. Furthermore, if the literature simply doesn't address an important question of validity, a researcher often needs to reimplement a model from scratch. 
 
-This suggests that the scientific process could be improved by the adoption of test-driven methodologies alongside peer review. However, the scientific community presents several unique challenges that must first be addressed:
+One might compare this to a software development team relying primarily on carefully-prepared and cross-referenced summaries of code review sessions to understand, validate and evolve a complex software project where  portions of the original source code have been obscured or lost.
+Although certainly a caricature, this motivates our suggestion that the scientific process could be improved by the adoption of test-driven methodologies alongside traditional peer review. However, the scientific community presents several challenges that must be addressed by any such methodology:
 \begin{enumerate}
-\item Unit tests are typically pass/fail, while goodness-of-fit is typically a continuous value (e.g. a $p$-value). 
-\item Different communities, groups and individual scientists prefer different goodness-of-fit measures and focus on different sets of observable quantities. This can evolve as, for example, statisticians develop better measures.
-\item Model developers compete with one another to predict data, rather than collaborating with one another on a common codebase. They are sometimes reluctant to share certain details of their implementations \cite{badscientists}.
-\item Experimental data can itself be erroneous, noisy or inconsistent with other available data.
-\item Data formats can differ, sometimes drastically, between experimentalists. Similarly, different modelers may prefer different programming languages or libraries.
-\item Professional software developers are typically trained in testing practices and tools, while scientists  rarely have training or experience with testing practices \cite{badscientists2}.
+\item Unit tests are typically pass/fail, while goodness-of-fit between a model and data is typically measured by a continuous metric (e.g. a $p$-value). 
+\item Unit tests often test a \emph{particular} component, whereas a \emph{validation test} must be able to uniformly handle any model capable of predicting the quantity being tested. %They are sometimes reluctant to share certain details of their implementations \cite{badscientists}.
+%\item Experimental data can itself be erroneous, noisy or inconsistent with other available data.
+\item Different modelers often  prefer different programming languages or frameworks. Similarly, data formats can differ between experimentalists. The testing framework must be as flexible as possible about these choices.
+\item Professional software developers are typically trained in testing practices and tools, while scientists  rarely have training or experience with testing practices \cite{oai:open.ac.uk.OAI2:17673}. Thus, the framework must be as simple as possible.
+\item Different communities, groups and individuals prefer different goodness-of-fit metrics and emphasize different sets of observable quantities. These can evolve as, for example, statisticians develop better measures. In contrast, there is more pressure to agree upon requirements and priorities in a software development project.
 \end{enumerate}
+
+To address challenges 1-4, we will introduce a lightweight scientific validation testing framework, \textit{SciUnit}, in Sec. 2. Challenge 5 has to do with coordination between scientists. To address this, we introduce a community workflow based on widely-adopted social coding tools (here Github) along with a lightweight community portal called \textit{SciDash}. The overall goal of this work is to help scientists generate and examine tables like the one shown to Figure 1, where the relative validity of a set of models having a common scope can be determined by examining scores produced by a suite of validation tests constructed from experimental data. 
+
 %Anecdotally, one of the greatest fears of new scientists is that a problem that they are working on has already been solved and published. 
 
 
@@ -399,13 +403,170 @@ This suggests that the scientific process could be improved by the adoption of t
 %A weakness, however, is that evaluating the scope and validity of models against known data is intractable using a body of publications alone.
 
 %publications would be analagous to user manuals, rather than rigorous justifications that a program meets a specific specification. Unit tests serve this purpose for software, so we argue that the validation of neuroscience models by means of executable tests would be useful to scientists as a supplement the publication system.
-Test-driven methodologies have started to see success in neuroscience as well. 
-Modeling competitions in neuroscience, for example, are typically organized around a collection of simple validation criteria, implemented as executable tests. 
-These competitions continue to drive important advances and improve scientists' understanding of the relative merits of different models. 
-For example, the quantitative single neuron modeling competition (QSNMC) \cite{jolivet_quantitative_2008} investigates the complexity-accuracy tradeoff among reduced models of excitable membranes; 
-the ``Hopfield'' challenge \cite{hopfield_what_2000} tested techniques for generating neuronal network form given its function; 
-the Neural Prediction Challenge sought the best stimulus reconstructions, given neuronal activity (\url{http://neuralprediction.berkeley.edu}); the Diadem challenge is advancing the art of neurite reconstruction (\url{http://www.diademchallenge.org}); and 
-examples from other subfields of biology abound (\url{http://www.the-dream-project.org}).
+% In addition to this open testing toolkit we also provide a library of tests for models of spiking single neurons.  
+
+% Section 2.
+\section{Validation Testing with {SciUnit}}
+\begin{figure}[t]
+\small
+\begin{python}
+class PositionTest(sciunit.Test):
+    """Tests a planetary position model based on positions observed on day n given the positions in the n-1 previous days.
+    Metric: Standard p-value.
+    Parameters: 
+      obs_histories : list[list[position]]
+      obs_positions: list[position]"""
+	def __init__(self, obs_histories, obs_positions):
+		self.obs_histories = obs_histories
+		self.obs_positions = obs_positions
+
+	required_capabilities = [PredictsPlanetaryPosition]
+
+	def _judge(self, model):
+		predictions = []
+		for obs_history in self.obs_histories:
+			predictions.append(model.predict_next_pos(obs_history))
+		p = pooled_p_val(predictions, self.obs_positions)
+		return sciunit.PValue(p, related_data={
+			'obs_histories': obs_histories,
+			'obs_positions': obs_positions,
+			'predictions': predictions
+		})
+\end{python}
+\vspace{-5px}
+\caption{An example test class in \texttt{cosmounit}.}
+\label{fig:rate_test}
+\vspace{-15px}
+\end{figure}
+
+%Simple executable \emph{validation tests} that compute agreement between a model prediction and an experimental observation.  
+As a motivating example, we will begin by considering a community of early cosmologists recording and attempting to model observations of the planets visible in the sky, such as their position, velocity, orbital eccentricity and so on. One simple validation test might ask a model to predict planetary position on night $n+1$ given observations of its position on $n$ previous nights. Figure 2 shows how to implement a test, using  SciUnit, that captures this logic.
+
+Before explaining the details of this example, we point out that SciUnit is implemented in Python. Python is one of the most widely used languages in science today \cite{sanner1999python}. It supports calling into  many of the other popular languages, including R, MATLAB, C and Java, more cleanly than these languages support calling into Python (challenge 3). It is widely-recognized as being easy-to-read and its object system can be used to define abstract interfaces, which we leverage in support of challenge 2. 
+
+A \textit{SciUnit} validation test is an {instance} of a Python class implementing the \verbx{sciunit.Test} abstract interface (line 1). 
+Here, the class \verbx{PositionTest} takes two \emph{parameters} in its constructor (constructors are named \verbx{\_\_init\_\_} in Python, lines 7-9). 
+The meaning of each parameter along with a description of the goodness-of-fit metric used by the test is documented on lines 2-6. 
+%For convenience, we also make use of functions provided by the popular NumPy\cite{numpy_url} and SciPy\cite{scipy_url} libraries, although these are not required by \textit{SciUnit}.  
+To create a \emph{particular} position test, we instantiate this class with particular planetary observations. 
+For example, the subset of cosmologists interested specifically in Saturn might instantiate a test by randomly chunking observations made about Saturn as follows:
+\begin{python}
+  h, p = randomly_chunk(saturn_obs_positions)
+  saturn_position_test = SpikeCountTest(h, p)
+\end{python}
+
+The class \verb|PositionTest| defines logic that is not specific to any particular planet, so it is contained in a package shared by all cosmologists called \verbx{cosmounit}, while the particular test above would be used in a test suite focused specifically on Saturn called \verbx{saturnsuite}. Both the common logic and specific suites are collaboratively developed by these overlapping research communities in source code repositories on Github (or another similar service).
+
+Classes that implement the \verbx{sciunit.Test} interface must contain a \verbx{_judge} method that receives a candidate \emph{model} as input and produces a \textit{score} as output. 
+To specify the interface between the test and the model, the test author provides a list of \emph{capabilities} in the \verbx{required_capabilities} attribute, seen on line 11 of Fig. \ref{fig:rate_test}. 
+Capabilities are simply collections of methods that a test will need to invoke in order to receive relevant data, and are analogous to \emph{interfaces} in e.g. Java. 
+In Python, capabilities must be written as classes with unimplemented members. 
+The capability required by the test in Figure \ref{fig:rate_test} is shown in Figure \ref{fig:capability}. 
+In \textit{SciUnit}, classes defining capabilities are tagged as such by inheriting from \verbx{sciunit.Capability}. The test in Figure \ref{fig:rate_test} repeatedly uses this capability on line 16 to produce a position prediction for each observation.  We assume that positions are represented in a standardized manner specified within \verbx{cosmounit}. A model is simply an object that implements capabilities (via Python's simple inheritance mechanism).
+
+The remainder of the \verbx{_judge} method compares the model predictions to observed data to produce a pooled $p$ value. The method returns an instance of \verbx{sciunit.PValue}, a subclass of \texttt{sciunit.Score} that has been included with \textit{SciUnit} due to its generality. In addition to the $p$-value itself, the returned score object also contains metadata, via the \verbx{related_data} parameter, for  scientists who may wish to examine the result in more detail later. This illustrates some key differences between unit testing, which would simply produce a boolean result, and our conception of scientific validation testing (challenge 1). A score must induce an ordering, so that the table shown in Figure 1 can be sorted along its columns, and it can optionally specify a normalization scheme so the cells can be color-coded (not shown). A test can be manually executed using the \verbx{judge} method:
+\begin{python}
+score = saturn_position_test.judge(kepler_sat)
+\end{python}
+
+This method proceeds by first checking that the provided model implements all required capabilities before calling the test's \verbx{_judge} method to produce a score. A reference to the test and model are added to the score for convenience (accessible via the \verbx{test} and \verbx{model} attributes, respectively).
+
+Alongside this position test, we could also provide a number of other test classes in \verbx{cosmounit} and instantiate them with data about aspects of Saturn's motion (e.g. it's velocity)  to produce a comprehensive suite in \verbx{saturnsuite}. 
+\begin{python}
+saturn_motion = sciunit.TestSuite([saturn_position_test, saturn_velocity_test, ...])
+\end{python}
+Like a single test, a test suite is capable of judging one or more models. The result is a score matrix much like the one diagramed in Fig. \ref{fig:sciunit_overview}.
+\begin{python}
+sm_matrix = saturn_motion.judge([copernicus_sat, ptolemy_sat, newton_sat, kepler_sat])
+\end{python}
+A test suite requires the union of the capabilities required by the tests it contains. A model that performs well across tests in such a suite could reasonably claim (e.g. to reviewers) that it is a coherent, valid model of Saturn's motion. As new data is collected, new tests can be added to the suite. However, because the interface between the test and the model remains the same (only the data parameterizing the tests changes), the table can be updated automatically. Similarly, when a new model is developed, it can immediately be evaluated against all known data that has been encoded as a test by simply exposing its predictions via the capabilities the test requires. %They then defined a combined metric favoring models that broadly succeeded at meeting these criteria, to produce an overall ranking. 
+%Such combined criteria are simply validation tests that invoke other tests to produce a result.
+ 
+%In many cases, models require no modifications to take the new tests because the same type of model output is being requested.
+%We discuss visualization of results in Secs. \ref{sec:scidash_activities} and \ref{sec:scidash_visualization}.
+
+\begin{figure}
+\begin{python}
+class PredictsPlanetaryPosition(sciunit.Capability):
+  def predict_next_pos(self, history): 
+    """Takes a list of previous positions and produces the next position."""
+    raise NotImplementedError("Model does not implement capability.")
+\end{python}
+\caption{An example capability specifying a single required method (used by the test in Figure \ref{fig:rate_test}).}
+\label{fig:capability}
+\vspace{-10px}
+\end{figure}
+
+%\begin{figure}
+%\begin{python}
+%class TrainSpikeCountFromCurrent(sciunit.Capability):
+%  def train_with_currents(self, currents, counts):
+%    """Takes a list of numpy arrays containing current stimulus (in nA) and
+%    observed spike counts. Model parameters should be adjusted based on this
+%    training data."""
+%    raise NotImplementedError("Model does not implement capability.")
+%\end{python}
+%\caption{Another capability specifying a training protocol (not used by the test in Figure \ref{fig:rate_test}).}
+%\label{fig:training}
+%\vspace{-15px}
+%\end{figure}
+
+%\subsection{Models}
+%Capabilities are \emph{implemented} by models. In \textit{SciUnit}, models are instances of Python classes that inherit from \verbx{sciunit.Model}. Like tests, the class itself represents a family of models, parameterized by the arguments of the constructor. A particular model is an instance of such a class.
+%
+%Figure \ref{fig:simple_model} shows how to write a simple {family} of models, \verbx{LinearModel}, that implement the capability in Fig. \ref{fig:capability} as well as another capability shown in Fig. \ref{fig:training}, which we will discuss below. 
+%Models in this family generate a spike count by applying a linear transformation to the mean of the provided input current. The family is parameterized by the scale factor and the offset of the transformation, both scalars. 
+%To create a \emph{particular} linear model, a modeler can provide particular parameter values, just as with test families:
+%\begin{python}
+%CA1_linear_model_heuristic = LinearModel(3.0, 1.0)
+%\end{python}
+%Here, the parameters to the model were picked by the modeler heuristically, or based on externally-available knowledge. 
+%An alternative test design would add a training phase where these parameters were fit to data using the capability shown in Fig. \ref{fig:training}. 
+%This test could thus only be used for those models for which parameters can be adjusted without human involvement. 
+%Whether to build a training phase into the test protocol is a choice left to each test development community. 
+%
+%Fig. \ref{fig:rate_test} does not include a training phase. 
+%If training data is externally available, models that nevertheless do implement a training capability (like \verb|LinearModel|) can simply be trained explicitly by calling the capability method just like any other Python method:
+%\begin{python}
+%CA1_linear_model_fit = LinearModel()
+%CA1_linear_model_fit.train_with_currents(CA1_training_in, CA1_training_out)
+%\end{python}
+%\begin{figure}
+%\begin{python}
+%class LinearModel(sciunit.Model, SpikeCountFromCurrent, 
+%    TrainSpikeCountFromCurrent):
+%  def __init__(self, scale=None, offset=None): 
+%    self.scale, self.offset = scale, offset
+%    
+%  def spike_count_from_current(self, input):
+%    return int(self.scale*numpy.mean(input) + self.offset)
+%
+%  def train_with_currents(self, currents, counts):
+%    means = [numpy.mean(c) for c in currents]
+%    [self.offset, self.scale] = numpy.polyfit(means, counts, deg=1)    
+%\end{python}
+%\caption{A model that returns a spike count by applying a linear transformation to the mean input current. The parameters can be provided manually or learned from data provided by a test or user (see text).}
+%\label{fig:simple_model}
+%\vspace{-15px}
+%\end{figure}
+%
+\section{Collaborative Workflow}
+The design just described has been purposefully left as simple as possible, in pursuit of challenge 4. Despite its simple design, it captures the essential elements of the scientific model validation process and satisfies the four challenges we laid out. SciUnit can be used by individual scientists to organize their workflows, but because science, and in particular, model validation is a collaborative process, we have also described the intended use of SciUnit within a collaborative workflow, mediated by a social coding tool like Github. 
+
+More directly: we anticipate common testing logic (e.g. \verbx{PositionTest}), modeling logic and capabilities being collaboratively developed by larger communities in less specialized repositories like \verbx{cosmounit}. Individuals and small groups will then parameterize these tests and models with data they have gathered, as well as data known from the literature and data contained in existing data repositories to create test suites in repositories like \verbx{saturnsuite}. The interface between data collection software and existing data representation standards and tests will be mediated by bridge logic also contained in repositories like \verbx{cosmounit}.  % This workflow is meant to evoke the \emph{test-driven development} methodology that is often used in software projects. 
+
+Statisticians wishing to promote new validation metrics can simply for a $X$\verbx{unit} repository and implement new test logic. By reusing the same interfaces as previous tests used, these new metrics can immediately be used to validate or invalidate a large body of existing models, providing valuable data for use in convincing the community to adopt these into the mainstream repositories. Similarly, investigators who wish to de-emphasize or emphasize different quantities can fork $X$\verbx{suite} repository and add or remove tests.
+
+To help organize these repositories, a simple collaborative portal sitting above Github called \textit{SciDash} is currently under development (\url{http://scidash.org/}). SciDash consists of an organized, collaboratively filtered listing of $X$\verbx{unit} and $X$\verbx{suite} repositories. That is, it is a tool to help scientists find the most popular repositories in their research area, to facilitate the development of community standards. SciDash also supports extracting summaries of tests, models, scores and related data from suite repositories to generate hyperlinked score tables and documentation. This facilitates exploratory workflows. To modify a suite (e.g. by adding the model a scientist is developing to it), a scientist can simply fork the repository. SciDash automatically discovers public forks of repositories that it is already indexing.
+ 
+\section{Discussion}
+Academic peer review and code review are similar, but software developers typically supplement human review with test-driven methodologies. Such methodologies may benefit scientific communities as well, but several unique  constraints make reusing existing testing frameworks and processes difficult. We describe a core testing framework that addresses these issues  by using an existing, widely-adopted language and designing a flexible, simple framework that captures the domain-specific structure of scientific model validation. We then describe, by example, how the various components can be organized into software repositories and collaboratively maintained using social coding tools to support existing scientific practices. We end by outlining a collaboratively filtered portal that sits atop these tools and facilitates exploratory analyses and repository discovery. 
+
+While we discuss a toy example based on planetary movement here, we have applied this framework to more realistic problems in neurobiology and have bridged SciUnit to large-scale neuroinformatics projects (we anticipate publishing a description of these case studies shortly). Much future work remains to be done to investigate whether these tools are truly usable and useful to scientific communities, to further develop the community workflow and infrastructure and to develop a range of realistic case studies. Nevertheless, we believe that identifying the synergies between testing practices and model validation, and describing the basic tooling, represents a novel contribution to the literature on software testing. The core SciUnit framework has been fully developed and is available at http://sciunit.scidash.org/. SciDash is under active development, and is currently capable of basic forms of the operations described in Sec. 3. %In particular, we consider modeling competitions in science as a form of test-driven validation. For example, the quantitative single neuron modeling competition (QSNMC) \cite{jolivet_quantitative_2008} investigates the complexity-accuracy tradeoff among reduced models of excitable membranes, and 
+%examples from other subfields of biology abound (e.g. \url{http://www.the-dream-project.org}).  These competitions typically use \emph{ad hoc} infrastructure. A common framework could be used to make designing and continuously operating such contests more feasible. In related work that 
+
+%Modeling competitions in neuroscience, for example, are typically organized around a collection of simple validation criteria, implemented as executable tests. 
+%These competitions continue to drive important advances and improve scientists' understanding of the relative merits of different models. 
 % \begin{figure}%{r}{0.6\textwidth}
 % %\vspace{-38px}
 % \includegraphics[scale=0.75]{sciunit_overview.pdf}
@@ -421,175 +582,14 @@ examples from other subfields of biology abound (\url{http://www.the-dream-proje
 % \leavevmode
 % \vspace{-0px}
 
-Each of these examples has leveraged \emph{ad hoc} infrastructure to support test generation. 
-While the specific criteria used to evaluate models varies widely between disciplines in neuroscience, the underlying test-driven methodology has many common features that could be implemented once. 
-Recognizing this, we developed a discipline-agnostic framework for developing scientific validation test suites called \textit{SciUnit} (\url{http://www.sciunit.org}). 
-Here we describe \textit{NeuronUnit\-}, which builds upon \textit{SciUnit}, allowing neuroscientists to build \textit{SciUnit} tests that validate neurophysiology models against electrophysiological data.  We provide a concrete example pipeline, showing how models described using \text{NeuroML} and provided freely by the \textit{Open Source Brain Project} (OSB, \cite{gleeson_open_2012}, \url{http://www.opensourcebrain.org}) can be tested in fully automated fashion using published, curated data available through the \textit{NeuroElectro Project} (Neuroelectro, \cite{tripathy_neuroelectro:_2012}, \url{http://neuroelectro.org}), leveraging facilities from the \textit{NeuroTools} library (\url{http://neuralensemble.org/NeuroTools}) to extract relevant features of model output.  This is summarized in Figure \ref{fig:sciunit_overview}, which shows the relationships between the layers described here.
-% In addition to this open testing toolkit we also provide a library of tests for models of spiking single neurons.  
+%Each of these examples has leveraged \emph{ad hoc} infrastructure to support test generation. 
+%While the specific criteria used to evaluate models varies widely between disciplines in neuroscience, the underlying test-driven methodology has many common features that could be implemented once. 
+%Recognizing this, we developed a discipline-agnostic framework for developing scientific validation test suites called \textit{SciUnit} (\url{http://www.sciunit.org}). 
 
-% Section 2.
-\section{Validation Testing with \textit{SciUnit}}
-\subsection{Example: The Quantitative Single Neuron Modeling Competition}
-\begin{figure}[t]
-\small
-\begin{python}
-class SpikeCountTest(sciunit.Test):
-  """Tests spike counts produced in response to several current stimuli against observed means and standard deviations. 
-
-  goodness of fit metric: Computes p-values based on a chi-squared test statistic, and pools them using Fisher's method.
-  parameters:
-    inputs: list of numpy arrays containing input currents (nA)
-    means, stds: lists of observed means and standard deviations, one per input
-  """
-  def __init__(self, inputs, means, stds):
-    self.inputs, self.means, self.stds = inputs, means, stds
-	
-  required_capabilities = [SpikeCountFromCurrent]
-	
-  def _judge(self, model):
-    inputs, means, stds = self.inputs, self.means, self.stds
-    n = len(inputs)
-    counts = numpy.empty((n,))
-    for i in xrange(n):
-      counts[i] = model.spike_count_from_current(inputs[i])
-    chisquared = sum((counts-means)**2 / means) # An array of chi-squared values.  
-    p = scipy.stats.chi2.cdf(chisquared,n-1) # An array of p-values.  
-    pooled_p = sciunit.utils.fisherp(p_array) # A pooled p-value.  
-    return sciunit.PValue(pooled_p, related_data={
-      "inputs": inputs, "counts": counts, "obs_means": means, "obs_stds": stds
-    })
-\end{python}
-\vspace{-5px}
-\caption{An example single neuron spike count test class implemented using \textit{SciUnit}. Because this implementation contains logic common to many different systems, \textit{NeuronUnit} was developed to provide a simpler means to deliver it (see Sec. \ref{sec:neuronunit}).}
-\label{fig:rate_test}
-\vspace{-15px}
-\end{figure}
-
-%Simple executable \emph{validation tests} that compute agreement between a model prediction and an experimental observation.  
-We first illustrate the form of a generic example \textit{SciUnit} test suite that could be used in neurophysiology. 
-Suppose we have collected data from an experiment where current stimuli (measured in pA) are delivered to neurons in some brain region, while the somatic membrane potential of each stimulated cell (in mV) is recorded and stored.  
-A model claiming to capture this cell type's membrane potential dynamics must be able to accurately predict a variety of features observed in these data.
-
-One simple validation test would ask candidate models to predict the number of action potentials (a.k.a. spikes) generated in response to a stimulus (e.g. white noise), and compare these \emph{spike count} predictions to the distribution observed in repeated experimental trials using the same stimulus. 
-For data of this type, goodness-of-fit can be measured by first calculating a p-value from a chi-squared statistic for each prediction and then combining these p-values using Fisher's method \cite{fisher_statistical_1925}. 
-
-Alongside this \emph{spike count test}, we might also specify a number of other tests capturing different features of the data  to produce a more comprehensive suite. 
-For data of this sort, the QSNMC defined 17 other validation criteria in addition to one based on the overall spike count, capturing features like spike latencies (SL), mean subthreshold voltage (SV), interspike intervals (ISI) and interspike minima (ISM) that can be extracted from the data \cite{jolivet_quantitative_2008}. 
-They then defined a combined metric favoring models that broadly succeeded at meeting these criteria, to produce an overall ranking. 
-Such combined criteria are simply validation tests that invoke other tests to produce a result.
- 
-%In many cases, models require no modifications to take the new tests because the same type of model output is being requested.
-\subsection{Implementing a Validation Test in \textit{SciUnit}}
-Fig. \ref{fig:rate_test} shows how a scientist can implement spike count tests such as the one described above using \textit{SciUnit}. 
-A \textit{SciUnit} validation test is an {instance} (i.e. an object) of a Python class implementing the \verbx{sciunit.Test} interface (cf. line 1). 
-Here, we show a class \verbx{SpikeCountTest} taking three \emph{parameters} in its constructor (constructors are named \verbx{__init__} in Python, lines 9-10). 
-The meaning of each parameter along with a description of the goodness-of-fit metric used by the test is documented on lines 4-7. 
-%For convenience, we also make use of functions provided by the popular NumPy\cite{numpy_url} and SciPy\cite{scipy_url} libraries, although these are not required by \textit{SciUnit}.  
-To create a \emph{particular} spike count test, we instantiate this class with particular experimental observations. 
-For example, given observations from hippocampal CA1 cells (not shown), we can instantiate a test as follows:
-\begin{python}
-  CA1_sc_test = SpikeCountTest(CA1_inputs, CA1_means, CA1_stds)
-\end{python}
-We emphasize the crucial distinction between the \textit{class} \verbx{SpikeCountTest}, which defines a \emph{parameterized family} of validation tests, and the particular \textit{instance} \verbx{CA1_sc_test}, which is an individual validation test because the necessary parameters, derived from data, have been provided. 
-As we will describe below, we expect communities to build repositories of such families capturing the criteria used in their subfields of neuroscience so that test generation for a particular system of interest will often require simply instantiating a previously-developed family with particular experimental parameters and data. 
-For single-neuron test families like \verbx{SpikeCountTest}, we have developed such a library, called \textit{NeuronUnit} (\url{http://github.com/scidash/neuronunit}) (Sec. \ref{sec:neuronunit}). 
-
-Classes that implement the \verbx{sciunit.Test} interface must contain a \verbx{_judge} method that receives a candidate \emph{model} as input and produces a \textit{score} as output. 
-To specify the interface between the test and the model (that is, to specify an appropriate scope), the test author provides a list of \emph{capabilities} in the \verbx{required_capabilities} attribute, seen on line 12 of Fig. \ref{fig:rate_test}. 
-Capabilities are simply collections of methods that a test will need to invoke in order to receive relevant data, and are analogous to \emph{interfaces} in e.g. Java (\url{http://docs.oracle.com/javase/tutorial/java/concepts/interface.html}). 
-In Python, capabilities are written as classes with unimplemented members. 
-The capability required by the test in Fig. \ref{fig:rate_test} is shown in Fig. \ref{fig:capability}. 
-In \textit{SciUnit}, classes defining capabilities are tagged as such by inheriting from \verbx{sciunit.Capability}. The test in Figure \ref{fig:rate_test} uses this capability on line 19 to produce a spike count prediction for each input current. 
-
-The remainder of the \verbx{_judge} method implements the goodness-of-fit metric described above, returning an instance of \verbx{sciunit.PValue}, a subclass of \verbx{sciunit.Score} that is included with \textit{SciUnit}. In addition to the $p$-value itself, the returned score object also contains metadata, via the \verbx{related_data} parameter, for  scientists who may wish to examine the result in more detail later. 
-In this case we save the input currents, the model outputs and the observed means and standard deviations (line 24). 
-%We discuss visualization of results in Secs. \ref{sec:scidash_activities} and \ref{sec:scidash_visualization}.
-
-\begin{figure}
-\begin{python}
-class SpikeCountFromCurrent(sciunit.Capability):
-  def spike_count_from_current(self, input): 
-    """Takes a numpy array containing current stimulus (in nA) and
-    produces an integer spike count. Can be called multiple times."""
-    raise NotImplementedError("Model does not implement capability.")
-\end{python}
-\caption{An example capability specifying a single required method (used by the test in Figure \ref{fig:rate_test}).}
-\label{fig:capability}
-\vspace{-10px}
-\end{figure}
-
-\begin{figure}
-\begin{python}
-class TrainSpikeCountFromCurrent(sciunit.Capability):
-  def train_with_currents(self, currents, counts):
-    """Takes a list of numpy arrays containing current stimulus (in nA) and
-    observed spike counts. Model parameters should be adjusted based on this
-    training data."""
-    raise NotImplementedError("Model does not implement capability.")
-\end{python}
-\caption{Another capability specifying a training protocol (not used by the test in Figure \ref{fig:rate_test}).}
-\label{fig:training}
-\vspace{-15px}
-\end{figure}
-
-\subsection{Models}
-Capabilities are \emph{implemented} by models. In \textit{SciUnit}, models are instances of Python classes that inherit from \verbx{sciunit.Model}. Like tests, the class itself represents a family of models, parameterized by the arguments of the constructor. A particular model is an instance of such a class.
-
-Figure \ref{fig:simple_model} shows how to write a simple {family} of models, \verbx{LinearModel}, that implement the capability in Fig. \ref{fig:capability} as well as another capability shown in Fig. \ref{fig:training}, which we will discuss below. 
-Models in this family generate a spike count by applying a linear transformation to the mean of the provided input current. The family is parameterized by the scale factor and the offset of the transformation, both scalars. 
-To create a \emph{particular} linear model, a modeler can provide particular parameter values, just as with test families:
-\begin{python}
-CA1_linear_model_heuristic = LinearModel(3.0, 1.0)
-\end{python}
-Here, the parameters to the model were picked by the modeler heuristically, or based on externally-available knowledge. 
-An alternative test design would add a training phase where these parameters were fit to data using the capability shown in Fig. \ref{fig:training}. 
-This test could thus only be used for those models for which parameters can be adjusted without human involvement. 
-Whether to build a training phase into the test protocol is a choice left to each test development community. 
-
-Fig. \ref{fig:rate_test} does not include a training phase. 
-If training data is externally available, models that nevertheless do implement a training capability (like \verb|LinearModel|) can simply be trained explicitly by calling the capability method just like any other Python method:
-\begin{python}
-CA1_linear_model_fit = LinearModel()
-CA1_linear_model_fit.train_with_currents(CA1_training_in, CA1_training_out)
-\end{python}
-\begin{figure}
-\begin{python}
-class LinearModel(sciunit.Model, SpikeCountFromCurrent, 
-    TrainSpikeCountFromCurrent):
-  def __init__(self, scale=None, offset=None): 
-    self.scale, self.offset = scale, offset
-    
-  def spike_count_from_current(self, input):
-    return int(self.scale*numpy.mean(input) + self.offset)
-
-  def train_with_currents(self, currents, counts):
-    means = [numpy.mean(c) for c in currents]
-    [self.offset, self.scale] = numpy.polyfit(means, counts, deg=1)    
-\end{python}
-\caption{A model that returns a spike count by applying a linear transformation to the mean input current. The parameters can be provided manually or learned from data provided by a test or user (see text).}
-\label{fig:simple_model}
-\vspace{-15px}
-\end{figure}
-
-\subsection{Executing Tests} A test is executed against a model using the \verbx{judge} method:
-\begin{python}
-score = CA1_sc_test.judge(CA1_linear_model_heuristic)
-\end{python}
-
-This method proceeds by first checking that the provided model implements all required capabilities. It then calls the test's \verbx{_judge} method to produce a score. A reference to the test and model are added to the score for convenience (accessible via the \verbx{test} and \verbx{model} attributes, respectively), before it is returned.
-
-\subsection{Test Suites and Score Matrices} A collection of tests intended to be run on the same model can be put together to form a test suite.
-The following is a test suite that could be used for a simplified version of the QSNMC, as described above:  
-\begin{python}
-CA1_suite = sciunit.TestSuite([CA1_sc_test, CA1_sl_test, CA1_sv_test, CA1_isi_test, CA1_ism_test])
-\end{python}
-Like a single test, a test suite is capable of judging one or more models. The result is a score matrix much like the one diagramed in Fig. \ref{fig:sciunit_overview}.
-\begin{python}
-CA1_matrix = CA1_suite.judge([CA1_linear_model_heuristic, CA1_linear_model_fit])
-\end{python}
-A simple summary of the scores in a score matrix can be printed to the console or  visualized by other tools, such as the web application \textit{SciDash} described in Sec. \ref{sec:scidash}.
-
-
+\section*{Acknowledgements}
+We thank Sharon Crook, Shreejoy Tripathy and Padraig Gleeson for their support of this project.  
+The work was supported in part by grant R01MH081905 from the National Institute of Mental Health. 
+The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
 
 % conference papers do not normally have an appendix
 
@@ -618,7 +618,15 @@ A simple summary of the scores in a score matrix can be printed to the console o
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
 \bibliographystyle{IEEEtran}
-\bibliography{../research}
+\bibliography{../research,references,references_crook,urls,references_ja}
+%\bibliography{references,references_crook,urls,references_ja}
+
+%\bibliographystyle{unsrt}
+%\bibliography{references,references_crook,urls,references_ja}
+%\listoftodos
+%\end{document}
+
+
 %
 %\begin{thebibliography}{1}
 %
