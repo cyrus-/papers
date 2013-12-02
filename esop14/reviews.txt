@@ -1,0 +1,318 @@
+----------------------- REVIEW 1 ---------------------
+PAPER: 16
+TITLE: Active Typechecking and Translation: A Safe Language-Internal Extension Mechanism
+AUTHORS: (anonymous)
+
+
+----------- REVIEW -----------
+Summary:
+
+The paper presents a calculus called @λ that supports type-level computations to
+influence the type checking process. In particular, type-level computations can
+yield an error value in order to indicate that some user-defined type invariant
+has been violated. A crucial feature of @λ is that it strictly separates a type
+with its externally visible operations from the internal representation of that
+type: The type system of @λ guarantees that clients of a type can only create
+and manipulate values of the type using the associated external operations;
+clients cannot access the internal representation. This is similar to abstract
+data types and likewise entails that operations of different types do not
+interfere with each other's internal invariants.
+
+
+
+Evaluation:
+
+I like the idea of using abstract data types to enable non-interfering
+type-system extensions. This seems a promising approach and I am sure this will
+become a strong paper. However, the paper in its current form leaves lots of
+open questions that significantly limit the understandability of the presented
+approach, its benefits, and its limitations:
+
+ * The authors repeatedly claim it is possible to introduce new language
+   primitives? Is this actually true? I had the impression that all operations
+   need to desugar to PCF.
+
+ * A crucial theorem for @λ is type safety. If a call of an externally visible
+   operator of some type is accepted by the corresponding type-level
+   computation, the call is translated into an expression of an internal
+   language similar to PCF. Type safety of @λ ensures that the generated PCF
+   code is always type safe. Unfortunately, the authors provide hardly any
+   information on why @λ is type safe. Supposedly, it is a corollary of the
+   representation-consistency theorem (proof also omitted in the paper), but
+   this reviewer could not follow the argument.
+
+ * What is the exact relation ship to abstract data types? Is there more to the
+   approach then just using abstract data types at the type level to realize
+   type-system extensions that cannot interfere? Currently, it seems somewhat
+   trivial that @λ has non-interference.
+
+ * In the introduction, the authors talk about invariants that are statically
+   checked. However, it seems internal invariants are entirely implicit in @λ
+   and not enforced. For example, it is not clear that NAT (Figure 3) in fact
+   maintains the invariant that the internal representation is a nonnegative
+   integer. In particular, the operator "rec" uses the integer substraction on
+   the internal representation. What guarantee is there that "f" is indeed
+   passed a nonnegative integer?
+
+ * While guaranteeing non-interference, does @λ still support composition of
+   type-system extensions? In other words, what is the trade-off between static
+   safety and expressiveness in the context of this work?
+
+ * I repeatedly wondered: Is there an implementation of this work? This is
+   particularly relevant because even the simple examples presented in the paper
+   are tedious to manually type check. "Run your research"
+
+
+
+Detailed comments for improvement:
+
+Many references (internal and external) are broken all over the paper.
+
+Abstract: "today's statically-typed languages are monolithic" this seems to be
+too strong given the host of related work on this topic (extensible compilers,
+extensible languages).
+
+Section 1:
+"Delite framework" add citation
+
+"little choice today but to realize new abstractions by creating a new language"
+That does not seem to do justice to existing related work.
+
+"ForMoreover" typo
+
+"thus achieve full safety" I think it would be very helpful to define the notion
+of safety that you aim for early on.
+
+"adequacy" why is this critical to the operation of the language, the compiler
+or other extensions?
+
+Section 1 is quite abstract at times and does not make the central ideas of this
+paper very precise. In particular, I think the idea of hiding extension
+internals should be presented more prominently.
+
+
+Section 2: Existing solutions to the expression problem seem to address the
+issues that you describe. Can you relate to them?
+
+Figure 5, Rule Family-Kinding: I think \tau in the fourth premise should be \tau_rep.
+
+Section 3.8: Is "badnat" itself rejected by the type checker or are calls of
+"badnat" rejected?
+
+Footnote 1: I don't understand.
+
+Section 4.3: "details will be provided in the appendix" I could not find any
+details on non-interference.
+
+Section 6: There is lots of related work missing in the discussion.
+
+Extensible compilers like Polyglot or JastAdd.
+
+Extensible languages like Racket (in particular, Typed Racket) or Helvetia.
+
+"Our work allows for entirely new logic to be added" I would like to see an
+example in @λ that goes beyond what is possible with simple desugarings.
+
+"requiring only that the implementation of this logic respect the internal type
+system" Is there really a difference in expressiveness compared to
+admissibility?
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 16
+TITLE: Active Typechecking and Translation: A Safe Language-Internal Extension Mechanism
+AUTHORS: (anonymous)
+
+
+----------- REVIEW -----------
+The paper describes and formalizes a type system for a toy,
+user-extensible programming language.  The language enables the user
+to extend the base language, a PCF-like lambda calculus, with indexed
+families of types at the type level, and indexed families of
+operations at the term level. The language is designed to be modular
+and safe, so that separate extensions may be combined without danger
+of interfering with each other's representation invariants. The key
+idea is to leverage limited (i.e. kind-safe and total) type-level
+computation to encode both the static and dynamic semantics of each
+extension as type-preserving elaboration translation to the core
+language, coded as a type-level computation.
+
+The paper is well written and carefully presented. I found the formal
+system, though plausible, to be rather complicated, requiring no less
+than 17 judgments (not all of them explained) to describe the type
+system and elaboration judgment for an extensible variant of a very
+simple base language (PCF).
+
+The authors present 3 plausible Theorems (though without proof or detailed
+induction hypotheses) stating roughly that phased elaboration is
+type-preserving, decidable and that the addition of extensions
+cannot interfere with the semantics of existing extensions.
+
+The paper presents one detailed example - adding the Nat type with
+primitive recursion from Goedel's System T, implemented using base
+language integers and full recursion.  While nicely explained, the
+example is not that convincing: this example is easily dealt with
+using existential types, with much less machinery, more flexibility
+(existential type are first-class) and similar safety guarantees.
+
+The second example, adding tuples encoded as optimized nested pairs is
+also not that convincing. Given a language with pairing, tuples can be
+encoded as syntactic derived forms. Since every value in the
+representation type encodes a valid source tuple, the representation
+invariant appears to be trivial and violating it impossible.
+
+In Section 5, the authors allude to more compelling examples such as
+extensions adding pattern matching, OO features, regular expressions,
+and units of measure.  Presenting one of these examples would have
+been much more convincing, especially if it involved some form of
+new binding construct.
+
+The authors should do more to explain how scoping is respected. For
+example, a reified term (viewed as type (\triange \gamma as \tau)
+appears to be well-kinded only if the term is closed (Rule
+ITerm-Intro), so I'd expect all reified terms arising during
+translation to be well-kinded (i.e. closed).  However, in Figure
+6. Rule ATT-OP appears to substitute types that reify potentially open
+terms (\gamma_i) that may *not* be well-kinded. Is this deliberate or
+a bug in the formal system? How does reification avoid variable
+capture and/or scope extrusion?
+
+
+Detailed comments:
+
+The paper is full of broken citations ("[?]") and the bibliography is
+missing many references cited by the paper.  I tried to find a more
+complete version on the web but only found the same one. This made it
+very difficult to read and assess the related work section. There are
+also frequent references to material in the appendix that just isn't
+there (eg. sums)
+
+p 2: ForMoreover -> Moreover
+
+p 3: genesis -> motivation
+
+p 4: I agree that a naive functional implementation of a compiler
+     using datatypes and functions is not extensible but am surprised
+     that you claim a class based one isn't either.  It would seem to
+     me that a class-based representation of program syntax would allow
+     straightforward extensibility using virtual type-check and compile
+     methods, overridden by each extension's subclasses. The fact that
+     an implementation based on the visitor pattern wouldn't be extensible
+     is due to limitations of the visitor pattern only.
+
+p 5: For the introduction new primitive ... -> For the introduction of new primitive ...
+
+p 6: Is your language call-by-name or value - it's not clear though the typing of fix suggest call-by-name.
+
+p 7: Figure 3. I believe the applications to the implementations of plus and nat are missing "app" nodes.
+     This would be more readable if you introduced "let" or just sugar for let.
+
+p 8: associating of operators -> associating
+
+p 8: "only kinds for which equivalence coincides with syntactic equality can be used as type family indices."
+     I'm not convinced you achieve this property since kind * admits equality (by  judgment "k eq") but types of
+     kind * may also include type level applications whose equality is presumably not just syntactic. Is it?
+
+
+p 9: "deabstracts" -> a less-clumsy word might be "realizes" (just a suggestion)
+
+p 11: Rule OP-KINDING : shouldn't k_i be k_idx in the premise?
+
+p 10: Your system has many judgment - it would be helpful to display and informally
+      summarize them all in one place, perhaps in dependency order.
+
+p 14: that the type-level language is typesafe -> that the type-level language is kindsafe
+
+p 14: Theorem 2. Add "for  some \tau'" - otherwise the statement is ambiguous. Should \Sigma_{0} be \Sigma?
+
+p 14: Theorem 3. I think both occurrences of $e'$ in the statement should actually be $e$.
+
+p 15: The appendix only shows products, not sums as stated.
+
+p 15: You claim that nested pattern matching can be done as an extension - this would have been a great. It would be  interesting to
+      give some details here since pattern matching syntax typically introduces new binding constructs which you haven't given examples for.
+
+p 15: futures, promises and actors can and frequently are implemented as ordinary libraries without your mechanism -  I don't
+      see why their implementation requires AT\&T as suggested.
+
+p 16: You state that the specification of Standard ML is structured around a typed internal language  but the citation is broken. I assume you mean the Harper/Stone semantics, not the Definition of Standard ML (which employs a simpler erasure semantics).
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 16
+TITLE: Active Typechecking and Translation: A Safe Language-Internal Extension Mechanism
+AUTHORS: (anonymous)
+
+
+----------- REVIEW -----------
+SUMMARY
+
+The aim of this paper is to provide an approach for extending the language with
+new primitives that is statically typed and happens from within the language
+itself. The idea is that libraries can then modularly provide such extensions
+without interfering with one another. The paper's approach is called active
+type checking and translation (AT&T). The approach consists of two languages:
+an extensible front-end language and a fixed back-end language. The extensions
+of the front-end language are type checked and translated statically. The paper
+achieves this by lifting the type checking and translation process to the
+type-level.
+
+The paper presents a formalization of the calculus with kinding and AT&T rules,
+as well as theorems about the type safety of the translated code, termination
+of type checking and non-interference between extensions.
+
+EVALUATION
+
+The paper presents a decent formalization of its approach.
+Yet, for several reasons I am not convinced that it merits presentation at ESOP:
+
+* Firstly, there are weaknesses in the motivation.
+
+  - The paper claims that existing compiler extension approaches are not as good,
+    because they are creating a new language. However, this is merely a matter
+    of social convention. There can easily be multiple compilers that adopt the
+    same existing language extension mechanism. In that respect, your approach
+    is no different. Moreover, you also constrain compiler architecture to
+    support your internal language.
+
+  - The paper claims that it is a good idea to unify the type language and the
+    extension language. Yet I see no evidence that this yields actual benefits.
+    In fact, it seems somewhat artificial in the formalization, where large
+    syntactic categories have to be partitioned with auxiliary relations like
+    itype. I expect that it could even be confusing for users to see the different
+    notions conflated.
+
+* Secondly, we do not get the holy grail of modular typed compilation: the
+  system does not modularly check whether the operations in the family
+  declarations produce well-typed internal code. The system only checks the
+  type correctness at the sites where these operations are invoked. Hence, in
+  this respect the AT&T approach does no better than other approaches.
+
+* Thirdly, we only get a to see a toy example for which the machinery presented
+  is hardly needed. The same can easily be achieved with abstract datatypes in a
+  conventional library based approach. The paper does not show any examples where
+  the dynamic typing possibilities raised in the previous point are useful, nor do
+  we see any examples of DSL-like optimization opportunities that the paper claims
+  are possible. On the whole, I think the paper provides limited evidence and makes
+  little effort to delineate the expressive range that AT&T affords.
+
+
+DETAILED COMMENTS
+
+p.1 Add a reference to Delite please.
+p.2 "criteria" -> criterion
+    "For Moreover" - For
+p.4 Mentioning the expression problem seems relevant here.
+p.5 "the introduction new primitive type families" + of
+    This seems like a matter of names and standardization only. If one states
+    that the compiler interface is in fact called the language interface and every
+    compiler needs to support this interface, but is still free to implement it in
+    any way it wants underneath, then this point is not valid.
+p.6 "Sec. ??"
+p.7 "[?]"
+    The empty function is not defined in your online appendix.
+    There is a const function though.
+p.10 "[?]"
+p.13 "exanded" -> expanded
+p.14 "[?]"
+p.15 "[?]" Many references are missing in the Related Work section.
+p.16 "Recent variants of this work has investigated" have
+p.17 "Sugarj" -> SugarJ
