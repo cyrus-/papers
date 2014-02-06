@@ -3,78 +3,101 @@
 \input{macros-T}
 \lstset{language=ML,
 basicstyle=\ttfamily\footnotesize,
-morekeywords={newcase,extends},
+morekeywords={newcase,extends,tycon,opcon,err,schema},
 }
 
 \section{Active Type Synthesis and Translation}\label{att}
+General-purpose abstraction mechanisms, like those available in Wyvern and other languages today, are powerful, and should be used when possible. But relying on a small fixed collection of them may not always be satisfactory, for several reasons:
+\begin{enumerate}
+\item General-purpose abstraction mechanisms themselves are considerably varied. Consider, for example, the many different ways languages expose product types: simple products, $n$-ary products, labeled products\footnote{We use the phrase \emph{labeled product} to avoid the connotations of related terms like \emph{record}, \emph{struct} and \emph{object}.}, structurally-typed labeled products, labeled products with mutable fields, labeled products with methods, labeled products with prototypic inheritance, labeled products with delegation, labeled products with class-based inheritance, and various combinations of these. New mechanisms and variants are constantly being developed. To allow these new general-purpose mechanisms to be evaluated in a controlled manner in practice, it must be possible to import them into existing codebases in a piecemeal fashion.
+\item Specialized type systems that directly enforce stronger invariants than general-purpose abstraction mechanisms are capable of straightforwardly enforcing are often developed. In addition to the examples of type systems for regular expressions in Sec. \ref{regex} (\cite{a,b}), there are also specialized type systems for parallel programming \cite{a,b}, concurrent programming \cite{cml,a,b}, distributed programming \cite{tom7}, reactive programming \cite{reactiveml}, authenticated data structures \cite{popl13}, security policies \cite{walker00}, information flow \cite{smith2001}, web programming \cite{sandholm00}, aliasing \cite{naden12}, network protocols \cite{sekar99}, units of measure \cite{keneddy} and many others. These type systems are implemented by language-external means (e.g. by creating a new variant of ML, Java or C), leading to the problems of Sec. \ref{external-approaches}. 
+\item Interoperability layers with external and legacy systems are another major area where support for directly implementing a new type system (that of the external language) and implementing its primitives in terms of a low-level interoperability API would be useful (e.g. \cite{CinJava}).
+%\item General-purpose abstraction mechanisms are typically implemented uniformly. For example, inductive datatypes are typically implemented using tagged pointers to a payload. In some cases (e.g. natural numbers) it may be desirable to implement an abstraction in an alternative manner (e.g. as an integer) so that certain operations perform better. Parallel abstractions are of particular note, as they can benefit substantially from specialized implementation strategies on specialized hardware (e.g. a GPU).  Note that if control over internal implementation details were the only relevant use case, abstract datatypes might be appropriate.
+\end{enumerate}
 
-In this section, we will restrict our focus to actively-typed mechanisms for implementing extensions to the static and dynamic semantics of programming languages. Programming languages are typically designed around a monolithic collection of primitive type and operator families. Consider, as a simple example, G\"odel's T \cite{pfpl}, a typed lambda calculus with recursion on primitive natural numbers (Figure \ref{T}). Although a researcher may casually speak of ``extending G\"odel's T with primitive product types'' (Figure \ref{prods}), modularly adding this new primitive type family and its corresponding operators to this language from within is impossible. That is, G\"odel's T is not \emph{internally extensible}.
+In this section, we will focus on language-integrated, type-oriented mechanisms for implementing extensions to the static and dynamic semantics of programming languages. We will leave the syntax fixed, inverting the setup in the previous section. We will begin by taking a  first-principles type-theoretic approach in Sec. \ref{foundations}, focusing on safety issues, and continue on in Sec. \ref{ace} by designing a full language called Ace. We will show how a range of statically-typed general-purpose abstraction mechanisms as well as more specialized abstractions can be expressed as safely-composable extensions within Ace. Notably, Ace is itself implemented as a library for Python, bootstrapping an extensible static type system using the quotation capabilities of uni-typed Python.
 
+\subsection{Foundations}\label{foundations}
+Programming languages are typically organized around a monolithic collection of indexed type and operator constructors. Let us begin by considering the simply-typed lambda calculus (STLC). It provides a single type constructor, indexed by a pair of types, that we will call $\fvar{Arrow}$ for uniformity. It also provides two operator constructors: $\lambda$, indexed by a type, and $\texttt{ap}$, indexed trivially. We can specify the static semantics of the STLC as follows, using a uniform abstract syntax where type and operator indices are written in braces to emphasize this way of thinking about its structure:
 \begin{figure}[h]
 \small
+\vspace{-8pt}
 \begin{mathpar}
 \inferrule[var]{ }{
 	\jet{\eCtxX{\eCtx}{x}{\tau}}{x}{\tau}
 }
 
-\inferrule[Arrow-I]{
+\inferrule[arrow-I]{
 	\jet{\eCtxX{\eCtx}{x}{\tau}}{e}{\tau'}	
 }{
-	\jetX{\lam{x}{\tau}{e}}{\tArrow{\tau}{\tau'}}
+	\jetX{\lambda[\tau]({x}.e)}{\fvar{Arrow}[(\tau, \tau')]}
 }
 
-\inferrule[Arrow-E]{
-	\jetX{e_1}{\tArrow{\tau}{\tau'}}\\
+\inferrule[arrow-E]{
+	\jetX{e_1}{\fvar{Arrow}[(\tau, \tau')]}\\
 	\jetX{e_2}{\tau}
 }{
-	\jetX{\ap{e_1}{e_2}}{\tau'}
-}
-
-\inferrule[Nat-I1]{ }{
-	\jetX{\z}{\nat}
-}
-
-\inferrule[Nat-I2]{
-	\jetX{e}{\nat}
-}{
-	\jetX{\s{e}}{\nat}
-}
-
-\inferrule[Nat-E]{
-	\jetX{e_1}{\nat}\\
-	\jetX{e_2}{\tau}\\
-	\jet{\eCtxX{\eCtxX{\eCtx}{x}{\nat}}{y}{\tau}}{e_3}{\tau}
-}{
-	\jetX{\natrec{e_1}{e_2}{x}{y}{e_3}}{\tau}
+	\jetX{\texttt{ap}[()](e_1; e_2)}{\tau'}
 }
 \end{mathpar}
-\caption{Static semantics of G\"odel's T}\label{T}
+\vspace{-8pt}
+\caption{Static semantics of the simply typed lambda calculus.}
 \end{figure}
-\begin{figure}
+
+Although a researcher may casually speak of ``extending the STLC`` with a primitive natural number type and its corresponding operators (as in G\"odel's T; Figure \ref{nat-statics}) or primitive product types and their  corresponding operators (Figure \ref{pair-statics}), it is clearly not possible to directly introduce these from within the STLC.
+\begin{figure}[h]
+\small
+\vspace{-8pt}
+\begin{mathpar}
+\inferrule[nat-I1]{ }{
+	\jetX{\texttt{z}[()]()}{\fvar{Nat}[()]}
+}
+
+\inferrule[nat-I2]{
+	\jetX{e}{\fvar{Nat}[()]}
+}{
+	\jetX{\texttt{s}[()](e)}{\fvar{Nat}[()]}
+}
+
+\inferrule[nat-E]{
+	\jetX{e_1}{\fvar{Nat}[()]}\\
+	\jetX{e_2}{\tau}\\
+	\jet{\eCtxX{\eCtxX{\eCtx}{x}{\fvar{Nat}[()]}}{y}{\tau}}{e_3}{\tau}
+}{
+	\jetX{\texttt{natrec}[()](e_1; e_2; x.y.e_3)}{\tau}
+}
+\end{mathpar}
+\vspace{-8pt}
+\caption{Static semantics of natural numbers.}\label{nat-statics}
+\vspace{-15pt}
+\end{figure}
+\begin{figure}[h]
 \small
 \begin{mathpar}
 \inferrule[Prod-I]{
 	\jetX{e_1}{\tau_1}\\
 	\jetX{e_2}{\tau_2}
 }{
-	\jetX{\pair{e_1}{e_2}}{\prod{\tau_1}{\tau_2}}
+	\jetX{\texttt{pair}[()](e_1; e_2)}{\fvar{Prod}[(\tau_1, \tau_2)]}
 }
 
 \inferrule[Prod-E1]{
-	\jetX{e}{\prod{\tau_1}{\tau_2}}
+	\jetX{e}{\fvar{Prod}[(\tau_1, \tau_2)]}
 }{
-	\jetX{\fst{e}}{\tau_1}
+	\jetX{\texttt{prl}[()](e)}{\tau_1}
 }
 
 \inferrule[Prod-E2]{
-	\jetX{e}{\prod{\tau_1}{\tau_2}}
+	\jetX{e}{\fvar{Prod}[(\tau_1, \tau_2)]}
 }{
-	\jetX{\snd{e}}{\tau_2}
+	\jetX{\texttt{prr}[()](e)}{\tau_1}
 }
 \end{mathpar}
-\caption{Static semantics of products}\label{prods}
+\vspace{-8pt}
+\caption{Static semantics of products}\label{pair-statics}
 \end{figure}
-The only recourse researchers have in such situations is to attempt to define new constructs in terms of existing constructs. Such encodings, collections of which are often called \emph{embedded domain-specific languages (DSLs)} \cite{fowler2010domain}, must creatively combine the constructs available in the host ``general-purpose'' language. Unfortunately, such encodings can be difficult to conceive of and impractical or impossible in some cases. For our example of adding products to G\"odel's T, a full encoding is impossible. Limited forms of Church encodings are possible, where products are represented by lambda terms, but they require a reasonable level of creativity\footnote{Anecdotally, Church encodings in System F  were among the more challenging topics for students in our undergraduate programming languages course, 15-312. Note that System F, because it includes type abstraction (that is, parametric polymorphism), supports stronger encodings of types like products than System T does. But products are still only weakly definable in System F and the same fundamental problems discussed above occur.} and in doing so, the type system cannot enforce a distinction between product types and the function types they are encoded using. It is also more difficult to reason about products represented in this way (for example, they will not have unique canonical forms). This strategy will also likely incur a performance penalty because it uses closures rather than a more direct and better optimized internal representation. 
+
+The only recourse researchers have in such situations is to attempt to define new constructs in terms of existing constructs. Such encodings, collections of which are sometimes called \emph{embedded domain-specific languages (EDSLs)} \cite{fowler2010domain}, must creatively combine the constructs available in the host ``general-purpose'' language to encode a desired semantics. Unfortunately, finding an encoding that fully captures both the static and dynamic semantics of a desirable construct is not always possible. Even when it possible, it may be impractical to work with and optimize. For our example of adding natural numbers or products to the STLC, a reasonable encoding is impossible. In closely-related languages, like the polymorphic lambda calculus (a.k.a. System F), such constructs are weakly definable \cite{reynoldsIntroToPolymorphism}. However, developing such an encoding requires a level of creativity beyond that needed to understand the intended semantics\footnote{Anecdotally, Church encodings in System F were among the more challenging topics for students in our undergraduate programming languages course, 15-312.}. The type system also does not enforce a distinction between the type of natural numbers and the polymorphic function type used for the encoding. And in practice, working with numbers encoded as polymorphic functions directly can be awkward and can also incur a performance penalty, due to the use of closures rather than a more direct representation. 
 
 %creating a new language. If this is not practical, the best one can attempt to do is encode the new types in terms of existing types (by a Church encoding, for example). This is generally unsatisfactory -- 
 
@@ -100,11 +123,10 @@ The only recourse researchers have in such situations is to attempt to define ne
 %This is the essence of a monolithic language implementation: it is impossible for anyone to modularly extend languages defined in this way. 
 
 
-An internally-extensible programming language could address these problems by providing a language mechanism for extending, directly, its static and dynamic semantics, so as to support domain-specific type systems and implementation strategies in libraries. 
+An extensible programming language could address these problems by providing a language-integrated mechanism for introducing new type and operator constructors and implementing their associated static and dynamic semantics. 
 %Library developers need only consider which abstractions are most appropriate for their domain, without also considering whether these constructs can be exposed using abstractions appropriate to the domains of client code. Clients can simply import any necessary constructs when using a library that relies on them, preserving safety and ease-of-use without the use of  wrappers and glue code. We show this competing approach in Figure \ref{approaches}(b).
 %Researchers and domain experts thus gain the ability to distribute new ideas for evaluation to a broader development community without requiring the approval of maintainers of mainstream languages, large-scale porting of code or explicit interoperability layers. 
-But, as mentioned in Section \ref{motivation}, some significant challenges must be addressed: balancing  expressiveness with concerns about maintaining various safety properties in the presence of arbitrary combinations of user-defined  extensions. The mechanism must ensure that desirable metatheoretic properties and global safety guarantees of the language cannot be weakened by extensions. And with multiple independently developed extensions used within one program, the mechanism must further guarantee that they cannot interfere with one another. Ideally, the correctness of an extension itself should be modularly verifiable, so that issues are detected before an extension is used.
-
+But, as mentioned in Section \ref{language-integrated-approaches}, some significant challenges must be addressed before such a mechanism can be relied upon. The desire for expressiveness must be balanced against  concerns about maintaining various safety properties in the presence of arbitrary combinations of user-defined  extensions to the language's core semantics. The mechanism must ensure that desirable \emph{metatheoretic properties} (e.g. type safety, determinism, decidability) of the language are maintained by extensions. Because multiple independently developed extensions might be used within one program, the mechanism must further guarantee their \emph{non-interference}. These are the issues we seek to address in this work.
 %\subsection{Theory}\label{atlam}
 %%\begin{figure}
 %%\begin{mathpar}
@@ -119,48 +141,77 @@ But, as mentioned in Section \ref{motivation}, some significant challenges must 
 
 %We note at the outset that AT\&T focuses on extending the static semantics of languages with fixed, though flexible, syntax. Language-internal syntax extension mechanisms have been developed in the past (e.g. SugarJ \cite{sugarj}) but they have also suffered from safety problems because grammar composition is not always safe when done in an  unconstrained manner. Constrained approaches that provide stronger safety guarantees have recently been outlined (e.g. Wyvern \cite{globaldsl13}) but we will leave integration of syntax extensions with semantic extensions as future work.
 
-\section{From Extensible Compilers to Extensible Languages}\label{evolution}
-To understand the genesis of our internal extension mechanism, it is helpful to begin by considering why most implementations of programming languages cannot even be  externally extended. 
-Let us consider, as a simple example, an implementation of G\"odel's T, a typed lambda calculus with recursion on primitive natural numbers (see Appendix). 
-A compiler for this language written using a functional language will invariably represent the primitive type families and operators using {closed} inductive datatypes. 
-For example, a simple implementation in Standard ML may be based around these datatypes:
+\subsubsection{From Extensible Compilers to Extensible Languages}\label{evolution}
+The monolithic character of most programming languages is reflected in, and perhaps influenced by, the most common techniques used for implementing programming languages. Programming languages are not implemented using open representations of types or expressions. 
+Let us consider an implementation of the STLC. 
+A compiler written using a functional language will invariably represent the primitive type  and operator constructors using {closed} recursive sums. 
+A simple implementation in Standard ML may be based around these datatypes, for example:
 \begin{lstlisting}
-  datatype Type = Nat | Arrow of Type * Type
-  datatype Exp = Var of var 
-               | Lam of var * Type * Exp | Ap of Exp * Exp 
-               | Z | S of Exp | Natrec of Exp * Exp * Exp
+  datatype Type = Arrow of Type * Type
+  datatype Exp = Var of var | Lam of var * Type * Exp | Ap of Exp * Exp 
 \end{lstlisting}
 
-The logic governing typechecking and translation to a suitable intermediate language (for subsequent optimization and compilation by some back-end) will proceed by exhaustive case analysis over the constructors of \lstinline{Exp}.
+The compiler front-end, which consists of a typechecker and translator to a suitable intermediate language (for subsequent compilation by some suitable back-end), will proceed by exhaustive case analysis over the constructors of \lstinline{Exp}.
 
-In an object-oriented implementation of Godel's T, we might instead encode types and operators as subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. Typechecking and translation will proceed by the ubiquitous \emph{visitor pattern}  by dispatching against a fixed collection of {known} subclasses of \lstinline{Exp}. 
+In a class-based object-oriented implementation of Godel's T, we might instead encode type and operator constructors as subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. Typechecking and translation, however, will proceed by the ubiquitous \emph{visitor pattern}, dispatching against a fixed collection of {known} subclasses of \lstinline{Exp}.
 
-In either case, we encounter the same basic issue: there is no way to modularly add new primitive type families and operators and implement their associated typechecking and translation logic. 
+In either case, we encounter the same basic issue: there is no way to modularly add new primitive type and operator constructors to \li{Type} and \li{Exp}, respectively, and provide implementations of their associated typechecking and translation logic. 
 %This issue is related to the widely-discussed \emph{expression problem} (in a restricted sense -- we do not consider adding new functions beyond typechecking and translation here, only adding logic to these) \cite{wadler-expression}.
 
 A number of language mechanisms have been proposed that allow new cases to be added to datatypes and the functions that operate over them in a modular manner. 
-In functional languages, we might use \emph{open datatypes}. For example, if we wish to extend G\"odel's T with product types and we have written our compiler in a language supporting open inductive datatypes, it might be possible to add new cases like this: 
+In functional languages, we might use \emph{open datatypes} \cite{opendatatypes}\todo{cite}. For example, if we wish to extend our implementation of the STLC with product types and we have written our compiler in a language supporting open inductive datatypes, it might be possible to add new cases: 
 \begin{lstlisting}
   newcase Prod of Type * Type extends Type
-  newcase Pair of Exp * Exp extends Exp    (* Intro *)
-  newcase PrL of Exp extends Exp           (* Elim Left *)
-  newcase PrR of Exp extends Exp           (* Elim Right *)
+  newcase Pair of Exp * Exp extends Exp
+  newcase PrL of Exp extends Exp
+  newcase PrR of Exp extends Exp
 \end{lstlisting}
 
-The logic for functionality like typechecking and translation could then be implemented for only these new cases. For example, the \lstinline{typeof} function that assigns a type to an expression could be extended like so:
+The logic for functionality like typechecking and translation can then be implemented for only these new cases. For example, the \lstinline{typeof} function that synthesizes a type for an expression given a context could be extended to support the new case \li{PrL} like so:
 \begin{lstlisting}
-  typeof PrL(e) = case typeof e of 
+  typeof (ctx, PrL(e)) = case typeof (ctx, e) of 
       Prod(t1, _) => t1 
     | _ => raise TypeError("<appropriate error message>")
 \end{lstlisting}
 
-If we allowed users to define new modules containing definitions like these and link them into our compiler, we will have succeeded in creating an externally-extensible compiler, albeit one where safety is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language, for two reasons. First, compiler extensions are distributed and activated separately from libraries, so dependencies become more difficult to manage. Second, other compilers for the same language will not necessarily support the same extensions. 
-If our newly-introduced constructs are exposed at a library's  interface boundary, clients using different compilers face the same problems with interoperability that those using different languages face. That is, {extending a language by extending a single compiler for it is morally equivalent to creating a new language}. Several prominent language ecosystems today are in a state where a prominent compiler has introduced or enabled the introduction of extensions that many libraries have come to rely on, including the Glasgow Haskell Compiler, SML/NJ and the GNU compilers for C and C++.
+If we allowed users to define new modules containing definitions like these and link them into our compiler, we will have succeeded in creating an externally-extensible compiler, albeit one where safety and non-interference is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language because other compilers for the same language will not necessarily support the same extensions. 
+If our newly-introduced constructs are exposed at a library's  interface boundary, clients of that library who are using different compilers face the same problems with client compatibility that those using different languages face (as described in Sec. \ref{external-approaches}). That is, {extending a language by extending a single compiler for it is morally equivalent to creating a new language}. 
 
-A more appropriate and useful place for extensions like this is directly within libraries, alongside abstractions that can be adequately implemented in terms of existing primitive abstractions. To enable this, the language must allow for the introduction new primitive type families, like \lstinline{Prod}, operators, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and associated typechecking and translation logic. When encountering these new operators in expressions, the compiler must effectively  hand control over typechecking and translation to the appropriate user-defined logic. Because this mechanism is {language-internal}, all compilers must support it to satisfy the language specification.
+We argue that a more appropriate and useful place for extensions like this is directly within libraries, alongside abstractions that can be implemented in terms of existing primitive abstractions. To enable this, the language must allow for the introduction of new type constructors, like \lstinline{Prod}, operator constructors, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and their associated type synthesis and translation logic. Because this mechanism is integrated into the language, all compilers must support it to satisfy the language specification.
 
-Statically-typed languages typically make a distinction between \emph{expressions}, which describe run-time computations, and type-level constructs like types, type aliases and datatype declarations. The design described above suggests we may now need to add another layer to our language, an {extension language}, where extensions can be declared and implemented. In fact, we will show that \textbf{the most natural place for type system extensions is within the type-level language}. The intuition is that extensions to a statically-typed language's semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time (see Sec. \ref{related-work} for examples). The type-level language is often constrained by its own type system (where the types of type-level values are called \emph{kinds} for clarity) that prevents type-level functions from causing problems during compilation. This is precisely the structure that a distinct extension layer would have, and so it is quite natural to unify the two, as we will show in this work.
-We will proceed by developing an ``actively-typed'' lambda calculus, @$\lambda$, where type-level computation, typed compilation and type abstraction are all used to allow us to prove type safety and non-interference theorems. A draft of this calculus is available\footnote{\url{https://github.com/cyrus-/papers/tree/master/esop14}}.
+The design described above suggests we may now need to add another layer to our language, beyond the type-level language ($\tau$) and expression language ($e$) where extensions are implemented. In fact, we will show that \textbf{a natural place for type system extensions is within the type-level language}. The intuition  is that extensions to a statically typed language's semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time. The type-level language is often constrained by its own type system, where the types of type-level terms are called \emph{kinds} for clarity,  that prevents type-level functions from causing problems during compilation. This is often more constrained than the expression language is (e.g. it might guarantee termination, to ensure that typechecking is decidable). This is precisely the structure that a distinct extension layer would have, and so it is quite natural to unify the two.
+
+
+\subsubsection{@$\lambda$}
+We will begin by developing an ``actively-typed'' version of the simply-typed lambda calculus with type-level computation called @$\lambda$. In the semantics for this calculus, we will integrate typed compilation techniques and a form of abstract types to allow us to prove key type safety and non-interference theorems. 
+
+We specify the semantics of the external language as a Harper-Stone style elaboration semantics: all terms in the external language are simultaneously assigned a type and an elaboration to a term in a fixed typed internal language \cite{HarperStone}.  The mechanism will check that the elaboration is type preserving, following upon work done on the TIL compiler for Standard ML by Morrisett et al. \cite{TIL}, so that the semantics can be reasoned about compositionally and so that type safety can be proven. 
+
+Any  global properties that the internal language maintains are guaranteed to hold no matter which extensions are used. In other words, extension providers cannot implement type systems weaker than the type system of the internal language. Providers are able to implement type systems stronger than the internal type system. We are interested in permitting only deterministic, decidable extensions, so semantic extensions are implemented as total functions in the type-level language (essentially, as a typechecker), rather than extracted from inductive specifications, like those in the Sec. \ref{foundations}\footnote{Though we will not explore this further in this thesis, a system for extracting such a function from a declarative specification could potentially be implemented using the techniques in Sec. \ref{aparsing} -- a \emph{kind-specific language}!}. This has the added benefit of giving providers finer-grained control over error messages -- with a strictly inductive specification, it is difficult to provide different error messages for different failure points in a derivation.
+%In this section, we will sketch a calculus where new type families and operator families can be introduced by users. The type synthesis and translation logic that implements the desired static and dynamic semantics, respectively, for these is implemented in the type-level language. 
+
+To give an example, the fragment in Fig. \ref{nat-atlam} shows how to introduce a new type constructor, \li{Nat}, indexed trivially (i.e. by a value of kind unit). Each type constructor must have a \emph{representation schema} associated with it that determines an associated internal type for every value  the index might take. The {representation schema} of $\fvar{Nat}$ is given on line 2 by a type-level function from the index to an internal type, $\mathbb{Z}$. Internal types, $\sigma$, are reflected into the type-level language, $\tau$, via the form $\blacktriangledown(\sigma)$. 
+
+A key decision that we make is to associate operator constructors directly with type constructors. This provides a scope for information hiding, as we will discuss, and also forms the foundation for a higher-level  elaboration mechanism that allows us to use a more conventional (though still fixed) concrete syntax for expressions, rather than the uniform abstract syntax that the language as specified uses. We will explore this in the design of Ace. The definitions of three new operator constructors are given on lines 3-XXX\todo{finish this}. 
+
+\begin{figure}
+\begin{lstlisting}
+tycon $\fvar{Nat}$ of unit with  
+    schema $\lambda$idx:unit.$\blacktriangledown$($\mathbb{Z}$) 
+    opcon Z of unit ($\lambda$idx:unit.$\lambda$args:list[Den].empty args [[$\triangledown$(0) as Nat[()]]])
+    opcon S of unit ($\lambda$idx:unit.$\lambda$args:list[Den].pop_final args $\lambda$trans:ITm.$\lambda$ty:$\star$. 
+      if ty = Nat[()] then [[$\triangledown$($\vartriangle$(trans)+1) as Nat[()]]] else err("...S requires nat..."))
+    opcon Rec of unit ($\lambda$idx:unit.$\lambda$args:list[Den].pop args $\lambda$.a.a.a..aa.a)
+end
+\end{lstlisting}
+\caption{An implementation of primitive natural numbers as internal integers in @$\lambda$.}
+\label{nat-atlam}
+\end{figure}
+
+
+
+A draft of the full definition of this calculus is available as a paper draft\footnote{\url{https://github.com/cyrus-/papers/tree/master/esop14}}.
+
 
 \subsection{Ace}\label{ace}
 The syntax of @$\lambda$ is abstract -- there is a single uniform operator application form. To be practical, a wider variety of syntactic constructs must be used. A number of other practical considerations are also important. This section describes the design and implementation of Ace, an internally-extensible language designed considering both extrinsic and intrinsic criteria. To solve the bootstrapping problem, Ace is implemented entirely as a library within the popular Python programming language. Ace and Python share a common syntax and package system, allowing Ace to leverage its well-established tools and infrastructure directly. Python serves as the compile-time metalanguage for Ace, but Ace functions themselves do not operate according to Python's fixed dynamically-typed semantics  (cf. \cite{Politz:2013:PFM:2509136.2509536,python}). Instead, Ace has a statically-typed semantics that can be extended by users from within libraries. 
