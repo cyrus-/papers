@@ -1,12 +1,12 @@
 % !TEX root = omar-thesis-proposal.tex
-\input{../att/macros-lamalpha}
+\input{../esop14/macros-atlam}
 \input{macros-T}
 \lstset{language=ML,
 basicstyle=\ttfamily\footnotesize,
-morekeywords={newcase,extends,tycon,opcon,err,schema},
+morekeywords={newcon,extends,tycon,opcon,err,schema,fix,is},
 }
 
-\section{Active Type Synthesis and Translation}\label{att}
+\section{Active Type Synthesis}\label{att}
 General-purpose abstraction mechanisms, like those available in Wyvern and other languages today, are powerful, and should be used when possible. But relying on a small fixed collection of them may not always be satisfactory, for several reasons:
 \begin{enumerate}
 \item General-purpose abstraction mechanisms themselves are considerably varied. Consider, for example, the many different ways languages expose product types: simple products, $n$-ary products, labeled products\footnote{We use the phrase \emph{labeled product} to avoid the connotations of related terms like \emph{record}, \emph{struct} and \emph{object}.}, structurally-typed labeled products, labeled products with mutable fields, labeled products with methods, labeled products with prototypic inheritance, labeled products with delegation, labeled products with class-based inheritance, and various combinations of these. New mechanisms and variants are constantly being developed. To allow these new general-purpose mechanisms to be evaluated in a controlled manner in practice, it must be possible to import them into existing codebases in a piecemeal fashion.
@@ -15,7 +15,7 @@ General-purpose abstraction mechanisms, like those available in Wyvern and other
 %\item General-purpose abstraction mechanisms are typically implemented uniformly. For example, inductive datatypes are typically implemented using tagged pointers to a payload. In some cases (e.g. natural numbers) it may be desirable to implement an abstraction in an alternative manner (e.g. as an integer) so that certain operations perform better. Parallel abstractions are of particular note, as they can benefit substantially from specialized implementation strategies on specialized hardware (e.g. a GPU).  Note that if control over internal implementation details were the only relevant use case, abstract datatypes might be appropriate.
 \end{enumerate}
 
-In this section, we will focus on language-integrated, type-oriented mechanisms for implementing extensions to the static and dynamic semantics of programming languages. We will leave the syntax fixed, inverting the setup in the previous section. We will begin by taking a  first-principles type-theoretic approach in Sec. \ref{foundations}, focusing on safety issues, and continue on in Sec. \ref{ace} by designing a full language called Ace. We will show how a range of statically-typed general-purpose abstraction mechanisms as well as more specialized abstractions can be expressed as safely-composable extensions within Ace. Notably, Ace is itself implemented as a library for Python, bootstrapping an extensible static type system using the quotation capabilities of uni-typed Python.
+In this section, we will focus on language-integrated, type-oriented mechanisms for implementing extensions to the static and dynamic semantics of programming languages. We will leave the syntax fixed, inverting the setup in the previous section. We will begin by taking a  first-principles type-theoretic approach in Sec. \ref{foundations}, focusing on safety issues, and continue on in Sec. \ref{ace} by designing a full language called Ace. We will show how a range of statically-typed general-purpose abstraction mechanisms as well as more specialized abstractions can be expressed as safely-composable extensions within Ace. Notably, Ace is itself implemented as a library for Python. We discuss how to bootstrap a highly-expressive extensible static type system atop the quotation and object-oriented features available in Python, a uni-typed language.
 
 \subsection{Foundations}\label{foundations}
 Programming languages are typically organized around a monolithic collection of indexed type and operator constructors. Let us begin by considering the simply-typed lambda calculus (STLC). It provides a single type constructor, indexed by a pair of types, that we will call $\fvar{Arrow}$ for uniformity. It also provides two operator constructors: $\lambda$, indexed by a type, and $\texttt{ap}$, indexed trivially. We can specify the static semantics of the STLC as follows, using a uniform abstract syntax where type and operator indices are written in braces to emphasize this way of thinking about its structure:
@@ -44,7 +44,7 @@ Programming languages are typically organized around a monolithic collection of 
 \caption{Static semantics of the simply typed lambda calculus.}
 \end{figure}
 
-Although a researcher may casually speak of ``extending the STLC`` with a primitive natural number type and its corresponding operators (as in G\"odel's T; Figure \ref{nat-statics}) or primitive product types and their  corresponding operators (Figure \ref{pair-statics}), it is clearly not possible to directly introduce these from within the STLC.
+Although a researcher may casually speak of ``conservatively extending the STLC`` with a primitive natural number type and its corresponding operators (as in G\"odel's T; Figure \ref{nat-statics}) or primitive product types and their  corresponding operators (Figure \ref{pair-statics}), it is clearly not possible to directly introduce these from within the STLC.
 \begin{figure}[h]
 \small
 \vspace{-8pt}
@@ -97,7 +97,14 @@ Although a researcher may casually speak of ``extending the STLC`` with a primit
 \caption{Static semantics of products}\label{pair-statics}
 \end{figure}
 
-The only recourse researchers have in such situations is to attempt to define new constructs in terms of existing constructs. Such encodings, collections of which are sometimes called \emph{embedded domain-specific languages (EDSLs)} \cite{fowler2010domain}, must creatively combine the constructs available in the host ``general-purpose'' language to encode a desired semantics. Unfortunately, finding an encoding that fully captures both the static and dynamic semantics of a desirable construct is not always possible. Even when it possible, it may be impractical to work with and optimize. For our example of adding natural numbers or products to the STLC, a reasonable encoding is impossible. In closely-related languages, like the polymorphic lambda calculus (a.k.a. System F), such constructs are weakly definable \cite{reynoldsIntroToPolymorphism}. However, developing such an encoding requires a level of creativity beyond that needed to understand the intended semantics\footnote{Anecdotally, Church encodings in System F were among the more challenging topics for students in our undergraduate programming languages course, 15-312.}. The type system also does not enforce a distinction between the type of natural numbers and the polymorphic function type used for the encoding. And in practice, working with numbers encoded as polymorphic functions directly can be awkward and can also incur a performance penalty, due to the use of closures rather than a more direct representation. 
+One recourse researchers have in such situations is to attempt to encode new constructs in terms of existing constructs. Collections of such encodings are sometimes called \emph{embedded domain-specific languages (EDSLs)} \cite{fowler2010domain}. Unfortunately, finding an encoding that fully captures both the static and dynamic semantics of a desirable construct can be difficult\footnote{For example, Church encodings in System F were among the more challenging topics for students in our undergraduate programming languages course, 15-312.} and is not always possible. Even when it possible, it may be impractical to work with and optimize. For our example of adding natural numbers or products to the STLC, a reasonable encoding is impossible. In closely-related languages, like the polymorphic lambda calculus (a.k.a. System F), such constructs are only weakly definable via Church encodings \cite{reynoldsIntroToPolymorphism} and far from practical. Reynolds, echoing Perlis   \cite{perlisPearl}, puts it succinctly \cite{reynoldsIntroToPolymorphism}:
+
+\begin{quote}
+To say that any reasonable function can be expressed by some program is not to say that it can be expressed by the most reasonable program. It is clear that the language requires a novel programming style.
+Moreover, it is likely that certain important functions cannot be expressed by their most
+efficient algorithms.
+\end{quote}
+
 
 %creating a new language. If this is not practical, the best one can attempt to do is encode the new types in terms of existing types (by a Church encoding, for example). This is generally unsatisfactory -- 
 
@@ -122,11 +129,10 @@ The only recourse researchers have in such situations is to attempt to define ne
 
 %This is the essence of a monolithic language implementation: it is impossible for anyone to modularly extend languages defined in this way. 
 
-
-An extensible programming language could address these problems by providing a language-integrated mechanism for introducing new type and operator constructors and implementing their associated static and dynamic semantics. 
+An extensible programming language could address these problems by providing a language-integrated mechanism for introducing new type and operator constructors and implementing their associated static and dynamic semantics directly. 
 %Library developers need only consider which abstractions are most appropriate for their domain, without also considering whether these constructs can be exposed using abstractions appropriate to the domains of client code. Clients can simply import any necessary constructs when using a library that relies on them, preserving safety and ease-of-use without the use of  wrappers and glue code. We show this competing approach in Figure \ref{approaches}(b).
 %Researchers and domain experts thus gain the ability to distribute new ideas for evaluation to a broader development community without requiring the approval of maintainers of mainstream languages, large-scale porting of code or explicit interoperability layers. 
-But, as mentioned in Section \ref{language-integrated-approaches}, some significant challenges must be addressed before such a mechanism can be relied upon. The desire for expressiveness must be balanced against  concerns about maintaining various safety properties in the presence of arbitrary combinations of user-defined  extensions to the language's core semantics. The mechanism must ensure that desirable \emph{metatheoretic properties} (e.g. type safety, determinism, decidability) of the language are maintained by extensions. Because multiple independently developed extensions might be used within one program, the mechanism must further guarantee their \emph{non-interference}. These are the issues we seek to address in this work.
+But, as mentioned in Section \ref{language-integrated-approaches}, some significant challenges must be addressed before such a mechanism can be relied upon. The desire for expressiveness must be balanced against  concerns about maintaining various safety properties in the presence of arbitrary combinations of user-defined  extensions to the language's core semantics. The mechanism must ensure that desirable \emph{metatheoretic properties} (e.g. type safety, decidability) of the language are maintained by extensions. Because multiple independently developed extensions might be used within one program, the mechanism must further guarantee their \emph{non-interference}. These are the issues we seek to address in this work.
 %\subsection{Theory}\label{atlam}
 %%\begin{figure}
 %%\begin{mathpar}
@@ -139,13 +145,13 @@ But, as mentioned in Section \ref{language-integrated-approaches}, some signific
 %
 %AT\&T is general with respect to many choices about the type-level language, the typed internal language and syntax. Choices along these dimensions can affect both expressiveness and ease-of-use. We will begin in Sec. 2 by introducing a minimal system called $@\lambda$ (the ``actively-typed lambda calculus'') that distills the essence of the mechanism in a simply-typed, simply-kinded setting. This will allow us to fully and concisely formalize the language and compiler and give several key safety theorems. We will then continue in Sec. 3 by discussing variants of this mechanism based on other basic paradigms, considering dependently-typed functional languages and object-oriented languages, discussing trade-offs between expressivity and safety when doing so. We have developed a simple prototype called Ace and have used it to develop a number of full-scale language extensions as libraries. We will briefly discuss this language and these extensions in Sec. 4.
 
-%We note at the outset that AT\&T focuses on extending the static semantics of languages with fixed, though flexible, syntax. Language-internal syntax extension mechanisms have been developed in the past (e.g. SugarJ \cite{sugarj}) but they have also suffered from safety problems because grammar composition is not always safe when done in an  unconstrained manner. Constrained approaches that provide stronger safety guarantees have recently been outlined (e.g. Wyvern \cite{globaldsl13}) but we will leave integration of syntax extensions with semantic extensions as future work.
+%We note at the outset that AT\&T focuses on extending the static semantics of languages with fixed, though flexible, syntax. Language-internal syntax extension mechanisms have been developed in the past (e.g. SugarJ \cite{sugarj}) but they have also suffered from safety problems because grammar composition is not always safe when done in an  unconstrained manner. Tyconstrained approaches that provide stronger safety guarantees have recently been outlined (e.g. Wyvern \cite{globaldsl13}) but we will leave integration of syntax extensions with semantic extensions as future work.
 
 \subsubsection{From Extensible Compilers to Extensible Languages}\label{evolution}
-The monolithic character of most programming languages is reflected in, and perhaps influenced by, the most common techniques used for implementing programming languages. Programming languages are not implemented using open representations of types or expressions. 
+The monolithic character of most programming languages is reflected in, and perhaps influenced by, the most common mechanisms used for implementing programming languages.
 Let us consider an implementation of the STLC. 
 A compiler written using a functional language will invariably represent the primitive type  and operator constructors using {closed} recursive sums. 
-A simple implementation in Standard ML may be based around these datatypes, for example:
+A simple implementation in Standard ML could be based around these datatypes, for example:
 \begin{lstlisting}
   datatype Type = Arrow of Type * Type
   datatype Exp = Var of var | Lam of var * Type * Exp | Ap of Exp * Exp 
@@ -155,16 +161,16 @@ The compiler front-end, which consists of a typechecker and translator to a suit
 
 In a class-based object-oriented implementation of Godel's T, we might instead encode type and operator constructors as subclasses of abstract classes \lstinline{Type} and \lstinline{Exp}. Typechecking and translation, however, will proceed by the ubiquitous \emph{visitor pattern}, dispatching against a fixed collection of {known} subclasses of \lstinline{Exp}.
 
-In either case, we encounter the same basic issue: there is no way to modularly add new primitive type and operator constructors to \li{Type} and \li{Exp}, respectively, and provide implementations of their associated typechecking and translation logic. 
+In either case, we encounter the same basic issue: there is no way to modularly add new primitive type and operator constructors to \li{Type} and \li{Exp}, respectively, and provide implementations of their associated typechecking and translation logic. Everything is defined in precisely one place.
 %This issue is related to the widely-discussed \emph{expression problem} (in a restricted sense -- we do not consider adding new functions beyond typechecking and translation here, only adding logic to these) \cite{wadler-expression}.
 
 A number of language mechanisms have been proposed that allow new cases to be added to datatypes and the functions that operate over them in a modular manner. 
-In functional languages, we might use \emph{open datatypes} \cite{opendatatypes}\todo{cite}. For example, if we wish to extend our implementation of the STLC with product types and we have written our compiler in a language supporting open inductive datatypes, it might be possible to add new cases: 
+In functional languages, we might use \emph{open datatypes} \cite{opendatatypes}\todo{cite}. For example, if we wish to extend our implementation of the STLC with product types and we have written our compiler in a language supporting open datatypes, it might be possible to add new constructors: 
 \begin{lstlisting}
-  newcase Prod of Type * Type extends Type
-  newcase Pair of Exp * Exp extends Exp
-  newcase PrL of Exp extends Exp
-  newcase PrR of Exp extends Exp
+  newcon Prod of Type * Type extends Type
+  newcon Pair of Exp * Exp extends Exp
+  newcon PrL of Exp extends Exp
+  newcon PrR of Exp extends Exp
 \end{lstlisting}
 
 The logic for functionality like typechecking and translation can then be implemented for only these new cases. For example, the \lstinline{typeof} function that synthesizes a type for an expression given a context could be extended to support the new case \li{PrL} like so:
@@ -177,57 +183,420 @@ The logic for functionality like typechecking and translation can then be implem
 If we allowed users to define new modules containing definitions like these and link them into our compiler, we will have succeeded in creating an externally-extensible compiler, albeit one where safety and non-interference is not guaranteed (we will return to this point shortly). We have not, however, created an extensible programming language because other compilers for the same language will not necessarily support the same extensions. 
 If our newly-introduced constructs are exposed at a library's  interface boundary, clients of that library who are using different compilers face the same problems with client compatibility that those using different languages face (as described in Sec. \ref{external-approaches}). That is, {extending a language by extending a single compiler for it is morally equivalent to creating a new language}. 
 
-We argue that a more appropriate and useful place for extensions like this is directly within libraries, alongside abstractions that can be implemented in terms of existing primitive abstractions. To enable this, the language must allow for the introduction of new type constructors, like \lstinline{Prod}, operator constructors, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and their associated type synthesis and translation logic. Because this mechanism is integrated into the language, all compilers must support it to satisfy the language specification.
+We argue that a more appropriate and useful place for extensions like this is directly within libraries, alongside abstractions that can be implemented in terms of existing primitive abstractions. To enable this, the language must allow for the introduction of new type constructors, like \lstinline{Prod}, operator constructors, like \lstinline{Pair}, \lstinline{PrL} and \lstinline{PrR}, and their associated type synthesis and translation logic. Because this mechanism is integrated into the language specification, all compilers must support it.
 
-The design described above suggests we may now need to add another layer to our language, beyond the type-level language ($\tau$) and expression language ($e$) where extensions are implemented. In fact, we will show that \textbf{a natural place for type system extensions is within the type-level language}. The intuition  is that extensions to a statically typed language's semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time. The type-level language is often constrained by its own type system, where the types of type-level terms are called \emph{kinds} for clarity,  that prevents type-level functions from causing problems during compilation. This is often more constrained than the expression language is (e.g. it might guarantee termination, to ensure that typechecking is decidable). This is precisely the structure that a distinct extension layer would have, and so it is quite natural to unify the two.
+The design described above suggests we may now need to add another layer to our language, above the type-level language (conventionally, $\tau$) and expression language (conventionally, $e$), where extensions are implemented. In fact, we will show that \textbf{a natural place for type system extensions is within the type-level language}. The intuition  is that extensions to a statically typed language's semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time. The type-level language is often constrained by its own type system, where the types of type-level terms are called \emph{kinds} for clarity,  that prevents type-level functions from causing problems during compilation. The kind system is often more constraining than the type system is (e.g. it might permit only terminating functions, to ensure that typechecking is decidable). This is precisely the structure that a distinct extension layer would have, and so we will show that is quite natural to unify the two.
 
 
-\subsubsection{@$\lambda$}
-We will begin by developing an ``actively-typed'' version of the simply-typed lambda calculus with type-level computation called @$\lambda$. In the semantics for this calculus, we will integrate typed compilation techniques and a form of abstract types to allow us to prove key type safety and non-interference theorems. 
+\subsubsection{@$\lambda$: Conservatively Extending a Type System From Within}
+\begin{figure}[t]
+\small
+$$\begin{array}{rccl}	
+\textbf{programs} & \rho & ::= & \pfam{\familyDf}{\progsort} \pipe \pdef{t}{\kappa}{\tau}{\progsort} \pipe e\\
+\text{operators}		&	\theta	&	::= &	\tops{op}{\kappaidx}{i}{a}{\taut{def}} \pipe 
+												\topp{\theta}{\theta}\\
+\\
+\textbf{external terms} 				&	e	&	::=	&	\evar{x} \pipe 
+														\elam{\evar{x}}{\tau}{e} \pipe 
+														\eop{Tycon}{op}{
+															\tauidx
+														}{
+  												    		\splat{e}{1}{n}
+														} \\
+									& 		&		& 	\\
+							
+\hspace{-5pt}\textbf{type-level terms} 	& \tau 	& ::= 	& 	\tvar{t} \pipe 
+														\tlam{t}{\kappa}{\tau} \pipe 
+														\tapp{\tau_1}{\tau_2} \pipe
+														\tnil{\kappa} \pipe \tcons{\tau_1}{\tau_2} \pipe 
+									                     \tfold{\tau_1}{\tau_2}{h}{t}{r}{\tau_3}
+														\\
+												
+\text{type-level data}	 			& 		& \pipe	& 	 \iintlit \pipe \iop{\tau_1}{\tau_2} \pipe \tstr{str} \pipe \tunit \pipe 
+														\tpair{\tau_{1}}{\tau_{2}} \pipe 
+														\tfst{\tau} \pipe 
+														\tsnd{\tau} 
+														\\	
 
-We specify the semantics of the external language as a Harper-Stone style elaboration semantics: all terms in the external language are simultaneously assigned a type and an elaboration to a term in a fixed typed internal language \cite{HarperStone}.  The mechanism will check that the elaboration is type preserving, following upon work done on the TIL compiler for Standard ML by Morrisett et al. \cite{TIL}, so that the semantics can be reasoned about compositionally and so that type safety can be proven. 
+\text{types} 						& 		& \pipe	& 	\ttypestd \pipe \tfamcase{\tau}{Tycon}{x}{\tau_1}{\tau_2}\\
+						%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
+\text{structural equality}  & & \pipe & 					\tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} 
+														\\																																					
+\text{elaborations} 				& 		 & 	\pipe	&	\tden{\tauiterm}{\tautype} \pipe \terr \pipe \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
+ %& & \pipe & 
+%														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
+%														 \\
 
-Any  global properties that the internal language maintains are guaranteed to hold no matter which extensions are used. In other words, extension providers cannot implement type systems weaker than the type system of the internal language. Providers are able to implement type systems stronger than the internal type system. We are interested in permitting only deterministic, decidable extensions, so semantic extensions are implemented as total functions in the type-level language (essentially, as a typechecker), rather than extracted from inductive specifications, like those in the Sec. \ref{foundations}\footnote{Though we will not explore this further in this thesis, a system for extracting such a function from a declarative specification could potentially be implemented using the techniques in Sec. \ref{aparsing} -- a \emph{kind-specific language}!}. This has the added benefit of giving providers finer-grained control over error messages -- with a strictly inductive specification, it is difficult to provide different error messages for different failure points in a derivation.
-%In this section, we will sketch a calculus where new type families and operator families can be introduced by users. The type synthesis and translation logic that implements the desired static and dynamic semantics, respectively, for these is implemented in the type-level language. 
+\text{reified IL}		&		&	\pipe	&	\titerm{\iota} \pipe \titype{\sigma} \\
 
-To give an example, the fragment in Fig. \ref{nat-atlam} shows how to introduce a new type constructor, \li{Nat}, indexed trivially (i.e. by a value of kind unit). Each type constructor must have a \emph{representation schema} associated with it that determines an associated internal type for every value  the index might take. The {representation schema} of $\fvar{Nat}$ is given on line 2 by a type-level function from the index to an internal type, $\mathbb{Z}$. Internal types, $\sigma$, are reflected into the type-level language, $\tau$, via the form $\blacktriangledown(\sigma)$. 
-
-A key decision that we make is to associate operator constructors directly with type constructors. This provides a scope for information hiding, as we will discuss, and also forms the foundation for a higher-level  elaboration mechanism that allows us to use a more conventional (though still fixed) concrete syntax for expressions, rather than the uniform abstract syntax that the language as specified uses. We will explore this in the design of Ace. The definitions of three new operator constructors are given on lines 3-XXX\todo{finish this}. 
-
-\begin{figure}
+												\\
+\textbf{kinds} 					& \kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \dint \pipe
+											    \kstr \pipe
+												\kunit \pipe 
+												\kpair{\kappa_{1}}{\kappa_{2}} \pipe 
+												\kTypeBlur \pipe \kDen \pipe 
+												\kITerm \pipe \kIType
+												\\
+\\												
+%\textbf{ops signature}			& \Theta	&	::=	&	\kOpEmpty \pipe \kOp{\Theta}{op}{\kappai}\\
+%											 							&		&		&	\\
+\textbf{internal terms} 				& 	\iota	&	::=	&	\evar{x} \pipe 
+												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
+												\iapp{\iota_{1}}{\iota_{2}} \pipe
+												\ifix{\evar{f}}{\sigma}{\iota} \pipe
+												\ipair{\iota_{1}}{\iota_{2}} \pipe 
+												\ifst{\iota} \pipe
+												\isnd{\iota}
+												\\
+							& 		& 	\pipe	& 
+												\iintlit \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}}  
+												\\
+ &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
+%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
+\textbf{internal types}			&	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe
+												\dint \pipe
+												\dpair{\sigma_1}{\sigma_2} \pipe
+												\trepof{\tau} \pipe \dup{\tau}\\
+\end{array}$$
+\vspace{-10pt}
+\caption{\small Abstract syntax of \atlam. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{Tycon}$ ranges over type constructor names and $\opvar{op}$ ranges over operator constructor names. The form $\tstr{str}$ represents string literals, $\iintlit$ represents integer literals and $\oplus$ represents standard total binary operations over integers.%The productions related to the internal language are written using generators $\mathcal{G}$ and $\mathcal{S}$ to avoid duplicating the syntax of common terms.
+\label{grammar}}
+\end{figure}
+\begin{figure}[t]
 \begin{lstlisting}
-tycon $\fvar{Nat}$ of unit with  
-    schema $\lambda$idx:unit.$\blacktriangledown$($\mathbb{Z}$) 
-    opcon Z of unit ($\lambda$idx:unit.$\lambda$args:list[Den].empty args [[$\triangledown$(0) as Nat[()]]])
-    opcon S of unit ($\lambda$idx:unit.$\lambda$args:list[Den].pop_final args $\lambda$trans:ITm.$\lambda$ty:$\star$. 
-      if ty = Nat[()] then [[$\triangledown$($\vartriangle$(trans)+1) as Nat[()]]] else err("...S requires nat..."))
-    opcon Rec of unit ($\lambda$idx:unit.$\lambda$args:list[Den].pop args $\lambda$.a.a.a..aa.a)
+tycon Nat of 1 with  
+    schema $\lambda$idx:1.$\blacktriangledown$($\mathbb{Z}$) 
+    opcon Z of 1 ($\lambda$idx:1.$\lambda$args:list[Elab].is_empty args $\llbracket$$\triangledown$(0) as Nat[()]$\rrbracket$)
+    opcon S of 1 ($\lambda$idx:1.$\lambda$args:list[Elab].pop_final args $\lambda$x:ITm.$\lambda$ty:$\star$. 
+      checktype ty Nat[()] $\llbracket$$\triangledown$($\vartriangle$(x)+1) as Nat[()]$\rrbracket$)
+    opcon Rec of 1 ($\lambda$idx:1.$\lambda$args:list[Elab].
+      pop args $\lambda$x1:ITm.$\lambda$ty1:$\star$.$\lambda$args':list[Elab].
+      pop args' $\lambda$x2:ITm.$\lambda$ty2:$\star$.$\lambda$args'':list[Elab].
+      pop_final args'' $\lambda$x3:ITm.$\lambda$ty3:$\star$.
+      check_type t1 Nat[()] (
+      check_type t3 Arrow[(Nat[()], Arrow[(t2, t2)])] 
+      	$\llbracket$$\triangledown$((fix f:$\mathbb{Z} \rightarrow$ rep(t2) is $\lambda$x:$\mathbb{Z}$.
+	        if x = 0 then $\vartriangle$(x2) else $\vartriangle$(x3) (x - 1) (f (x - 1))) $\vartriangle$(x1)) as t2$\rrbracket$))
 end
 \end{lstlisting}
 \caption{An implementation of primitive natural numbers as internal integers in @$\lambda$.}
 \label{nat-atlam}
 \end{figure}
+We will begin by developing an ``actively-typed'' version of the simply-typed lambda calculus with type-level computation called @$\lambda$. In the semantics for this calculus, we will integrate typed compilation techniques and a form of type abstraction to allow us to prove key type safety and non-interference theorems. The abstract syntax of @$\lambda$ is in Fig. \ref{grammar}. 
+
+The semantics of the language are in the style of the Harper-Stone elaboration semantics for Standard ML: all terms in an external language, $e$, are simultaneously assigned a type and an elaboration to a term, $\iota$, in a fixed typed internal language \cite{HarperStone, Stone}. The mechanism checks that any generated elaborations are \emph{type preserving} -- that all external terms of a particular type, $\tau$, elaborate to internal terms with a consistent internal type, $\sigma$ -- following the approach taken in the TIL compiler for Standard ML by Morrisett et al. \cite{TIL}. This allows the semantics to be reasoned about compositionally and, when combined with type safety of the internal language, gives us type safety of the extensible external language. 
+This design ensures that global properties that the internal language maintains are guaranteed to hold no matter which extensions are introduced. In other words, extension providers cannot implement type systems weaker than the type system of the internal language. Providers are, however, able to implement type systems that maintain invariants stronger than those the internal type system can maintain. The internal language of @$\lambda$ is PCF with simple products and one base type, integers. Because of the availability of the fixpoint operator, the internal language is universal (i.e. Turing-complete).
+
+It is reasonable, if we wish to actually implement this language, to permit only the addition of deterministic, decidable rules to the semantics. Extension logic is thus implemented in a functional style  (essentially, lifting fragments of the typechecker into the type-level language), rather than extracted from inductive specifications, like those in the Sec. \ref{foundations}\footnote{Though we will not explore this further in this thesis, a system for extracting such a function from a declarative specification could potentially be implemented using the techniques in Sec. \ref{aparsing} -- a \emph{kind-specific language}!}. This has the added benefit of giving providers finer-grained control over error reporting. When extracting an implementation from a typical inductive specification, which only specifies ``success conditions'', it is difficult to provide different error messages at different failure points within a single rule.
+%In this section, we will sketch a calculus where new type families and operator families can be introduced by users. The type synthesis and translation logic that implements the desired static and dynamic semantics, respectively, for these is implemented in the type-level language. 
+
+To give a first example, the code in Fig. \ref{nat-atlam} (written using concrete syntax) shows how to introduce a new type constructor, $\fvar{Nat}$, indexed trivially (i.e. by a type-level value of kind 1, also known as unit). Types themselves are type-level values of kind $\kTypeBlur$ and are introduced by naming a type constructor and providing an index of the appropriate kind: $\ttype{Nat}{\tunit}$. To ensure that type equality is decidable, type constructors can only be indexed by values of a kind for which equality is ``trivially'' decidable (i.e. where semantic equality coincides with syntactic equality). This means that types themselves, as well as type-level data structures containing values of equality kind, can be used, while type-level functions cannot.
+
+To ensure that compilation is type-preserving, as described above, each type must have an internal type, called its \emph{representation}, associated with it. The representation of a type might depend on its index, so each type constructor must declare a type-level function that returns an internal type given an index, called its \emph{representation schema}. An internal type, $\sigma$, is reflected into a type-level terms of kind $\kIType$ via the introductory form $\blacktriangledown(\sigma)$. Because $\fvar{Nat}$ is indexed trivially, it simply returns the reflected form of the internal type $\mathbb{Z}$. %The sort $\sigma$ also contains forms $\trepof{\tau}$ and $\dup{\tau}$. The former allows one to refer, abstractly, to the representation of the type $\tau$, while the latter enables the interpolatation of a type-level value of kind $\kIType$.
+
+%Two additional forms, $\tvalof{\tauiterm}{\tautype}$ and $\iup{\tau}$, will be discussed below. These are erased by the end of the elaboration process.
+
+In the external language, $e$, all operators (other than $\lambda$, for reasons we will discuss) are invoked uniformly. The natural number two, for example, is written: $$\eop{Nat}{s}{()}{\eop{Nat}{s}{()}{\eop{Nat}{z}{()}{ }}}$$
+
+Operator constructors, like type constructors, are indexed by type-level values. In our example, all the operators are indexed trivially, but we will see examples later where non-trivial operator indices are useful. We will discuss why operator constructors are associated directly with type constructors, rather than existing as standalone entities, when we discuss the scoping mechanism for the representation schema, which is essential for guaranteeing non-interference. This coupling also forms the foundation for a higher-level elaboration mechanism that allows us to use more conventional and concise (though still fixed) syntactic idioms, which we intend to explore in this thesis, but have not yet formalized. For now, we simply note that intuitively, most operators are either introduction or elimination forms for a particular type, so we are simply encoding a common idiom. 
+
+The declarations of the three operator constructors related to natural numbers are given on lines 3-13 of Fig. \ref{nat-atlam}. Operator constructors are declared by specifying the kind of type-level value they are indexed by and giving an \emph{operator definition}, a type-level function of kind $\kappa \rightarrow \klist{\kDen} \rightarrow \kDen$. The kind $\kDen$ classifies \emph{elaborations}. There are two introductory forms for this kind: \emph{valid elaborations}, $\tden{\tauiterm}{\tautype}$, consist of a reflected internal language term paired with a type assignment, while \emph{error elaborations}, $\terr$, represent a type error (in a full implementation, the error elaboration would contain an error message, as discussed above, but for simplicity in our core calculus, we simply treat all type errors equivalently). Internal terms, $\iota$, like internal types, are reflected as type-level terms of kind $\kITerm$ via the introductory form $\titerm{\iota}$. The form $\iup{\tau}$ interpolates a type-level value of kind $\kITerm$ into an internal term.  Note that there are no elimination forms for the kinds $\kIType$ and $\kITerm$. Composition occurs entirely via interpolation -- syntax trees are never examined directly by extensions in @$\lambda$. 
+
+Operator definitions are called by the compiler to generate an elaboration for operator invocations. In our example, the definition of $\fvar{Nat}.\opvar{z}$ simply checks that there were no arguments (using a simple helper function for working with lists of elaborations, \li{is_empty}, not shown) and if so, provides an elaboration where the internal language integer \li{0} is associated with type $\ttype{Nat}{\tunit}$. If the list is not empty, \li{is_empty} simply returns $\terr$. The other two operator constructors are more verbose, but follow a similar pattern -- elaborations are popped off and broken down into their constituent internal terms and types by helper functions, then a functional program that implements the intended semantics is written to produce an elaboration as a whole. Note that the \li{Rec} operator does not itself bind new variables; it must use the built-in \li{Arrow} type constructor. There is no support in @$\lambda$ for introducing new forms of binding; $\lambda$ is the only available binding operator. Note that application is invoked like other operators: $\eop{Arrow}{ap}{\tunit}{e_1; e_2}$.
+
+This definition of natural numbers can be shown to be an adequate encoding of the semantics given in Sec. \ref{foundations}. It can also be shown to maintain the invariant that natural numbers elaborate into \emph{non-negative} internal integers. Note that because we are beginning with a simply-typed, simply-kinded formulation, these kinds of statements must be proven metatheoretically (as with other sorts of complex invariants in simply-typed languages). With a naive formulation of this mechanism, these theorems would be quite a bit more precarious, however. If another provider, perhaps a malicious one, declares a new operator constructor that introduces natural numbers, these theorems may not be \emph{conserved}. For example, the following operator declaration is quite problematic:
+
+\begin{lstlisting}
+opcon badnat of 1 ($\lambda$idx:1.$\lambda$args:list[Elab].$\llbracket\triangledown$(-1) as Nat[()]$\rrbracket$)
+\end{lstlisting}
+
+With this declaration, there is now a new and unexpected introductory form for the natural number type, and even worse, it violates our previous implementation invariants. A naive check for type preservation would not catch this problem: \li{-1} does have type $\mathbb{Z}$, it is simply not an integer that could have been emitted by the original definition of \li{Nat}.
+
+To prevent this problem, we \emph{hold the representation of a type abstract} outside of the operators explicitly associated with it. If \li{badnat} cannot know that the representation of \li{Nat[()]} is $\mathbb{Z}$, then the above operator implementation cannot be correct. Because we cannot prove relational correctness properties from within a simply-typed/kinded calculus, our semantics enforces this by using a form of value abstraction, similar to that described by Zdancewic et. al \cite{zdancewic}. In brief: the representation of a type, written $\trepof{\tautype}$, does not reduce further to the actual representation type (e.g. to $\mathbb{Z}$) when not in an operator definition associated with $\tautype$. The only internal form that can be checked against  $\trepof{\tautype}$ is the special form $\tvalof{\tauiterm}{\tautype}$, an abstracted internal term corresponding to the internal term reflected by $\tauiterm$. Rather than exposing it explicitly, it is wrapped so that it can't be checked against any type other than $\trepof{\tautype}$. A full description of this mechanism (and the others, described above) requires us to introduce the semantics in detail. A draft of the semantics of @$\lambda$ is available as a paper draft\footnote{\url{https://github.com/cyrus-/papers/tree/master/esop14}}.
 
 
+The use cases permitted by this mechanism are not simply subsumed by a module system with support for abstract types and functors. Indeed, such a module system is an orthogonal concern in that it must sit atop a core type system. More particularly, the distinction is the fundamental one between functions and operators. Functions cannot examine type indices at compile-time to determine a return type and implementation (or generate static error messages), as operators are able to do. It is encouraging that there are clear parallels between module systems with abstract types and type constructors with abstract schemas, and any full-scale language design based on this mechanism should certainly provide both mechanisms (with the former used in most cases). We plan to investigate this relationship more thoroughly, showing examples where abstract types are more clearly unsuitable, in the remainder of this work. 
 
-A draft of the full definition of this calculus is available as a paper draft\footnote{\url{https://github.com/cyrus-/papers/tree/master/esop14}}.
 
+\subsubsection{Remaining Tasks and Timeline}
+We are actively working on this mechanism and plan to submit a paper to ICFP 2014 on Mar. 1 based on a submission to ESOP 2014 that was not accepted. The following key tasks, other than clarifying the writing, remain to be completed:
+
+\begin{enumerate}
+\item Reviewers of the previous submission to ESOP found a problem with our treatment of internal type variables that needs to be corrected by threading a context through the type-level evaluation semantics.
+\item We must more rigorously state and prove the key lemmas and theorems related to type preservation, type safety, decidability and conservativity. 
+\item We must develop examples that are more interesting than natural numbers. In particular, some interesting form of labeled product type that SML doesn't have (e.g. a record with prototypic dispatch) as well as sum types would be interesting.
+\item We must consider whether properties related to termination can be conserved by this mechanism, because a fixpoint can be used to introduce a non-terminating expression of any type. This may be possible by being careful about how deabstraction interacts with fixpoints.
+\item We must more clearly connect this work to the Harper-Stone semantics and other related work, and clarify  the relationship to abstract types.
+\item We must show how to add additional syntactic forms to the external language that defer to the generic operator invocation form in a type-directed manner. This connects the theory to the work on Ace, described below. 
+\end{enumerate}
 
 \subsection{Ace}\label{ace}
-The syntax of @$\lambda$ is abstract -- there is a single uniform operator application form. To be practical, a wider variety of syntactic constructs must be used. A number of other practical considerations are also important. This section describes the design and implementation of Ace, an internally-extensible language designed considering both extrinsic and intrinsic criteria. To solve the bootstrapping problem, Ace is implemented entirely as a library within the popular Python programming language. Ace and Python share a common syntax and package system, allowing Ace to leverage its well-established tools and infrastructure directly. Python serves as the compile-time metalanguage for Ace, but Ace functions themselves do not operate according to Python's fixed dynamically-typed semantics  (cf. \cite{Politz:2013:PFM:2509136.2509536,python}). Instead, Ace has a statically-typed semantics that can be extended by users from within libraries. 
+\lstset{
+  language=Python,
+  showstringspaces=false,
+  formfeed=\newpage,
+  tabsize=4,
+  commentstyle=\itshape,
+  basicstyle=\ttfamily\scriptsize,
+  morekeywords={lambda, self, assert, as},
+  numbers=left,
+  numberstyle=\scriptsize\color{light-gray}\textsf,
+  xleftmargin=2em,
+  stringstyle=\color{mauve}
+}
+\lstdefinestyle{Bash}{
+    language={}, 
+    numbers=left,
+    numberstyle=\scriptsize\color{light-gray}\textsf,
+    moredelim=**[is][\color{blue}\bf\ttfamily]{`}{`}
+}
+\lstdefinestyle{OpenCL}{
+	language=C++,
+	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
+}
 
-More specifically, each Ace function can be annotated with a base semantics that determines the meaning of simple expressions like literals and certain statements. The semantics of the remaining expressions and statements are governed by logic associated with the type of a designated subexpression. We call the user-defined base semantics \emph{active bases} and the types in Ace \emph{active types}, borrowing terminology from \emph{active libraries} (\cite{activelibraries}, see Sec. \ref{related}). Both are objects that can be defined and manipulated at compile-time using Python. An important consequence of this mechanism is that it permits \emph{compositional} reasoning -- active bases and active types govern only specific non-overlapping portions of a program. As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur (unlike many previous approaches, as we discuss in Sec. \ref{related}).
+%\usepackage{float}
+%\floatstyle{ruled}
+%\newfloat{codelisting}{tp}{lop}
+%\floatname{codelisting}{Listing}
+%\setlength{\floatsep}{10pt}
+%\setlength{\textfloatsep}{10pt}
 
-The \emph{target} of compilation is also user-defined. We will show examples of Ace targeting Python as well as OpenCL, CUDA and C99, lower-level languages often used to program hardware. An active base or type can support multiple \emph{active targets}, which mediate translation of Ace code to code in a target language. Ace functions targeting a language with Python bindings can be called directly from Python scripts, with compilation occurring implicitly. For some data structures, types can propagate from Python into Ace. We show how this can be used to streamline the kinds of interactive workflows that Python is often used for. Ace can also be used non-interactively from the shell, producing source files that can be further compiled and executed by external means.
 
-The remainder of the section is organized as follows: in Sec. \ref{usage}, we describe the basic structure and usage of Ace with an example library that internalizes and extends the OpenCL language. Then in Sec. \ref{att}, we show how this and other libraries are implemented by detailing the extension mechanisms within Ace. To explain and demonstrate the expressiveness of these mechanisms (in particular, active types) further, we continue in Sec.  \ref{examples} by showing a diverse collection of abstractions drawn from different language paradigms that can be implemented as orthogonal libraries in Ace. We include functional datatypes, objects, and several other abstractions.  A full paper draft is available\footnote{\url{https://github.com/cyrus-/papers/tree/master/ace-pldi14}}.
 
-NOTE: Having an issue with tex macros but pretend sections 2-4 of the Ace paper are here basically as-is.
+The key choices that a language must make when supporting the mechanism described in the previous section are:
+\begin{enumerate}
+\item What is the semantics of the type-level language?
+\item What is the syntax of the external language, and how should the syntactic forms dispatch to  operator definitions?
+\item What is the semantics of the internal language?
+\end{enumerate}
 
-\subsection{Remaining Tasks}
+In @$\lambda$, the type-level language was a form of the simply-typed lambda calculus with a few common data types, and the internal language was a variant of PCF. The external language currently only includes direct dispatch by naming an operator explicitly. This is useful for the purposes of clarifying the foundations of our work.
+
+In this section, we wish to explore a different point in this design space, with an eye toward practicality and expressiveness. In particular, we want to show how to implement {the extension mechanism itself} as a library within an existing, widely used language, solving a \emph{bootstrapping problem} that has prevented  other work on extensibility from being effective as a means to bring more research into practice. This language, called Ace, makes the following choices:
+
+\begin{enumerate}
+\item Python is used as the type-level language (and more generally, as a compile-time metalanguage).
+\item Python's syntax is used for the external language. We will describe the dispatch protocol below.
+\item The internal language can be user-defined, rather than being pre-defined as in @$\lambda$.
+\end{enumerate}
+
+The choice of Python as the host language presents several challenges because we are attempting to embed an extensible static type system within a uni-typed (a.k.a. dynamically typed) language, without modifying its syntax in any way. We show that by leveraging Python's support for function quotations and by using its class-based object system to encode type constructors, we are able to accomplish this goal. Then, with a flexible statically-typed language under the control of libraries, we implement a variety of statically-typed abstractions, including common functional abstractions (e.g. inductive datatypes with pattern matching), low-level parallel abstractions (all of the OpenCL programming language), object systems and domain-specific abstractions (e.g. regular expression types, as described in the introduction). Ace can be used both as a standalone language and as a staged compilation environment from within Python.
+
+\subsubsection{Language Design and Usage}\label{usage}
+Listing \ref{map} shows an example of an Ace file. As promised, the top level of an Ace file is written directly in Python, requiring no modifications to the language (versions 2.6+ or 3.3+) nor features specific to CPython (so Ace supports alternative implementations like Jython, IronPython and PyPy). This choice pays  dividends on line 1: Ace's package system is Python's package system, so Python's build tools (e.g. \verb|pip|) and package repostories (e.g. \verb|PyPI|) are directly available for distributing Ace libraries. 
+
+The top-level statements in an Ace file, like the \verb|print| statement on line 10, are executed at compile-time. That is, Python serves as the \emph{compile-time metalanguage} of Ace. %For readers familiar with C/C++, Python can be thought of as serving a role similar to (but more general than) its preprocessor and template system (as we will see).
+Functions containing run-time behavior, like \verb|map|, are annotated as Ace functions and are then governed by a semantics that differs substantially from Python's (in ways that we will describe below). But Ace functions share Python's syntax. As a consequence, users of Ace benefit from an ecosystem of well-developed tools that work with Python syntax, including parsers, code highlighters, editor modes, style checkers and documentation generators. 
+
+\subsubsection{OpenCL as an Active Library}
+The code in this section uses \verb|clx|, an example of an library that implements the semantics of the OpenCL programming language, and extends it with some additional useful types, using Ace. Ace itself has no built-in support for OpenCL.
+
+To briefly review, OpenCL provides a data-parallel SPMD programming model where developers define functions, called {\em kernels}, for execution across thousands of threads on \emph{compute devices} like GPUs or multi-core CPUs \cite{opencl11}. Each thread has access to a unique index, called its \emph{global ID}. Kernel code is written in the OpenCL kernel language, a somewhat simplified variant of C99 extended with some new primitive types and operators, which we will describe as needed in our examples below.
+
+\subsubsection{Generic Functions}\label{genfn}
+\begin{codelisting}
+\lstinputlisting{../ace-pldi14/listing3.py}
+\caption{[\texttt{listing\ref{map}.py}] A generic imperative data-parallel higher-order map function targeting OpenCL.}
+\label{map}
+\end{codelisting}
+%\begin{codelisting}
+%\lstinputlisting[commentstyle=\color{mauve}]{../ace-pldi14/listing7.py}
+%\caption{[\texttt{listing\ref{metaprogramming}.py}] Metaprogramming with Ace, showing how to construct generic functions from abstract syntax trees.}
+%\label{metaprogramming}
+%\end{codelisting}
+%\begin{codelisting}
+%\begin{lstlisting}[style=Bash]
+%$ `acec listing3.py`
+%Hello, compile-time world!
+%[ace] TypeError in listing1.py (line 6, col 28): 
+%      'GenericFnType(negate)' does not support [].
+%[acec] listing3.cl successfully generated.
+%\end{lstlisting}
+%\caption{Compiling \texttt{listing\ref{compscript}.py} using the \texttt{acec} compiler.}
+%\label{mapc}
+%\end{codelisting}
+%\begin{codelisting}
+%\lstinputlisting[style=OpenCL]{listing5.cl}
+%\caption{[\texttt{listing\ref{compscript}.cl}] The OpenCL file generated by Listing \ref{mapc}.}
+%\label{mapout}
+%\end{codelisting}
+
+Lines 3-4 introduce \verb|map|, an Ace function of three arguments that is governed by the \emph{active base} referred to by \verb|clx.base| and targets the \emph{active target} referred to by \verb|clx.opencl|. The active target determines which language the function will compile to (here, the OpenCL kernel language) and mediates code generation. The active target plays an analagous role to the internal language of @$\lambda$.
+
+The body of this function, on lines 5-8, does not have Python's semantics. Instead, it will be governed by the active base together with any \emph{active types} used within it. No  types have yet been assigned, however. Because our type system is extensible, the code inside could be meaningful for many different assignments of types to the arguments (a form of \emph{ad hoc polymorphism}). We call functions awaiting types, like \verb|map|,  \emph{generic functions}. Once types have been assigned, they are called \emph{concrete functions}.
+
+Generic functions are represented at compile-time as instances of \verb|ace.GenericFn| and consist of an abstract syntax tree, an {active base}, an {active target} and a read-only copy of the Python environment that they were defined within. The purpose of the \emph{decorator} on line 3 is to replace the Python function on lines 4-8 with an Ace generic function having the same syntax tree and environment and the provided active base and active target. 
+A decorator in Python is simply syntactic sugar that applies another function directly to the function  being decorated \cite{python}. In other words, line 3 could be replaced by the following  statement on line 9: \verb|map = ace.fn(clx.base, clx.opencl)(map)|.
+Ace extracts the abstract syntax tree for \verb|map| using the Python standard  library packages  \verb|inspect| (to retrieve its source code) and \verb|ast| (to parse it into a syntax tree). The ability to extract a function's syntax tree and inspect its closure directly are the two key ingredients for implementing a mechanism like this as a library within another language.
+
+\subsubsection{Concrete Functions and Explicit Compilation}
+\begin{codelisting}
+\begin{lstlisting}
+import listing1, ace, examples.clx as clx
+
+@ace.fn(clx.base, clx.opencl)
+def negate(x):
+  return -x
+
+T1 = clx.Ptr(clx.global_, clx.float)
+T2 = clx.Ptr(clx.global_, clx.Cplx(clx.int))
+TF = negate.ace_type
+
+map_neg_f32 = listing1.map[[T1, T1, TF]]
+map_neg_ci32 = listing1.map[[T2, T2, TF]]
+\end{lstlisting}
+%\lstinputlisting{../ace-pldi14/listing4.py}
+\caption{[\texttt{listing2.py}] The generic \texttt{map} function compiled to map the \texttt{negate} function over two  types of input.}
+\label{compscript}
+\end{codelisting}
+
+To compile a generic function to a particular \emph{concrete function}, a type must be provided for each argument, and typechecking and elaboration must then succeed. Listing \ref{compscript} shows how to explicitly provide type assignments to \verb|map| using the subscript operator (implemented using Python's operator overloading mechanism). We do so two times in Listing \ref{compscript}, on lines 11 and 12. Here, \verb|T1|, \verb|T2|, \verb|TF|, \verb|clx.float|, \verb|clx.int| and \verb|negate.ace_type| are types and \verb|clx.Ptr| and \verb|clx.Cplx| are type constructors. We will discuss these in the next section.
+ 
+Concrete functions like \verb|map_neg_f32| and \verb|map_neg_ci32| are instances of \verb|ace.ConcreteFn|. They consist of a \emph{typed} abstract syntax tree, an elaboration into the target language and a reference to the originating generic function. %The typing and translation process is mediated by the logic in the active base, types and target that have been provided, as we will describe in more detail below. 
+
+To produce an output file from an Ace ``compilation script'' like \verb|listing|\texttt{\ref{compscript}}\verb|.py|, the command \verb|acec| can be invoked from the shell, as shown in Listing \ref{mapc}. The result of compilation is the OpenCL file shown in Listing \ref{mapout}. The \verb|acec| compiler (a simple Python script) operates in two stages:
+\begin{enumerate}
+\item Executes the provided Python file (\verb|listing3.py|).
+\item Extracts the elaborations from concrete functions and other top-level constructs that define elaborations (e.g. types requiring declarations) in the final Python environment.  This may produce one or more files, depending on which active targets were used (here, just \verb|listing3.cl|, but a web framework built upon Ace might produce separate HTML, CSS and JavaScript files).
+\end{enumerate}
+
+%In this case, stage 1 results in the output on lines \ref{mapc}.2-\ref{mapc}.4. The type error printed on lines \ref{mapc}.3-\ref{mapc}.4 will be explained in the next section. The compiler then enters stage 2 and concludes with the message on line \ref{mapc}.5 to indicate that one file was generated. This file is shown in Listing \ref{mapout} and can be used by any programs that consume OpenCL code (e.g. a C program that invokes the generated kernels via the OpenCL host API). 
+We will show in the thesis, but omit in this proposal, that for targets with Python bindings, such as OpenCL, CUDA, C, Java or Python itself, generic functions can be executed directly, without any of the explicit compilation steps in Listings \ref{compscript} and \ref{mapc}. This represents a form of staged compilation.  In this setting, the dynamic type of a Python value determines, at the point of invocation, a static type assignment for the argument of an Ace generic function. 
+
+\subsubsection{Types}
+\begin{codelisting}
+\begin{lstlisting}[style=Bash]
+> `acec listing2.py`
+Hello, compile-time world!
+[acec] listing2.cl successfully generated.
+\end{lstlisting}
+%$ `acec listing3.py`
+%Hello, compile-time world!
+%[ace] TypeError in listing1.py (line 6, col 28): 
+%      'GenericFnType(negate)' does not support [].
+%[acec] listing3.cl successfully generated.
+\caption{Compiling \texttt{listing\ref{compscript}.py} using the \texttt{acec} compiler.}
+\label{mapc}
+\end{codelisting}
+\begin{codelisting}
+\lstinputlisting[style=OpenCL]{../ace-pldi14/listing5.cl}
+\caption{[\texttt{listing\ref{compscript}.cl}] The OpenCL file generated by Listing \ref{mapc}.}
+\label{mapout}
+\end{codelisting}
+Lines 7-9 of Listing \ref{compscript} construct the types used to generate concrete functions from the generic function \verb|map| on lines 11 and 12. In Ace, types are themselves values that can be manipulated at compile-time. Python is thus Ace's type-level language. %This stands in contrast to other contemporary languages, where user-defined types (e.g. datatypes, classes, structs) are written declaratively at compile-time but cannot be constructed, inspected or passed around programmatically. 
+More specifically, types are instances of a Python class that implements the \verb|ace.ActiveType| interface. Implementing this interface is analagous to defining a new type constructor in @$\lambda$. 
+
+As Python values, types can be assigned to variables when convenient (removing the need for  facilities like \verb|typedef| in C or \verb|type| in Haskell). Types, like all compile-time objects derived from Ace base classes, do not have visible state and operate in a referentially transparent manner (by constructor memoization, which we do not detail here).% These types are all implemented in the \verb|clx| library imported on line 1, none are built into Ace itself.
+
+The type named \verb|T1| on line 7 directly implements the logic of the underlying OpenCL type \verb|global float*|: a pointer to a 32-bit floating point number stored in the compute device's global memory (one of four address spaces defined by OpenCL \cite{opencl11}). It is constructed by applying \verb|clx.Ptr|, which is an Ace type constructor corresponding to pointer types, to a value representing the  address space, \verb|clx.global_|, and the type being pointed to. That type, \verb|clx.float|, is in turn the \verb|clx| type corresponding to \verb|float| in OpenCL (which, unlike in C99, is always 32 bits). 
+The \verb|clx| library contains a full implementation of the OpenCL type system (including  complexities, like promotions, inherited from C99).
+Ace is \emph{unopinionated} about issues like memory safety and the wisdom of such promotions. We will discuss how to implement, as libraries, abstractions that are higher-level than raw pointers, or simpler numeric types, but Ace does not prevent users from choosing a low level of abstraction or ``interesting'' semantics if the need arises (e.g. for compatibility with existing libraries). We also note that we are being more verbose than necessary for the sake of pedagogy. The \verb|clx| library includes more concise shorthand for OpenCL's types: \verb|T1| is equal to \verb|clx.gp(clx.f32)|. %Similarly, the decorators in Listings \ref{map} and \ref{metaprogramming} could have been written \verb|clx.cl_fn|.\todo{move this back there probably}
+
+The type \verb|T2| on line 8 is a pointer to a \emph{complex integer} in global memory. It does not correspond directly to a type in OpenCL, because OpenCL does not include primitive support for complex numbers. Instead, the type constructor \verb|clx.Cplx| defines the necessary logic for typechecking operations on complex numbers and elaborating them to OpenCL. This constructor is parameterized by the numeric type that should be used for the real and imaginary parts, here \verb|clx.int|, which corresponds to 32-bit OpenCL integers. Arithmetic operations with other complex numbers, as well as with plain numeric types (treated as if their imaginary part was zero), are supported. When targeting OpenCL, Ace expressions assigned type \verb|clx.Cplx(clx.int)| are compiled to OpenCL expressions of type \verb|int2|, a  \emph{vector type} of two 32-bit integers (a type that itself is not inherited from C99). This can be observed in several places on lines \ref{mapout}.14-\ref{mapout}.21. This choice is merely an implementation detail that can be kept private to \verb|clx|. An Ace value of type \verb|clx.int2| (that is, an actual OpenCL vector) \emph{cannot} be used when a \verb|clx.Cplx(clx.int)| is expected (and attempting to do so will result in a static type error).
+
+The type \verb|TF| on line 9 is extracted from the generic function \verb|negate| constructed in Listing \ref{compscript}. Generic functions, according to Sec. \ref{genfn}, have not yet had a type assigned to them, so it may seem perplexing that we are nevertheless extracting a type from \verb|negate|. Although a conventional arrow type cannot be assigned to \verb|negate|, we can give it a \emph{singleton type}: a type that simply means ``this expression is the \emph{particular} generic function \verb|negate|''. This type could also have been explicitly written as \verb|ace.GenericFnType(listing2.negate)|. During typechecking and translation of \verb|map_neg_f32| and \verb|map_neg_ci32|, the call to \verb|f| on line 6 of Listing \ref{map} uses the type of the argument to generate a concrete function from the generic function that inhabits the singleton type of \verb|f| (\verb|negate| in both cases shown). This is why there are two versions of \verb|negate| in the output in Listing \ref{mapout}. In other words, types \emph{propagate} into generic functions -- we didn't need to compile \verb|negate| explicitly. In effect, this scheme enables higher-order functions even when targeting languages, like OpenCL, that have no support for higher-order functions (OpenCL, unlike C99, does not support function pointers). Interestingly, because they have a singleton type, they are higher-order but not first-class functions. That is, the type system would prevent you from creating a heterogeneous list of generic functions. Concrete functions, on the other hand, can be given both a singleton type and a true function type. For example, \verb|listing2.negate[[clx.int]]| could be given type \verb|ace.Arrow(clx.int, clx.int)|. The base determines how to convert the Ace arrow type to an arrow type in the target language (e.g. a function pointer for C99, or an integer that indexes into a jump table constructed from knowledge of available functions of the appropriate type in OpenCL).
+
+\subsubsection{Extensibility}\label{att}
+The core of Ace consists of about 1500 lines of Python code implementing its primary concepts: generic functions, concrete functions, active types, active bases and active targets.  The latter three comprise Ace's extension mechanism. Extensions provide semantics to, and govern the compilation of, Ace functions, rather than logic in Ace's core. %Indeed, the name ``Ace'' might itself be an acronym: it is an ``active compilation environment''.
+
+Active types are the primary means for extending Ace with new abstractions. An active type, as mentioned previously, is an instance of a class implementing the \verb|ace.ActiveType| interface. Listing \ref{cplx} shows an example of such a class: the \verb|clx.Cplx| class used in Listing \ref{compscript}, which implements the logic of complex numbers. The constructor takes as a parameter any numeric type in \verb|clx| (line \ref{cplx}.2). 
+
+\subsubsection{Dispatch Protocol}
+\begin{codelisting}
+\lstinputlisting{../ace-pldi14/listing9.py}
+\caption{\texttt{[}in \texttt{examples/clx.py]} The active type family \texttt{Ptr} implements the semantics of OpenCL pointer types.}
+\label{cplx}
+\end{codelisting}
+In a compiler for a monolithic language, there would be a \emph{syntax-directed} protocol governing typechecking and translation. In a compiler written in a functional language, for example, one would declare datatypes that captured all forms of types and expressions, and the typechecker would perform exhaustive case analysis over the expression forms. That is, all the semantics are implemented in one place. The visitor pattern typically used in object-oriented languages implements essentially the same protocol. This does not work for an extensible language because new cases and logic need to be added \emph{modularly}, in a safely composable manner.
+
+Instead of taking a syntax-directed approach, the Ace compiler's typechecking and translation phases take a \emph{type-directed approach}. When encountering a compound term (e.g. \verb|e[e1]|), the compiler defers control over typechecking and translation to the active type of a designated subexpression (e.g. \verb|e|) determined by Ace's fixed \emph{dispatch protocol}. Below are examples of the choices made in Ace.
 \begin{itemize}
-\item We need to fix a minor issue raised by a reviewer in the semantics of @$\lambda$ about variables in internal terms when they are substituted.
-\item We need to write full proofs of the theorems stated in the @$\lambda$ paper.
-\item We need to develop an elaboration of a subset of the Python grammar to @$\lambda$, to connect the two.
-\item We need to detail the examples in Sec. 4 of the Ace paper more substantially.
+\item Responsibility over {\bf attribute access} (\texttt{e.attr}), {\bf subscripting} (\texttt{e[e1]}),  \textbf{calls} (\verb|e(e1, ..., en)|) and {\bf unary operations} (e.g. \verb|-e|) is handed to the type recursively assigned to \texttt{e}.
+\item Responsibility over {\bf binary operations} (e.g. \verb|e1 + e2|) is first handed to the type assigned to the left operand. If it indicates a type error, the type assigned to the right operand is handed responsibility, via a different method call. {Note that this operates like the corresponding rule in Python's \emph{dynamic} operator overloading mechanism.}
+\item Responsibility over \textbf{constructor calls} (\verb|[t](e1, ..., en)|), where \verb|t| is a \emph{compile-time Python expression} evaluating to an active type, is handed to that type, by using Python's eval functionality to evaluate t. If \verb|t| evaluates to a type constructor, like \verb|clx.Cplx|, the type is first generated via a class method, as discussed below.
+%\item Responsibility over {\bf simple assignment statements}, is handed to the type of the variable on the left (which, as we will see below, is determined by the active base). If this type does not provide special assignment semantics, the base must handle it.%Destructuring assignment is also supported by a somewhat more complex protocol.\todo{clarify}
+\end{itemize}
+
+\subsubsection{Typechecking}
+When typechecking a compound expression or statement, the Ace compiler temporarily hands control to the object selected by the dispatch protocol by calling the method \verb|type_|$X$, where $X$ is  the name of the syntactic form, taken from the Python grammar \cite{python} (appended with a suffix in some cases). 
+
+For example, if \verb|c| is a complex number, then the operations \verb|c.ni| and \verb|c.i| extract its non-imaginary and imaginary components, respectively. These expressions are of the form \verb|Attribute|, so the typechecker calls \verb|type_Attribute| (line 7).
+This method receives the compilation context, \verb|context|, and the abstract syntax tree of the expression, \verb|node| and must return a type assignment for the node, or raise an \verb|ace.TypeError| if there is an error. In this case, a type assignment is possible if the attribute name is either \verb|"ni"| or \verb|"i"|, and an error is raised otherwise (lines 8-10). We note that error messages are an important and sometimes overlooked facet of {ease-of-use} \cite{marceau2011measuring}. A common frustration with using general-purpose abstraction mechanisms to encode an abstraction is that they can produce  verbose and cryptic error messages that reflect the implementation details instead of the semantics. Ace supports custom error messages.%Active types permit direct encoding of semantics and customization of error messages.
+
+Complex numbers also support binary arithmetic operations partnered with both other complex numbers and with non-complex numbers, treating them as if their imaginary component is zero. The typechecking rules for this logic is implemented on lines 17-29. Arithmetic operations are usually symmetric, so the dispatch protocol checks the types of both subexpressions for support. To ensure that the semantics remain deterministic in the case that both types support the binary operation, Ace asks the left first (via \verb|type_BinOp_left|), asking the right (via \verb|type_BinOp_right|) only if the left indicates an error. In either position, our implementation begins by recursively assigning a type to the other operand in the current context via the \verb|context.type| method (line 24). If supported, it applies the C99 rules for arithmetic operations to determine the resulting type (via \verb|c99_binop_t|, not shown). 
+
+Finally, a complex number can be constructed inside an Ace function using Ace's special constructor form: \verb|[clx.Cplx](3,4)| represents $3+4i$, for example. The term within the braces is evaluated at \emph{compile-time}. Because \verb|clx.Cplx| evaluates not to an active type, but to a class, this form is assigned a type by handing control to the class object via the \emph{class method} \verb|type_New|. It operates as expected, extracting the types of the two arguments to construct an appropriate complex number type (lines 50-57), raising a type error if the arguments cannot be promoted to a common type according to the rules of C99 or if two arguments were not provided.% (an exercise for the reader: modify this method to also allow a single argument for when the imaginary part is 0). 
+
+%Note that in each example, subexpressions are not \emph{automatically} assigned types. Types must be requested from the context. This is useful because it allows types to reinterpret subexpressions of terms they control, to supporting more complex constructs (e.g. pattern matching on functional datatypes, see Sec. \ref{datatypes}).
+
+\subsubsection{Translation}
+Once typechecking a method is complete, the compiler enters the translation phase, where terms in the target language are generated from Ace terms. Terms in the target language are generated by calling methods of the \emph{active target} governing the function being compiled. The translation phase operates similarly to typechecking, using the dispatch protocol to invoke methods named \verb|trans_|$X$. These methods have access to the context and node just as during typechecking, as well as the active target (named \verb|target| here).
+
+As seen in Listing \ref{mapout}, we are implementing complex numbers internally using OpenCL vector types, like \verb|int2|. Let us look first at \verb|trans_New| on lines 54-60, where new complex numbers are translated to vector literals by invoking \verb|target.VecLit|. This will ultimately  generate the necessary OpenCL code, as a string, to complete compilation (these strings are not directly manipulated by extensions, however, to avoid problems with, e.g. precedence). For it to be possible to reason compositionally about the correctness of compilation, all complex numbers must translate to terms in the target language that have a consistent target type. The \verb|trans_type| method of the \verb|ace.ActiveType| associates a type in the target language, here a vector type like \verb|int2|, with the active type. Ace supports a mode where this \emph{representational consistency} is dynamically checked during compilation (requiring that the active target know how to assign types to terms in the target language, which can be done  for our OpenCL target as of this writing).
+
+The translation methods for attributes (line 12) and binary operations  (line 31) proceed in a straightforward manner. The context provides a method, \verb|trans|, for recursively determining the translation of subexpressions as needed. Of note is that the translation methods can assume that typechecking succeeded. For example, the implementation of \verb|trans_Attribute| assumes that if \verb|node.attr| is not \verb|'ni'| then it must have been \verb|'i'| on line 14, consistent with the implementation of \verb|type_Attribute| above it. Typechecking and translation are separated into two methods to emphasize that typechecking is not target-dependent, and to allow for more advanced uses, like type refinements and hypothetical typing judgements, that we do not describe here.
+
+\subsubsection{Active Bases}\label{abases}
+Each generic function is associated with an active base, which is an object implementing the \verb|ace.ActiveBase| interface. The active base specifies the \emph{base semantics} of that function. It controls the semantics of statements and expressions that do not have a clear ``primary'' subexpression for the dispatch protocol to defer to. A base is handed control over typechecking of statements and expressions in the same way as active types: via \verb|type_|$X$ and \verb|trans_|$X$ methods.  Each function can have a different base.
+
+Literals are the most prominent form given their semantics by an active base. Our example active base, \verb|clx.base|, assigns integer literals the type \verb|clx.int32| while floating point literals have type \verb|clx.double|, consistent with the semantics of OpenCL and C99. The \verb|clx.base| object is an instance of \verb|clx.Base| that is pre-constructed for convenience. Alternative bases can be generated via different constructor arguments. For example, \verb|clx.Base(flit_t=clx.float)| is a base semantics where floating point literals have type \verb|clx.float|. This is useful because some OpenCL devices do not support double-precision numbers, or impose a significant performance penalty for their use. Indeed, to even use the \verb|double| type in OpenCL, a flag must be toggled by a \verb|#pragma| (The OpenCL target we have implemented inserts this automatically when needed, along with some other flags, and annotations like \verb|kernel|).  Similarly, for some applications, avoiding accidental overflows is more important than performance.  Infinite-precision integers can be implemented as an active type (not shown) and the base can be asked to use it for numeric literals. In all cases, this occurs by inserting a constructor call form, as described above.% the constructor call form, described above, around integers to support this.
+
+The base also initializes the context and governs the semantics of variables and assignment. This can also permit it to allow for the use of ``built-in'' operators that were not explicitly imported. The semantics of \verb|get_global_id| and \verb|printf| are provided by \verb|clx.base|. In fact, the base provides extended versions of them (the former permits multi-dimensional global IDs, the latter supports typechecking format strings).A base which does not provide them as built-ins (requiring that they be imported explicitly) can be generated by passing the \verb|primitives=False| flag.
+
+\subsubsection{Expressiveness}\label{examples}
+Thus far, we have focused mainly on the OpenCL target and shown examples of fairly low-level active types: those that implement OpenCL's primitives (e.g. \verb|clx.Ptr|) and extend them in simple but convenient ways (e.g. \verb|clx.Cplx|).
+
+But Ace has proven useful for more than low-level tasks like programming a GPU with OpenCL. We now describe some interesting extensions that implement the semantics of primitives drawn from a range of different language paradigms, to justify our claim that these mechanisms are highly expressive. 
+
+\subsubsection{Growing a Statically-Typed Python Inside Ace}
+Ace comes with a target, base and type implementing Python itself: \verb|ace.python.python|, \verb|ace.python.base| and \verb|ace.python.dyn|. These can be supplemented by additional active types and used as the foundation for writing statically-typed Python functions. These functions can either be compiled ahead-of-time to an untyped Python file for execution, or be immediately executed with just-in-time compilation, just like the OpenCL examples (not shown in this proposal).% Many of the examples in the next section support this target in addition to the OpenCL target we have focused on thus far.
+
+\subsubsection{Recursive Labeled Sums}
+\begin{codelisting}
+\lstinputlisting{../ace-pldi14/datatypes_t.py}
+\caption{\texttt{[datatypes\_t.py]} An example using statically-typed functional datatypes.}
+\label{datatypest}
+\end{codelisting}
+\begin{codelisting}
+\lstinputlisting{../ace-pldi14/datatypes.py}
+\caption{\texttt{[datatypes.py]} The dynamically-typed Python code generated by running \texttt{acec datatypes\_t.py}.}
+\label{datatypes}
+\end{codelisting}
+Listing \ref{datatypest} shows an example of the use of statically-typed polymorphic recursive labeled sum types together with the Python implementation just described. It shows two syntactic conveniences that were not mentioned previously: 1) if no target is provided to \verb|ace.fn|, the base can provide a default target (here, \verb|ace.python.python|); 2) a concrete function can be generated immediately by providing a type assignment immediately in braces (in Python 3, a more convenient syntax is available). Listing \ref{datatypest} generates Listing \ref{datatypes}.
+
+Lines \ref{datatypest}.3-\ref{datatypest}.11 define a function that generates a recursive algebraic datatype representing a tree given a name and another Ace type for the data at the leaves. This type implemented by the active type family \verb|fp.Datatype|. A name for the datatype and the case names and types are provided programmatically on lines \ref{datatypest}.3-\ref{datatypest}.8. To support recursive datatypes, the case names are enclosed within a lambda term that will be passed a reference to the datatype itself. These lines also show two more active type families: units (the type containing just one value), and immutable pairs. Line \ref{datatypest}.13 calls this function with the Ace type for dynamic Python values, \verb|py.dyn|, to generate a type, aliased \verb|DT|. This type is implemented using class inheritance when the target is Python, as seen on lines \ref{datatypes}.1-\ref{datatypes}.13. For C-like targets, a \verb|union| type can be used (not shown).
+
+The generic function \verb|depth_gt_2| demonstrates two features. First, the base has been setup to treat the final expression in a top-level branch as the return value of the function, consistent with typical functional languages. Second, the \verb|case| ``method'' on line \ref{datatypest}.17 creatively reuses the syntax for dictionary literals to express a nested pattern matching construct. The patterns to the left of the colons are not treated as expressions (that is, a type and translation is never recursively assigned to them). Instead, the active type implements the standard algorithm for ensuring that the cases cover exhaustive and not redundant \cite{pfpl}. If the final case were omitted, for example, the algorithm would statically indicate a warning (or optionally an error, not shown), just as in ML.
+
+
+%\subsubsection{Active Targets and Cross-Compilation}\label{atargets}
+%An active target, which we describe being used above, is an instance of \verb|ace.ActiveTarget|. It has two primary roles in Ace: 1) providing an API for code generation to a target language, providing term and type constructors for use during translation (and, optionally, a type system implementation to support representational consistency checks); 2) implementing the interoperability layer to support calling of  generic or concrete function directly from Python, as described in Sec. \ref{implicit}.
+%
+%An active type or base can support multiple active targets by simply examining \verb|target| during translation (e.g. by performing capability checks using Python's \verb|hasattr| function). Alternatively, the active target can simulate the interface of a different target but generate code differently. For example, although our implementation of OpenCL's type system as a collection of active types and an active base relies on a target that supports OpenCL terms and types, our \verb|CUDA| and \verb|C99| targets provide partial support for the same term and type forms, in order to support cross-compilation. We will show the latter being used in Sec. \ref{examples}. 
+%
+
+%\subsection{Compositional Reasoning}\label{safety}
+%Every statement and expression in an Ace function is governed by exactly one active type, determined by the dispatch protocol, or by the single active base associated with the Ace function. The representational consistency check ensures that compilation is successful without requiring that types that abstract over other types (e.g. container types) know about their internal implementation details. Together, this permits compositional reasoning about the semantics of Ace functions even in the presence of many extensions. This stands on contrast to many prior approaches to extensibility, where extensions could insert themselves into the semantics in conflicting ways, making the order of imports matter (see Sec. \ref{related}). 
+
+%Type assignment to generic functions is similar in some ways to template specialization in C++. In effect, both a template header and type parameters at call sites are being generated automatically by Ace.% This simplifies a sophisticated feature of C++ and enables its use with other targets like OpenCL. %Other uses for C++ templates (and the preprocessor) are subsumed by the metaprogramming features discussed above\todo{cite template metaprogramming paper}.
+
+%\subsection{Within-Function Type Resolution}
+%\begin{codelisting}
+%\lstinputlisting{listing6.py}
+%\caption{\texttt{[listing6.py]} A function demonstrating whole-function type inference when multiple values with differing types are assigned to a single identifier, \texttt{y}.}
+%\label{inference}
+%\end{codelisting}
+%On line 5 in the generic \verb|map| function in Listing \ref{map}, the variable \verb|gid| is initialized with the result of calling the OpenCL primitive \verb|get_global_id|.  The type for \verb|gid| is never given explicitly. This is a simple case of Ace's {\em within-function type resolution} strategy (we hesitate to call it \emph{type inference} because it does not, strictly speaking, take a constraint-solving approach). In this case, the type of \verb|gid| will resolve to \verb|size_t| because that is the return type of \verb|get_global_id| (as defined in the OpenCL specification, which the \verb|ace.OpenCL| module follows). The result can be observed on Lines 11 and 24 in Listing \ref{mapout}. 
+%
+%Inference is not restricted within single assignments, as in the \verb|map| example, however. Multiple assignments to the same identifier with values of differing types, or multiple return statements, can be combined if the types in each case are compatible with one another (e.g. by a subtyping relation or an implicit coercion). In Listing \ref{inference}, the \verb|threshold_scale| function assigns different values to \verb|y| in each branch of the conditional. In the first branch, the value \verb|0| is an \verb|int| literal. However, in the second branch of the loop, the type depends on the types of both arguments, \verb|x| and \verb|scale|. We show two choices for these types on Lines 11 and 12. Type inference correctly combines these two types according to OpenCL's C99-derived rules governing numeric types (defined by the user in the \verb|OpenCL| module, as we will describe in Section \ref{att}). We can verify this programmatically on Lines 12 and 13. Note that this example would also work correctly if the assignments to \verb|y| were replaced with \verb|return| statements (in other words, the return value of a function is treated as an assignable for the purpose of type inference).
+
+
+\subsubsection{Remaining Tasks and Timeline}
+A paper on this work was recently rejected from PLDI 2014. We plan to resubmit this work to OOPSLA 2014, due on Mar. 25th, after completing the following tasks (largely after the Mar. 1 ICFP deadline):
+\begin{itemize}
+\item The reviewers asked for more details about the composition properties of extensions, the relationship to abstract data types, to work on staging and on how variables and contexts are treated. We will give more space to these issues in the new draft.
+\item We will provide more details, given the additional space available in an OOPSLA paper, of the examples other than OpenCL. We will consider using an example other than OpenCL to motivate the main body of the paper, so that the general distaste most PL researchers have for direct memory manipulation can be avoided. 
+\item We will attempt to connect better to the theoretical work we have done on @$\lambda$, to emphasize that this work is about integrating that mechanism into an existing language (with the compromises this must necessarily entail).
+\item The reviewers made several more concrete suggestions at different points in the paper that we will integrate.
 \end{itemize}
