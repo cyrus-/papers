@@ -1,5 +1,5 @@
 % !TEX root = omar-thesis-proposal.tex
-\input{../esop14/macros-atlam}
+\input{../att-icfp14/macros-atlam}
 \input{macros-T}
 \lstset{language=ML,
 basicstyle=\ttfamily\footnotesize,
@@ -11,7 +11,7 @@ morekeywords={newcon,extends,tycon,opcon,err,schema,fix,is},
 In this and the following two sections, we will focus on language-integrated, type-oriented mechanisms for implementing extensions to the static and dynamic semantics of programming languages. We will leave the syntax fixed, inverting the setup in the previous section. We do not believe  the two approaches to be incompatible with one another, but it is useful to consider the issues separately.
 
 \subsection{Foundations}
-Typed programming languages are typically organized around a collection of indexed type and operator constructors. The simply-typed lambda calculus (STLC), for example, provides a single type constructor, conventionally written $\rightarrow$, indexed by a pair of types, and two operator constructors, $\lambda$, indexed by a type, and $\opvar{ap}$, which can be thought of as being indexed trivially. It's static semantics can be written abstractly like this, to emphasize this uniform manner of thinking about type structure:
+Typed programming languages can be considered in terms of the collection of indexed type and operator constructors they provide. The simply-typed lambda calculus (STLC), for example, provides a single type constructor, \fvar{Arrow}, indexed by a pair of types, and two operator constructors: $\opvar{lam}$, indexed by a type, and $\opvar{ap}$, which can be thought of as being indexed trivially. It's static semantics can be written abstractly like this, to emphasize this uniform way of thinking about type structure:
 \begin{figure}[h]
 \small
 \vspace{-8pt}
@@ -23,39 +23,37 @@ Typed programming languages are typically organized around a collection of index
 \inferrule[arrow-I]{
 	\jet{\eCtxX{\eCtx}{x}{\tau}}{e}{\tau'}	
 }{
-	\jetX{\lambda[\tau]({x}.e)}{\fvar{Arrow}[(\tau, \tau')]}
+	\jetX{\opvar{lam}[\tau]({x}.e)}{\fvar{Arrow}[(\tau, \tau')]}
 }
 
 \inferrule[arrow-E]{
 	\jetX{e_1}{\fvar{Arrow}[(\tau, \tau')]}\\
 	\jetX{e_2}{\tau}
 }{
-	\jetX{\texttt{ap}[()](e_1; e_2)}{\tau'}
+	\jetX{\opvar{ap}[()](e_1; e_2)}{\tau'}
 }
 \end{mathpar}
 \vspace{-8pt}
 \caption{Static semantics of the simply typed lambda calculus.}
 \end{figure}
 
-We might extend this language with universally quantified and recursive types by adding the type constructors $\forall$ and $\mu$, which can be thought of as higher-order type constructors, and their associated operator constructors (see \cite{pfpl}). 
-
-It is tempting to stop here: the language now supports general recursion (i.e. it is  Turing complete) and the dynamic semantics of sums, products and inductive and co-inductive types can be weakly defined by a method analagous to Church encodings in the untyped lambda calculus \cite{reynolds}. This is of clear theoretical and pedagogical interest. But this calculus is plainly unsuitable as a programming language. Reynolds, striking a cautionary tone reminiscent of Perlis in his description of the ``Turing tarpit'' \cite{perlis}, put it succinctly \cite{reynolds}: 
+We might extend this language with universally quantified and recursive types by adding the type constructors $\fvar{Forall}$ and $\fvar{Mu}$, which are indexed by types under a binder, and their associated operator constructors (see \cite{pfpl} for a review). It is tempting to stop here: the language now supports general recursion (i.e. it is  Turing complete) and the dynamic semantics of sums, products and inductive and co-inductive types can be defined by a method analagous to Church encodings in the untyped lambda calculus \cite{reynolds}\todo{what to cite for this?}. This is of clear theoretical and pedagogical interest, but this calculus is plainly impractical as a programming language. Reynolds, striking a cautionary tone reminiscent of Perlis in his description of the ``Turing tarpit'' \cite{Perl82a}, put it succinctly \cite{Reynolds94anintroduction}: 
 \begin{quote}
-To say that any reasonable function can be expressed by some program is not to say that it can be expressed by the most reasonable program. It is clear that the language requires a novel programming style.\todo{include bit about efficiency too}
+To say that any reasonable function can be expressed by some program is not to say that it can be expressed by the most reasonable program. It is clear that the language requires a novel programming style. Moreover, it is likely that certain important functions cannot be expressed by their most efficient algorithms.
 \end{quote}
 
-A simple calculus, equipped perhaps with some purely syntactic desugarings of the sort that a Church-style  encoding defines, very often suffices when only the dynamic semantics of abstractions are of importance. But continuing to add type and operator constructors (collectively, \emph{constructs}) to a language can make statically reasoning about programs simpler and more precise and support a more natural programming style. 
+A simple calculus, equipped perhaps with some purely syntactic desugarings as given by a Church-style  weak encoding, can often suffice when only the dynamic semantics of abstractions are of importance. But continuing to build new type and operator constructors (collectively, \emph{constructs}) into a language can make statically reasoning about programs simpler and more precise, support a more natural programming style and endow the language with a more favorable cost semantics. 
 
-Consistent with this view, typed programming languages generally expose a richer semantics externally than their compilers work with internally.  
-A functional language like ML, for example, might expose $n$-ary product types (tuples), labeled product types (records), recursive labeled sum types (datatypes) and forms of type abstraction (polymorphism and abstract  types). A compiler for the language might then, after typechecking these constructs according to a richer static semantics, translate these to an intermediate  language (IL) with only simple products and sums for further compilation to machine code. Correctly implementing the dynamic semantics of the language is the primary concern during this phase, so a simple IL that decreases the number of cases that must be considered when implementing and verifying the compiler is a wise choice (though dispensing with a type system entirely is not, as we will discuss).
+Consistent with this view, typed programming languages generally expose a richer set of constructs externally than their compilers work with internally.  
+A functional language like ML, for example, might expose $n$-ary product types (tuples), labeled product types (records), recursive labeled sum types (datatypes) and forms of type abstraction (polymorphism and abstract  types). A compiler for the language might then, after typechecking a program according to the richer static semantics that these constructs define, translate it to an intermediate  language (IL) with only simple product and sum types, and perhaps some machine-oriented constructs like arrays, for further compilation to machine code. Correctly implementing the dynamic semantics of the language becomes the primary concern during this phase, so a simple IL that decreases the number of cases that must be considered when implementing and verifying the compiler is a wise choice.
 
-It is again tempting to stop here. Indeed, languages like ML are often referred to as ``general-purpose languages'' and have been used successfully for a range of computing tasks. The constructs they provide certainly occupy a ``sweet spot'' in the design space, and many abstractions can be encoded using these constructs in a completely satisfactory manner. But claims that they are suitable for \emph{all} purposes are not backed by any ``universality'' theorems stronger than those for the simple calculus described above. In fact, situations continue to arise in both research and practice where new constructs are clearly desirable because a useful abstraction can only be weakly defined in terms of existing constructs, or the definition is unnecessarily awkward:
+It is again tempting to stop here. Indeed, languages like ML are often referred to as ``general-purpose languages'' and have been used successfully for a range of computing tasks. The constructs they provide certainly occupy a ``sweet spot'' in the design space, and a variety of higher-level abstractions can be strongly defined in a satisfying manner. But claims that they are suitable for \emph{all} purposes are not backed by any ``universality'' theorems stronger than those for the simple calculus described above. In fact, situations continue to arise in both research and practice where new constructs are clearly needed because a useful typed abstraction can only be weakly defined in terms of existing constructs, or the definition is impractically verbose or inefficient:
 
 \begin{enumerate}
-\item General-purpose abstractions are considerably varied. There are many  variations on record types, for example: structurally-typed records, or records with forms of dynamic dispatch (i.e. objects, as in Wyvern). We will show an example of prototypic dispatch, for example, and argue that we cannot safely define it by a purely syntactic desugaring to a language like ML. Similarly, sum types are awkward to work with in object-oriented languages, and also admit variants that are interesting to explore.
+\item General-purpose abstractions continue to evolve and admit variants. There are many  variations on record types, for example: records with functional record update, prototypic delegation or fixed field ordering all have valid uses, and we will give all of these as examples. Similarly, sum types are awkward to encode and often unsafe to define using object-oriented constructs, and also admit variants (e.g. open sums, as we will discuss).
 
-\item More interestingly, specialized type systems that enforce stronger invariants than general-purpose abstractions are capable of enforcing are often proposed by researchers. One need not take more than a cursory glance through the literature to discover specialized type systems for parallel programming \cite{a,b}, concurrent programming \cite{cml,a,b}, distributed programming \cite{tom7}, dataflow programming \cite{reactiveml}, authenticated data structures \cite{popl13}, information flow \cite{walker00, smith2001}, databases \cite{db}, aliased references \cite{naden12}, effects \cite{effects},  network protocols \cite{sekar99}, regular expressions \cite{regex}, units of measure \cite{keneddy} and many others.
-\item Interoperability layers that allow programmers to safely and naturally interact with libraries written in a different language require enforcing the type system of that language within the calling language. Using library-based interoperability layers today can lead to safety issues when this is not possible, even when both languages are separately known to be safe.
+\item Perhaps more interestingly, specialized type systems that enforce stronger invariants than general-purpose constructs are capable of enforcing are often proposed by researchers. One need not take more than a cursory glance through the literature to discover specialized type systems for parallel programming \cite{a,b}, concurrent programming \cite{cml,a,b}, distributed programming \cite{tom7}, dataflow programming \cite{reactiveml}, authenticated data structures \cite{popl13}, information flow \cite{walker00, smith2001}, databases \cite{db}, aliased references \cite{naden12}, effects \cite{effects},  network protocols \cite{sekar99}, regular expressions \cite{regex}, units of measure \cite{keneddy} and many others. These examples are all implemented non-orthogonally (typically as extended versions of an existing language).
+\item Interoperability layers that allow programmers to safely and naturally interact with libraries written in a different language require enforcing the type system of the foreign language within the calling language. Using  an interoperability layer that does not enforce these invariants in the calling language can lead to safety issues, even when both languages are separately known to be safe. Interoperability is a particularly important concern when transitioning to a new language, so this is likely a significant barrier to adoption of modern language constructs in practice.
 \end{enumerate}
 An extensible programming language could address these problems by providing a safe language-integrated mechanism for introducing new type and operator constructors and implementing their associated static and dynamic semantics directly, and we will explore this in the next two sections. Let us first take a detour into a typical compiler to better motivate the mechanisms that we will introduce into the language.
 %Library developers need only consider which abstractions are most appropriate for their domain, without also considering whether these constructs can be exposed using abstractions appropriate to the domains of client code. Clients can simply import any necessary constructs when using a library that relies on them, preserving safety and ease-of-use without the use of  wrappers and glue code. We show this competing approach in Figure \ref{approaches}(b).
@@ -65,25 +63,25 @@ An extensible programming language could address these problems by providing a s
 The monolithic character of most programming languages is reflected in, and perhaps influenced by, the most common abstractions used for implementing programming languages.
 Let us consider an implementation of the STLC. 
 A compiler written using a functional language will invariably represent the primitive type  and operator constructors using {closed} recursive sums. 
-A simple implementation in Standard ML might be based around these datatypes (where variables, binders and operator application are handled separately, not shown)\footnote{This is essentially the approach that we took in the infrastructure for the coding assignments in 15-312.}:
+For example, a simple implementation in Standard ML might be based around these datatypes (where variables, binders and operator application to arguments are handled separately, not shown)\footnote{This is essentially the approach that we took in the infrastructure for the coding assignments in 15-312.}:
 \begin{lstlisting}
-  datatype Ty = Arrow of Type * Type
-  datatype Op = Lam of Type | Ap 
+  datatype Ty = Arrow of Ty * Ty
+  datatype Op = Lam of Ty | Ap 
 \end{lstlisting}
 
-The compiler front-end, which consists of a typechecker and translator to a suitable intermediate language   proceed by exhaustive case analysis over the constructors of \verb|Op|.
+%The compiler front-end, which consists of a typechecker and translator to a suitable intermediate language,    proceeds by exhaustive case analysis over the constructors of \verb|Op|.
 
 In a class-based object-oriented implementation of the STLC, we might instead encode type and operator constructors as subclasses of abstract classes \verb|Ty| and \verb|Op|. If typechecking and translation proceed by the common \emph{visitor pattern}, dispatching against a fixed set of {known} subclasses of \verb|Op|, then we encounter a similar issue: everything is defined at once. 
 
-This issue was first discussed by Reynolds \cite{Reynolds75} and was dubbed the \emph{expression problem} by Wadler \cite{wadler1998expression}. A number of mechanisms have been proposed that allow new cases to be added to data types and the functions that operate over them in a modular manner. 
+This issue was first discussed by Reynolds \cite{Reynolds75} and was dubbed the \emph{expression problem} by Wadler \cite{wadler1998expression}. A number of mechanisms have since been proposed that allow new cases to be added to data types and the functions that operate over them in a modular manner. 
 In functional languages, we might turn to \emph{open datatypes and open functions} \cite{conf/ppdp/LohH06, Millstein:2002:MTH:581478.581489}. For example, we might add a new type constructor, \verb|Tuple|, indexed by a list of types, and two new operator constructors: an introductory form, \verb|NewTuple|, indexed trivially, and an elimination form, \verb|Prj|, indexed by a natural number, as follows:
 \begin{lstlisting}
-  newcon Tuple of Type list extends Ty
+  newcon Tuple of Ty list extends Ty
   newcon NewTuple extends Op
   newcon Prj of nat extends Op
 \end{lstlisting}
 
-The logic for functionality like typechecking and translation, if written as open functions, can then be implemented for only these new cases. For example, the \verb|optype| function that synthesizes a type for an operator invocation given a context and a list of arguments might be extended to support the new constructor \verb|Prj| like so:
+The logic for functionality like typechecking and translation, if written using open functions, can then be implemented for only these new cases. For example, the \verb|optype| function that synthesizes a type for an operator invocation given a context and a list of arguments might be extended to support the new constructor \verb|Prj| like so:
 \begin{lstlisting}
   optype (ctx, Prj(n), [e]) = case exptype (ctx, e) of 
       Tuple(ts) => (case List.nth n ts of 
@@ -114,27 +112,18 @@ class Prj extends Op {
 }
 \end{lstlisting} 
 
-If we allowed users to load definitions like these into our compiler, we will have succeeded in creating an  extensible compiler, albeit one where orthogonality is not guaranteed (we will return to this point). We have not, however, created an extensible programming language because other compilers for the same language will not necessarily support the same extensions. These mechanisms are not \emph{language-integrated}. 
-If our newly-introduced constructs are exposed at a library's  interface boundary, clients of that library who are using different compilers face the same problems with client compatibility that those using different languages face (as described in Sec. \ref{external-approaches}). %That is, {extending a language by extending a single compiler for it is morally equivalent to creating a new language}. 
+If we allowed users to load definitions like these into our compiler, we will have succeeded in creating an  extensible compiler, albeit one where orthogonality is not guaranteed (we will return to this point). We have not, however, created an extensible programming language because other compilers for the same language will not necessarily support the same extensions. These mechanisms are not \emph{language-integrated}, so if our newly-introduced constructs are exposed at a library's  interface boundary, clients of that library who are using different compilers face the same problems with client compatibility that those using different languages face (as described in Sec. \ref{external-approaches}). %That is, {extending a language by extending a single compiler for it is morally equivalent to creating a new language}. 
 Nevertheless, these two strategies give us the conceptual seeds for the approaches that we will take in Secs. \ref{atlam} and \ref{ace}, respectively. 
-In both cases, we introduce into the language a mechanism similar to, but more constrained and specialized  than, the two above.  Because it is part of the language, all compilers must support it, avoiding this issue.\footnote{For  languages where a canonical implementation {is}, unfortunately, the specification (e.g. Haskell and Scala), the mechanisms we introduce can be left in the compiler if the build system loads and activates all needed extensions when linking two libraries. The benefits related to safety and conservativity apply to this step. We do not consider this design further in this thesis.}
+In both cases, we introduce into the language a mechanism similar to, but more constrained and specialized  than, the two above.  Being part of the language, all compilers must then support all extensions, avoiding the client compatibility issue.\footnote{For  languages where a canonical implementation {is}, unfortunately, the specification (e.g. Haskell and Scala), the mechanisms we introduce can be left in the compiler if the build system loads and activates all needed extensions when linking two libraries. The advances related to safety, orthogonality and conservativity apply also to this design, but we do not consider it further in this thesis.}
 
-To enable this, the language must allow for the introduction of new type constructors, like \verb|Tuple|, operator constructors, like \verb|NewTuple| and \verb|Prj|, and their associated static and dynamic semantics. Type and operator constructors can no longer be indexed by compiler-internal values in such a design. 
-%We are also be considering only simply-typed languages -- those with a clear phase separation between compile-time and run-time -- so we will not consider dependent types, though extensibility mechanisms for dependently typed languages are an interesting avenue of future work.\footnote{Note that types indexed by expressions are distinct from type names that have metadata expressions associated with them, as in Wyvern. Metadata does not impact type equality, for example.} 
-We will instead use type-level values. This requires supporting more kinds of values in the type-level language, conventionally written $\tau$, than just types, and thus giving the type-level language a non-trivial static and dynamic semantics (the ``types'' of type-level terms are called \emph{kinds} for clarity). Types simply become a particular kind of type-level value (we will call it $\star$) and are introduced uniformly by naming an available type constructor and providing an index of the kind that constructor specifies. For example, the type constructor \verb|Tuple| is indexed by values of kind \verb|list[|$\star$\verb|]| so a 3-tuple type might be written \verb|Tuple[cons(nat, cons(string, cons(nat, nil)))]|, where the list inside the braces is a \emph{type-level list}. Note that we do not identify constructors and type-level functions as in some kind systems (\verb|Tuple| is \emph{not} itself of kind \verb|list[|$\star$\verb|] |$\rightarrow$\verb| |$\star$). 
-
-Operator constructors are similarly indexed by type-level values. For example, the projection operator written \verb|#2| in a language like Standard ML might be written \verb|prj[2]| in our work. Here, \verb|prj| is an operator constructor indexed by a type-level natural number. 
-To define an operator, we must also provide it with a static and dynamic semantics. We will, as in our work on Wyvern and consistent with our exposition above, take an approach similar to Harper and Stone in their definition of Standard ML where the dynamic semantics of external language terms are given by translation into a  typed internal language \cite{Harper00atype-theoretic}. Operator definitions must work with types, type indices and operator indices, all of which are type-level values, so we argue that it is sensible to give these elaborations as type-level functions, if they are constrained appropriately, as we will discuss.
 
 % We will show how, by integrating typed compilation techniques and a form of data hiding with similarities to abstract types into the semantics of operators, we can achieve type safety and conservativity of the language as a whole, despite this level of extensibility. Decidability is achieved by ensuring that the type-level language is total. Type equality is made decidable in a simple manner: by preventing type-level functions from appearing in type indices.
 
 %The design described above suggests we may now need to add another layer to our language, above the type-level language (conventionally, $\tau$) and expression language (conventionally, $e$), where extensions are implemented. In fact, we will show that \textbf{a natural place for type system extensions is within the type-level language}. The intuition  is that extensions to a statically typed language's semantics will need to manipulate types as values at compile-time. Many languages already allow users to write type-level functions for various reasons, effectively supporting this notion of types as values at compile-time. The type-level language is often constrained by its own type system, where the types of type-level terms are called \emph{kinds} for clarity,  that prevents type-level functions from causing problems during compilation. The kind system is often more constraining than the type system is (e.g. it might permit only terminating functions, to ensure that typechecking is decidable). This is precisely the structure that a distinct extension layer would have, and so we will show that is quite natural to unify the two.
 
-We begin in Sec. \ref{atlam} by developing a core calculus called @$\lambda$ and focusing on theoretical issues, including type safety, decidability and {conservativity} (that extensions cannot weaken one another, in any combination). We will also sketch a type-directed desugaring mechanism for common syntactic forms that targets this core calculus and give examples of interesting extensions that are only weakly definable using the general-purpose constructs in functional languages. We then continue on in Sec. \ref{ace} by designing a full programming language called Ace. We will show richer examples of statically-typed general-purpose abstractions, as well as more specialized abstractions, that can be expressed as extensions within Ace. Ace  uses Python as its type-level language. This contribution is thus fundamentally a means for bootstrapping a highly-expressive extensible static type system atop facilities, like quotations and objects, that are already available in widely-adopted languages. We argue that this is a useful bridge between existing monolithic languages and extensible languages. Using a type-level language which admits few useful reasoning principles makes being certain of safety guarantees more difficult, so it is clearly not a theoretically flawless design (though with some clever bootstrapping, we conjecture that it may be possible to implement a statically-typed subset of Python that enforces the invariants necessary to prove safety theorems analagous to those of @$\lambda$).
+We begin in Sec. \ref{atlam} by developing a core calculus called @$\lambda$ and focusing on theoretical issues, including type safety, decidability and {conservativity} (that extensions cannot weaken one another, in any combination). We will also sketch a flexible type-directed desugaring mechanism that targets this core calculus and give examples of simple but interesting extensions that are only weakly definable using the general-purpose constructs in functional languages. We then continue on in Sec. \ref{ace} by designing a full programming language called Ace. We will show richer examples of statically-typed general-purpose abstractions, as well as more specialized abstractions, that can be expressed as extensions within Ace. Ace  uses Python as its type-level language and supports the definition of user-defined internal languages, rather than picking a fixed target as in @$\lambda$.  Using a type-level language that provides few strictly enforced safety guarantees makes giving strong theoretical results about Ace more difficult, but we include checks similar to those in @$\lambda$ that require intention to subvert. The claimed contribution is thus fundamentally that Ace shows how to {bootstrap} a highly-expressive extensible static type system atop facilities, like quotations and objects, that are already available in widely-adopted languages. We argue that this is a useful bridge between existing monolithic languages and extensible languages. We conjecture that it would be possible to bootstrap a statically-typed subset of Python that, if used ubiquitously during compilation, would be sufficient to provide stronger theoretical guarantees as well.
 
 %But, as mentioned in Section \ref{language-integrated-approaches}, some significant challenges must be addressed before such a mechanism can be relied upon. The desire for expressiveness must be balanced against  concerns about maintaining various safety properties in the presence of arbitrary combinations of user-defined  extensions to the language's core semantics. The mechanism must ensure that desirable \emph{metatheoretic properties} (e.g. type safety, decidability) of the language are maintained by extensions. Because multiple independently developed extensions might be used within one program, the mechanism must further guarantee that extensions are \emph{conservative}. These are the issues we seek to address in the next two sections.
-
-\newpage
 
 \section{@$\lambda$}\label{atlam}
 %Programming languages are typically organized around a monolithic collection of indexed type and operator constructors. Let us begin by considering the simply-typed lambda calculus (STLC). It provides a single type constructor, indexed by a pair of types, that we will call $\fvar{Arrow}$ for uniformity. It also provides two operator constructors: $\lambda$, indexed by a type, and $\texttt{ap}$, indexed trivially. We can specify the static semantics of the STLC as follows, using a uniform abstract syntax where type and operator indices are written in braces to emphasize this way of thinking about its structure:
@@ -243,11 +232,14 @@ We begin in Sec. \ref{atlam} by developing a core calculus called @$\lambda$ and
 \begin{figure}[t]
 \small
 $$\begin{array}{rccl}	
-\textbf{programs} & \rho & ::= & \pfam{\familyDf}{\progsort} \pipe \pdef{t}{\kappa}{\tau}{\progsort} \pipe e\\
-\text{operators}		&	\theta	&	::= &	\tops{op}{\kappaidx}{i}{a}{\taut{def}} \pipe 
+\textbf{programs} & \rho & ::= & \pfam{\familyDf}{\progsort} 
+%\pipe \pdef{t}{\kappa}{\tau}{\progsort} 
+\pipe e\\
+		&	\theta	&	::= &	\tops{op}{\kappaidx}{i}{a}{\taut{def}} \pipe 
 												\topp{\theta}{\theta}\\
 \\
 \textbf{external terms} 				&	e	&	::=	&	\evar{x} \pipe 
+														\efix{x}{\tau}{e} \pipe 
 														\elam{\evar{x}}{\tau}{e} \pipe 
 														\eop{Tycon}{op}{
 															\tauidx
@@ -255,6 +247,25 @@ $$\begin{array}{rccl}
   												    		\splat{e}{1}{n}
 														} \\
 									& 		&		& 	\\
+
+
+\textbf{internal terms} 				& 	\iota	&	::=	&	\evar{x} \pipe 
+												\ifix{\evar{x}}{\sigma}{\iota} \pipe
+												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
+												\iapp{\iota_{1}}{\iota_{2}} \pipe
+												\ipair{\iota_{1}}{\iota_{2}} \pipe 
+												\ifst{\iota} \pipe
+												\isnd{\iota}
+												\\
+							& & \pipe & \iinl{\sigma_2}{e} \pipe \iinr{\sigma_1}{e} \pipe \icase{e}{x}{e_1}{x}{e_2} \\
+							& 		& 	\pipe	& 
+												\iintlit \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}}  
+												\\
+%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
+\textbf{internal types}			&	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe \dpair{\sigma_1}{\sigma_2} \pipe \dsum{\sigma_1}{\sigma_2} \pipe \dint 
+												
+\\
+\\
 							
 \hspace{-5pt}\textbf{type-level terms} 	& \tau 	& ::= 	& 	\tvar{t} \pipe 
 														\tlam{t}{\kappa}{\tau} \pipe 
@@ -268,19 +279,21 @@ $$\begin{array}{rccl}
 														\tfst{\tau} \pipe 
 														\tsnd{\tau} 
 														\\	
-
 \text{types} 						& 		& \pipe	& 	\ttypestd \pipe \tfamcase{\tau}{Tycon}{x}{\tau_1}{\tau_2}\\
 						%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
-\text{structural equality}  & & \pipe & 					\tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} 
+\text{equality}  & & \pipe & 					\tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} 
 														\\																																					
 \text{elaborations} 				& 		 & 	\pipe	&	\tden{\tauiterm}{\tautype} \pipe \terr \pipe \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
  %& & \pipe & 
 %														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
 %														 \\
 
-\text{reified IL}		&		&	\pipe	&	\titerm{\iota} \pipe \titype{\sigma} \\
-
-												\\
+\text{reified IL}		&		&	\pipe	&	\titerm{\bar \iota} \pipe \titype{\bar \sigma} \\
+% &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
+% 												\trepof{\tau} \pipe \dup{\tau}\\
+	& \bar{\iota} & ::= & x \pipe \ifix{x}{\bar \sigma}{\bar \iota} \pipe \ilam{x}{\bar \sigma}{\bar \iota} \pipe \iapp{\bar \iota_1}{\bar \iota_2} \pipe \cdots \pipe \iup{\tau} \pipe \tvalof{\tauiterm}{\tautype} \\						
+ & \bar{\sigma} & ::= & \darrow{\bar \sigma_1}{\bar \sigma_2} \pipe \cdots \pipe \dup{\tau} \pipe \trepof{\tau} \\
+\\												
 \textbf{kinds} 					& \kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \dint \pipe
 											    \kstr \pipe
 												\kunit \pipe 
@@ -291,26 +304,9 @@ $$\begin{array}{rccl}
 \\												
 %\textbf{ops signature}			& \Theta	&	::=	&	\kOpEmpty \pipe \kOp{\Theta}{op}{\kappai}\\
 %											 							&		&		&	\\
-\textbf{internal terms} 				& 	\iota	&	::=	&	\evar{x} \pipe 
-												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
-												\iapp{\iota_{1}}{\iota_{2}} \pipe
-												\ifix{\evar{f}}{\sigma}{\iota} \pipe
-												\ipair{\iota_{1}}{\iota_{2}} \pipe 
-												\ifst{\iota} \pipe
-												\isnd{\iota}
-												\\
-							& 		& 	\pipe	& 
-												\iintlit \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}}  
-												\\
- &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
-%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
-\textbf{internal types}			&	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe
-												\dint \pipe
-												\dpair{\sigma_1}{\sigma_2} \pipe
-												\trepof{\tau} \pipe \dup{\tau}\\
 \end{array}$$
 \vspace{-10pt}
-\caption{\small Abstract syntax of \atlam. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{Tycon}$ ranges over type constructor names and $\opvar{op}$ ranges over operator constructor names, $\tstr{str}$ ranges over string literals, $\iintlit$ ranges over integer literals and $\oplus$ ranges over the standard total binary operations on integers.%The productions related to the internal language are written using generators $\mathcal{G}$ and $\mathcal{S}$ to avoid duplicating the syntax of common terms.
+\caption{\small Syntax of Core \atlam. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{Tycon}$ ranges over type constructor names, $\opvar{op}$ ranges over operator constructor names, $\tstr{str}$ ranges over string literals, $\iintlit$ ranges over integer literals and $\oplus$ ranges over the standard total binary operations on integers.%The productions related to the internal language are written using generators $\mathcal{G}$ and $\mathcal{S}$ to avoid duplicating the syntax of common terms.
 \label{grammar}}
 \end{figure}
 \begin{figure}[t]
@@ -333,22 +329,28 @@ end
 \caption{An implementation of primitive natural numbers as internal integers in @$\lambda$.}
 \label{nat-atlam}
 \end{figure}
-In this section, we will develop an ``actively-typed'' version of the simply-typed lambda calculus with simply-kinded type-level computation called @$\lambda$. In the semantics for this calculus, we will integrate typed compilation techniques and a form of type abstraction to allow us to prove key type safety, decidability and non-interference theorems. The abstract syntax of @$\lambda$ is in Fig. \ref{grammar}. 
+In this section, we will develop an ``actively typed'' version of the simply-typed lambda calculus with simply-kinded type-level computation called @$\lambda$. More specifically, the level of types, $\tau$, will itself form a simply-typed lambda calculus, where the ``types'' classifying type-level terms are called \emph{kinds} to distinguish them from the types classifying expressions, which are just one kind (written $\star$) of type-level value. In the semantics for this calculus, we will integrate typed compilation techniques and a form of type abstraction to allow us to prove key type safety, decidability and conservativity theorems. The syntax of @$\lambda$ is given in Fig. \ref{grammar}. An example of a program that introduces and uses primitive natural numbers, essentially implementing the semantics of G\"odel's \textbf{T} by translation to integers internally, is given in Fig. \ref{nat-atlam}\todo{use proper syntax}. We do not, of course, deny that natural numbers can be strongly encoded by existing means (e.g. as an abstract type); we will provide more sophisticated examples after explaining the core mechanism with this simple example. %It consists of:
+%a type constructor declaration, $\fvar{Nat}$, indexed trivially, together with three operator constructors, also all indexed trivially, that implement the standard introductory forms for natural numbers as well as the recursor operator (as in G\"odel's T \cite{pfpl}). Following the type constructor declaration, we apply $\fvar{Nat}$ with the trivial index, $\tunit$, to form the type $\tvar{nat}$. Finally, we write an external term that uses the operators associated with $\fvar{nat}$ and the built-in constructor $\fvar{Parr}$, governing partial functions, to define an addition function and compute the addition of the natural numbers  two and two. We will introduce a more convenient concrete syntax in later portions of this thesis; for now we will restrict ourselves to the abstract syntax so that this example can directly aid in understanding the semantics.
 
-The semantics of the language are in the style of the Harper-Stone elaboration semantics for Standard ML: all terms in an external language, $e$, are simultaneously assigned a type and an elaboration to a term, $\iota$, in a fixed typed internal language. The mechanism checks that any generated elaborations are \emph{type preserving} -- that all external terms of a particular type, $\tau$, elaborate to internal terms with a consistent internal type, $\sigma$ -- following the approach taken in the TIL compiler for Standard ML by Morrisett et al. \cite{TIL}. This allows the semantics to be reasoned about compositionally and, when combined with type safety of the internal language, gives us type safety of the extensible external language. 
+\subsection{Programs}
 
-This design ensures that global properties that the internal language maintains are guaranteed to hold no matter which extensions are introduced. In other words, extension providers cannot implement type systems weaker than the type system of the internal language. Providers are, however, able to implement type systems that maintain invariants stronger than those the internal type system can maintain. The internal language of @$\lambda$ is PCF with simple products and one base type, integers. Because of the availability of the fixpoint operator, the internal language is universal (i.e. Turing-complete).
+A program, $\rho$, consists of a series of static declarations followed by an external term, $e$. The syntax for external term contains variables, fixpoints\todo{maybe we should actually call this @PCF???}, functions, and a uniform form for other operator invocations, which we will discuss below. Compiling a program consists of first \emph{kind checking} its static declarations and type-level terms, $\tau$, then \emph{type checking} the external term and, simultaneously, \emph{translating} it to a term, $\iota$, in the typed internal language. In our calculus, the internal language is essentially Plotkin's PCF with binary product and sum types and a single base type of integers. The typing judgement thus simultaneously relates an external term to a type and an internal term: 
+$$\ecompilesX{e}{\tau}{\iota}$$ 
 
-It is reasonable, if we wish to actually program with such a language, to permit only the addition of deterministic, decidable rules to the semantics. Extension logic is thus implemented in a functional style  (essentially, lifting fragments of the typechecker into the type-level language), rather than extracted from inductive specifications, like those at the beginning of Sec. \ref{att}\footnote{Though we will not explore this further in this thesis, a system for extracting such a function from a declarative specification could potentially be implemented using the techniques in Sec. \ref{aparsing} -- a \emph{kind-specific language}!}. This has the added benefit of giving providers finer-grained control over error reporting. When extracting an implementation from a typical inductive specification, which only specifies ``success conditions'', it is difficult to provide different error messages at different failure points within a single rule.
-%In this section, we will sketch a calculus where new type families and operator families can be introduced by users. The type synthesis and translation logic that implements the desired static and dynamic semantics, respectively, for these is implemented in the type-level language. 
+This judgement follows conventions for a typed lambda calculus in most respects. $\Gamma$ is a context mapping variables to types and obeys standard structural properties. The key novelty here is that the type and operator constructors available for use within $e$ are not fixed by the language, but rather are determined by the \emph{constructor context}, $\fvalCtx$, which can be extended by user-defined declarations.
 
-To give a first example, the code in Fig. \ref{nat-atlam} (written using concrete syntax) shows how to introduce a new type constructor, $\fvar{Nat}$, indexed trivially (i.e. by a type-level value of kind 1, also known as unit). Types themselves are type-level values of kind $\kTypeBlur$ and are introduced by naming a type constructor and providing an index of the appropriate kind: $\ttype{Nat}{\tunit}$. To ensure that type equality is decidable, type constructors can only be indexed by values of a kind for which equality is ``trivially'' decidable (i.e. where semantic equality coincides with syntactic equality). This means that types themselves, as well as type-level data structures containing values of kinds with this property, can be used, while type-level functions cannot. We leave a richer consideration of type equality to future work for now.
+\subsection{Type Constructors, Types and Type Equivalence}
+New type constructors are declared at the top-level of a program using \textsf{tycon}. Each type constructor  must have a unique name, e.g. \fvar{Nat}. We do not consider the issue of naming conflicts, under the assumption that unique names will be generated by some external mechanism (e.g. a URI-based scheme, as in Java). Type constructors are indexed by type-level values, so the type constructor must also specify an \emph{index kind}, $\kappaidx$. To permit the implementation of interesting type systems, the type-level language includes additional kinds of data beyond types themselves. We lift several  standard functional types to the level of kinds: here, unit ($\kunit$), numbers ($\dint$), binary sums\todo{add sums to TL}, binary products ($\kpair{\kappa_1}{\kappa_2}$) and lists ($\klist{\kappa}$). We also includes labels, \todo{label kind}, which can be thought of as type-level strings whose bodies are restricted to prevent ambiguities in the concrete syntax we will later discuss. Labels have no elimination form (they can only be compared, in our calculus only for equality). Our first example, to avoid complexity, is indexed trivially, i.e. by unit kind, $\kunit$, but we will show examples of type constructors that are indexed in more interesting ways in later portions of this work. For example, $\fvar{Tuple}$ will be indexed by a list of types, and $\fvar{LabeledTuple}$ will indexed by a list pairing labels with types. Types are type-level values of kind $\star$ and are introduced by applying a declared type constructor to a type-level term of its index kind, e.g. $\ttype{Nat}{\tunit}$. Types can also be case analyzed to extract their index. Like open datatypes, there is no notion of exhaustiveness; there must always be a default case, here written \textsf{ow} (``otherwise'').
 
-To ensure that compilation is type-preserving, as described above, each type must have an internal type, called its \emph{representation}, associated with it. The representation of a type might depend on its index, so each type constructor must declare a type-level function, called its \emph{representation schema}, that returns an internal type given a type's index. An internal type, $\sigma$, is reflected as a type-level term of kind $\kIType$ via the introductory form $\blacktriangledown(\sigma)$. Because $\fvar{Nat}$ is indexed trivially, it simply returns the reflected form of the internal type $\mathbb{Z}$. %The sort $\sigma$ also contains forms $\trepof{\tau}$ and $\dup{\tau}$. The former allows one to refer, abstractly, to the representation of the type $\tau$, while the latter enables the interpolatation of a type-level value of kind $\kIType$.
+Type constructors are not first-class; they do not themselves have arrow kind as in some kind systems (e.g.  \cite{Watkins08}; Ch. 22 of \emph{PFPL} describes a related system \cite{pfpl}). This neatly avoids some complexities in these systems relating to the decidability of type equivalence. In our setting, two types are considered equivalent if they apply the same constructor, identified by name, to equivalent indices. Going further, we ensure that deciding type equivalence requires only checking for syntactic equality of normal forms (i.e. $\beta$-equivalence) by imposing the restriction that type constructors can only be indexed by kinds for which semantic equivalence coincides with  $\beta$-equivalence. This is acceptable for many interesting examples. We leave safely loosening these restrictions by introducing a notion of definitional equivalence of types and allowing extension providers to extend it as future work (this would impose non-trivial proof obligations onto extension developers that could not be resolved by a simply-kinded statics nor checked during normalization).
 
-%Two additional forms, $\tvalof{\tauiterm}{\tautype}$ and $\iup{\tau}$, will be discussed below. These are erased by the end of the elaboration process.
+The type-level language does, however, include total type-level functions, which have arrow kind, $\karrow{\kappa_1}{\kappa_2}$. Type constructor application can be wrapped in a type-level function to emulate first-class type constructors (and indeed, such a wrapper could be generated automatically, though we avoid this for simplicity in our semantics). Equivalence at arrow kind does not coincide with $\beta$-equivalence, so type-level functions cannot appear in type indices. Our treatment of equivalence in the type-level language is thus quite similar to the treatment of term-level equality using ``equality types'' in a language like Standard ML. Indeed, one could justifiably suggest that in a practical implementation of this simply-kinded mechanism, the type-level language would most sensibly be based on a pure, total subset of ML (consistent with its early development as a ``MetaLanguage'' and the role of the type-level language as, in effect, a DSL for writing type systems and elaborators, which functional languages are widely considered well-suited for). We leave the development of such an implementation (and of bootstrapping a type-level language that is itself extensible) as promising future work.
 
-In the external language, $e$, all operators (other than $\lambda$, for reasons we will discuss) are invoked uniformly. The natural number two, for example, is written: $$\eop{Nat}{s}{()}{\eop{Nat}{s}{()}{\eop{Nat}{z}{()}{ }}}$$
+\emph{representation schema} $\taurep$ 
+
+\subsection{Operator Constructors and Elaborations}
+As indicated, operators other than $\lambda$ and \textsf{fix} in @$\lambda$ are associated with type constructors (for reasons we will discuss), so an external term of the form $\eop{Tycon}{op}{\tauidx}{\splat{e}{1}{n}}$ applies the operator $\opvar{op}$ associated with type constructor $\fvar{Tycon}$ to operator index $\tauidx$ and zero or more arguments, written in our syntax and semantics using the shorthand ${\splat{e}{1}{n}}$ for concision. We can see on line X the application of the $\tvar{z}$ and $\tvar{s}$ constructors to form the natural number \texttt{s(s(z))}, for example:
+$$\eop{Nat}{s}{()}{\eop{Nat}{s}{()}{\eop{Nat}{z}{()}{ }}}$$
 
 Operator constructors, like type constructors, are indexed by type-level values. In our example, all the operators are indexed trivially, but we will see examples later where non-trivial operator indices are useful. For the sake of uniformity, we include trivial indices, but in a concrete syntax for such a language, these could be omitted. We will discuss why operator constructors are associated directly with type constructors, rather than existing as standalone entities, when we discuss the scoping mechanism for the representation schema. This coupling also forms the foundation for the higher-level elaboration mechanism that allows us to use more conventional and concise (though still fixed) syntactic idioms, which we intend to explore in this thesis, but have not yet formalized. For now, we simply note that intuitively, most operators are either introduction or elimination forms for a particular type, so we are simply encoding a common idiom. Free-floating operator constructors could be introduced to this calculus with little difficulty.
 
@@ -365,6 +367,53 @@ opcon badnat of 1 ($\lambda$idx:1.$\lambda$args:list[Elab].$\llbracket\triangled
 With this declaration, there is now a new and unexpected introductory form for the natural number type, and even worse, it violates our previous implementation invariants. A naive check for type preservation would not catch this problem: \li{-1} does have type $\mathbb{Z}$, it is simply not an integer that could have been emitted by the original definition of \li{Nat}.
 
 To prevent this problem, we \emph{hold the representation of a type abstract} outside of the operators explicitly associated with it. If \li{badnat} cannot know that the representation of \li{Nat[()]} is $\mathbb{Z}$, then the above operator implementation cannot be correct. Because we cannot prove relational correctness properties from within a simply-typed/kinded calculus, our semantics enforces this by using a form of value abstraction, similar to that described by Zdancewic et. al \cite{zdancewic}. In brief: the representation of a type, written $\trepof{\tautype}$, does not reduce further to the actual representation type (e.g. to $\mathbb{Z}$) when not in an operator definition associated with $\tautype$. The only internal form that can be checked against  $\trepof{\tautype}$ is the special form $\tvalof{\tauiterm}{\tautype}$, an abstracted internal term corresponding to the internal term reflected by $\tauiterm$. Rather than exposing it explicitly, it is wrapped so that it can't be checked against any type other than $\trepof{\tautype}$. A full description of this mechanism (and the others, described above) requires us to introduce the semantics in detail. A draft of the semantics of @$\lambda$ is available as a paper draft\footnote{\url{https://github.com/cyrus-/papers/tree/master/esop14}}.
+
+\subsection{Kind Checking and Normalization}
+
+\subsection{Type Checking}
+
+\subsubsection{Abstract Internal Typechecking}
+
+\subsubsection{Deabstraction}
+
+\subsection{Safety}
+Type safety of TL. Type safety of IL. Type preserving compilation. Type safety of EL. Strong normalization of TL. Decidability of type checking. Conservativity.
+
+
+ %Kind checking  can be expressed judgementally as follows:\todo{compilation judgement}
+
+
+
+
+
+\paragraph{Type Constructors} Type constructors are indexed by A type constructor is declared by providing a name, like $\fvar{Tuple}$, an index kind, like %$\list$
+
+Note that this calculus be compared to the ``core language'' of expressions and types in a language in Standard ML; a module language similar to ML's could be layered on top of this core in a completely standard way. Note also that we do not include polymorphism and recursive types in this calculus (nor can they be defined, because we do not support type binders). This is both to simplify the calculus and because it is known that polymorphism is conservative over simple types \cite{breazu1990polymorphism} (by similar arguments, recursive types are conservative over a simply typed language with fixpoints, which we do include).
+
+The semantics of the language are in the style of the Harper-Stone elaboration semantics for Standard ML: all terms in an external language, $e$, are simultaneously assigned a type and an elaboration to a term, $\iota$, in a fixed typed internal language. The mechanism checks that any generated elaborations are \emph{type preserving} -- that all external terms of a particular type, $\tau$, elaborate to internal terms with a consistent internal type, $\sigma$ -- following the approach taken in the TIL compiler for Standard ML by Morrisett et al. \cite{TIL}. This allows the semantics to be reasoned about compositionally and, when combined with type safety of the internal language, gives us type safety of the extensible external language. 
+
+This design ensures that global properties that the internal language maintains are guaranteed to hold no matter which extensions are introduced. In other words, extension providers cannot implement type systems weaker than the type system of the internal language. Providers are, however, able to implement type systems that maintain invariants stronger than those the internal type system can maintain. The internal language of @$\lambda$ is PCF with simple products and one base type, integers. Because of the availability of the fixpoint operator, the internal language is universal (i.e. Turing-complete).
+
+It is reasonable, if we wish to actually program with such a language, to permit only the addition of deterministic, decidable rules to the semantics. Extension logic is thus implemented in a functional style  (essentially, lifting fragments of the typechecker into the type-level language), rather than extracted from inductive specifications, like those at the beginning of Sec. \ref{att}\footnote{Though we will not explore this further in this thesis, a system for extracting such a function from a declarative specification could potentially be implemented using the techniques in Sec. \ref{aparsing} -- a \emph{kind-specific language}!}. This has the added benefit of giving providers finer-grained control over error reporting. When extracting an implementation from a typical inductive specification, which only specifies ``success conditions'', it is difficult to provide different error messages at different failure points within a single rule.
+%In this section, we will sketch a calculus where new type families and operator families can be introduced by users. The type synthesis and translation logic that implements the desired static and dynamic semantics, respectively, for these is implemented in the type-level language. 
+
+To enable this, the language must allow for the introduction of new type constructors, like \verb|Tuple|, operator constructors, like \verb|NewTuple| and \verb|Prj|, and their associated static and dynamic semantics. Type and operator constructors can no longer be indexed by compiler-internal values in such a design. 
+%We are also be considering only simply-typed languages -- those with a clear phase separation between compile-time and run-time -- so we will not consider dependent types, though extensibility mechanisms for dependently typed languages are an interesting avenue of future work.\footnote{Note that types indexed by expressions are distinct from type names that have metadata expressions associated with them, as in Wyvern. Metadata does not impact type equality, for example.} 
+We will instead use type-level values. This requires supporting more kinds of values in the type-level language, conventionally written $\tau$, than just types, and thus the type-level language must have a non-trivial semantics. The ``types'' of type-level terms are called \emph{kinds} for clarity. Types simply become a particular kind of type-level value (we will call it $\star$) and are introduced uniformly by naming an available type constructor and providing an index of the kind that constructor specifies. For example, the type constructor \verb|Tuple| is indexed by type-level values of kind \verb|list[|$\star$\verb|]| so a 3-tuple type might be written \verb|Tuple[cons(nat, cons(string, cons(nat, nil)))]|. Note that we do not identify type constructors and type-level functions, as in some kind systems (\verb|Tuple| is \emph{not} itself of kind \verb|list[|$\star$\verb|] |$\rightarrow$\verb| |$\star$). One can wrap constructor application with a type-level function to achieve the same effect (and avoid an awkward canonical forms lemma and beta-reduction rules).
+
+Operator constructors are similarly indexed by type-level values. For example, the projection operator written \verb|#2| in a language like Standard ML might be written \verb|prj[2]| in our work. Here, \verb|prj| is an operator constructor indexed by a type-level natural number. 
+To define an operator, we must also provide it with a static and dynamic semantics. We will, as in our work on Wyvern and consistent with our exposition above, take an approach similar to Harper and Stone in their definition of Standard ML where the dynamic semantics of external language terms are given by translation into a  typed internal language \cite{Harper00atype-theoretic}. Operator definitions must work with types, type indices and operator indices, all of which are type-level values, so we will argue that it is sensible to give these elaborations as type-level functions (appropriately constrained, as we will show). 
+
+-----
+
+To give a first example, the code in Fig. \ref{nat-atlam} (written using concrete syntax) shows how to introduce a new type constructor, $\fvar{Nat}$, indexed trivially (i.e. by a type-level value of kind 1, also known as unit). Types themselves are type-level values of kind $\kTypeBlur$ and are introduced by naming a type constructor and providing an index of the appropriate kind: $\ttype{Nat}{\tunit}$. To ensure that type equality is decidable, type constructors can only be indexed by values of a kind for which equality is ``trivially'' decidable (i.e. where semantic equality coincides with syntactic equality). This means that types themselves, as well as type-level data structures containing values of kinds with this property, can be used, while type-level functions cannot. We leave a richer consideration of type equality to future work for now.
+
+To ensure that compilation is type-preserving, as described above, each type must have an internal type, called its \emph{representation}, associated with it. The representation of a type might depend on its index, so each type constructor must declare a type-level function, called its \emph{representation schema}, that returns an internal type given a type's index. An internal type, $\sigma$, is reflected as a type-level term of kind $\kIType$ via the introductory form $\blacktriangledown(\sigma)$. Because $\fvar{Nat}$ is indexed trivially, it simply returns the reflected form of the internal type $\mathbb{Z}$. %The sort $\sigma$ also contains forms $\trepof{\tau}$ and $\dup{\tau}$. The former allows one to refer, abstractly, to the representation of the type $\tau$, while the latter enables the interpolatation of a type-level value of kind $\kIType$.
+
+%Two additional forms, $\tvalof{\tauiterm}{\tautype}$ and $\iup{\tau}$, will be discussed below. These are erased by the end of the elaboration process.
+
+--
+
 
 
 The use cases permitted by this mechanism are not simply subsumed by a module system with support for abstract types and functors. Indeed, such a module system is an orthogonal concern in that it must sit atop a core type system. More particularly, the distinction is the fundamental one between functions and operators. Functions cannot examine type indices at compile-time to determine a return type and implementation (or generate static error messages), as operators are able to do. It is encouraging that there are clear parallels between module systems with abstract types and type constructors with abstract schemas, and any full-scale language design based on this mechanism should certainly provide both mechanisms (with the former used in most cases). We plan to investigate this relationship more thoroughly, showing examples where abstract types are more clearly unsuitable, in the remainder of this work. 

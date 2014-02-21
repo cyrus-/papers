@@ -214,7 +214,6 @@ casetype Exp
   | CaseIntro of Type * ID * Exp
   ... 
   | FromTS of Tokenstream
-  | Literal of TokenStream
   | Error of ErrorMessage
   metadata = new : HasTSL
     val parser : Parser = (* quasiquotes *)
@@ -245,8 +244,8 @@ The paper we have submitted to ECOOP 2014 has received quite positive reviews, s
 \item Our current static semantics does not support mutually recursive type declarations, but this is necessary for our prelude to typecheck, so we will add support for this. In the paper, the formalism is meant to be expository, so we will likely leave this additional complexity for the tech report.
 \item We must further consider aspects of hygiene:
 \begin{enumerate}
-\item We do not yet have a clean mechanism for preventing unintentional variable \emph{shadowing}, only unintentional variable \emph{capture}. It may be possible to prevent shadowing by making it impossible for variables to be introduced into interpolated Wyvern expressions directly (so that function application is the only way to pass data from a TSL to Wyvern code, as in the \li{Parser} TSL above).
-\item In macro systems like Scheme's, free variables in generated ASTs refer to their values within the macro definition, rather than where they are inserted. To support this, we have introduced the \li{valAST} operator. Using it is a bit verbose and awkward -- every free variable in a quasiquote must be inside \li{valAST}. We believe we can insert \li{valAST} automatically from within the definition of the TSL for \li{Exp} using a very simple extension to the interpolation mechanism that allows interpolation of single variables, rather than whole expressions, and plan to write up how this works.
+\item We do not yet have a clean mechanism for preventing unintentional variable \emph{shadowing}, only unintentional variable \emph{capture}. It may be possible to prevent shadowing by preventing variables from leaking into interpolated Wyvern expressions (so that function application is the only way to pass data from a TSL to Wyvern code, as in the \li{Parser} TSL above).
+\item In macro systems like Scheme's, free variables in generated ASTs refer to their bindings within the macro definition, rather than where they are inserted. To support this, we have introduced the \li{valAST} operator. Using it is a bit verbose and awkward -- every free variable \li{x} in a quasiquote must instead be replaced with an interpolated term of the form \li{valAST(x)} for the resulting \li{Exp} to meaningful as the return value of the \li{parse} function. We believe we can insert \li{valAST} automatically from within the definition of the TSL for \li{Exp} using single variable (rather than whole expression) interpolation.
 \end{enumerate}
 %\item The corpus analysis we conducted was preliminary. We must perform this in a more complete and rigorous manner (collaborative work with Darya Kurilova).
 %\item The current implementation of Wyvern does not include all of these mechanisms as described. Although the implementation of Wyvern is not a project I am responsible for, I plan on working with the student who is doing this to implement as much of what we have described as possible.\todo{should I drop this from the proposal? I don't want to promise that everything will be implemented because that is largely contingent on Benjamin's effort, not mine.}
