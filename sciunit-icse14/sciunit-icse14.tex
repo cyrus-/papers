@@ -415,21 +415,23 @@ class PositionTest(sciunit.Test):
     """Tests a planetary position model based on positions observed on day n given the positions in the n-1 previous days.
     Metric: Standard p-value.
     Parameters: 
-      obs_histories : list[list[position]]
-      obs_positions: list[position]"""
-	def __init__(self, obs_histories, obs_positions):
-		self.obs_histories = obs_histories
-		self.obs_positions = obs_positions
+      observation : ['histories':histories, 'positions':positions]
+        histories : list[list[position]]
+        positions : list[position]"""
 
 	required_capabilities = [PredictsPlanetaryPosition]
 
-	def _judge(self, model):
+	def generate_prediction(self, model):
 		predictions = []
-		for obs_history in self.obs_histories:
+		for obs_history in self.observation['histories']:
 			predictions.append(model.predict_next_pos(obs_history))
-		p = pooled_p_val(predictions, self.obs_positions)
-		return sciunit.PValue(p, related_data={
-			'obs_histories': obs_histories,
+		return predictions
+
+	def compute_score(observation, prediction):
+		obs_positions = observation['positions']
+		p = pooled_p_val(predictions, obs_positions)
+		return sciunit.scores.PValue(p, related_data={
+			'obs_histories': observation['histories'],
 			'obs_positions': obs_positions,
 			'predictions': predictions
 		})
@@ -446,31 +448,33 @@ As a motivating example, we will begin by considering a community of early cosmo
 Before explaining the details of this example, we point out that SciUnit is implemented in Python. Python is one of the most widely used languages in science today \cite{sanner1999python}, and has become the de facto language of open source scientific computing. It supports calling into  many of the other popular languages, including R, MATLAB, C and Java, more cleanly than these languages support calling into Python (challenge 3). It is widely-recognized as being easy-to-read and its object system can be used to define abstract interfaces, which we leverage in support of challenge 2. Alternative implementations of SciUnit, including language-independent specifications of its structure, may be part of future work.  
 
 A \textit{SciUnit} validation test is an {instance} of a Python class implementing the \verbx{sciunit.Test} abstract interface (line 1). 
-Here, the class \verbx{PositionTest} takes two \emph{parameters} in its constructor (constructors are named \verbx{\_\_init\_\_} in Python, lines 7-9). 
-The meaning of each parameter along with a description of the goodness-of-fit metric used by the test is documented on lines 2-6. 
+A test takes one required parameter in its constructor (constructors are named \verbx{\_\_init\_\_} in Python, lines 7-9), summarizing observed data against which the test will validate models. 
+For the class \verbx{PositionTest}, this observation parameter is a dictionary containing two kinds of observations.   
+The meaning of this parameter along with a description of the goodness-of-fit metric used by the test is documented on lines 2-6. 
 %For convenience, we also make use of functions provided by the popular NumPy\cite{numpy_url} and SciPy\cite{scipy_url} libraries, although these are not required by \textit{SciUnit}.  
 To create a \emph{particular} position test, we instantiate this class with particular planetary observations. 
 For example, the subset of cosmologists interested specifically in Saturn might instantiate a test by randomly chunking observations made about Saturn as follows:
 \begin{python}
   h, p = randomly_chunk(saturn_obs_positions)
-  saturn_position_test = SpikeCountTest(h, p)
+  saturn_position_test = SpikeCountTest({'histories':h, 'positions':p)
 \end{python}
 
 The class \verb|PositionTest| defines logic that is not specific to any particular planet, so it is contained in a package shared by all cosmologists called \verbx{cosmounit}, while the particular test above would be used in a test suite focused specifically on Saturn called \verbx{saturnsuite}. Both the common logic and specific suites are collaboratively developed by these overlapping research communities in source code repositories on Github (or another similar service).
 
-Classes that implement the \verbx{sciunit.Test} interface must contain a \verbx{_judge} method that receives a candidate \emph{model} as input and produces a \textit{score} as output. 
+Classes that implement the \verbx{sciunit.Test} interface must contain a \verbx{generate_prediction} method that receives a candidate \emph{model} as input and produces a prediction as output. 
+They must also contain a \verbx{compute_score} method that can take this prediction, and the observation used to instantiate the test, and produce a \verbx{score}.  
 To specify the interface between the test and the model, the test author provides a list of \emph{capabilities} in the \verbx{required_capabilities} attribute, seen on line 11 of Fig. \ref{fig:rate_test}. 
 Capabilities are simply collections of methods that a test will need to invoke in order to receive relevant data, and are analogous to \emph{interfaces} in e.g. Java. 
 In Python, capabilities must be written as classes with unimplemented members. 
 The capability required by the test in Figure \ref{fig:rate_test} is shown in Figure \ref{fig:capability}. 
 In \textit{SciUnit}, classes defining capabilities are tagged as such by inheriting from \verbx{sciunit.Capability}. The test in Figure \ref{fig:rate_test} repeatedly uses this capability on line 16 to produce a position prediction for each observation.  We assume that positions are represented in a standardized manner specified within \verbx{cosmounit}. A model is simply an object that implements capabilities (via Python's simple inheritance mechanism).  
 
-The remainder of the \verbx{_judge} method compares the model predictions to observed data to produce a pooled $p$ value. The method returns an instance of \verbx{sciunit.PValue}, a subclass of \texttt{sciunit.Score} that has been included with \textit{SciUnit} due to its generality. In addition to the $p$-value itself, the returned score object also contains metadata, via the \verbx{related_data} parameter, for  scientists who may wish to examine the result in more detail later. This illustrates some key differences between unit testing, which would simply produce a boolean result, and our conception of scientific validation testing (challenge 1). A score must induce an ordering, so that the table shown in Figure 1 can be sorted along its columns, and it can optionally specify a normalization scheme so the cells can be color-coded (not shown). A test can be manually executed using the \verbx{judge} method:
+The remainder of the \verbx{compute_score} method compares the model predictions to observed data to produce a pooled $p$ value. The method returns an instance of \verbx{sciunit.scores.PValue}, a subclass of \texttt{sciunit.Score} that has been included with \textit{SciUnit} due to its generality. In addition to the $p$-value itself, the returned score object also contains metadata, via the \verbx{related_data} parameter, for  scientists who may wish to examine the result in more detail later. This illustrates some key differences between unit testing, which would simply produce a boolean result, and our conception of scientific validation testing (challenge 1). A score must induce an ordering, so that the table shown in Figure 1 can be sorted along its columns, and it can optionally specify a normalization scheme so the cells can be color-coded (not shown). A test can be manually executed using the \verbx{judge} method:
 \begin{python}
 score = saturn_position_test.judge(kepler_sat)
 \end{python}
 
-This method proceeds by first checking that the provided model implements all required capabilities before calling the test's \verbx{_judge} method to produce a score. A reference to the test and model are added to the score for convenience (accessible via the \verbx{test} and \verbx{model} attributes, respectively).
+This method proceeds by first checking that the provided model implements all required capabilities before calling the test's \verbx{compute_score} method to produce a score. A reference to the test and model are added to the score for convenience (accessible via the \verbx{test} and \verbx{model} attributes, respectively).
 
 Alongside this position test, we could also provide a number of other test classes in \verbx{cosmounit} and instantiate them with data about aspects of Saturn's motion (e.g. it's velocity)  to produce a comprehensive suite in \verbx{saturnsuite}. 
 \begin{python}
