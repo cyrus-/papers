@@ -378,29 +378,30 @@ Most large development teams thus supplement code reviews with more {automated} 
 %A suite of such tests can be considered a partial specification of the program or component under development.  
 A suite of such tests complements code review by making it easier to answer questions like these:
 \begin{enumerate}
-\item What functionality should each component have?
+\item What functionality is a component expected to have?
 \item What functionality has been adequately implemented? What remains to be done?
 %\item How much progress does an individual code contribution make? 
 \item Does a candidate code contribution cause \emph{regressions} in other parts of a program?
 \end{enumerate}
 Scientists ask analagous questions:
 \begin{enumerate}
-\item What are the contemporary community standards for measuring goodness-of-fit?
-\item Which observations are already explained by existing models? What are the best models for a particular quantity? What are the open modeling problems of interest? What data has yet to be explained?
+\item What is a model's scope and how is validity measured?
+\item Which observations are already explained by existing models? What are the best models of a particular quantity?  What data has yet to be explained?
 %\item How much better is a new model than the state of the art? What are the open problems in my field?
-\item How do newly-made experimental observations impact the validity of previously published models? Can new models explain previously published data?
+\item What affect do new observations have on the validity of previously published models? Can new models explain previously published data?
 \end{enumerate}
-But while software engineers can rely on a program's test suite, scientists today must extract this information from a body of scientific papers. This is increasingly difficult. Each paper is narrowly focused, often considering just one model or dataset, and is frozen in time, so it does not consider the latest experimental data or statistical methods. Discovering, precisely characterizing and comparing models to discover the state of the art and find open modeling problems can require an encyclopedic knowledge of the literature, as can finding all data relevant to a model. Senior scientists often attempt to fill this need by publishing review papers, but in many areas, the number of publications generated every year can be overwhelming \cite{jinha_article_2010}, and comprehensive reviews of a particular area are published infrequently. Statisticians often complain that scientists are not following best practices and that community standards evolve too slowly because a canonical paper or popular review used outdated methods. Furthermore, if the literature simply doesn't address an important question of validity, because  new data has been gathered since the model paper was published for example, a researcher might need to reimplement an existing model in order to evaluate it. 
+But while software engineers can rely on a program's test suite, scientists today must extract this information from a body of scientific papers. This is increasingly difficult. Each paper is narrowly focused, often considering just one model or dataset, and is frozen in time, so it does not consider the latest models, data or statistical methods. Discovering, precisely characterizing and comparing models to discover the state of the art and find open modeling problems can require an encyclopedic knowledge of the literature, as can finding all data relevant to a model. Senior scientists often attempt to fill this need by publishing review papers, but in many areas, the number of publications generated every year can be overwhelming \cite{jinha_article_2010}, and comprehensive reviews of a particular area are published infrequently. Statisticians often complain that scientists are not following best practices and that community standards evolve too slowly because a canonical paper or popular review used outdated methods. Furthermore, if the literature simply doesn't address an important question of validity, a researcher might need to reimplement an existing model in order to evaluate it. 
 
 One might compare this to a large software development team answering the questions listed above based largely on carefully reviewed, but rarely updated,  API documentation and annual high-level project summaries.
-While certainly a caricature, this motivates our suggestion that the scientific process could be improved by the adoption of test-driven methodologies alongside traditional peer review. However, the scientific community presents several unique challenges that must be addressed by any such methodology:
+While certainly a caricature, this motivates our suggestion that the scientific process could be improved by the adoption of test-driven methodologies alongside traditional peer review. However, the scientific community presents several unique challenges:
 \begin{enumerate}
 \item Unit tests are typically pass/fail, while goodness-of-fit between a model and data is typically measured by a continuous metric. 
-\item Unit tests often test a \emph{particular} component, whereas a \emph{validation testing} system must be able to handle and compare many models with the same scope, developed by teams who only loosely coordinate their efforts. %They are sometimes reluctant to share certain details of their implementations \cite{badscientists}.
+\item Unit tests often test a \emph{particular} component, whereas a \emph{validation testing} system must be able to handle and compare many models with the same scope. %They are sometimes reluctant to share certain details of their implementations \cite{badscientists}.
 %\item Experimental data can itself be erroneous, noisy or inconsistent with other available data.
 \item Scientists use a variety of programming languages.
-\item Professional software developers are typically trained in testing practices and tools, while scientists  rarely have training or experience with testing practices \cite{oai:open.ac.uk.OAI2:17673}. %Thus, the framework must be as simple as possible.
-\item Different communities, groups and individuals prefer different goodness-of-fit metrics and focus on different sets of observable quantities. In contrast, there is typically more pressure to agree upon requirements and priorities in a software development project.
+\item Scientists often only loosely coordinate their efforts.
+\item Different communities, groups and individuals prefer different goodness-of-fit metrics and focus on different sets of observable quantities. In contrast, there is more pressure to agree upon requirements and priorities in a typical software development project.
+\item Professional software developers are typically trained in testing practices and the use of collaborative tools, while scientists more rarely have such experience \cite{oai:open.ac.uk.OAI2:17673}. %Thus, the framework must be as simple as possible.
 \end{enumerate}
 
 To begin to address these challenges, we will introduce a lightweight and flexible validation testing and framework called \textit{SciUnit} in Sec. 2. Many of these challenges have to do with coordination between scientists. To begin to address this, we then describe a community workflow based on widely-adopted social coding tools (here, Github) and a lightweight community portal called \textit{SciDash}, in Sec. \ref{scidash}. The overall goal of this work is to help scientists generate and examine tables like the one central to Figure 1, where the relative validity of a set of models having a common scope can be determined by examining scores produced by a suite of validation tests constructed from experimental data. 
@@ -427,7 +428,7 @@ We discuss adoption strategies and directions for future research into scientifi
 %Simple executable \emph{validation tests} that compute agreement between a model prediction and an experimental observation.  
 As a motivating example, we will begin by considering a community of early cosmologists recording and attempting to model observations of the planets visible in the sky, such as their position, velocity, orbital eccentricity and so on. One simple validation test might ask a model to predict planetary position on night $n+1$ given observations of its position on $n$ previous nights. Figure 2 shows how to implement a test, using  SciUnit, that captures this logic.
 
-Before explaining the details of this example, we point out that SciUnit is implemented in Python. Python is one of the most widely used languages in science today \cite{sanner1999python}, and is increasingly regarded as the \textit{de facto} language of open source scientific computing. It is easy to read and has a simple object system that we use to specify the interface between tests and models (challenge 2). It supports calling into  many other popular languages, including R, MATLAB, C and Java, often more cleanly than they support calling into Python (challenge 3). The IPython notebook is a powerful web-based ``read-eval-visualize loop'' that we use to support interactive table visualization, and it also permits using other languages on a per-cell basis \cite{ipynb}. Together, this makes writing wrappers around tests and models written in other languages relatively simple. We anticipate leveraging this infrastructure to make generating such wrappers nearly automatic as future work.
+Before explaining the details of this example, we point out that SciUnit is implemented in Python. Python is one of the most widely used languages in science today \cite{sanner1999python}, and is increasingly regarded as the \textit{de facto} language of open source scientific computing. It is easy to read and has a simple object system that we use to specify the interface between tests and models (challenge 2, see below). It supports calling into other popular languages, including R, MATLAB, C and Java, often more cleanly than they support calling into Python (challenge 3). The IPython notebook is a powerful web-based ``read-eval-visualize loop'' that we will use to support interactive table visualization, and it also permits using other languages on a per-cell basis \cite{ipynb}. Together, this makes writing wrappers around tests and models written in other languages relatively simple. We anticipate making it nearly automatic as future work.
 \begin{figure}[t]
 \small
 %class PositionTest(sciunit.Test):
@@ -477,32 +478,36 @@ class PositionTest(sciunit.Test):
 \vspace{-15px}
 \end{figure}
 
-A {SciUnit} validation test is an {instance} of a Python class implementing the \verbx{sciunit.Test} interface (line 1). 
-A test takes one required parameter in its constructor (inherited from the base class) containing the observation(s) against which the test will validate models.
-In our example, this is a dictionary documented per Python conventions on lines 2-6. 
+A {SciUnit} validation test is an {instance} of a Python class inheriting from  \verbx{sciunit.Test} (line 1). 
+Every test takes one required constructor argument (inherited from the base class): the observation(s) against which the test will validate models.
+In our example, this is a dictionary, documented per Python conventions on lines 2-6. 
 %For convenience, we also make use of functions provided by the popular NumPy\cite{numpy_url} and SciPy\cite{scipy_url} libraries, although these are not required by \textit{SciUnit}.  
 To create a \emph{particular} position test, we instantiate this class with particular observations. 
 For example, the subset of cosmologists interested specifically in Saturn might instantiate a test by randomly chunking observations made about Saturn's nightly position over time as follows:
 \vspace{-3px}
 \begin{python}
-  h, p = randomly_chunk(saturn_obs_positions)
+  h, p = randomly_chunk(obsvd_saturn_positions)
   saturn_position_test = PositionTest(
     {'histories': h, 'positions': p})
 \end{python}
 \vspace{-5px}
 The class \verb|PositionTest| defines logic that is not specific to any particular planet, so it is contained in a repository shared by all cosmologists called \verbx{cosmounit}. The particular test above would be constructed in a separate repository focused specifically on Saturn called \verbx{saturnsuite}. Both would be collaboratively developed by these (overlapping) research communities in source code repositories on Github.
 
-Classes that implement the \verbx{sciunit.Test} interface must contain a \verbx{generate_prediction} method that takes a \emph{model} as input and extracts a prediction. To specify the interface between the test and the model, the test author specifies a list of \emph{required capabilities} in the \verbx{required_capabilities}, seen on line 7. 
-A capability specifies a collection of methods that a test will need to invoke in order to receive relevant data, and is analogous to an \emph{interface} in a language like Java. 
-In Python, interfaces are written as classes with unimplemented members. 
-The capability required in Figure \ref{fig:rate_test} is shown in Figure \ref{fig:capability}. 
-Classes defining capabilities are tagged as such by inheriting from \verbx{sciunit.Capability}. The test in Figure \ref{fig:rate_test} repeatedly uses this capability on lines 9-11 to return a list of predicted positions for each observed history (using a Python list comprehension for brevity).  A planet's position is represented using a standard celestial coordinate system specified within \verbx{cosmounit} by the class \verbx{Position}. A model class can implement a capability by simply inheriting from it and implementing the required methods (Figure \ref{fig:capability}). A particular model is an instance of such a class.  The scope of a model is identified by the capabilities it implements.
+Classes that implement the \verbx{sciunit.Test} interface must specify two methods: a method for extracting a prediction from a model, and a method for producing a score from that prediction. Predictions are extracted by a separate method to make it easier for statisticians to write new tests for which only the goodness-of-fit metric differs, not the method by which the prediction is extracted (challenge 5).
+
+The \verbx{generate_prediction} method (lines 8-11) is passed a \emph{model} as input and must extract a \emph{prediction}. A model is an instance of a class inheriting from \verbx{sciunit.Model} and a prediction can be any Python data structure. To specify the interface between the test and the model, the test class specifies a list of \verbx{required_capabilities} (line 7). 
+A capability specifies the methods that a test may need to invoke on the model to extract a prediction, and is analogous to an \emph{interface} in a language like Java. 
+In Python, capabilities are written as classes with unimplemented members, shown in Figure \ref{fig:capability}. 
+Classes defining capabilities are tagged as such by inheriting from \verbx{sciunit.Capability}. The test in Figure \ref{fig:rate_test} repeatedly uses this capability on lines 9-11 to return a list of predicted positions for each observed history (using a list comprehension for brevity).  A planet's position is represented using a standard celestial coordinate system specified within \verbx{cosmounit} by the class \verbx{Position}. 
+
+A model class implements a capability by inheriting from it and implementing the required methods (Figure \ref{fig:capability}).  The scope of a model class is identified by the capabilities it has. A particular model is an instance of such a class: 
 \vspace{-3px}
 \begin{python}
 lin_saturn_model = LinearPlanetModel()
 \end{python}
 \vspace{-5px}
-Once a prediction has been extracted from a model, the test class must compute a \emph{score}. The framework invokes the \verbx{compute_score} method with the observation provided upon test instantiation and the prediction just generated (line 14 of Fig. \ref{fig:rate_test}). Here, the test class constructs a list of distances between the observed and predicted positions, then determines a pooled $p$-value to determine the goodness-of-fit (the details are omitted for concision). A $p$-value is represented as an instance of \verbx{sciunit.PValue}, a subclass of \texttt{sciunit.Score} that has been included with {SciUnit} due to its wide use across science. %In addition to the $p$-value itself, the returned score object also contains metadata, accessible via the \verbx{related_data} attribute, for  scientists who may wish to examine the result in more detail later. This includes the observation, prediction, and a reference to the model and test. 
+
+Once a prediction has been extracted from a model, the test class must compute a \emph{score}. The framework invokes the \verbx{compute_score} method with the observation provided upon test instantiation and the prediction just generated. On lines 13-17 of Fig. \ref{fig:rate_test}, the test class constructs a list of distances between the observed and predicted positions, then determines a pooled $p$-value to determine the goodness-of-fit (the details are omitted for concision). A $p$-value is represented as an instance of \verbx{sciunit.PValue}, a subclass of \texttt{sciunit.Score} that has been included with {SciUnit} due to its wide use across science. %In addition to the $p$-value itself, the returned score object also contains metadata, accessible via the \verbx{related_data} attribute, for  scientists who may wish to examine the result in more detail later. This includes the observation, prediction, and a reference to the model and test. 
 \begin{figure}
 \small
 \begin{python}
@@ -522,7 +527,7 @@ class LinearPlanetModel(sciunit.Model,
 \vspace{-10px}
 \end{figure}
 
-This illustrates a key difference between unit testing, which would simply produce a boolean result, and our conception of scientific validation testing (challenge 1). A score class must induce an ordering, so that a table like that shown in Figure 1 can be sorted along its columns, and it can  specify a normalization scheme so the cells can be color-coded. Predictions are extracted by a separate method to make it easier for statisticians to write new tests for which only the goodness-of-fit metric differs, not the method by which the prediction is extracted (challenge 5). %It also makes it easier to cache predictions generated by large-scale models so that they can be used by multiple tests. 
+This illustrates a key difference between unit testing, which would simply produce a boolean result, and our conception of scientific validation testing (challenge 1). A score class must induce an ordering, so that a table like that shown in Figure 1 can be sorted along its columns, and it can  specify a normalization scheme so the cells can be color-coded.  %It also makes it easier to cache predictions generated by large-scale models so that they can be used by multiple tests. 
 
 Te \verbx{judge} method of a test can be invoked to compute a score for a single model: 
 \vspace{-4px}
@@ -530,19 +535,20 @@ Te \verbx{judge} method of a test can be invoked to compute a score for a single
 score = saturn_position_test.judge(lin_saturn_model)
 \end{python}
 \vspace{-5px}
-This method proceeds by first checking that the provided model implements all required capabilities before calling the \verbx{generate_prediction} method followed immediately by the \verbx{compute_score} method. A reference to the test,   model, observation, prediction and other related data the test provides (not shown) are available as attributes of the score.
+This method proceeds by first checking that the provided model implements all required capabilities before calling the \verbx{generate_prediction} method followed immediately by the \verbx{compute_score} method. A reference to the test,   model, observation, prediction and other related data the test provides (none here) are available as attributes of the score.
 
-To produce a more comprehensive test suite, the contributors to \verbx{saturnsuite} would instantiate a number of other tests and then create an instance of the \verbx{TestSuite} class:
+To produce a comprehensive test suite, the contributors to \verbx{saturnsuite} would instantiate a number of other tests and then create an instance of the \verbx{TestSuite} class:
 \begin{python}
 saturn_motion_suite = sciunit.TestSuite([
   saturn_position_test, saturn_velocity_test, ...])
 \end{python}
-They would also instantiate a number of models. A test suite can be used to judge multiple models at once (challenge 2), if they satisfy the union of the capabilities required by the constituent tests. The result is a \emph{score matrix}:
+They would also instantiate a number of models. A test suite can be used to judge multiple models at once, if they satisfy the union of the capabilities required by the constituent tests (challenge 2). The result is a \emph{score matrix}:
 \begin{python}
-sm_matrix = saturn_motion_suite.judge([lin_saturn_model, ptolemy_model, kepler_model])
+sm_matrix = saturn_motion_suite.judge([
+  lin_saturn_model, ptolemy_model, kepler_model, ...])
 \end{python}
 
-If constructed inside an IPython notebook, a score matrix can then be visualized as an interactive table, much like the one shown in Figure \ref{fig:sciunit_overview}. Scientists can sort by column and click on tests, models and scores to get more information on each, including documentation, authorship information and related data extracted from the underlying objects.
+If constructed inside an IPython notebook, a score matrix can then be visualized as an interactive table, much like the one shown in Figure \ref{fig:sciunit_overview}. Scientists can sort by column and click on tests, models and scores to get more information on each, including documentation, authorship information, related papers and other related data extracted from the underlying classes (details omitted for concision).
 
 %They then defined a combined metric favoring models that broadly succeeded at meeting these criteria, to produce an overall ranking. 
 %Such combined criteria are simply validation tests that invoke other tests to produce a result.
@@ -605,9 +611,9 @@ If constructed inside an IPython notebook, a score matrix can then be visualized
 %
 \section{Collaborative Workflow}\label{scidash}
 
-Social coding tools like Github allow each scientist to work on their own fork of a repository where they can examine the consequences of their own contributions on  the tests and models that have previously been developed, facilitating both model and data sharing, and the organic adoption of community standards. For example, an experimentalist who has gathered new data can instantiate a new test or refine an existing one  with more accurate observations. As long as the interface between the test and the model remains the same, the scores can be recomputed entirely automatically, requiring no coordination with the original model developers (challenge 2). Similarly, when a modeler develops a new model, she can immediately  validate it against all the tests it is capable of taking. If a statistician develops a better goodness-of-fit metric, it too can be turned into a collection of tests that uses existing capabilities, and so the table can be regenerated automatically, as discussed above. If a scientist is not interested in certain tests, she can locally remove them to recalibrate her view of the relative merits of different models (challenge 5). 
+Social coding tools like Github allow each scientist to work on their own fork of a repository where they can examine the consequences of their own contributions on  the tests and models that have previously been developed, facilitating both model and data sharing, and the organic adoption of community standards. For example, an experimentalist who has gathered new data can instantiate a new test or refine an existing one  with more accurate observations. As long as the interface between the test and the model remains the same, the scores can be recomputed entirely automatically, requiring no coordination with the original model developers (challenge 2). Similarly, when a modeler develops a new model, she can immediately  validate it against all the tests it is capable of taking. If a statistician develops a better goodness-of-fit metric, it too can be turned into a collection of tests that use existing capabilities, and so the table can be regenerated automatically, as discussed above. If a scientist is not interested in certain tests, she can locally remove them to recalibrate her view of the relative merits of different models (challenge 5). 
 
-Once satisfied, these scientists might submit a \emph{pull request} to the central repository (either separately or in conjunction with the submission of a conventional paper). Anonymous reviewers tasked by the ``editors'' of the repository would then subject the pull request to appropriate peer review before accepting it into the ``academic record''. A model that performs well across tests in a collaboratively developed suite could more easily claim (e.g. to reviewers) to be a coherent, valid model of, for example, Saturn's motion. 
+Once satisfied, these scientists might submit a \emph{pull request} to the central repository (either separately or in conjunction with the submission of a conventional paper). Anonymous reviewers tasked by the ``editors'' of the repository would then subject the pull request to appropriate peer review before committing it to the ``academic record''. A model that performs well across tests in a collaboratively developed suite could more easily claim (e.g. to reviewers) to be a coherent, valid model of, for example, Saturn's motion. 
 
 
 %Because new models, tests and data are being added by a variety of people, there needs to be a collaborative workflow in place. As we have outlined above, the basic mechanisms have already been put in place by software developers. 
