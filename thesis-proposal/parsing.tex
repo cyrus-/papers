@@ -1,16 +1,18 @@
 % !TEX root = omar-thesis-proposal.tex
 \section{Type-Specific Languages}\label{aparsing}
-General-purpose constructs like those built into modern languages are, semantically, quite powerful. By using a general-purpose construct to define a data structure, one immediately benefits from a body of useful operators, established reasoning principles, well-optimized implementations and tool support. For example, lists can be encoded using a more general mechanism for defining polymorphic recursive sum types. Intuitively, a list can either be empty, or be broken down into a \emph{head} element and a \emph{tail}, another list. In an ML-like language, the polymorphic list type would be defined:
+General-purpose constructs are, semantically, quite flexible. 
+%By using a general-purpose construct to define a data structure, one immediately benefits from a body of useful operators, established reasoning principles, well-optimized implementations and tool support. 
+For example, lists can be defined using a more general mechanism for defining polymorphic recursive sum types by observing that a list can either be empty, or be broken down into a \emph{head} element and a \emph{tail}, another list. In an ML-like language, this would be written:
 \begin{lstlisting}[numbers=none]
 datatype 'a list = Nil | Cons of 'a * 'a list
 \end{lstlisting}
-By defining lists in this way, we can immediately reason about list values by structural induction and examine them by pattern matching. %The programmer only needs to provide an encoding of the structure of lists; the semantics and implementation are filled in by the general-purpose abstraction mechanism.
-While this is quite useful, the associated general-purpose notation is not. For example, few would claim that writing a list of numbers as a sequence of \li{Cons} cells is convenient:
+By defining abstractions in terms of existing general purpose constructs, we immediately know how to reason about them (here, by structural induction) and examine them (by pattern matching). They are already well optimized by compilers and benefit from editor support as well. %The programmer only needs to provide an encoding of the structure of lists; the semantics and implementation are filled in by the general-purpose abstraction mechanism.
+While this is all quite useful, the associated general-purpose syntax is often not. For example, few would claim that writing a list of numbers as a sequence of \li{Cons} cells is convenient:
 \begin{lstlisting}[numbers=none]
 Cons(1, Cons(2, Cons(3, Cons(4, Nil))))
 \end{lstlisting}
 
-Because lists are a common data structure, many languages include \emph{literal notations} for introducing them, e.g. \li{[1, 2, 3, 4]}. This notation is semantically equivalent to the general-purpose notation shown above, but brings cognitive benefits by drawing attention to the content of the list, rather than the nature of the encoding. Using terminology from Green's cognitive dimensions of notations \cite{green1996usability}, it is more \emph{terse}, \emph{visible} and \emph{maps more closely} to the intuitive notion of a list. Stoy, in writing about the value of good notation, says \cite{stoybook}:
+Because lists are a common data structure, many languages include \emph{literal notations} for introducing them, e.g. \li{[1, 2, 3, 4]}. This notation is semantically equivalent to the general-purpose notation shown above, but brings cognitive benefits by drawing attention to the content of the list, rather than the nature of the encoding. Using terminology from Green's cognitive dimensions of notations \cite{green1996usability}, it is more \emph{terse}, \emph{visible} and \emph{maps more closely} to the intuitive notion of a list. Stoy, in discussing the value of good notation, write \cite{stoy1977denotational}:
 \begin{quote}A good notation thus conceals much of the inner workings behind suitable abbreviations, while allowing us to consider it in more detail if we require: matrix and tensor notations provide further good examples of this. It may be summed up in the saying: 'A notation is important for what it leaves out.'\end{quote}
 
 Although list, number and string literals are nearly ubiquitous features of modern languages, some languages also  provide specialized notation for other common data structures (like maps, sets, vectors and matrices), data formats (like XML and JSON), query languages (like regular expressions and SQL), markup languages (like HTML and Markdown) and many other types of data. For example, a language with built-in notation for HTML and SQL, supporting type-safe \emph{interpolation}\todo{splicing?} via curly braces, might define:
@@ -45,7 +47,7 @@ Seq(Group(Seq(Digit, Digit), Seq(Char($\texttt{"}$SSTR:ESTR$\texttt{"}$), Seq(Gr
   Seq(ZeroOrMore(Whitespace), Group(Or(Group(Seq(Char($\texttt{"}$SSTRaESTR$\texttt{"}$), Char($\texttt{"}$SSTRmESTR$\texttt{"}$))), 
   Group(Seq(Char($\texttt{"}$SSTRpESTR$\texttt{"}$), Char($\texttt{"}$SSTRmESTR$\texttt{"}$))))))))))
 \end{lstlisting}
-This is clearly more cognitively demanding, both when writing the regular expression and when reading it. Among the most common strategies in these situations, for users of any kind of language, is again to simply use a string representation that is parsed at run-time.
+This is clearly more cognitively demanding, both when writing the regular expression and when reading it. Among the most common strategies in these situations, for users of any kind of language, is again to simply use a string representation that is parsed at run-time:
 \begin{lstlisting}
 rx_from_str($\texttt{"}$SSTR(\\d\\d):(\\d\\d)\\w*((am)|(pm))ESTR$\texttt{"}$)
 \end{lstlisting}
@@ -58,29 +60,29 @@ This is problematic, for all of the reasons described above: it requires explici
 
 Today, supporting new literal notations within an existing language requires the cooperation of the language designer. This is primarily because, with conventional parsing strategies, not all notations can unambiguously coexist, so a designer is needed to make choices about which syntactic forms are available and what their semantics should be. For example, conventional notations for sets and maps are both delimited by curly braces. When Python introduced set literals, it chose to distinguish them based on whether the literal contained only elements (e.g. \verb|{3}|), or key-element pairs (\verb|{"x": 3}|). But this causes an ambiguity with the syntactic form \verb|{ }| -- should it mean an empty set or an empty map (called a dictionary in Python)? The designers of Python chose the latter interpretation (for backwards compatibility reasons).
 
-So although languages that allow users to introduce new syntax from within libraries appear to hold promise for the reasons described above, providing this form of extensibility is non-trivial because there is no longer a central designer making decisions about such ambiguities. In most existing related work, the burden of resolving ambiguities falls to clients who have the misfortune of importing conflicting extensions. For example, SugarJ \cite{erdweg2011sugarj} and other extensible languages generated by Sugar* \cite{erdweg2013framework} allow providers to extend the base syntax of the host language with new forms, like set and map literals. These new forms are imported transitively throughout a program. To resolve syntactic ambiguities that arise, clients must manually augment the composed grammar with new rules that allow them to choose the correct interpretation explicitly. This is both difficult to do, requiring a reasonably thorough understanding of the underlying parser technology (in Sugar*, generalized LR parsing) and increases the cognitive load of using the conflicting notations (e.g. both sets and dictionaries) in the same file because disambiguation tokens must be used. These kinds of conflicts occur in a variety of circumstances: HTML and XML, different variants of SQL, JSON literals and dictionaries, or simply different implementations (``desugarings'') of the same specialized syntax (e.g. two regular expression engines) can all cause problems that may be difficult to anticipate.
+So although languages that allow providers to introduce new syntax from within libraries appear to hold promise for the reasons described above, enabling this form of extensibility is non-trivial because there is no longer a central designer making decisions about such ambiguities. In most existing related work, the burden of resolving ambiguities falls to clients who have the misfortune of importing conflicting extensions. For example, SugarJ \cite{erdweg2011sugarj} and other extensible languages generated by Sugar* \cite{erdweg2013framework} allow providers to extend the base syntax of the host language with new forms, like set and map literals. These new forms are imported transitively throughout a program. To resolve syntactic ambiguities that arise, clients must manually augment the composed grammar with new rules that allow them to choose the correct interpretation explicitly. This is both difficult to do, requiring a reasonably thorough understanding of the underlying parser technology (in Sugar*, generalized LR parsing) and increases the cognitive load of using the conflicting notations (e.g. both sets and dictionaries) in the same file because disambiguation tokens must be used. These kinds of conflicts occur in a variety of circumstances: HTML and XML, different variants of SQL, JSON literals and dictionaries, or simply different implementations (``desugarings'') of the same specialized syntax (e.g. two regular expression engines) can all cause problems that may be difficult to anticipate. Techniques that limit the kinds of syntax extensions that can be expressed to guarantee ambiguities cannot occur simply cannot express these kinds of examples as-is (e.g. \cite{conf/pldi/SchwerdfegerW09}).
 
-In this work, we will describe an alternative parsing strategy that avoids these problems by shifting responsibility for parsing certain \emph{generic literal forms} into the typechecker. The typechecker, in turn, defers responsibility to user-defined types, by treating the body of the literal as a term of the   \emph{type-specific language (TSL)} associated with the type it is being checked against. The TSL is responsible for rewriting this term to ultimately use only general-purpose notation. This strategy avoids the problem of conflicting syntax, because neither the base language nor TSLs are ever extended directly. It also permits semantic flexibility -- the meaning of a form like \verb|{ }| can differ depending  on its type, so it is safe to use it for empty sets, maps and other data structures, like JSON literals. This frees these common notations from being tied to the variant of a  data structure built into a language's standard library, which sometimes does not provide the exact semantics that a programmer needs (for example, Python dictionaries do not preserve key insertion order).
+In this work, we will describe an alternative parsing strategy that avoids these problems by shifting responsibility for parsing certain \emph{generic literal forms} into the typechecker. The typechecker, in turn, defers responsibility to user-defined types, by treating the body of the literal as a term of the   \emph{type-specific language (TSL)} associated with the type it is being checked against. The TSL is responsible for rewriting this term to ultimately use only general-purpose notation. This strategy avoids the problem of conflicting syntax, because neither the base language nor TSLs are ever extended directly. It also permits semantic flexibility -- the meaning of a form like \verb|{ }| can differ depending  on its type, so it is safe to use it for empty sets, maps and other data structures, like JSON literals,  freeing these common notations from being tied to the variant of a  data structure built into a language's standard library, which sometimes does not provide the exact semantics that a programmer needs (for example, Python dictionaries do not preserve key insertion order).
 \begin{figure}[t]
 \begin{lstlisting}
 let imageBase : URL = <SURLimages.example.comEURL>
 let bgImage : URL = <SURL%EURLimageBaseSURL%/background.pngEURL>
 new : SearchServer
-  def resultsFor(searchQuery : String, page : Nat) : Unit =
+  def resultsFor(searchQuery, page) =
     serve(~) (* serve : HTML -> Unit *)
-SHTML      :html
-        :head
-          :title Search Results
-          :style EHTML~
+SHTML      >html
+        >head
+          >title Search Results
+          >style EHTML~
 SCSS            body { background-image: url(%ECSSbgImageSCSS%) }
-            #search { background-color: %ECSS`SCOLOR#aabbccECOLOR`SCSS% }
-ECSSSHTML        :body
-          :h1 Results for :{EHTMLsearchQuerySHTML}
-          :div[id="search"]
-            Search again: :{EHTMLSearchBox($\texttt{"}$SSTRGo!ESTR$\texttt{"}$)SHTML}
-          :wyvEHTML (* fmt_results : DB * SQLQuery * Nat * Nat -> HTML *)
-            fmt_results(db, ~, SNAT10ENDNAT, page)
-              SSQLSELECT * FROM products WHERE {ESQLsearchQuerySSQL} in titleESQL
+            #search { background-color: %ECSSdarken(`SCOLOR#aabbccECOLOR`, SPCT10pctEPCT)SCSS% }
+ECSSSHTML        >body
+          >h1 Results for < EHTMLHTML.Text(searchQuery)SHTML
+          >div[id="search"]
+            Search again: < EHTMLSearchBox($\texttt{"}$SSTRGo!ESTR$\texttt{"}$)SHTML
+          <EHTML (* fmt_results : DB * SQLQuery * Nat * Nat -> HTML *)
+             fmt_results(db, ~, SNAT10ENDNAT, page)
+               SSQLSELECT * FROM products WHERE {ESQLsearchQuerySSQL} in titleESQL
 \end{lstlisting}
 \vspace{-8px}
 \caption{Wyvern Example with Multiple TSLs}
@@ -93,7 +95,7 @@ ECSSSHTML        :body
 %let empty_json : JSON = { }
 %\end{lstlisting}
 \subsection{Wyvern}
-We develop our work as a variant of a new programming language being developed by our group called Wyvern \cite{Nistor:2013:WST:2489828.2489830}. To allow us to focus on the essence of our proposal, the variant of Wyvern we will describe in this thesis is simpler than the variant previously described: it is purely functional (there are no effects other than non-termination) and it does not enforce a uniform access principle for objects (fields can be accessed directly). Objects can thus be thought of as functional records equipped with simple methods (functions that are automatically given a self-reference) for convenience. We also add recursive labeled sum types, which we call \emph{case types}, that are quite similar to datatypes in ML. One can refer to the version of the language described in this thesis as \emph{TSL Wyvern}.
+We develop our work as a variant of a new programming language being developed by our group called Wyvern \cite{Nistor:2013:WST:2489828.2489830}. To allow us to focus on the essence of our proposal, the variant of Wyvern we will describe in this thesis is simpler than the variant previously described: it is purely functional (there are no effects other than non-termination) and it does not enforce a uniform access principle for objects (fields can be accessed directly). Objects can thus be thought of as recursive labeled products with support for with simple methods (functions that are automatically given a self-reference) for convenience. We also add recursive labeled sum types, which we call \emph{case types}, that are quite similar to datatypes in ML. One can refer to the version of the language described in this thesis as \emph{TSL Wyvern}. TSL Wyvern has a layout-sensitive syntax, for reasons we will discuss.
 
 \subsection{Example: Web Search}
 We begin in Fig. \ref{f-example} with an example showing several different TSLs being used to define a fragment of a web application showing search results from a database. Note that for clarity of presentation, we color each character  according to the TSL it is governed by.% Black represents the base language.
@@ -145,20 +147,20 @@ casetype HTML
   | StyleElement  of Attributes * CSS
   | ...
   metadata = new : HasTSL
-    val parser : Parser = ~
-SGRM      start -> ':body'= start>
-        EGRMfn child:Exp => `SQTHTML.BodyElement(([], %EQTchildSQT%))EQT`
-SGRM      start -> ':style'= EXP>
-        EGRMfn e:Exp => `SQTHTML.StyleElement(([], %EQTeSQT%))EQT`
-SGRM      start -> '{'= EXP '}'=EGRM
-        fn e:Exp => `SQT%EQTeSQT% : HTMLEQT`
+    val parser = ~
+SGRM      start <- '>body'= start>
+        EGRMfn child => `SQTHTML.BodyElement(([], %EQTchildSQT%))EQT`
+SGRM      start <- '>style'= EXP>
+        EGRMfn e => `SQTHTML.StyleElement(([], %EQTeSQT%))EQT`
+SGRM      start <- '<'= EXP>EGRM 
+        fn e => `SQT%EQTeSQT% : HTMLEQT`
 \end{lstlisting}
 \vspace{-8px}
 \caption{A Wyvern case type with an associated TSL.}
 \label{f-htmltype}
 \end{figure}
 \begin{figure}[t]
-\begin{subfigure}[t]{.53\textwidth}
+\begin{subfigure}[t]{.58\textwidth}
 \begin{lstlisting}
 objtype HasTSL
   val parser : Parser
@@ -175,8 +177,8 @@ casetype Type
     val parser : Parser = (* type quasiquotes *)
 \end{lstlisting}
 \end{subfigure}
-\begin{subfigure}[t]{.55\textwidth}
-\begin{lstlisting}[linewidth=.5\textwidth]
+\begin{subfigure}[t]{.42\textwidth}
+\begin{lstlisting}[linewidth=.42\textwidth,firstnumber=14]
 casetype Exp 
     Var of ID
   | Lam of ID * Type * Exp
@@ -187,8 +189,9 @@ casetype Exp
   | FromTS of Tokenstream
   | Error of ErrorMessage
   metadata = new : HasTSL
-    val parser : Parser = 
-      (* quasiquotes *)
+    val parser : Parser = (* exp
+      quasiquotes *)
+...
 \end{lstlisting}
 \end{subfigure}
 \caption{Some of the types included in the Wyvern prelude. They are mutually defined.}
@@ -201,7 +204,7 @@ Portions of the implementation of the TSL for \li{HTML} are shown on lines 8-15 
 For the purposes of this work, metadata values will always be of type \li{HasTSL}, an object type that declares a single field, \li{parser}, of type \li{Parser}. The \li{Parser} type is an object type declaring a single method, \li{parse}, that transforms a \li{TokenStream} extracted from a literal body to a Wyvern AST. An AST is a value of type \li{Exp}, a case type that encodes the abstract syntax of Wyvern expressions. Fig. \ref{f-builtins} shows portions of the declarations of these types, which live in the Wyvern \emph{prelude} (a collection of types that are automatically loaded before any other).
 
 Notice, however, that the TSL for \li{HTML} is not provided as an explicit \li{parse} method but instead as a declarative grammar. A grammar is a specialized notation for defining a parser, so we can implement a more convenient grammar-based parser generator  as a TSL associated with the \li{Parser} type. We chose the  layout-sensitive formalism developed by Adams \cite{Adams:2013:PPI:2429069.2429129} -- Wyvern is itself layout-sensitive and has a grammar that can be written down using this formalism, so it is sensible to expose it to TSL providers as well. Most aspects of this formalism are completely conventional. 
-Each non-terminal (e.g. \li{start}) is defined by a number of disjunctive productions, each introduced using \li{->}. Each production defines a sequence of terminals (e.g. \li{':body'}) and non-terminals (e.g. \li{start}, or one of the built-in non-terminals \li{ID}, \li{EXP} or \li{TYPE}, representing Wyvern identifiers, expressions and types, respectively). Unique to Adams' formalism is that each terminal and non-terminal in a production can also have an optional \emph{layout constraint} associated with it. The layout constraints available are \li{=} (meaning that the leftmost column of the annotated term must be aligned with that of the parent term), \li{>} (the leftmost column must be indented further) and \li{>=} (the leftmost column \emph{may} be indented further). We will discuss this formalism further when we formally specify Wyvern's layout-sensitive concrete syntax.
+Each non-terminal (e.g. \li{start}) is defined by a number of disjunctive productions, each introduced using \li{->}. Each production defines a sequence of terminals (e.g. \li{'>body'}) and non-terminals (e.g. \li{start}, or one of the built-in non-terminals \li{ID}, \li{EXP} or \li{TYPE}, representing Wyvern identifiers, expressions and types, respectively). Unique to Adams' formalism is that each terminal and non-terminal in a production can also have an optional \emph{layout constraint} associated with it. The layout constraints available are \li{=} (meaning that the leftmost column of the annotated term must be aligned with that of the parent term), \li{>} (the leftmost column must be indented further) and \li{>=} (the leftmost column \emph{may} be indented further). We will discuss this formalism further when we formally specify Wyvern's layout-sensitive concrete syntax.
 
 Each production is followed, in an indented block, by a Wyvern function that generates a value given the values recursively generated by each of the $n$ non-terminals it contains, ordered left-to-right. For the starting non-terminal, always called \li{start}, this function must return a value of type \li{Exp}. User-defined non-terminals might have a different type associated with them (not shown). Here, we show how to generate an AST using general-purpose notation for \li{Exp} (lines 13-15) as well as a more natural \emph{quasiquote} style (lines 11 and 18). Quasiquotes are expressions that are not evaluated, but rather reified into syntax trees. We observe that quasiquotes too fall into the pattern of ``specialized notation associated with a type'' -- quasiquotes for expressions, types and identifiers are simply TSLs associated with \li{Exp}, \li{Type} and \li{ID} (Fig. \ref{f-builtins}). They support the full Wyvern concrete syntax as well as an additional delimited form, written with \li{%}s, that supports ``unquoting'': interpolating another AST into the one being generated. Again, interpolation is safe and structural, rather than based on string interpolation. 
 
@@ -228,7 +231,7 @@ This work has been accepted to ECOOP 2014, having received quite positive review
 \item We must further consider aspects of hygiene:
 \begin{enumerate}
 \item We have not yet formalized our mechanism for preventing unintentional variable \emph{shadowing}, only unintentional variable \emph{capture}. It should be possible to prevent shadowing by preventing variables from leaking into interpolated Wyvern expressions (so that function application is the only way to pass data from a TSL to Wyvern code, as in the \li{Parser} TSL above).
-\item In macro systems like Scheme's, free variables in generated ASTs refer to their bindings within the macro definition, rather than where they are inserted. To support this, we have introduced the \li{valAST} operator\todo{rename}. Using it is a bit verbose and awkward -- every free variable \li{x} in a quasiquote must instead be replaced with an interpolated term of the form \li{valAST(x)} for the resulting \li{Exp} to meaningful as the return value of the \li{parse} function. We believe we can insert \li{valAST} automatically from within the definition of the TSL for \li{Exp} using single variable (rather than whole expression) interpolation.
+\item In macro systems like Scheme's, free variables in generated ASTs refer to their bindings within the macro definition, rather than where they are inserted. To support this, we have introduced the \li{toast} operator. Using it is currently explicit. We believe we can insert \li{toast} automatically using single variable (rather than whole expression) interpolation.
 \end{enumerate}
 %\item The corpus analysis we conducted was preliminary. We must perform this in a more complete and rigorous manner (collaborative work with Darya Kurilova).
 %\item The current implementation of Wyvern does not include all of these mechanisms as described. Although the implementation of Wyvern is not a project I am responsible for, I plan on working with the student who is doing this to implement as much of what we have described as possible.\todo{should I drop this from the proposal? I don't want to promise that everything will be implemented because that is largely contingent on Benjamin's effort, not mine.}
