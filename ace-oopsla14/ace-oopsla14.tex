@@ -249,28 +249,28 @@ This suggests that today, programmers and development teams cannot use  the abst
 
 Internally extensible languages promise to reduce the need for new dialects by giving abstraction providers more direct control over a language's syntax and static semantics from within libraries. %In   an internally extensible language, programmers  can \emph{granularly} import the primitive constructs best suited to each component of their application or library. Providers can thus more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
 %Indeed, abstractions could compete on their individual merit, rather than  by the serious adoption barriers mentioned above.
-Unfortunately, the mechanisms available today have several problems. First, they are themselves often available only within a dialect of an existing language and thus face a ``chicken-and-egg'' problem: a language like SugarJ \cite{erdweg2011sugarj} must overcome the same extrinsic issues as a language like HJ. Second, giving providers too much control over the language can lead to intrinsic safety issues, ambiguities and conflicts between extensions, as we will discuss. Too little control, on the other hand, leaves it difficult to implement interesting abstractions.%It is difficult to guarantee that extensions are sound in isolation and more so to guarantee that they can be {safely} combined. %This requires further research before it would be appropriate to widely rely on them (which we will discuss as we go on).
+Unfortunately, the mechanisms available today have several problems. First, they are themselves often available only within a dialect of an existing language and thus face a ``chicken-and-egg'' problem: a language like SugarJ \cite{erdweg2011sugarj} must overcome the same extrinsic issues as a language like HJ. Second, giving abstraction providers too much control over the language (by introducing an over-zealous ``solution'' to the \emph{expression problem}) can introduce type safety issues and ambiguities that only become apparent when extensions are combined, as we will discuss. Too little control, on the other hand, leaves it difficult to implement real-world abstractions.%It is difficult to guarantee that extensions are sound in isolation and more so to guarantee that they can be {safely} combined. %This requires further research before it would be appropriate to widely rely on them (which we will discuss as we go on).
 
-This paper describes the design and implementation of Ace, an internally extensible, statically typed programming language designed considering both extrinsic and intrinsic factors. To address the ``chicken-and-egg'' problem, Ace is implemented within Python \cite{Politz:2013:PFM:2509136.2509536,python}, entirely as a library. The top-level of an Ace file is a \emph{compilation script} written in Python and Python serves as Ace's \emph{type-level language}, as we will discuss.  Ace and Python share a common syntax and package system, so users of Ace can directly leverage established tools, infrastructure and coding standards. %The semantics of  define run-time behavior.
+In this paper, we describe an extensible statically-typed language, Ace, that is implemented entirely as a library within Python, avoiding the ``chicken-and-egg problem'' and occupying what we intend to convey by example as a ``sweet spot'' in the design space (contribution 1, Sec. \ref{usage}). 
 
-Functions marked by a decorator as under the control of Ace are, unlike Python functions, \emph{statically} typechecked. This makes it possible to rule out many potential issues ahead of execution, and thus  avoid  costly dynamic checks. % Instead, Ace has a statically-typed semantics that can be extended by users from within libraries. 
-However, there is \emph{no particular type system built into Ace}. Instead, a type is any  object implementing the \verb|ace.Type| interface constructed by the compilation script. We call these \emph{active types}. When statically assigning a type to a compound form, e.g. \verb|e.x|, the Ace {compiler} delegates to the type of a subexpression, e.g. to the type of \verb|e|, to determine how to assign a type to the expression as a whole. As we will show, this {type-directed protocol}, \emph{active typing}, permits the expression of a rich variety of type systems as libraries. Unlike syntax-directed protocols, there cannot be ambiguities when separately defined type sytems are combined (types control non-overlapping sets of expressions by construction). Base cases, e.g.  variables and certain statement forms, are handled on a {per-function basis} by a \emph{base semantics}, also a compile-time object implementing an interface, \verb|ace.Base|.
+Ace, together with a core lambda calculus, serves also as a vehicle for introducing a novel extension mechanism we call \emph{active typechecking and translation}. We sidestep the expression problem entirely by leaving the forms of expressions fixed, sharing them with Python. Instead, abstraction providers extend the language by introducing new type constructors and operators using type-level functions. We show how, by repurposing the conventional syntactic forms found in languages like Python, structuring the language as a bidirectional type system and integrating techniques from the typed compilation literature directly into the language, we can maintain expressiveness while  guaranteeing that link-time ambiguities cannot occur and type safety is maintained (contribution 2, Secs. \ref{att} and \ref{theory}).
 
-% As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur .
 
-The dynamic behavior of an Ace function is determined by translation to a \emph{target language}. We begin by  targeting Python, then discuss targeting OpenCL and CUDA, lower-level languages used to program many-core processors (e.g. GPUs). Active types and bases control translation by the same type-directed protocol that governs type assignment. We call this phase \emph{active translation}. A \emph{target} mediates this process and is also a user-defined compile-time object implementing an interface, \verb|ace.Target|. 
-%One base or type can support multiple targets. 
-When targeting a typed language, care must be taken to ensure that well-typed Ace expressions have well-typed translations, so we integrate a technique for compositionally reasoning about compiler correctness (developed for the TIL compiler for Standard ML \cite{tarditi+:til-OLD}) into the language.
 
-Ace can be used from the shell, producing source files that can be further compiled or executed by external means. Ace functions targeting a language with Python bindings (e.g. Python itself, as well as the others just described) can also be compiled and invoked interactively from Python. Ace supports a form of \emph{ad hoc polymorphism} (based on singleton types) whereby types propagate into generic functions. This occurs both between Ace functions and when calling Ace functions from Python. In the latter case, the ``dynamic type'' of a Python value determines a static type ``just-in-time'' when a call occurs. This represents a form of implicit \emph{staging} and significantly streamlines interactive workflows (like those in scientific computing) that alternate between Python for orchestration and exploratory tasks (e.g. plotting) and an external language via a foreign-function interface (FFI) for performance- and correctness-critical portions.%We will discuss in detail as our primary realistic case study. 
 
-The remainder of the paper is organized as follows: in Sec. \ref{usage}, we describe the basic structure and usage of Ace with an example that uses several interesting Ace type libraries. In Sec. \ref{att}, we detail how active typing and translation delegate control, at compile-time, to active types and bases, and discuss how this represents a form of extensibility that side-steps the expression problem. In Sec. \ref{theory}, we reduce this mechanism to  a core lambda calculus, $\lamAce$,  clarify the relationship to   type-level computation and show how type safety can be maintained. In Sec. \ref{targets}, we discuss generic functions, FFIs and staging via a complete implementation of the OpenCL type system (and extensions to it) as a library.  In Sec.  \ref{related}, we compare Ace to related work. We conclude in Sec. \ref{discussion} by summarizing our contributions, highlighting the key features needed by a host language to support these mechanisms, and discussing limitations and potential future work. The appendix contains details omitted from the main body and several additional examples. 
+
+%Ace can be used from the shell, producing source files that can be further compiled or executed by external means. Ace functions targeting a language with Python bindings (e.g. Python itself, as well as the others just described) can also be compiled and invoked interactively from Python. 
+Ace supports a form of \emph{ad hoc} polymorphism (based on singleton types) whereby the ``dynamic type'' of a Python value can determine a static type ``just-in-time'' when Python code calls a generic Ace function. This represents a form of implicit \emph{staging} and we show how this can significantly streamline interactive workflows (like those in scientific computing) that alternate between Python for orchestration and exploratory tasks (e.g. plotting) and a statically-typed target  language via a foreign-function interface (FFI) for performance- and correctness-critical portions. We discuss a complete implementation of the OpenCL type system (a language for low-level data parallel programming on GPUs), show several higher-level extensions to it, and discuss deep bindings between Ace, the OpenCL run-time system and Python's standard numerics package, \verb|numpy|, all implemented within a library (contribution 3, Sec. \ref{targets}).%We will discuss in detail as our primary realistic case study. 
+
+%The remainder of the paper is organized as follows: in Sec. \ref{usage}, we describe the basic structure and usage of Ace with an example that uses several interesting Ace type libraries. In Sec. \ref{att}, we detail how active typing and translation delegate control, at compile-time, to active types and bases, and discuss how this represents a form of extensibility that side-steps the expression problem. In Sec. \ref{theory}, we reduce this mechanism to  a core lambda calculus, $\lamAce$,  clarify the relationship to   type-level computation and show how type safety can be maintained. In Sec. \ref{targets}, we discuss generic functions, FFIs and staging via a complete implementation of the OpenCL type system (and extensions to it) as a library.  
+
+In Sec.  \ref{related}, we compare Ace to related work on language extensibility, term rewriting and staged compilation. We conclude in Sec. \ref{discussion} by highlighting the key features needed by a host language to support active typechecking and translation, and discussing limitations and potential future work. The appendix contains details omitted for concision as well as several more examples, including functional datatypes, flexible complex numbers and a previously little-explored type system for tracking string invariants using regular expressions statically (which we show being used in Listing \ref{example}, amongst several other examples). 
 
 \section{Language Design and Usage}\label{usage}
 
 
 %
-Listing \ref{example} shows an example of an Ace compilation script. As promised, compilation scripts are written directly in Python. Ace requires no modifications to the language or features specific to the primary implementation, CPython (so Ace supports alternative implementations like Jython and PyPy). This choice pays immediate dividends on the first five lines: Ace's import mechanism is Python's import mechanism, so Python's build tools (e.g. \verb|pip|) and package repostories (e.g. \verb|PyPI|) are directly available for distributing libraries that use Ace. Note that all of the type systems that we discuss are implemented entirely as  libraries.
+Listing \ref{example} is an example of an Ace \emph{compilation script}. As promised, compilation scripts are written directly in Python. Ace requires no modifications to the language or features specific to the primary implementation, CPython (so Ace supports alternative implementations like Jython and PyPy). This choice pays immediate dividends on the first five lines: Ace's import mechanism is Python's import mechanism, so Python's build tools (e.g. \verb|pip|) and package repostories (e.g. \verb|PyPI|) are directly available for distributing Ace-based libraries. Note that all of the type systems that we discuss are implemented entirely as  libraries. %Ace is agnostic about the particular design choices that we made in our examples.
 
 %The top-level statements in an Ace file, like the \verb|print| statement on line 10, are executed to control the compile-time behavior, rather than the run-time behavior, of the program. %That is, Python serves as the \emph{compile-time metalanguage} (and, as we will see shortly, the \emph{type-level language}) of Ace. %For readers familiar with C/C++, Python can be thought of as serving a role similar to (but more general than) its preprocessor and template system (as we will see).
 
@@ -282,6 +282,8 @@ from examples.fp import record
 from examples.oo import proto
 from examples.num import decimal
 from examples.regex import string_in
+
+print "Hello, compile-time world!"
 
 A = record['amount' : decimal[2]]
 C = record[
@@ -307,8 +309,8 @@ def __toplevel__():
   t2 = ({amount: 15.00}, common) (Transfer)
   log_transfer(t1)
   log_transfer(t2)
-  
-print "Hello, compile-time world!"
+
+print "Goodbye, compile-time world!"
 \end{lstlisting}
 \caption{[\texttt{listing\ref{example}.py}] An Ace compilation script.}
 \label{example}
@@ -325,11 +327,38 @@ In our example, we see several types being constructed:
 On line 12, we construct a simple \emph{prototypic object type} \cite{Lie86}. The type \verb|Transfer| classifies terms consisting of a \todo{what is the right term for this?}\emph{fore} of type \verb|A| and a \emph{prototype} of type \verb|C|. If a field cannot be found in the fore, the type system will delegate (here, statically) to the prototype. This makes it easy to share the values of the fields of a common prototype amongst many fores, here to allow us to describe multiple transfers differing only in amount.
 \end{enumerate}
 \subsection{Functions}
+
 Functions implementing run-time behavior (\emph{typed functions}) are distinguished by the presence of a decorator specifying their  \emph{base semantics} (here \verb|py| from \verb|examples.py|; we will discuss this further below). These functions are, however, still written using Python's syntax, a choice that is again valuable for extrinsic reasons: users of Ace can use a variety of  tools designed to work with Python source code  without  modification, including code highlighters (like the one used in generating this paper), editor plugins, style checkers and documentation generators. We will see how, with a bit of cleverness, Python's syntax can be repurposed within these functions to support a variety of static and dynamic semantics that differ from Python's. Ace  leverages the \verb|inspect| and \verb|ast| modules in the Python standard library to extract abstract syntax trees for typed functions \cite{python}. 
+
+On lines 14-18, we see the function \verb|log_transfer|. As in Python, it begins with a documentation string  that informally specifies the behavior of the function. Before moving into the body, however, we  also write a \emph{type signature} (line 17) stating that the type of \verb|t| is \verb|Transfer|, the prototypic object type described above. As a result, we can assume on line 19 that \verb|t.amount| and \verb|t.name| have types \verb|decimal[2]| and \verb|string|, respectively. We will return to the details of \verb|print| and the form \verb|[string](t.amount)|, which performs an explicit conversion, shortly.\todo{when?}
+
+Line 17 borrows Python's syntax for dictionary literals to approximate  conventional notation for type annotations.
+%\footnote{In the rare situation where there are no type annotations and the first statement is a dictionary literal, users can use Python's \texttt{pass} keyword.} % (and following conventions for documentation strings, which also describe ``types'' at the end). % The ``keyword'' \verb|type| was chosen because it is the name of a built-in function in Python (and thus would not be used in the way shown for any other purpose).
+ {In version 3.0 of Python, syntax for annotating arguments with arbitrary values directly was introduced \cite{pep3107}:
+% \vspace{-3px}
+\begin{lstlisting}[numbers=none]
+def log_transfer(t : Transfer): 
+  print ...
+\end{lstlisting}
+\vspace{-5px}
+These annotations were initially intended to serve only as documentation (suggesting that users of dynamically typed languages see potential in a typing discipline, if not a static one), but they were also made available as metadata for use by unspecified  future libraries. Ace supports both notations when the compilation script is run using Python 3.\textit{x}, but we use the more universally available notation here in view of our extrinsic goals: the Python 2.\text{x} series  remains the most widely used by a large margin as of this writing.% (though we consider cross-compilation in Sec. \ref{targets}).
+
+\subsection{Bidirectional Typechecking of Introductory Forms}
+On lines 21-30, we define the function \verb|__toplevel__| (the base will consider this a special name for the purposes of compilation, discussed in the Sec. \ref{compilation}). After printing a run-time greeting, we construct a \emph{value} of type \verb|C| on lines 24-26. Recall that \verb|C| is a record type, so we provide the names of the fields (here, without quotes because we are no longer in the type-level language) and values of the appropriate type using the syntactic form normally used for dictionary literals. We specify which record type the literal should be {analyzed} against by giving a \emph{literal ascription}, \verb|(C)|. This again repurposes existing  syntax: here function application. When the ``function'' is of literal form (dictionaries, tuples, lists, strings, numbers, booleans and  \verb|None|) and the argument is a type, we consider it instead an \emph{ascribed introductory form} of that type. We see another such form used with Python's tuple syntax on lines 27-28 to introduce terms of type \verb|Transfer| by providing the fore and prototype.
+
+%\subsection{Bidirectional Typechecking}
+The string, number and dictionary literal forms inside the outermost forms on lines 24-28 are also  introductory, but do not have an ascription. This is because the definition of the type \verb|C| completely determines which types they will need to have. As we will discuss in more detail shortly, Ace is built around a \emph{bidirectional type system} that distinguishes locations where an expression must \emph{synthesize} a type (e.g. to the right of bindings) from those where it can be \emph{analyzed} against a known type (e.g. as an argument to a function with known type) \cite{Lovas08abidirectional}. Literal forms are only analytic. 
+
+If a literal is used in a synthetic location, the base can, however, specify a ``default ascription''. For example, if we had not specified the literal ascription on line 26, the base would cause the dictionary literal to be analyzed against the type \verb|dyn|, covering dynamically classified Python values. This would still lead to a type error because the variables used as keys are not bound in the top-level context (emphasizing that ``dynamically-typed languages'' can still have a static semantics, even if it only involves checking that top-level variables are bound).% When considered as a record, the keys were considered in a different class by the implementation (labels, rather than variables).
+
+An ascription can also evaluate statically to a {type constructor}. For example, we might write \verb|[1, 2] (matrix)| instead of \verb|[1, 2] (matrix[i32])| when using a base for which the default ascription for number literals is \verb|i32|. Because the arguments are synthetic, the type constructor can determine an appropriate index based on the types of the subexpressions. If we wanted a matrix of \verb|f32|s, then we would have to write either \verb|[1, 2] (matrix[f32])| or \verb|[1(f32), 2(f32)] (matrix)|, or use a base with a different default ascription. We will see how bidirectional typechecking of introductory forms  works in greater technical detail in Secs. \ref{att} and \ref{theory}, but note here that it is one of the key mechanisms for expressiveness given our constraint that we cannot add entirely new forms to the language (and indeed, doing so would begin to be quite crowded even if we could add distinct forms for matrices, vectors, lists, tuples, etc.).
+
+\subsection{External Compilation}\label{compilation} 
 \begin{codelisting}
 \begin{lstlisting}[style=Bash]
 $ `acec listing1.py`
 Hello, compile-time world!
+Goodbye, compile-time world!
 [acec] _listing1.py successfully generated.
 $ `python _listing1.py`
 Hello, run-time world!
@@ -351,50 +380,29 @@ print "Hello, run-time world!"
 common = ("Annie Ace", "0000000001", "00-0000/0000")
 t1 = ((5,50), common)
 t2 = ((15,0), common)
-print_check(t1)
-print_check(t2)
+log_transfer(t1)
+log_transfer(t2)
 \end{lstlisting}
 \caption{[\texttt{\_listing\ref{example}.py}] The file generated in Listing \ref{external-compilation}.}
 \label{example-out}
 \end{codelisting}
 
-On lines 14-18, we see the function \verb|log_transfer|. As in Python, we write a documentation string  that informally specifies the behavior of the function. Before moving into the body, however, we  also write a \emph{type signature} (line 17) stating that the type of \verb|t| is \verb|Transfer|, the prototypic object type described above. As a result, we can assume on line 19 that \verb|t.amount| and \verb|t.name| have types \verb|decimal[2]| and \verb|string|, respectively. We will return to the details of \verb|print| and the form \verb|[string](t.amount)|, which performs an explicit conversion, shortly.\todo{when?}
+To typecheck, translate and execute the code in Listing \ref{example}, we have two choices: do so externally at the shell, or perform compilation interactively from within Python. We will begin with the former, then return to the latter in Sec. \ref{targets}.% with our OpenCL examples. 
 
-Line 17 borrows Python's syntax for dictionary literals to approximate  conventional notation for type annotations.
-%\footnote{In the rare situation where there are no type annotations and the first statement is a dictionary literal, users can use Python's \texttt{pass} keyword.} % (and following conventions for documentation strings, which also describe ``types'' at the end). % The ``keyword'' \verb|type| was chosen because it is the name of a built-in function in Python (and thus would not be used in the way shown for any other purpose).
- {In version 3.0 of Python, syntax for annotating arguments with arbitrary values directly was introduced \cite{pep3107}:
-% \vspace{-5px}
-\begin{lstlisting}[numbers=none]
-def log_transfer(t : Transfer): ...
-\end{lstlisting}
-\vspace{-5px}
-These annotations were initially intended to serve only as documentation (suggesting that users of dynamically typed languages see potential in a typing discipline, if not a static one), but they were also made available as metadata for use by unspecified  future libraries. Ace supports both notations when the compilation script is run using Python 3.\textit{x}, but we use the more universally available notation here in view of our extrinsic goals: the Python 2.\text{x} series  remains the most widely used by a large margin as of this writing (though we consider cross-compilation in Sec. \ref{targets}).
-
-\subsection{Bidirectional Typechecking of Introductory Forms}
-On lines 21-30, we define the function \verb|__toplevel__| (the base will consider this a special name for the purposes of compilation, discussed in the Sec. \ref{compilation}). After printing a run-time greeting, we construct a \emph{value} of type \verb|C| on lines 24-26. Recall that \verb|C| is a record type, so we provide the names of the fields (here, without quotes because we are no longer in the type-level language) and values of the appropriate type using the syntactic form normally used for dictionary literals. We specify which record type the literal should be {analyzed} against by giving a \emph{literal ascription}, \verb|(C)|. This again repurposes existing  syntax: here function application. When the ``function'' is of literal form (dictionaries, tuples, lists, strings, numbers and keywords like \verb|True| and \verb|None|) and the argument is a type, we consider it instead an \emph{ascribed introductory form} of that type. We see the same form used with Python's tuple syntax on lines 27-28 to introduce terms of type \verb|Transfer| by providing the fore and prototype.
-
-%\subsection{Bidirectional Typechecking}
-The string, number and dictionary forms inside the outermost forms on lines 24-28 are also introductory forms, but do not require an ascription. This is because the definition of the type \verb|C| already determines which types they should be analyzed. As we will discuss in more detail shortly, Ace is built around a \emph{bidirectional type system} that distinguishes locations where an expression must \emph{synthesize} a type (e.g. to the right of bindings) from those where it can be \emph{analyzed} against a known type (e.g. as an argument to a function with known type) \cite{Lovas08abidirectional}. Literal forms can only be analyzed against a type. If used in a synthetic location, the base must specify a ``default ascription''. For example, if we had not specified the literal ascription on line 26, the base would cause it to be analyzed against a type for Python dictionaries, which would lead to a type error because the variables used as keys are not bound in the surrounding context.
-
-An ascription can also be a {type constructor}, rather than a type. For example, we might write \verb|[1, 2] (matrix)| rather than \verb|[1, 2] (matrix[i32])| assuming the default ascription for integer literals is \verb|i32|. The type constructor synthesizes an index based on the types synthesized by the subexpressions. If we wanted a matrix of \verb|f32|s, then we would have to write either \verb|[1, 2] (matrix[f32])| or \verb|[1(f32), 2(f32)] (matrix)|, or use a base with a different default ascription. We will see how this works in greater technical detail shortly.
-
-\subsection{External Compilation}\label{compilation} 
-To typecheck, translate and execute the code in Listing \ref{example}, we have two choices: do so externally at the shell, or perform compilation interactively from within Python. We will here describe the former, then return to interactive compilation in Sec. \ref{targets} with a different example. 
-
-Listing \ref{external-compilation} shows how to invoke the \verb|acec| compiler at the shell to typecheck and translate \texttt{listing\ref{example}.py}, resulting in a file named \verb|_listing1.py|. This is then sent to the  Python interpreter to produce the desired run-time behavior. Note that the {\texttt{print}} statement on line 32 of the compilation script was  evaluated during compilation only. These two steps can be combined by running \verb|ace listing1.py| (the intermediate file is not generated in this case).
+Listing \ref{external-compilation} shows how to invoke the \verb|acec| compiler at the shell to typecheck and translate \texttt{listing\ref{example}.py}, resulting in a file named \verb|_listing1.py|. This is then sent to the  Python interpreter for execution. Note that the {\texttt{print}} statements at the top-level of the  compilation script were evaluated during compilation only. These two steps can be combined by running \verb|ace listing1.py| (the intermediate file is not generated unless explicitly requested in this case).
 
 The Ace compiler is itself a Python library, and \verb|acec| is a simple Python script that invokes it, operating in two steps:
 \begin{enumerate}
-\item Executes the provided compilation script (\verb|listing1.py|)
-\item For any top-level bindings that are Ace functions in the final environment (instances of \verb|ace.TypedFn|, as we will discuss), it initiates the active type-checking and translation process described in Sec. \ref{att}. If no type errors are discovered, the translations are extracted and emitted (the file extension(s) are determined by the target(s) in use, discussed in Sec. \ref{targets}; here our target is  the default target associated with the base \verb|examples.py.py|, which emits Python 2.6 files). If a type error is discovered, no file is emitted and the error is displayed on the console.
+\item Evaluate the provided compilation script (\verb|listing1.py|)
+\item For any top-level bindings that are Ace functions in the final environment (instances of \verb|ace.TypedFn|, as we will discuss), it initiates active type-checking and translation (Sec. \ref{att}). If no type errors are discovered, the translations are collected (obeying order dependencies) and emitted, with file extension(s) determined by the target(s) in use, discussed in Sec. \ref{targets}. Here our target is  the default target associated with the base \verb|examples.py.py|, which emits Python 2.6 files. If a type error is discovered, no file is emitted and the error is displayed on the console.
 \end{enumerate}
 
 In our example, there are no type errors, so the file \verb|_listing1.py|, shown in Listing \ref{example-out},  is generated. This file is meant only to be executed. The invariants necessary to ensure that execution does not ``go wrong'' were checked statically and entities having no bearing on execution, like field names and types themselves, were erased. Notice that:
 \begin{enumerate}
-\item The base, recognizing the function name \verb|__toplevel__| as special, placed the translation of its body  at the top level of the file. Ace does not have any special function names itself; this is a feature of the chosen base.
-\item Records with two or more fields translated to tuples of their values. If there was only a single field, like \verb|A|, its value was passed around unadorned. 
-\item Decimals are represented as pairs of integers. Conversion to a string happens via a helper function defined in a ``runtime'' package imported with an internal name, \verb|__ace_0|, to avoid naming conflicts. 
-\item Terms of type \verb|string_in[r"..."]| translated to strings. Checks for well-formedness were performed entirely statically by the type system.\todo{Nathan?}\footnote{Note that there are situations (e.g. if a string is read in from the console) that would necessitate an initial run-time check, but no further checks in downstream functions would be necessary. See the appendix for details.}
+\item The base recognized the function name \verb|__toplevel__| as special, placing the translation of its body  at the top level of the file. Ace does not have any special function names itself; this is a feature of the chosen base.
+\item Records with two or more fields translated to tuples of their values (e.g. \verb|common| on line 8). If there was only a single field, like the terms of type \verb|A| inside \verb|t1| and \verb|t2|, the value was passed around unadorned. 
+\item Decimals translated to pairs of integers. Conversion to a string happened via a helper function defined in a ``runtime'' package imported with an internal name, \verb|__ace_0|, to avoid naming conflicts. 
+\item Terms of type \verb|string_in[r"..."]| translated to strings. Checks for membership in the specified regular language were performed entirely statically by the type system.\todo{Nathan?}\footnote{Note that there are situations (e.g. if a string is read in from the console) that would necessitate an initial run-time check, but no further checks in downstream functions would be necessary. See the appendix for details.}
 \item Prototypic objects are represented as pairs consisting of the fore and the prototype. Dispatch to the appropriate record based on the field name is static (line 5).
 \end{enumerate}
 
@@ -402,7 +410,6 @@ In our example, there are no type errors, so the file \verb|_listing1.py|, shown
 
 %Because \verb|t| will be statically guaranteed to have type \verb|Transfer|,  
 \subsection{Type Errors}
-Listing \ref{oops} shows an example of code containing several type errors. Indeed, lines 9-13 each contain a type error. If analagous code were written in Python itself, these could only be found if the code was executed on the first day of the month (and, depending on the implementation, not all of the issues would  produce even run-time exceptions). Static type checking allows us to find these errors during compilation. Listing \ref{oops-compilation} shows the result of attempting to compile this code. The compilation script completes (so that functions can refer to each other mutually recursively), then the typed functions in the top-level environment are typechecked. The typechecker raises an exception statically at the first error, and \verb|acec| prints it as shown.
 \begin{codelisting}[t]
 \begin{lstlisting}
 from listing1 import py, A, C, log_transfer
@@ -432,21 +439,22 @@ $ `acec listing4.py`
 \end{lstlisting}
 \caption{Compiling \texttt{listing\ref{oops}.py} using \texttt{acec} catches the errors statically (compilation stops at first error).}
 \label{oops-compilation}
-\end{codelisting}
+\end{codelisting}Listing \ref{oops} shows an example of code containing several type errors. Indeed, lines 9-13 each contain a type error. If analagous code were written in Python itself, these could only be found if the code was executed on the first day of the month (and, depending on the implementation, not all of the issues would  immediately result in run-time exceptions, possibly leading to quite subtle problems). Static type checking allows us to find these errors during compilation. Listing \ref{oops-compilation} shows the result of attempting to compile this code. The compilation script completes (so that functions can refer to each other mutually recursively), then the typed functions in the top-level environment are typechecked. The typechecker raises an exception statically at the first error, and \verb|acec| prints it as shown.
+
 
 
 
 \section{Active Typechecking and Translation}\label{att}
 
-In tooling for a monolithic language, there is typically a \emph{syntax-directed} protocol governing type synthesis/analysis (collectively, \emph{typechecking}\todo{rename it above}), translation, pretty-printing and so on. For example, one might declare functional datatypes that capture all types and term forms, and then proceed by  exhaustive case analysis to implement these functions. The external visitor pattern for class-based object systems captures essentially the same protocol. In both cases, the problem is that all the expression forms and types are defined in one place, so one cannot extend the language modularly.
+In compilers and other tools for monolithic languages, there is typically a \emph{syntax-directed} protocol governing type checking, translation, pretty-printing and so on. For example, one might declare functional datatypes that capture all types and term forms, and then proceed by  exhaustive case analysis over terms to implement this functionality. The external visitor pattern for class-based object systems captures essentially the same protocol. In both cases, the problem is that the types and terms are defined in one place, so  providers cannot extend the language modularly.
 
-In extensible languages the focus is typically on enabling the addition of new types and term forms. Adding new term forms requires then adding cases for all possible functions over terms (e.g. typing, translation,  code highlighting, style checking and so on). This is difficult (we will discuss some approaches in Sec. \ref{related}). Doing so while retaining the ability to reason compositionally about metatheoretic issues (e.g. type safety) is even more difficult. This is the canonical example of the widely-studied \emph{expression problem} \cite{wadler1998expression}.  
+In extensible languages the focus is typically on enabling the addition of both new types and term forms. Adding new term forms requires then adding cases for all possible functions over terms (e.g. typing, translation,  code highlighting, style checking and so on). This is difficult. Indeed, this is the canonical example of the widely-studied \emph{expression problem} \cite{wadler1998expression}. Although there are some approaches that work for certain purposes, retaining the ability to reason compositionally about metatheoretic issues (e.g. type safety) and avoiding ambiguities when extensions are combined can become difficult (see Sec. \ref{related}). %Requiring that abstraction clients have the expertise to resolve these ambiguities manually is undesirable, and heading them off results in an unbounded, combinatoric explosion of situations to consider.
 
-Ace's term forms, as we have seen, are fixed by Python's grammar, so Ace sidesteps the expression problem entirely (and thus reaps the extrinsic benefits related to tool support, described earlier). Instead of taking a syntax-directed view of extensibility, we take a type-directed view: users cannot add new forms but they can add new types, which can affect the semantics of existing forms by an unambiguous protocol. %In Ace (but not in the theory in Sec. \ref{theory}), users can also repurpose existing forms flexibly within a delimited scope. 
-More specifically, the key mechanisms that distinguish Ace's approach to extensibility are: \begin{itemize}
+Ace's term forms, as we have seen, are fixed by Python's grammar, so Ace sidesteps the expression problem almost entirely (and thus inherits broad tool support, as described earlier). The key insight is that leaving the forms fixed does not mean the semantics must also be fixed. Instead of taking a syntax-directed view of extensibility, we take a type-directed view: users cannot add new forms but they can add new types, which we will allow to affect the semantics of or reinterpret existing forms (e.g. literals, as discussed above, but also nearly every other form, as we will now discuss) in a controlled manner.  %In Ace (but not in the theory in Sec. \ref{theory}), users can also repurpose existing forms flexibly within a delimited scope. 
+More specifically, the key features that distinguish active typechecking and translation are: \begin{itemize}
 \item a \emph{dispatch protocol} that delegates responsibility for typechecking and translation to:
   \begin{itemize}
-  \item a type or type constructor extracted from a subterm of an expression in some way
+  \item a type or type constructor extracted from a subterm of a compound expression
   \item a per-function base semantics (or simply \emph{base}) for base forms for which this is not possible  (statements, variables and unascribed literals)
   \end{itemize}
 \item a mechanism for allowing the user to define new types, type constructors and bases from within the language (in particular, from within the type-level language) rather than fixing them ahead of time
@@ -468,7 +476,7 @@ def example(a):
 To see how this works, let us trace through how Ace processes the simple example in Listing \ref{att-example}. 
 
 \subsection{Base Decorators}
-Function decorators in Python (line 2) are syntactic sugar for \emph{calling} the decorator (\verb|py|) with the decorated function (lines 3-5) as an argument, then replacing the binding (\verb|example|)  with the return value of this call. We could equivalently have omitted line 3 and inserted the top-level statement \verb|example = py(example)| on the line after the function definition. Note that \verb|py| is not a function but an instance of a class, \verb|examples.py.PyBase|, inheriting from \verb|ace.Base|. It can be used as a decorator because \verb|ace.Base| overloads the call operator as shown in Listing \ref{base}. The \verb|_aceify| function (not shown) \todo{show in appendix?}operates as follows:
+Function decorators in Python (line 2) are syntactic sugar for {calling} the decorator (\verb|py|) with the decorated function (lines 3-5) as an argument, then replacing the binding (\verb|example|)  with the return value of this call. We could equivalently have omitted line 3 and inserted the top-level statement \verb|example = py(example)| on the line after the function definition. Note, however, that \verb|py| is not a function but an instance of a class, \verb|examples.py.PyBase|, that inherits from \verb|ace.Base|. It can be used as a decorator because \verb|ace.Base| overloads the call operator, shown in Listing \ref{base}. The \verb|_aceify| function (not shown) \todo{show in appendix?}operates as follows:
 \begin{enumerate}
 \item The Python standard library is used to extract an abstract syntax tree (\verb|AST|) from the function.
 \item The closure of the function, together with the globals in the module it is defined in, are extracted to form its static environment.
@@ -478,6 +486,17 @@ Function decorators in Python (line 2) are syntactic sugar for \emph{calling} th
 By the end of Listing \ref{att-example}, \verb|example| is thus an instance of \verb|ace.TypedFn|. It could  have been constructed directly by calling the constructor on line 2 of Listing \ref{base} (this would be inconvenient, but could be useful for metaprogramming). 
 
 \subsection{Typechecking Typed Functions and Statements}
+When the Ace compiler begins typechecking a \verb|TypedFn| (when asked to by \verb|acec|, or when it is  invoked interactively as we will show in Sec. \ref{targets}), it proceeds as follows:
+\begin{enumerate}
+\item An \verb|ace.Context| is constructed with a reference to the function (Listing \ref{context}, lines 2-3).
+\item The base is asked to initialize the context. This can be seen on lines 5-7 of Listing \ref{pybase}, where the Python base adds an attribute tracking local bindings (initially only the arguments) and the return type to be synthesized (initially not known, indicated using \verb|None|).
+\item For each statement in the body (ignoring the documentation string and type annotation, if present), the compiler calls a method of the base, \verb|check_|$F$, where $F$ is the form of the statement (taken directly from Python's \verb|ast| package \cite{python}). These methods are responsible for checking that statement is well-typed (statements do not themselves have a type) and implementing any necessary effects on the context.
+
+The assignment statements on lines 5 and 6 of Listing \ref{att-example} trigger the method \verb|check_Assign| \todo{if time, add destructuring assignment to appendix}shown on lines 6-14 of Listing \ref{pybase} and the return statement on line 7 triggers the method \verb|check_Return| on lines 18-22. Both work similarly: if this is the first assignment to a particular identifier, or the first return statement seen, then the value must synthesize a type in the current context. Otherwise, it is analyzed against the previously synthesized type.
+\item The base synthesizes a type for the function as a whole via the \verb|syn_ty_FunctionDef_outer| method. Here, an \verb|arrow| type is synthesized (lines 26-29) based on the argument signature and the synthesized return type.
+\end{enumerate}
+
+\subsection{Bidirectionally Typechecking Expressions}
 \begin{codelisting}
 \begin{lstlisting}
 class TypedFn(object):
@@ -493,17 +512,7 @@ class Base(object):
 \caption{A portion of the \texttt{ace} core showing how a base can be used as a decorator to construct a typed function.}
 \label{base}
 \end{codelisting}
-When the Ace compiler begins typechecking a \verb|TypedFn| (when asked to by \verb|acec|, or when it is  invoked interactively as we will show in Sec. \ref{targets}), it proceeds as follows:
-\begin{enumerate}
-\item An \verb|ace.Context| is constructed with a reference to the function (Listing \ref{context} lines 2-3).
-\item The base is asked to initialize the context. This can be seen on lines 5-7 of Listing \ref{pybase}, where the Python base adds an attribute tracking local bindings (initially only the arguments) and the return type to be synthesized (initially not known, indicated using \verb|None|).
-\item For each statement in the remainder of the body, the compiler calls a method of the base, \verb|check_|$F$, where $F$ is the form of the statement (taken directly from Python's \verb|ast| package \cite{python}). These methods are responsible for checking that statement is well-typed (statements do not themselves have a type) and implementing any necessary effects on the context.
-\item The base synthesizes a type for the function as a whole via the \verb|syn_ty_FunctionDef_outer| method.
-\end{enumerate}
 
-The assignment statement on lines 5 and 6 of Listing \ref{att-example} triggers the method \verb|check_Assign| \todo{if time, add destructuring assignment to appendix}shown on lines 6-14 of Listing \ref{pybase} and the return statement on line 7 triggers the method \verb|check_Return| on lines 18-22. Both work similarly: if this is the first assignment to a particular identifier, or the first return statement seen, then the value must synthesize a type in the current context. Otherwise, the value is analyzed against the previously determined type. At the end, an \verb|arrow| type is synthesized (lines 26-29) based on the argument signature and the synthesized return type.
-
-\subsection{Bidirectionally Typechecking Expressions}
 \begin{codelisting}
 \begin{lstlisting}
 class PyBase(ace.Base):
@@ -889,6 +898,20 @@ There are several other language-internal extension mechanisms that have been de
 When the mechanisms available in an existing language prove insufficient, researchers and domain experts often design a new language. A number of tools have been developed to assist with this task, including compiler generators, language workbenches and domain-specific language frameworks (cf \cite{erdweg2013state}). Extensible compilers can be considered a form of language framework as well due to the interoperability issues that relying on a compiler-specific extensions can introduce. It is difficult or impossible for these language-external approaches to achieve interoperability, because languages are not aware of each other's semantics and merging languages is not guaranteed to be sound.
 
 \section{Discussion}\label{discussion}
+
+\begin{enumerate}
+\item We address the ``chicken-and-egg'' problem by designing Ace, an extensible language  embedded within Python \cite{Politz:2013:PFM:2509136.2509536,python} entirely as a library. The top-level of an Ace file is a \emph{compilation script} written in Python and Python serves as Ace's \emph{type-level language}, as we will discuss.  Ace and Python thus share a common syntax and package system, so users of Ace can directly leverage established tools, infrastructure and coding standards. Functions marked by a decorator as under the control of Ace are, unlike Python functions, \emph{statically} typechecked. This makes it possible to rule out many potential issues ahead of execution, and thus  avoid  costly dynamic checks. %The semantics of  define run-time behavior.
+\item  % Instead, Ace has a statically-typed semantics that can be extended by users from within libraries. 
+There is \emph{no particular type system built into Ace}. Instead, a type is any  object implementing the \verb|ace.Type| interface constructed by the compilation script. We call these \emph{active types}. When statically assigning a type to a compound form, e.g. \verb|e.x|, the Ace {compiler} delegates to the type of a subexpression, e.g. to the type of \verb|e|, to determine how to assign a type to the expression as a whole. As we will show, this {type-directed protocol}, \emph{active typing}, permits the expression of a rich variety of type systems as libraries. Unlike syntax-directed protocols, there cannot be ambiguities when separately defined type sytems are combined (types control non-overlapping sets of expressions by construction). Base cases, e.g.  variables and certain statement forms, are handled on a {per-function basis} by a \emph{base semantics}, also a compile-time object implementing an interface, \verb|ace.Base|.
+\end{enumerate}
+% As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur .
+
+The dynamic behavior of an Ace function is determined by translation to a \emph{target language}. We begin by  targeting Python, then discuss targeting OpenCL and CUDA, lower-level languages used to program many-core processors (e.g. GPUs). Active types and bases control translation by the same type-directed protocol that governs type assignment. We call this phase \emph{active translation}. A \emph{target} mediates this process and is also a user-defined compile-time object implementing an interface, \verb|ace.Target|. 
+%One base or type can support multiple targets. 
+When targeting a typed language, care must be taken to ensure that well-typed Ace expressions have well-typed translations, so we integrate a technique for compositionally reasoning about compiler correctness (developed for the TIL compiler for Standard ML \cite{tarditi+:til-OLD}) into the language.
+
+TODO
+
 Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions.
 
 It is legitimate to ask, however, why dynamically-typed languages are so widely-used in multiple domains. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
