@@ -51,16 +51,16 @@
 			{\inferrule{#3}{#2} & {\textsf{\footnotesize{\sc #1}}} \\ \\}
 
 \newcommand{\Lagr}{\mathcal{L}}
-\newcommand{\strin}[1]{{\tt string\_in #1}}
+\newcommand{\strin}{{\tt string\_in}}
 \newcommand{\lang}[1]{\Lagr\{#1\}}
-\newcommand{\stru}[1]{ {\tt string\_union #1}}
+\newcommand{\stru}[2]{ {\tt string\_union}(#1,#2)}
 
 \newcommand{\str}{ {\tt string} }
 \newcommand{\istr}{ {\tt istring} }
 
-\newcommand{\dconvert}{ {\tt dconvert} }
-\newcommand{\filter}{ {\tt filter} }
-\newcommand{\ifilter}{ {\tt ifilter} }
+\newcommand{\dconvert}[2]{ {\tt dconvert}(#1,#2) }
+\newcommand{\filter}[2]{ {\tt filter}(#1,#2) }
+\newcommand{\ifilter}[2]{ {\tt ifilter}(#1,#2) }
 
 \newcommand{\reduces}{ \Rightarrow }
 \newcommand{\ireduces}{ \leadsto }
@@ -91,6 +91,11 @@ TODO-nrf spell check.
 TODO-nrf Include functions (app, abs)?
 
 TODO-nrf Change icheck in eval rule to Python.
+
+TODO-nrf Is it ok to make the proofs single-column? If not clean up overflows.
+
+TODO-nrf Make sure failure of unicity isn't causing any problems and write down lemmas about
+forms (e.g. $e \in \lang{r} \implies e = \strf{s}$ etc).
 
 \section{Introduction}
 In web applications and other settings, incorrect input sanitation often causes
@@ -159,9 +164,9 @@ casting.
 %$x$					\hfill variable 				\alt
 %${\tt lambda} x:t$		\hfill abstraction 			\alt
 %$t\ t$				\hfill application				\alt
-$\filter(\strin[r],t)$ 		\hfill filter substrings			\alt
+$\filter{\strin[r]}{t}$ 		\hfill filter substrings			\alt
 $[\strin[r]](t)$ \hfill safe conversion \alt
-$\dconvert[\strin[r]](t)$ \hfill unsafe conversion
+$\dconvert{\strin[r]}{t}$ \hfill unsafe conversion
 
 <iv> ::= 			\hfill internal values:					\\
 $\istrf{s}$				\hfill internal string \alt
@@ -184,7 +189,7 @@ $\strin[r]$				\hfill Regular language strings
 
 The $\lcs$ language gives static semantics for common regular expression library
 functions. In this treatment, we include concatenation and filtering.
-The $\filter$ function removes all instances of a regular expression in a string,
+The ${\tt filter}$ function removes all instances of a regular expression in a string,
 while concatenation ($+$) concatenates two strings.
 
 \onecolumn
@@ -201,16 +206,16 @@ while concatenation ($+$) concatenates two strings.
 %			{\Gamma \vdash t_1 : T_{11}\rightarrow T_{12} \\ \Gamma \vdash t_2 : T_{11}}	
 %
 \inferline{T-Equiv-Top}
-  {\str \equiv \strin[.*]}
-  { }
+{\str \equiv \strin[.*]}
+{ }
 
 \inferline{T-Equiv-string\_in}
-  {\strin[r] \equiv \strin[r']}
-  {\lang{r} = \lang{r'}}
+{\strin[r] \equiv \strin[r']}
+{\lang{r} = \lang{r'}}
 
 \inferline{T-Equiv-Include}
-  {\Gamma \vdash e:\strin[r]}
-  {e \in \lang{r}}
+{\Gamma \vdash e:\strin[r]}
+{e \in \lang{r}}
 
 \inferline{T-Minimum}
 { \Gamma \vdash e : \strin[e] }
@@ -221,20 +226,20 @@ while concatenation ($+$) concatenates two strings.
 %  { \Gamma \vdash e : \strin[r] }
 
 \inferline{T-Concat}
-  {\Gamma \vdash e_1 + e_2 : \strin[r_1 \cdot r_2]}
-  { \Gamma \vdash e_1 : \strin[r_1] \\ \Gamma \vdash e_2 : \strin[r_2] }
+{\Gamma \vdash e_1 + e_2 : \strin[r_1 \cdot r_2]}
+{ \Gamma \vdash e_1 : \strin[r_1] \\ \Gamma \vdash e_2 : \strin[r_2] }
 
 \inferline{T-Convert}
-  {\Gamma \vdash [\strin[r]](e):\strin[r]}
-  {\Gamma \vdash e : \strin[r'] \\ \lang{r'} \subseteq \lang{r}}
+{\Gamma \vdash [\strin[r']](e):\strin[r']}
+{\Gamma \vdash e : \strin[r] \\ \lang{r'} \subseteq \lang{r}}
 
 \inferline{T-Dconvert (optional)}
-{\Gamma \vdash \dconvert[\strin[r]](e):\strin[r]}
-{\Gamma \vdash e : \strin[r']}
+{\Gamma \vdash \dconvert{\strin[r']}{e}:\strin[r']}
+{\Gamma \vdash e : \strin[r]}
 
 \inferline{T-Filter}
-  {\Gamma \vdash \filter(\strin[r'], t) : \strin[(r \backslash r') + \emptyset]}
-  {\Gamma \vdash t:\strin[r]}
+{\Gamma \vdash \filter{\strin[r']}{t} : \strin[(r \backslash r') + \emptyset]}
+{\Gamma \vdash t:\strin[r]}
 
 \end{tabular}
 \caption{Typing relation for $\lcs$}
@@ -281,22 +286,29 @@ while concatenation ($+$) concatenates two strings.
 { }
 
 \inferline{E-filterval}
-{\filter(\strin[r], e) : \strin[r'] \reduces {\tt rl\_filter}(r,e)}
+{\filter{\strin[r']}{e} : \strin[r\backslash r' + \emptyset] \reduces {\tt rl\_filter}(r,e)}
 { e \val }
  
 \inferline{E-filter}
-{\filter(\strin[r], e) : \strin[r'] \reduces  \filter(\strin[r], e' )}     
-  { e : T \reduces e' }
+{\filter{\strin[r']}{e} : \strin[r\backslash r' + \emptyset] \reduces  \filter{\strin[r]}{ e' }}     
+{ e : \strin[r] \reduces e' }
+
+\inferline{E-convertval}
+{ [\strin[r']](e) : \strin[r'] \reduces [\strin[r']](e') }
+{ e : \strin[r] \reduces e' }
+
+\inferline{E-convert}
+{ [\strin[r']](e) : \strin[r'] \ireduces \istrf{e} }
+{ e \val }
+
 
 \inferline{E-dconvertval (optional) \footnote{See definition ???} }
-{\dconvert[\strin[r]](e) : \strin[r'] \reduces {\dconvert[\strin[r]](e'})}
-{e:T \reduces e'}
+{\dconvert{\strin[r']}{e} : \strin[r'] \reduces {\dconvert{\strin[r']}{e'}}}
+{e:\strin[r] \reduces e'}
 
 \inferline{E-dconvert (optional) \footnote{See definition ???} }
-{\dconvert[\strin[r]](e) : \strin[r'] \ireduces {\tt ifilter}(r, \istrf{e})}
+{\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
 {e \val }
-
-
 
 \end{tabular}
 \caption{Operational semantics for $\lcs$}
@@ -324,7 +336,7 @@ $i$ such that $i \ival$.
 Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
 internal language types. This relation, $h$, is defined below.
 
-\begin{defn}[Type translation]
+\begin{defn}[Type Translation Function $h$]
   The type translation function $h : Type \rightarrow IType$ is defined as follows:
   \begin{itemize}
     \item $\forall r. h(\strin[r]) = \istr$
@@ -342,6 +354,32 @@ The important definitions and theorems follow.
 
 \subsection{Type Safety Proof}
 
+Before presenting progress and preservation theorems, we establish some definitions
+and lemmas necessary for the proofs.
+
+\begin{defn}[Types of internal values]
+The types of internal values are defined as follows:
+\begin{itemize}
+  \item If $e=\istrf{s}$ then $e:\istr$.
+  \item If $e=\ifilter(r, \istrf{s})$ then $e:\istr$.
+  \item If $e=\istrf{s_1}+\istrf{s_2}$ then $e:\istr$.
+\end{itemize}
+\end{defn}
+
+Definition 2 is an additional assumption about
+the internal language. To summarize, we assume an internal language containing 
+strings together with operations for string concatentation and filtering. We
+expect closure over strings for both operations.
+Recall that $\ifilter$ is only needed for dynamic casts, which may be removed without
+descreasing the expressivity or even usability of the language.
+
+%\begin{lem}[Canonical Forms for $\lcs$]
+%We identify only canonical forms necessary for the type safety proof.
+%\begin{itemize}
+%  \item If $e \val$ and $e:\str$ then $e = \strf{s}$.
+%\end{itemize}
+%\end{lem}
+
 \begin{thm}[Preservation]
   Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
   For all terms $e$:
@@ -352,25 +390,35 @@ The important definitions and theorems follow.
 \end{thm}
 \begin{proof}
 The proof is a straightforward induction on the derivation of the combined evaluation relation.
-%\begin{itemize}[label=$ $,itemsep=1ex]
-%  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold vacuously since the terms at hand are not $\lcs$ terms.
-%  \item \textbf{E-String}. Since $e:\str$, it suffices to show that $h(\str) = \istr$ which holds by definition.
-%  \item \textbf{E-Sring\_in}. Since $e:\strin[r]$, it suffices to show that $h(\strin[r]) = \istr$ which holds for any $r$ by definition.
-%  \item \textbf{E-filter}. Note that ${\tt filter}(\strin[r], e) : \strin[r']$ for some $r'$. 
-%    It suffices to show that rl\_filter(r,e)
-%    $h(\strin[r]) = \istr$ which holds for any $r$ by definition.
-%  \item \textbf{E-Dconvert}. Note that $\dconvert[r](e) : \strin[r]$, so it suffices to show that $h(\strin[r]) = \istr$ which holds by defintiion.
-%\end{itemize}
+\begin{itemize}[label=$ $,itemsep=1ex]
+  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold since the terms at hand are not $\lcs$ terms.
+  \item \textbf{E-Stringval, E-strval}. Both cases hold since no reduction is possible. 
+  \item \textbf{E-String}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\str) = \istr$, which follows from the definition of $h$.
+  \item \textbf{E-String\_in}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\strin[r]) = \istr$, which follows from the definition of $h$ for arbitrary $r$.
+  \item \textbf{E-concat}. By the definition of typing for internal terms, $\istrf{e_1} + \istrf{e_2} : \istr$. So it suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
+  \item \textbf{E-Filterval}. We have that $\filter{\strin[r']}{e}:\strin[r\backslash r' + \emptyset]$. By inversion of T-Filter, $e:\strin[r]$.
+    By T-Equiv-string\_in (which is bidirectional), $e \in \lang{r}$.
+    By theorem 2, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
+    By T-Equiv-string\_in,  $e \in \lang{r}$ and ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$ implies ${\tt rl\_filter}(r,e):\strin[r\backslash r' + \emptyset]$.
+  \item \textbf{E-Filter}. By inversion, $e : \strin[r'] \reduces e'$ so by the induction $e':\strin[r']$.
+    Therefore, ${\tt filter}(\strin[r], e') : \strin[r \backslash r' + \emptyset]$ by T-Filter.
+  \item \textbf{E-Convertval}. It suffices to show that $h(\strin[r]) = \istr$, which is true by definition.
+  \item \textbf{E-Convert}. By inversion and induction, $e' : \strin[r]$. We know that $[\strin[r']](e) : \strin[r']$, so by inversion of T-Convert $\lang{r'} \subseteq \lang{r}$.
+    It follows that $[\strin[r']](e') : \strin[r']$.
+  \item \textbf{E-DConvert}. By inversion, $e : \strin[r'] \reduces e'$. By the induction hypothesis, $e' : \strin[r']$; therefore, by T-Dconvert, $\dconvert[\strin[r]](e):\strin[r]$.
+  \item \textbf{E-DConvertval}. By the definition of typing for internal terms, $\ifilter(r,\istrf{e}) : \istr$. It suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$.
+\end{itemize}
 \end{proof}
 
 \begin{thm}[Progress]
-  Let $T$ be a type in $\lcs$ and $\sigma$ a type in the internal language.
-  For all terms $e$, if $e:T$ then $e:T \reduces^* e' \ireduces^* i$ where $i {\tt ival}$.
+  If $e:T$ then $e:T \reduces^* e' \ireduces^* i$ where $i \ival$.
 \end{thm}
 \begin{proof}
 By induction on the derivation of $e:T$.
-%\begin{itemize}[label=$ $, itemsep=1ex]
-%\end{itemize}
+\begin{itemize}[label=$ $,itemsep=1ex]
+  \item \textbf{T-Equiv-Include}. Since $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval.
+  \item \textbf{T-Minimum}. 
+\end{itemize}
 \end{proof}
 
 \section{Implementation in Ace}
