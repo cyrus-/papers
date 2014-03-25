@@ -1,0 +1,378 @@
+\documentclass[10pt,preprint]{sigplanconf}
+\usepackage{bussproofs}    % Gentzen-style deduction trees *with aligned sequents!*
+\usepackage{mathpartir}	% For type-settting type checking rule figures
+\usepackage{syntax}		% For type-setting formal grammars.
+
+
+\usepackage{hyperref}		% For links in citations
+
+\usepackage{float}			% Make figures float if [H] option is passed.
+
+\iffalse
+\usepackage{listings}		% For typesetting code listings
+\usepackage{callout}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{upquote}
+\lstset{upquote=true}
+\fi
+
+\usepackage{textcomp}		% For \textquotesingle as used in introduction
+\usepackage{color}			% for box colors, like in TAPL.
+
+\usepackage{amsmath}		% Begin Carthage default packages
+\usepackage{makeidx}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphics}
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{epsfig}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\newtheorem{thm}{Theorem}                                                       
+\newtheorem{cor}[thm]{Corollary}                                                
+\newtheorem{lem}[thm]{Lemma}                                                    
+\newtheorem{prop}[thm]{Proposition}                                             
+\newtheorem{ax}[thm]{Axiom}                                                     
+\theoremstyle{definition}                                                       
+\newtheorem{defn}[thm]{Definition}                                              
+\newtheorem{exam}[thm]{Example}                                                 
+\newtheorem{rem}[thm]{Remark} 
+
+%
+% For type setting inference rules with labels.
+%
+\newcommand{\inferlbl}[3]
+			{\inferrule{#3}{#2}{\textsf{\footnotesize{\sc #1}}}}
+\newcommand{\inferline}[3]
+			{\inferrule{#3}{#2} & {\textsf{\footnotesize{\sc #1}}} \\ \\}
+
+\newcommand{\Lagr}{\mathcal{L}}
+\newcommand{\strin}[1]{{\tt string\_in #1}}
+\newcommand{\lang}[1]{\Lagr\{#1\}}
+\newcommand{\stru}[1]{ {\tt string\_union #1}}
+
+\newcommand{\str}{ {\tt string} }
+\newcommand{\istr}{ {\tt istring} }
+
+\newcommand{\dconvert}{ {\tt dconvert} }
+\newcommand{\filter}{ {\tt filter} }
+\newcommand{\ifilter}{ {\tt ifilter} }
+
+\newcommand{\reduces}{ \Rightarrow }
+\newcommand{\ireduces}{ \leadsto }
+
+\newcommand{\val}{ \ {\tt val} }
+\newcommand{\ival}{ \ {\tt ival} }
+
+\newcommand{\istrf}[1]{`#1\textrm'} %??
+\newcommand{\strf}[1]{``#1"}
+
+%
+% Constrain the size of full-page diagrams and rule lists
+%
+%\newcommand{\pagewidth}{5in}
+%\newcommand{\rulelistwidth}{3in}
+
+%
+% Names of type systems presented in paper
+%
+\newcommand{\lcs}{\lambda_{CS}}
+
+\setlength{\grammarindent}{3em}
+
+\begin{document}
+
+TODO-nrf spell check.
+
+TODO-nrf Include functions (app, abs)?
+
+TODO-nrf Change icheck in eval rule to Python.
+
+\section{Introduction}
+In web applications and other settings, incorrect input sanitation often causes
+security vulnerabilities. For this reason, frameworks often provide methods
+for sanitizing user input. When these methods are insufficient or unavailable,
+developers often write develop custom input sanitation algorithms. In both cases,
+input sanitation techniques are ultimately implemented using the language's
+regex library.
+
+Formally, input sanitation is the problem of ensuring that an arbitrary string
+is converted into a safe form before potentially unsafe use. For example, consider
+SQL injection attacks. To prevent such attacks, we might ensure that any string
+used as input to a query does not contain unescaped SQL common sequences. 
+
+This appendix presents a type system called $\lcs$ for ensuring that input 
+sanitation algorithms are implemented correctly with respect to use site 
+specifications.
+
+Unlike frameworks provided by general purpose languages such as Haskell and
+Ruby, our type system provides a \emph{static} guarantee that input is always 
+properly sanitized before use. We achieve this by moving portions of the regular
+expression library into the type system. Therefore, type safety relies upon 
+several closure and decidability results about regular languages.
+
+Although Ur/Web achieves a similar safety guarantee, its type system is significantly
+more complicated than the system defined below. We believe this simplicity 
+demonstrates the power of extensibility. Instead of introducing new abstractions
+based upon subtle analyses and requiring the adoption of new programming languages, 
+extension designers may capture natural programming idioms directly. TODO-nrf this seems unsubstantiated or dangerously vague.
+
+Finally, XDuce typechecks XML. Like our work, XDuce relies upon some properties of
+regular expression to establish soundness and copmleteness results. Unlike
+XDuce, our work is motivated by input sanitation and therefore considers arbitrary
+strings (as opposed to tree-structured XML documents). Furthermore, our static
+treatment of the ubiquitous ``filter" function for regular expression is novel.
+
+An outline of this appendix follows:
+
+\begin{itemize}
+  \item In \S 2, we define the type system's static and dynamic semantics.
+  \item Section 3 recalls some classical results about regular expressions and presents a type safety proof for $\lcs$ based upon these properties.
+  \item Finally, \S 4 discusses our implemention of $\lcs$ as a type system extension  within the Ace programming language.
+\end{itemize}
+
+\section{Definition of $\lcs$}
+
+The $\lcs$ language is characterized by a type of strings indexed by regular
+expressions, together with operations on such strings which correspond to common
+input sanitation patterns.
+
+This section presents the grammar and semantics of $\lcs$.
+The semantics are defined in terms of an internal language with at least strings and a regex filter function.
+These constraints are captured by the internal term valuations ($\ival$).
+The internal language does not necessarily need a regex filter function because
+any dynamic conversion is easily definable using a combination of filters and safe
+casting.
+
+%
+% Begin Grammar 
+%
+\begin{figure}
+\begin{grammar}
+<r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill Regex ($a \in \Sigma$).
+
+<t> ::= 			\hfill terms: 					\\
+%$x$					\hfill variable 				\alt
+%${\tt lambda} x:t$		\hfill abstraction 			\alt
+%$t\ t$				\hfill application				\alt
+$\filter(\strin[r],t)$ 		\hfill filter substrings			\alt
+$[\strin[r]](t)$ \hfill safe conversion \alt
+$\dconvert[\strin[r]](t)$ \hfill unsafe conversion
+
+<iv> ::= 			\hfill internal values:					\\
+$\istrf{s}$				\hfill internal string \alt
+${\tt ifilter}(r, \istr(s))$ \hfill internal filter
+
+<v> ::= \hfill values: \\
+$\strf{s}$ \hfill string
+
+<T> ::=				\hfill	types:					\\
+$\str$  \hfill Strings \alt
+$\strin[r]$				\hfill Regular language strings		
+%\alt
+%$T \rightarrow T$	\hfill	Functions
+
+<$\Gamma$> ::=	$\emptyset$	 | $\Gamma,x:T$ \hfill typing context
+\end{grammar}
+\caption{Syntax of $\lcs$}
+\label{fig:lcsSyntax}
+\end{figure}
+
+The $\lcs$ language gives static semantics for common regular expression library
+functions. In this treatment, we include concatenation and filtering.
+The $\filter$ function removes all instances of a regular expression in a string,
+while concatenation ($+$) concatenates two strings.
+
+\onecolumn
+\begin{figure}
+\begin{center}
+\begin{tabular}{c r}
+%\inferline{T-VAR}{\Gamma \vdash x : T}{x:T \in \Gamma}
+%
+%\inferline{T-ABS}{\Gamma \vdash ({\tt \textbf{lambda}\ } x: t_2) : T_1 \rightarrow T_2}
+%			{\Gamma, x:T_1 \vdash t_2:T_2}
+%
+%\inferline{T-APP}
+%			{\Gamma \vdash t_1t_2 : T_{12}}
+%			{\Gamma \vdash t_1 : T_{11}\rightarrow T_{12} \\ \Gamma \vdash t_2 : T_{11}}	
+%
+\inferline{T-Equiv-Top}
+  {\str \equiv \strin[.*]}
+  { }
+
+\inferline{T-Equiv-string\_in}
+  {\strin[r] \equiv \strin[r']}
+  {\lang{r} = \lang{r'}}
+
+\inferline{T-Equiv-Include}
+  {\Gamma \vdash e:\strin[r]}
+  {e \in \lang{r}}
+
+\inferline{T-Minimum}
+{ \Gamma \vdash e : \strin[e] }
+{\Gamma \vdash e : \str}
+
+%\inferline{T-Union}
+%  {\Gamma \vdash \stru[r'](e) : \strin[r \cup r']}
+%  { \Gamma \vdash e : \strin[r] }
+
+\inferline{T-Concat}
+  {\Gamma \vdash e_1 + e_2 : \strin[r_1 \cdot r_2]}
+  { \Gamma \vdash e_1 : \strin[r_1] \\ \Gamma \vdash e_2 : \strin[r_2] }
+
+\inferline{T-Convert}
+  {\Gamma \vdash [\strin[r]](e):\strin[r]}
+  {\Gamma \vdash e : \strin[r'] \\ \lang{r'} \subseteq \lang{r}}
+
+\inferline{T-Dconvert (optional)}
+{\Gamma \vdash \dconvert[\strin[r]](e):\strin[r]}
+{\Gamma \vdash e : \strin[r']}
+
+\inferline{T-Filter}
+  {\Gamma \vdash \filter(\strin[r'], t) : \strin[(r \backslash r') + \emptyset]}
+  {\Gamma \vdash t:\strin[r]}
+
+\end{tabular}
+\caption{Typing relation for $\lcs$}
+\label{fig:lcsTyping}
+\end{center}
+\end{figure}
+
+%
+% Begin Operational Semantics
+%
+\begin{figure}
+\begin{center}
+\begin{tabular}{c r c r}
+%\inferline{E-App1}{t_1t_2 \Rightarrow t_1't_2}{t_1 \Rightarrow t_2}
+%\inferline{E-App2}{v_1t_2 \Rightarrow v_1t_2'}{t_2 \Rightarrow t_2'}
+%\inferline{E-AppAbs}{({\tt lambda } x : t_{12})v_2 \Rightarrow [x / v_2]t_{12}}{T_{11}}
+
+\inferline{E-strinval}
+  {\strf{s}:\strin[r] \val}
+  { }
+
+%\inferline{E-strval}
+%{\strf{s}:\str \val}
+%  { }
+
+\inferline{E-ival}
+  {\istrf{e}:\istr \ival }
+  { }
+
+\inferline{E-ifilterval}
+{ {\tt ifilter}(r,e) \ival }
+{ e {\tt ival} }
+
+\inferline{E-string}
+{e : \str \ireduces \istrf{e}}
+{ e \val }
+
+\inferline{E-string\_in}
+{e : \strin[r] \ireduces  \istrf{e}}
+{ e \val }
+
+\inferline{E-concat}
+{e_1 + e_2 : \strin[r_1+r_2] \ireduces \istrf{e_1} + \istrf{e_2}}
+{ }
+
+\inferline{E-filterval}
+{\filter(\strin[r], e) : \strin[r'] \reduces {\tt rl\_filter}(r,e)}
+{ e \val }
+ 
+\inferline{E-filter}
+{\filter(\strin[r], e) : \strin[r'] \reduces  \filter(\strin[r], e' )}     
+  { e : T \reduces e' }
+
+\inferline{E-dconvertval (optional) \footnote{See definition ???} }
+{\dconvert[\strin[r]](e) : \strin[r'] \reduces {\dconvert[\strin[r]](e'})}
+{e:T \reduces e'}
+
+\inferline{E-dconvert (optional) \footnote{See definition ???} }
+{\dconvert[\strin[r]](e) : \strin[r'] \ireduces {\tt ifilter}(r, \istrf{e})}
+{e \val }
+
+
+
+\end{tabular}
+\caption{Operational semantics for $\lcs$}
+\label{fig:lcsEval}
+\end{center}
+\end{figure}
+\twocolumn
+
+\subsection{Typing}
+
+The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
+then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
+defining a algorithm -- in terms of filter -- for converting a $\strin[.*]$
+into a $\strin[r]$. The static semantics of the language defines the types of
+operations on regular expressions in terms of well-understood properties about
+regular lanugages; we recall these properties in section 3.
+
+\subsection{Dynamics}
+
+There are two evaluation judgements: $e:T \reduces e'$ and $e:T \ireduces i$.
+The $\reduces$ relation is between $\lcs$ expressions, while the $\ireduces$
+relation is a mapping from $\lcs$ expressions into internal language expressions
+$i$ such that $i \ival$.
+
+Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
+internal language types. This relation, $h$, is defined below.
+
+\begin{defn}[Type translation]
+  The type translation function $h : Type \rightarrow IType$ is defined as follows:
+  \begin{itemize}
+    \item $\forall r. h(\strin[r]) = \istr$
+    \item $h(\str) = \istr$
+  \end{itemize}
+\end{defn}
+
+\section{Type Safety}
+
+The type safety proof relies upon some established results about regular languages.
+The important definitions and theorems follow.
+
+\subsection{Properties of Regular Languages}
+ % copy from thesis
+
+\subsection{Type Safety Proof}
+
+\begin{thm}[Preservation]
+  Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
+  For all terms $e$:
+  \begin{itemize}
+    \item If $e:T$ and $e:T \ireduces i$ then $i : \sigma$ for some $\sigma$.
+    \item If $e:T$ and $e:T \reduces e'$ then $e':T$.
+  \end{itemize}
+\end{thm}
+\begin{proof}
+The proof is a straightforward induction on the derivation of the combined evaluation relation.
+%\begin{itemize}[label=$ $,itemsep=1ex]
+%  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold vacuously since the terms at hand are not $\lcs$ terms.
+%  \item \textbf{E-String}. Since $e:\str$, it suffices to show that $h(\str) = \istr$ which holds by definition.
+%  \item \textbf{E-Sring\_in}. Since $e:\strin[r]$, it suffices to show that $h(\strin[r]) = \istr$ which holds for any $r$ by definition.
+%  \item \textbf{E-filter}. Note that ${\tt filter}(\strin[r], e) : \strin[r']$ for some $r'$. 
+%    It suffices to show that rl\_filter(r,e)
+%    $h(\strin[r]) = \istr$ which holds for any $r$ by definition.
+%  \item \textbf{E-Dconvert}. Note that $\dconvert[r](e) : \strin[r]$, so it suffices to show that $h(\strin[r]) = \istr$ which holds by defintiion.
+%\end{itemize}
+\end{proof}
+
+\begin{thm}[Progress]
+  Let $T$ be a type in $\lcs$ and $\sigma$ a type in the internal language.
+  For all terms $e$, if $e:T$ then $e:T \reduces^* e' \ireduces^* i$ where $i {\tt ival}$.
+\end{thm}
+\begin{proof}
+By induction on the derivation of $e:T$.
+%\begin{itemize}[label=$ $, itemsep=1ex]
+%\end{itemize}
+\end{proof}
+
+\section{Implementation in Ace}
+
+\end{document}
