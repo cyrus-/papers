@@ -86,51 +86,41 @@
 
 \begin{document}
 
-TODO-nrf spell check.
-
-TODO-nrf Include functions (app, abs)?
-
-TODO-nrf Change icheck in eval rule to Python.
-
-TODO-nrf Is it ok to make the proofs single-column? If not clean up overflows.
-
-TODO-nrf Make sure failure of unicity isn't causing any problems and write down lemmas about
-forms (e.g. $e \in \lang{r} \implies e = \strf{s}$ etc).
-
 \section{Introduction}
 In web applications and other settings, incorrect input sanitation often causes
 security vulnerabilities. For this reason, frameworks often provide methods
 for sanitizing user input. When these methods are insufficient or unavailable,
-developers often write develop custom input sanitation algorithms. In both cases,
+developers often create  custom input sanitation algorithms. In both cases,
 input sanitation techniques are ultimately implemented using the language's
 regex library.
 
 Formally, input sanitation is the problem of ensuring that an arbitrary string
 is converted into a safe form before potentially unsafe use. For example, consider
 SQL injection attacks. To prevent such attacks, we might ensure that any string
-used as input to a query does not contain unescaped SQL common sequences. 
+used as input to a query does not contain unescaped SQL command sequences. 
 
-This appendix presents a type system called $\lcs$ for ensuring that input 
+This appendix presents a type system, $\lcs$, for ensuring that input 
 sanitation algorithms are implemented correctly with respect to use site 
 specifications.
 
 Unlike frameworks provided by general purpose languages such as Haskell and
 Ruby, our type system provides a \emph{static} guarantee that input is always 
-properly sanitized before use. We achieve this by moving portions of the regular
-expression library into the type system. Therefore, type safety relies upon 
+properly sanitized before use. We achieve this by defining a typing relation
+which captures idiomatic sanitation algorithms. Type safety relies upon 
 several closure and decidability results about regular languages.
 
-Although Ur/Web achieves a similar safety guarantee, its type system is significantly
-more complicated than the system defined below. We believe this simplicity 
-demonstrates the power of extensibility. Instead of introducing new abstractions
-based upon subtle analyses and requiring the adoption of new programming languages, 
-extension designers may capture natural programming idioms directly. TODO-nrf this seems unsubstantiated or dangerously vague.
-
-Finally, XDuce typechecks XML. Like our work, XDuce relies upon some properties of
-regular expression to establish soundness and copmleteness results. Unlike
+XDuce typechecks XML. Like our work, XDuce relies upon some properties of
+regular expressions to establish soundness and completeness results. Unlike
 XDuce, our work is motivated by input sanitation and therefore considers arbitrary
 strings (as opposed to tree-structured XML documents). Furthermore, our static
-treatment of the ubiquitous ``filter" function for regular expression is novel.
+treatment of the ubiquitous regex filter (replace) function for regular expression is novel.
+
+Finally, some research languages achieve similar safety guarantees via a specialized type
+system. The existence of such domain-specific type systems is suggestive, and 
+we believe the simplicity of $\lcs$ demonstrates the effectiveness of
+extensibility. Instead of introducing entirely new languages for each domain,
+language extension developers may invest incrementally in obtaining static
+guarnatees which address common mistakes.
 
 An outline of this appendix follows:
 
@@ -191,6 +181,26 @@ The $\lcs$ language gives static semantics for common regular expression library
 functions. In this treatment, we include concatenation and filtering.
 The ${\tt filter}$ function removes all instances of a regular expression in a string,
 while concatenation ($+$) concatenates two strings.
+
+\subsection{Typing}
+
+The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
+then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
+defining an algorithm -- in terms of filter -- for converting a $\strin[.*]$
+into a $\strin[r]$. The static semantics of the language defines the types of
+operations on regular expressions in terms of well-understood properties about
+regular lanugages; we recall these properties in section 3.
+
+\subsection{Dynamics}
+
+There are two evaluation judgements: $e:T \reduces e'$ and $e:T \ireduces i$.
+The $\reduces$ relation is between $\lcs$ expressions, while the $\ireduces$
+relation is a mapping from $\lcs$ expressions into internal language expressions
+$i$ such that $i \ival$.
+
+Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
+internal language types. This relation, $h$, is defined below.
+
 
 \onecolumn
 \begin{figure}
@@ -281,9 +291,17 @@ while concatenation ($+$) concatenates two strings.
 {e : \strin[r] \ireduces  \istrf{e}}
 { e \val }
 
-\inferline{E-concat}
+\inferline{E-concatval}
 {e_1 + e_2 : \strin[r_1+r_2] \ireduces \istrf{e_1} + \istrf{e_2}}
-{ }
+{e_1 \val \\ e_2 \val }
+
+\inferline{E-concatL}
+{e_1 + e_2 : \strin[r_1+r_2] \reduces {e_1}' + {e_2}}
+{ e_1 : \strin[r_1] \reduces {e_1}'}
+
+\inferline{E-concatR}
+{e_1 + e_2 : \strin[r_1+r_2] \reduces {e_1} + {e_2}'}
+{ e_2 : \strin[r_2] \reduces {e_2}'}
 
 \inferline{E-filterval}
 {\filter{\strin[r']}{e} : \strin[r\backslash r' + \emptyset] \reduces {\tt rl\_filter}(r,e)}
@@ -294,47 +312,38 @@ while concatenation ($+$) concatenates two strings.
 { e : \strin[r] \reduces e' }
 
 \inferline{E-convertval}
-{ [\strin[r']](e) : \strin[r'] \reduces [\strin[r']](e') }
-{ e : \strin[r] \reduces e' }
-
-\inferline{E-convert}
 { [\strin[r']](e) : \strin[r'] \ireduces \istrf{e} }
 { e \val }
 
+\inferline{E-convert}
+{ [\strin[r']](e) : \strin[r'] \reduces [\strin[r']](e') }
+{ e : \strin[r] \reduces e' }
 
-\inferline{E-dconvertval (optional) \footnote{See definition ???} }
+\inferline{E-dconvertval (optional) }
 {\dconvert{\strin[r']}{e} : \strin[r'] \reduces {\dconvert{\strin[r']}{e'}}}
 {e:\strin[r] \reduces e'}
 
-\inferline{E-dconvert (optional) \footnote{See definition ???} }
+\inferline{E-dconvert (optional) }
 {\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
 {e \val }
 
 \end{tabular}
-\caption{Operational semantics for $\lcs$}
+\caption{SOS rules for $\lcs$}
 \label{fig:lcsEval}
 \end{center}
 \end{figure}
+
 \twocolumn
 
-\subsection{Typing}
+\section{Type Safety}
 
-The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
-then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
-defining a algorithm -- in terms of filter -- for converting a $\strin[.*]$
-into a $\strin[r]$. The static semantics of the language defines the types of
-operations on regular expressions in terms of well-understood properties about
-regular lanugages; we recall these properties in section 3.
+The type safety proof relies upon some assumptions about the type system and
+dynamics of the internal language, as well as some properties of regular
+languages.
 
-\subsection{Dynamics}
-
-There are two evaluation judgements: $e:T \reduces e'$ and $e:T \ireduces i$.
-The $\reduces$ relation is between $\lcs$ expressions, while the $\ireduces$
-relation is a mapping from $\lcs$ expressions into internal language expressions
-$i$ such that $i \ival$.
-
-Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
-internal language types. This relation, $h$, is defined below.
+There must exist a translation from $\lcs$ types to the types of the internal
+language. For the remainder of this paper, we call the type translation function
+$h$.
 
 \begin{defn}[Type Translation Function $h$]
   The type translation function $h : Type \rightarrow IType$ is defined as follows:
@@ -344,34 +353,52 @@ internal language types. This relation, $h$, is defined below.
   \end{itemize}
 \end{defn}
 
-\section{Type Safety}
-
-The type safety proof relies upon some established results about regular languages.
-The important definitions and theorems follow.
-
-\subsection{Properties of Regular Languages}
- % copy from thesis
-
-\subsection{Type Safety Proof}
-
-Before presenting progress and preservation theorems, we establish some definitions
-and lemmas necessary for the proofs.
+Additionally, we assume that the internal language contains an implementation of strings,
+together with operations for concatenation and filtering by regular expression.
 
 \begin{defn}[Types of internal values]
-The types of internal values are defined as follows:
+  Let $\istrf{s}$ range over string literals and $r$ over regular expressions.
+  Internal values are typed as follows:
 \begin{itemize}
   \item If $e=\istrf{s}$ then $e:\istr$.
-  \item If $e=\ifilter(r, \istrf{s})$ then $e:\istr$.
+  \item If $e=\ifilter{r}{\istrf{s}}$ then $e:\istr$.
   \item If $e=\istrf{s_1}+\istrf{s_2}$ then $e:\istr$.
 \end{itemize}
 \end{defn}
 
-Definition 2 is an additional assumption about
-the internal language. To summarize, we assume an internal language containing 
-strings together with operations for string concatentation and filtering. We
+For simplicity, we assume a fixed translation from
+$\lcs$ regular expressions to regular expressions recognizable by the internal
+language's regex library (in practice, a fixed translation is acceptable.)
+To summarize, we assume an internal language containing 
+a string type together with operations for string concatentation and filtering. We
 expect closure over strings for both operations.
-Recall that $\ifilter$ is only needed for dynamic casts, which may be removed without
+Finally, recall that ${\tt ifilter}$ is only needed for dynamic casts, which may be removed without
 descreasing the expressivity or even usability of the language.
+Finally, the semantics of the filter function are defined in terms of ${\tt rl\_filter}$,
+which is a static version of ${\tt ifilter}$.
+
+\subsection{Properties of Regular Languages}
+
+The regular languages are the smallest set generated by regular expressions
+defined in Figure 1.
+
+\begin{thm}{Closure Properties.} \label{thm:closure}
+The regular expressions are closed under complements and concatenation.
+\end{thm}
+\begin{proof}
+See \cite{cinderella}.
+\end{proof}
+
+\begin{thm}{Coercion Theorem.} \label{thm:coerce}
+Suppose that $R$ and $L$ are regular expressions, and that $s \in R$ is a finite string.  Let $s' := coerce(R,L,s)$ with all maximal substrings recognized by $L$ replaced with $\epsilon$.  Then $s'$ is recognized by $(R \backslash L) + \emptyset$ and the construction of $R \backslash L$ is decidable.
+\end{thm}
+\begin{proof}
+Let $F,G$ be FAs corresponding to $R$ and $L$, and let $G'$ be $G$ with its final states inverted (so that $G'$ is the complement of $L$).  Define an FA $H$ as a DFA corresponding to the NFA found by combining $F$ and $G'$ such that $H$ accepts only if $R$ and $L'$ accept or if $s$ is empty (this construction may result in an exponential blowup in state size.)  Clearly, $H$ corresponds to $R \backslash L + \emptyset$.  Thus, the construction of $R \backslash L + \emptyset$ is decidable.
+
+If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, or $s' \in R$ and $s' \not \in L$. If $R$ and $L$ are not subsets of one another, then it may be the case that $L$ recognizes part of $R$.  Consider $L$ as the union of two languages, one which is a subset of $R$ and one which is disjoint.  The subset language is considered above and the disjoint language is inconsequential.
+\end{proof}
+
+\subsection{Type Safety Proof}
 
 %\begin{lem}[Canonical Forms for $\lcs$]
 %We identify only canonical forms necessary for the type safety proof.
@@ -384,7 +411,7 @@ descreasing the expressivity or even usability of the language.
   Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
   For all terms $e$:
   \begin{itemize}
-    \item If $e:T$ and $e:T \ireduces i$ then $i : \sigma$ for some $\sigma$.
+    \item If $e:T$ and $e:T \ireduces i$ then $i : \sigma$ such that $h(T) = \sigma$.
     \item If $e:T$ and $e:T \reduces e'$ then $e':T$.
   \end{itemize}
 \end{thm}
@@ -395,13 +422,14 @@ The proof is a straightforward induction on the derivation of the combined evalu
   \item \textbf{E-Stringval, E-strval}. Both cases hold since no reduction is possible. 
   \item \textbf{E-String}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\str) = \istr$, which follows from the definition of $h$.
   \item \textbf{E-String\_in}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\strin[r]) = \istr$, which follows from the definition of $h$ for arbitrary $r$.
-  \item \textbf{E-concat}. By the definition of typing for internal terms, $\istrf{e_1} + \istrf{e_2} : \istr$. So it suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
+  \item \textbf{E-concatval}. By the definition of typing for internal terms, $\istrf{e_1} + \istrf{e_2} : \istr$. So it suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
+  \item \textbf{E-concatR, E-concatL}. Consider E-concatR. By induction, $e_1' : \strin{l_1}$. By inversion of T-Concat at the premise, $e_2 : \strin{r_2}$. Therefore, $e_1 + e_2 : \strin[r_1 + r_2]$. The left rule is symmetric.
   \item \textbf{E-Filterval}. We have that $\filter{\strin[r']}{e}:\strin[r\backslash r' + \emptyset]$. By inversion of T-Filter, $e:\strin[r]$.
     By T-Equiv-string\_in (which is bidirectional), $e \in \lang{r}$.
-    By theorem 2, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
+    By the Coercion Theorem, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
     By T-Equiv-string\_in,  $e \in \lang{r}$ and ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$ implies ${\tt rl\_filter}(r,e):\strin[r\backslash r' + \emptyset]$.
-  \item \textbf{E-Filter}. By inversion, $e : \strin[r'] \reduces e'$ so by the induction $e':\strin[r']$.
-    Therefore, ${\tt filter}(\strin[r], e') : \strin[r \backslash r' + \emptyset]$ by T-Filter.
+  \item \textbf{E-Filter}. By inversion, $e : \strin[r']$ $\reduces e'$ so by the induction $e':\strin[r']$.
+    Therefore, \\${\tt filter}(\strin[r], e'):$ $\strin[r \backslash r' + \emptyset]$ by T-Filter.
   \item \textbf{E-Convertval}. It suffices to show that $h(\strin[r]) = \istr$, which is true by definition.
   \item \textbf{E-Convert}. By inversion and induction, $e' : \strin[r]$. We know that $[\strin[r']](e) : \strin[r']$, so by inversion of T-Convert $\lang{r'} \subseteq \lang{r}$.
     It follows that $[\strin[r']](e') : \strin[r']$.
@@ -415,12 +443,26 @@ The proof is a straightforward induction on the derivation of the combined evalu
 \end{thm}
 \begin{proof}
 By induction on the derivation of $e:T$.
-\begin{itemize}[label=$ $,itemsep=1ex]
-  \item \textbf{T-Equiv-Include}. Since $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval.
-  \item \textbf{T-Minimum}. 
-\end{itemize}
+For \textbf{T-Equiv-Include}, note that $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval. 
+We have that $e \val$ and $e : \strin[r]$, so $e \ireduces \istrf{e}$ by E-string\_in.
+The remaining cases follow by induction on the hypotheses and application of corresponding evaluation rules.
 \end{proof}
 
 \section{Implementation in Ace}
 
+The $\lcs$ language is implemented as a type system extension in Ace; this extension
+is illustrated in the examples at the beginning of this paper.
+
+Computing a regular expression representating the language
+$R \backslash S$ is necessary in order to type-check expressions in which the filter function
+occurs. This language is computed by translating $R$ and $S$ into finite automata,
+complementing the final states of $S$, then constructing the cross-product of $R$
+and $S'$. Type checking terminates only because this construction is decidable.
+
+In addition to this construction, other more typical operations -- such
+as equality checks for regular expressions and regular expression matching -- are
+also necessary. For these reasons, the Ace extension implementing $\lcs$ includes a library
+implementing each of these constructions.
+
 \end{document}
+
