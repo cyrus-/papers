@@ -1,0 +1,244 @@
+%\documentclass[12pt]{article}
+\documentclass[10pt,preprint]{sigplanconf}
+\newcommand{\lamAce}{\lambda_{\text{Ace}}}
+% The following \documentclass options may be useful:
+%
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{mathpartir}
+\usepackage{amsmath}
+\usepackage{amssymb} 
+\usepackage{amsthm}
+\usepackage{ stmaryrd }
+\usepackage{verbatimbox}
+\input{../att-icfp14/macros-atlam}
+\usepackage{alltt}
+\renewcommand{\ttdefault}{txtt}
+\usepackage{color}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{light-gray}{gray}{0.5}
+\usepackage{listings}
+\usepackage{wasysym}
+    \makeatletter
+%
+% \btIfInRange{number}{range list}{TRUE}{FALSE}
+%
+% Test if int number <number> is element of a (comma separated) list of ranges
+% (such as: {1,3-5,7,10-12,14}) and processes <TRUE> or <FALSE> respectively
+%
+        \newcount\bt@rangea
+        \newcount\bt@rangeb
+
+        \newcommand\btIfInRange[2]{%
+            \global\let\bt@inrange\@secondoftwo%
+            \edef\bt@rangelist{#2}%
+            \foreach \range in \bt@rangelist {%
+                \afterassignment\bt@getrangeb%
+                \bt@rangea=0\range\relax%
+                \pgfmathtruncatemacro\result{ ( #1 >= \bt@rangea) && (#1 <= \bt@rangeb) }%
+                \ifnum\result=1\relax%
+                    \breakforeach%
+                    \global\let\bt@inrange\@firstoftwo%
+                \fi%
+            }%
+            \bt@inrange%
+        }
+
+        \newcommand\bt@getrangeb{%
+            \@ifnextchar\relax%
+            {\bt@rangeb=\bt@rangea}%
+            {\@getrangeb}%
+        }
+
+        \def\@getrangeb-#1\relax{%
+            \ifx\relax#1\relax%
+                \bt@rangeb=100000%   \maxdimen is too large for pgfmath
+            \else%
+                \bt@rangeb=#1\relax%
+            \fi%
+        }
+
+%
+% \btLstHL{range list}
+%
+        \newcommand{\btLstHL}[1]{%
+            \btIfInRange{\value{lstnumber}}{#1}%
+            {\color{black!10}}%
+            {\def\lst@linebgrd}%
+        }%
+
+%
+% \btInputEmph[listing options]{range list}{file name}
+%
+        \newcommand{\btLstInputEmph}[3][\empty]{%
+            \lstset{%
+                linebackgroundcolor=\btLstHL{#2}%
+                \lstinputlisting{#3}%
+            }% \only
+        }
+
+% Patch line number key to call line background macro
+        \lst@Key{numbers}{none}{%
+            \def\lst@PlaceNumber{\lst@linebgrd}%
+            \lstKV@SwitchCases{#1}{%
+                none&\\%
+                left&\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+                right&\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+            }{%
+                \PackageError{Listings}{Numbers #1 unknown}\@ehc%
+            }%
+        }
+
+% New keys
+        \lst@Key{linebackgroundcolor}{}{%
+            \def\lst@linebgrdcolor{#1}%
+        }
+        \lst@Key{linebackgroundsep}{0pt}{%
+            \def\lst@linebgrdsep{#1}%
+        }
+        \lst@Key{linebackgroundwidth}{\linewidth}{%
+            \def\lst@linebgrdwidth{#1}%
+        }
+        \lst@Key{linebackgroundheight}{\ht\strutbox}{%
+            \def\lst@linebgrdheight{#1}%
+        }
+        \lst@Key{linebackgrounddepth}{\dp\strutbox}{%
+            \def\lst@linebgrddepth{#1}%
+        }
+        \lst@Key{linebackgroundcmd}{\color@block}{%
+            \def\lst@linebgrdcmd{#1}%
+        }
+
+% Line Background macro
+        \newcommand{\lst@linebgrd}{%
+            \ifx\lst@linebgrdcolor\empty\else
+                \rlap{%
+                    \lst@basicstyle
+                    \color{-.}% By default use the opposite (`-`) of the current color (`.`) as background
+                    \lst@linebgrdcolor{%
+                        \kern-\dimexpr\lst@linebgrdsep\relax%
+                        \lst@linebgrdcmd{\lst@linebgrdwidth}{\lst@linebgrdheight}{\lst@linebgrddepth}%
+                    }%
+                }%
+            \fi
+        }
+
+ % Heather-added packages for the fancy table
+ \usepackage{longtable}
+ \usepackage{booktabs}
+ \usepackage{pdflscape}
+ \usepackage{colortbl}%
+ \newcommand{\myrowcolour}{\rowcolor[gray]{0.925}}
+ \usepackage{wasysym}
+ 
+    \makeatother
+
+\lstset{
+  language=Python,
+  showstringspaces=false,
+  formfeed=\newpage,
+  tabsize=4,
+  commentstyle=\itshape\color{light-gray},
+  basicstyle=\ttfamily\scriptsize,
+  morekeywords={lambda, self, assert, as, cls},
+  numbers=left,
+  numberstyle=\scriptsize\color{light-gray}\textsf,
+  xleftmargin=2em,
+  stringstyle=\color{mauve}
+}
+\lstdefinestyle{Bash}{
+    language={}, 
+    numbers=left,
+    numberstyle=\scriptsize\color{light-gray}\textsf,
+    moredelim=**[is][\color{blue}\bf\ttfamily]{`}{`},
+}
+\lstdefinestyle{OpenCL}{
+	language=C++,
+	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
+}
+
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{codelisting}{tp}{lop}
+\floatname{codelisting}{Listing}
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
+
+
+\usepackage{url}
+
+\usepackage{todonotes}
+
+\usepackage{placeins}
+
+\usepackage{textpos}
+
+\renewcommand\topfraction{0.85}
+\renewcommand\bottomfraction{0.85}
+\renewcommand\textfraction{0.1}
+\renewcommand\floatpagefraction{0.85}
+
+\begin{document}
+
+\conferenceinfo{-}{-} 
+\copyrightyear{-} 
+\copyrightdata{[to be supplied]} 
+
+%\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
+%\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
+
+\newcommand{\Ace}{\textsf{Ace}}
+
+\title{A Type System for String Sanitation\\Implemented Inside a Python}
+
+%\authorinfo{~}{~}{~}
+\authorinfo{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
+           {School of Computer Science\\
+            Carnegie Mellon University}
+           {\{nfulton, comar, aldrich\}@cs.cmu.edu}
+
+\maketitle
+\begin{abstract}
+%Evidence suggests that programmers are reluctant to adopt new languages to
+ABSTRACT HERE
+\end{abstract}
+
+%\category{D.3.2}{Programming Languages}{Language Classifications}[Extensible Languages]
+%\category{D.3.4}{Programming Languages}{Processors}[Compilers]
+%\category{F.3.1}{Logics \& Meanings of Programs}{Specifying and Verifying and Reasoning about Programs}[Specification Techniques]
+%\keywords
+%type-level computation, typed compilation
+\section{Introduction}\label{intro}
+INTRO HERE
+
+\section{A Type System for String Sanitation}
+
+\section{Implementation Inside a Python}
+\subsection{Background: Ace}
+TODO: Make a TR out of the OOPSLA submission.
+\subsection{Explicit Conversions}
+\subsection{Adding Subtyping to Ace}
+\subsection{Theory}
+
+\section{Related Work}
+
+\section{Discussion}
+
+
+\bibliographystyle{abbrv}
+
+% The bibliography should be embedded for final submission.
+
+\bibliography{../research}
+%\softraggedright
+%P. Q. Smith, and X. Y. Jones. ...reference text...
+
+
+\end{document}
