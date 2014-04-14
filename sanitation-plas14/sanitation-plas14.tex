@@ -1,3 +1,10 @@
+%TODO-nrf:
+% * Type system definition -- check big step semantics
+% PRoofs tonigt:
+% * Type safety proof for internal language
+% * Representational consistency
+
+
 %\documentclass[12pt]{article}
 \documentclass[10pt,preprint]{sigplanconf}
 \newcommand{\lamAce}{\lambda_{\text{Ace}}}
@@ -245,14 +252,18 @@
 \newcommand{\stru}[2]{ {\tt string\_union}(#1,#2)}
 
 \newcommand{\str}{ {\tt string} }
-\newcommand{\istr}{ {\tt istring} }
 
 \newcommand{\dconvert}[2]{ {\tt dconvert}(#1,#2) }
 \newcommand{\filter}[2]{ {\tt filter}(#1,#2) }
 \newcommand{\ifilter}[2]{ {\tt ifilter}(#1,#2) }
 
 \newcommand{\reduces}{ \Rightarrow }
-\newcommand{\ireduces}{ \leadsto }
+\newcommand{\ireduces}{ \Downarrow }
+\newcommand{\sreduces}{ \leadsto }
+\newcommand{\gvd}{\Gamma \vdash }
+\newcommand{\ovd}{\Omega \vdash }
+
+\newcommand{\trep}{{\tt rep}}
 
 \newcommand{\val}{ \ {\tt val} }
 \newcommand{\ival}{ \ {\tt ival} }
@@ -413,7 +424,8 @@ An outline of this paper follows:
 TODO-nrf real outline!
 \begin{itemize}
   \item In \S 2, we define the type system's static and dynamic semantics.
-  \item Section 3 recalls some classical results about regular expressions and presents a type safety proof for $\lcs$ based upon these properties.
+  \item Section 3 recalls some classical results about regular expressions and presents meta-theory for our system, including
+    the main soundness theorem for $\lcs$.
   \item Finally, \S 4 discusses our implemention of $\lcs$ as a type system extension  within the Ace programming language.
 \end{itemize}
 
@@ -433,103 +445,121 @@ casting.
 %
 % Begin Grammar 
 %
+\newcommand{\ereplace}[3]{{\tt replace}[#1](#2,#3)}
+\newcommand{\echeck}[2]{{\tt check}[#1](#2)}
+\newcommand{\estr}[2]{{\tt str[#1, #2]}}
+\newcommand{\estrt}[1]{{\tt strt[#1]}}
+\newcommand{\econcat}{+}
+
+\newcommand{\ireplace}[3]{{\tt ireplace}(#1,#2,#3)}
+\newcommand{\icheck}[2]{{\tt icheck}(#1, #2)}
+\newcommand{\istr}[1]{{{\tt istr}[#1]}}
+\newcommand{\istrt}{{\tt istrt}}
+\newcommand{\iconcat}{\hat{+}}
+
+% Special stuff for the semantics.
+\newcommand{\replacefn}[3]{\tt replacement(#1,#2,#3)}
+\newcommand{\crl}[3]{{\tt compute\_replacement\_lanugage}(#1,#2,#3)}
+
 \begin{figure}
 \begin{grammar}
 <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill Regex ($a \in \Sigma$).
 
-<t> ::= 			\hfill terms: 					\\
-%$x$					\hfill variable 				\alt
-%${\tt lambda} x:t$		\hfill abstraction 			\alt
-%$t\ t$				\hfill application				\alt
-$\filter{\strin[r]}{t}$ 		\hfill filter substrings			\alt
-$[\strin[r]](t)$ \hfill safe conversion \alt
-$\dconvert{\strin[r]}{t}$ \hfill unsafe conversion
+<$\tau$> ::=				\hfill	External types					\\
+$\tau \rightarrow \tau$ \alt
+$\estrt{r}$				\hfill Regular expression types
 
-<iv> ::= 			\hfill internal values:					\\
-$\istrf{s}$				\hfill internal string \alt
-${\tt ifilter}(r, \istr(s))$ \hfill internal filter
+<e> ::= \hfill External expressions \\
+      $x$ \alt
+      $\lambda x:\tau.e$ \alt
+      $e e$ \alt
+      $\estr{r}{s}$ \alt
+      $e \econcat e$ \hfill String concatenation \\
+      $\ereplace{r}{e}{e}$ \alt
+      $\echeck{r}{e}$
 
-<v> ::= \hfill values: \\
-$\strf{s}$ \hfill string
+<$\sigma$> ::= \hfill Internal types \\
+$\tau \rightarrow \tau$ \alt $\istrt$
 
-<T> ::=				\hfill	types:					\\
-$\str$  \hfill Strings \alt
-$\strin[r]$				\hfill Regular language strings		
-%\alt
-%$T \rightarrow T$	\hfill	Functions
-
-<$\Gamma$> ::=	$\emptyset$	 | $\Gamma,x:T$ \hfill typing context
+<i> ::= \hfill Internal expressions \\
+  $x$ \alt
+  $\lambda x:\sigma.i$ \alt
+  $i i$ \alt
+  $\istr{s}$ \alt
+  $i \econcat i$ \alt
+  $\ireplace{r}{i}{i}$ \alt
+  $\icheck{r}{i}$
 \end{grammar}
 \caption{Syntax of $\lcs$}
 \label{fig:lcsSyntax}
 \end{figure}
 
-The $\lcs$ language gives static semantics for common regular expression library
-functions. In this treatment, we include concatenation and filtering.
-The ${\tt filter}$ function removes all instances of a regular expression in a string,
-while concatenation ($+$) concatenates two strings.
-
-\subsection{Typing}
-
-The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
-then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
-defining an algorithm -- in terms of filter -- for converting a $\strin[.*]$
-into a $\strin[r]$. The static semantics of the language defines the types of
-operations on regular expressions in terms of well-understood properties about
-regular lanugages; we recall these properties in section 3.
-
-\subsection{Dynamics}
-
-There are two evaluation judgements: $e:T \reduces e'$ and $e:T \ireduces i$.
-The $\reduces$ relation is between $\lcs$ expressions, while the $\ireduces$
-relation is a mapping from $\lcs$ expressions into internal language expressions
-$i$ such that $i \ival$.
-
-Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
-internal language types. This relation, $h$, is defined below.
-
-\subsection{Type Safety}
-
-The type safety proof relies upon some assumptions about the type system and
-dynamics of the internal language, as well as some properties of regular
-languages.
-
-There must exist a translation from $\lcs$ types to the types of the internal
-language. For the remainder of this paper, we call the type translation function
-$h$.
-
-\begin{defn}[Type Translation Function $h$]
-  The type translation function $h : Type \rightarrow IType$ is defined as follows:
-  \begin{itemize}
-    \item $\forall r. h(\strin[r]) = \istr$
-    \item $h(\str) = \istr$
-  \end{itemize}
-\end{defn}
-
-Additionally, we assume that the internal language contains an implementation of strings,
-together with operations for concatenation and filtering by regular expression.
-
-\begin{defn}[Types of internal values]
-  Let $\istrf{s}$ range over string literals and $r$ over regular expressions.
-  Internal values are typed as follows:
-\begin{itemize}
-  \item If $e=\istrf{s}$ then $e:\istr$.
-  \item If $e=\ifilter{r}{\istrf{s}}$ then $e:\istr$.
-  \item If $e=\istrf{s_1}+\istrf{s_2}$ then $e:\istr$.
-\end{itemize}
-\end{defn}
-
-For simplicity, we assume a fixed translation from
-$\lcs$ regular expressions to regular expressions recognizable by the internal
-language's regex library (in practice, a fixed translation is acceptable.)
-To summarize, we assume an internal language containing 
-a string type together with operations for string concatentation and filtering. We
-expect closure over strings for both operations.
-Finally, recall that ${\tt ifilter}$ is only needed for dynamic casts, which may be removed without
-descreasing the expressivity or even usability of the language.
-Finally, the semantics of the filter function are defined in terms of ${\tt rl\_filter}$,
-which is a static version of ${\tt ifilter}$.
-
+%The $\lcs$ language gives static semantics for common regular expression library
+%functions. In this treatment, we include concatenation and filtering.
+%The ${\tt filter}$ function removes all instances of a regular expression in a string,
+%while concatenation ($+$) concatenates two strings.
+%
+%\subsection{Typing}
+%
+%The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
+%then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
+%defining an algorithm -- in terms of filter -- for converting a $\strin[.*]$
+%into a $\strin[r]$. The static semantics of the language defines the types of
+%operations on regular expressions in terms of well-understood properties about
+%regular lanugages; we recall these properties in section 3.
+%
+%\subsection{Dynamics}
+%
+%There are two evaluation judgements: $e:T \reduces e'$ and $e:T \ireduces i$.
+%The $\reduces$ relation is between $\lcs$ expressions, while the $\ireduces$
+%relation is a mapping from $\lcs$ expressions into internal language expressions
+%$i$ such that $i \ival$.
+%
+%Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
+%internal language types. This relation, $h$, is defined below.
+%
+%\subsection{Type Safety}
+%
+%The type safety proof relies upon some assumptions about the type system and
+%dynamics of the internal language, as well as some properties of regular
+%languages.
+%
+%There must exist a translation from $\lcs$ types to the types of the internal
+%language. For the remainder of this paper, we call the type translation function
+%$h$.
+%
+%\begin{defn}[Type Translation Function $h$]
+%  The type translation function $h : Type \rightarrow IType$ is defined as follows:
+%  \begin{itemize}
+%    \item $\forall r. h(\strin[r]) = istr$
+%    \item $h(\str) = istr$
+%  \end{itemize}
+%\end{defn}
+%
+%Additionally, we assume that the internal language contains an implementation of strings,
+%together with operations for concatenation and filtering by regular expression.
+%
+%\begin{defn}[Types of internal values]
+%  Let $\istrf{s}$ range over string literals and $r$ over regular expressions.
+%  Internal values are typed as follows:
+%\begin{itemize}
+%  \item If $e=\istrf{s}$ then $e:istr$.
+%  \item If $e=\ifilter{r}{\istrf{s}}$ then $e:istr$.
+%  \item If $e=\istrf{s_1}+\istrf{s_2}$ then $e:istr$.
+%\end{itemize}
+%\end{defn}
+%
+%For simplicity, we assume a fixed translation from
+%$\lcs$ regular expressions to regular expressions recognizable by the internal
+%language's regex library (in practice, a fixed translation is acceptable.)
+%To summarize, we assume an internal language containing 
+%a string type together with operations for string concatentation and filtering. We
+%expect closure over strings for both operations.
+%Finally, recall that ${\tt ifilter}$ is only needed for dynamic casts, which may be removed without
+%descreasing the expressivity or even usability of the language.
+%Finally, the semantics of the filter function are defined in terms of ${\tt rl\_filter}$,
+%which is a static version of ${\tt ifilter}$.
+%
 \subsection{Properties of Regular Languages}
 
 The regular languages are the smallest set generated by regular expressions
@@ -552,206 +582,216 @@ If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, 
 \end{proof}
 
 
+%
+% Begin typing/translation relation
+%
 
 \onecolumn
 \begin{figure}
 \begin{center}
 \begin{tabular}{c r}
-%\inferline{T-VAR}{\Gamma \vdash x : T}{x:T \in \Gamma}
-%
-%\inferline{T-ABS}{\Gamma \vdash ({\tt \textbf{lambda}\ } x: t_2) : T_1 \rightarrow T_2}
-%			{\Gamma, x:T_1 \vdash t_2:T_2}
-%
-%\inferline{T-APP}
-%			{\Gamma \vdash t_1t_2 : T_{12}}
-%			{\Gamma \vdash t_1 : T_{11}\rightarrow T_{12} \\ \Gamma \vdash t_2 : T_{11}}	
-%
-\inferline{T-Equiv-Top}
-{\str \equiv \strin[.*]}
-{ }
 
-\inferline{T-Equiv-string\_in}
-{\strin[r] \equiv \strin[r']}
-{\lang{r} = \lang{r'}}
+\inferline{T-Var}
+{\gvd x : \tau}
+{x : \tau \in \Gamma}
 
-\inferline{T-Equiv-Include}
-{\Gamma \vdash e:\strin[r]}
-{e \in \lang{r}}
+\inferline{T-Abs}
+{\gvd \lambda x : \tau .e : \tau \rightarrow \tau' \sreduces \lambda x : \sigma.i}
+{\Gamma, x : \tau \vdash e : \tau' \sreduces i \\ \sigma \equiv \trep(\tau)}
 
-\inferline{T-Minimum}
-{ \Gamma \vdash e : \strin[e] }
-{\Gamma \vdash e : \str}
+\inferline{T-App}
+{\Gamma \vdash e_1 e_2 \sreduces i_1 i_2}
+{\Gamma \vdash e_1 : \tau \rightarrow \tau' \sreduces i_1 \\ \Gamma \vdash e_2 : \tau \sreduces i_2}
 
-%\inferline{T-Union}
-%  {\Gamma \vdash \stru[r'](e) : \strin[r \cup r']}
-%  { \Gamma \vdash e : \strin[r] }
+\inferline{T-Replace}
+{\gvd \ereplace{r}{e_1}{e_2} : \estrt{r'} \sreduces \ireplace{r}{i_1}{i_2}}
+{\gvd e_1 : \estrt{r_1} \ireduces i_1 \\ \gvd e_2 : \estrt{r_2} \ireduces i_2 \\ r' \equiv \crl{r}{r_2}{r_1}}
 
-\inferline{T-Concat}
-{\Gamma \vdash e_1 + e_2 : \strin[r_1 \cdot r_2]}
-{ \Gamma \vdash e_1 : \strin[r_1] \\ \Gamma \vdash e_2 : \strin[r_2] }
+\inferline{T-Check-Ok}
+{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces i}
+{\gvd e : \estrt{r} \sreduces{i} \\ \lang{r'} \subseteq \lang{r}}
 
-\inferline{T-Convert}
-{\Gamma \vdash [\strin[r']](e):\strin[r']}
-{\Gamma \vdash e : \strin[r] \\ \lang{r'} \subseteq \lang{r}}
-
-\inferline{T-Dconvert (optional)}
-{\Gamma \vdash \dconvert{\strin[r']}{e}:\strin[r']}
-{\Gamma \vdash e : \strin[r]}
-
-\inferline{T-Filter}
-{\Gamma \vdash \filter{\strin[r']}{t} : \strin[(r \backslash r') + \emptyset]}
-{\Gamma \vdash t:\strin[r]}
+\inferline{T-Check-NotOk}
+{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces \icheck{r}{i}}
+{\gvd e : \estrt{r} \sreduces i \\ \lang{r'} \not \subseteq \lang{r}}
+  
+%\inferline{E-dconvert (optional) }
+%{\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
+%{e \val }
 
 \end{tabular}
-\caption{Typing relation for $\lcs$}
-\label{fig:lcsTyping}
+\caption{Type-directed translation to internal terms for $\lcs$}
+\label{fig:eeval}
 \end{center}
 \end{figure}
 
 %
-% Begin Operational Semantics
+% Begin typing relation for internal terms.
 %
 \begin{figure}
 \begin{center}
-\begin{tabular}{c r c r}
-%\inferline{E-App1}{t_1t_2 \Rightarrow t_1't_2}{t_1 \Rightarrow t_2}
-%\inferline{E-App2}{v_1t_2 \Rightarrow v_1t_2'}{t_2 \Rightarrow t_2'}
-%\inferline{E-AppAbs}{({\tt lambda } x : t_{12})v_2 \Rightarrow [x / v_2]t_{12}}{T_{11}}
+\begin{tabular}{c r}
+\inferline{Ti-Var}
+{\ovd x : \sigma}
+{x : \sigma \in \Omega}
 
-\inferline{E-strinval}
-  {\strf{s}:\strin[r] \val}
-  { }
+% Add in pedantic rules as well? If there's space.
+\inferline{Ti-Abs}
+{\ovd \lambda x : \sigma . i : \sigma \rightarrow \sigma'}
+{\Omega, x : \sigma \vdash i : \sigma'}
 
-%\inferline{E-strval}
-%{\strf{s}:\str \val}
-%  { }
+\inferline{Ti-App}
+{i_1 i_2 : \sigma'}
+{\ovd i_1 : \sigma \rightarrow \sigma' \\ \ovd i_2 : \sigma}
 
-\inferline{E-ival}
-  {\istrf{e}:\istr \ival }
-  { }
+\inferline{Ti-Str}
+{\ovd \istr{s} : \istrt }
+{\cdot}
 
-\inferline{E-ifilterval}
-{ {\tt ifilter}(r,e) \ival }
-{ e {\tt ival} }
+\inferline{Ti-Replace}
+{\ovd \ireplace{r}{i_1}{i_2} : \istrt}
+{\ovd i_1 : \istrt \\ \ovd i_2 : \istrt}
 
-\inferline{E-string}
-{e : \str \ireduces \istrf{e}}
-{ e \val }
+\inferline{Ti-Check}
+{\ovd \icheck{r}{i_1}{i_2} : \istrt}
+{\ovd i_1 : \istrt \\ \ovd i_2 : \istrt}
 
-\inferline{E-string\_in}
-{e : \strin[r] \ireduces  \istrf{e}}
-{ e \val }
-
-\inferline{E-concatval}
-{e_1 + e_2 : \strin[r_1+r_2] \ireduces \istrf{e_1} + \istrf{e_2}}
-{e_1 \val \\ e_2 \val }
-
-\inferline{E-concatL}
-{e_1 + e_2 : \strin[r_1+r_2] \reduces {e_1}' + {e_2}}
-{ e_1 : \strin[r_1] \reduces {e_1}'}
-
-\inferline{E-concatR}
-{e_1 + e_2 : \strin[r_1+r_2] \reduces {e_1} + {e_2}'}
-{ e_2 : \strin[r_2] \reduces {e_2}'}
-
-\inferline{E-filterval}
-{\filter{\strin[r']}{e} : \strin[r\backslash r' + \emptyset] \reduces {\tt rl\_filter}(r,e)}
-{ e \val }
- 
-\inferline{E-filter}
-{\filter{\strin[r']}{e} : \strin[r\backslash r' + \emptyset] \reduces  \filter{\strin[r]}{ e' }}     
-{ e : \strin[r] \reduces e' }
-
-\inferline{E-convertval}
-{ [\strin[r']](e) : \strin[r'] \ireduces \istrf{e} }
-{ e \val }
-
-\inferline{E-convert}
-{ [\strin[r']](e) : \strin[r'] \reduces [\strin[r']](e') }
-{ e : \strin[r] \reduces e' }
-
-\inferline{E-dconvertval (optional) }
-{\dconvert{\strin[r']}{e} : \strin[r'] \reduces {\dconvert{\strin[r']}{e'}}}
-{e:\strin[r] \reduces e'}
-
-\inferline{E-dconvert (optional) }
-{\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
-{e \val }
+\inferline{Ti-Concat}
+{\ovd i_1 \iconcat i_2 : \istrt}
+{\ovd i_1 : \istrt \\ \ovd i_2 : \istrt}
 
 \end{tabular}
-\caption{SOS rules for $\lcs$}
-\label{fig:lcsEval}
+\caption{Typing relation on internal terms.}\label{fig:itypes}
+\end{center}
+\end{figure}
+
+%
+% Begin big-step sematnics for internal terms.
+%
+\newcommand{\err}{{\tt err}}
+\begin{figure}
+\begin{center}
+\begin{tabular}{c r}
+
+  \inferline{Ei-strval}
+  {\istr{s} \ival}
+  { \cdot }
+
+  \inferline{Ei-Replace}
+  {\ireplace{r}{i_1}{i_2} \ireduces i'}
+  { i \ireduces \replacefn{r}{i_1}{i_2} }
+
+  \inferline{Ei-CheckOk}
+  {\icheck{r}{i} \ireduces i}
+  {i \in \lang{r}}
+
+  \inferline{Ei-Check-NotOk}
+  {\icheck{r}{i} \ireduces \err}
+  {i \not \in \lang{r}}
+
+  \inferline{Ei-Concat}
+  { i_1 \iconcat i_2 \ireduces \istr{i_1 \iconcat i_2} }
+  { \cdot }
+
+\end{tabular}
+\caption{Big-step semantics for internal language; standard rules for the STL are omitted for brevity. The meta-variable $s$ ranges over string literals.}\label{fig:ieval}
 \end{center}
 \end{figure}
 
 \twocolumn
 
+Note that we never insert an internal check where the type of the string implies
+that a check must succeed. Furthermore, expensive calculations (such as language
+inclusion or ${\tt computer\_replacement\_language}$, all occur at compile time.
+Since sanitation problems are generally expressible with smalle, simple expressions,
+we believe that the compile-time overhead is not significant enough to prohibit
+our target usecase. Informal experimentation with our implementation seems to
+support this assertion.
+
+Due to Ei-Replace, all of our meta-theory depends upon a correct implementation
+of both regular expression replacement and inclusion checking in the internal language.
+We believe this assumption is okay for two reasons. First, our system is still
+superior to the status quo, which relies upon the correctness of these libraries
+\emph{in addition to} correct application logic. Second, regular expression libraries are
+generally well-tested and there exist verified implementations.
+
 \subsection{Type Safety Proof}
 
-%\begin{lem}[Canonical Forms for $\lcs$]
-%We identify only canonical forms necessary for the type safety proof.
-%\begin{itemize}
-%  \item If $e \val$ and $e:\str$ then $e = \strf{s}$.
+\subsection{New Theorems}
+
+\begin{thm}[Progress for Internal Language]
+\end{thm}
+
+\begin{thm}[Preservation for Internal Language]
+\end{thm}
+
+
+\begin{thm}[Representational Consistency]
+If $\cdot \vdash e : \tau \sreduces i$ then $\cdot \vdash i : \sigma$ and $\sigma \equiv \trep(\tau)$.
+\end{thm}
+
+\begin{thm}[Main Soundness Result]
+  If $\cdot \vdash e : \estrt{r} \sreduces i$ then either $i \ireduces \err$ or
+  if $i \sreduces v$ for $v \ival$ then $v \in r$.
+\end{thm}
+
+%\begin{thm}[Preservation]
+%  Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
+%  For all terms $e$:
+%  \begin{itemize}
+%    \item If $e:T$ and $e:T \ireduces i$ then $i : \sigma$ such that $h(T) = \sigma$.
+%    \item If $e:T$ and $e:T \reduces e'$ then $e':T$.
+%  \end{itemize}
+%\end{thm}
+%\begin{proof}
+%The proof is a straightforward induction on the derivation of the combined evaluation relation.
+%\begin{itemize}[label=$ $,itemsep=1ex]
+%  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold since the terms at hand are not $\lcs$ terms.
+%  \item \textbf{E-Stringval, E-strval}. Both cases hold since no reduction is possible. 
+%  \item \textbf{E-String}. By the definition of typing for internal terms, $\istrf{e} : istr$. It suffices to show that $h(\str) = istr$, which follows from the definition of $h$.
+%  \item \textbf{E-String\_in}. By the definition of typing for internal terms, $\istrf{e} : istr$. It suffices to show that $h(\strin[r]) = istr$, which follows from the definition of $h$ for arbitrary $r$.
+%  \item \textbf{E-concatval}. By the definition of typing for internal terms, $\istrf{e_1} + \istrf{e_2} : istr$. So it suffices to show that $h(\strin[r_1+r_2]) = istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
+%  \item \textbf{E-concatR, E-concatL}. Consider E-concatR. By induction, $e_1' : \strin{l_1}$. By inversion of T-Concat at the premise, $e_2 : \strin{r_2}$. Therefore, $e_1 + e_2 : \strin[r_1 + r_2]$. The left rule is symmetric.
+%  \item \textbf{E-Filterval}. We have that $\filter{\strin[r']}{e}:\strin[r\backslash r' + \emptyset]$. By inversion of T-Filter, $e:\strin[r]$.
+%    By T-Equiv-string\_in (which is bidirectional), $e \in \lang{r}$.
+%    By the Coercion Theorem, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
+%    By T-Equiv-string\_in,  $e \in \lang{r}$ and ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$ implies ${\tt rl\_filter}(r,e):\strin[r\backslash r' + \emptyset]$.
+%  \item \textbf{E-Filter}. By inversion, $e : \strin[r']$ $\reduces e'$ so by the induction $e':\strin[r']$.
+%    Therefore, \\${\tt filter}(\strin[r], e'):$ $\strin[r \backslash r' + \emptyset]$ by T-Filter.
+%  \item \textbf{E-Convertval}. It suffices to show that $h(\strin[r]) = istr$, which is true by definition.
+%  \item \textbf{E-Convert}. By inversion and induction, $e' : \strin[r]$. We know that $[\strin[r']](e) : \strin[r']$, so by inversion of T-Convert $\lang{r'} \subseteq \lang{r}$.
+%    It follows that $[\strin[r']](e') : \strin[r']$.
+%  \item \textbf{E-DConvert}. By inversion, $e : \strin[r'] \reduces e'$. By the induction hypothesis, $e' : \strin[r']$; therefore, by T-Dconvert, $\dconvert[\strin[r]](e):\strin[r]$.
+%  \item \textbf{E-DConvertval}. By the definition of typing for internal terms, $\ifilter(r,\istrf{e}) : istr$. It suffices to show that $h(\strin[r_1+r_2]) = istr$, which follows from the definition of $h$.
 %\end{itemize}
-%\end{lem}
-
-\begin{thm}[Preservation]
-  Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
-  For all terms $e$:
-  \begin{itemize}
-    \item If $e:T$ and $e:T \ireduces i$ then $i : \sigma$ such that $h(T) = \sigma$.
-    \item If $e:T$ and $e:T \reduces e'$ then $e':T$.
-  \end{itemize}
-\end{thm}
-\begin{proof}
-The proof is a straightforward induction on the derivation of the combined evaluation relation.
-\begin{itemize}[label=$ $,itemsep=1ex]
-  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold since the terms at hand are not $\lcs$ terms.
-  \item \textbf{E-Stringval, E-strval}. Both cases hold since no reduction is possible. 
-  \item \textbf{E-String}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\str) = \istr$, which follows from the definition of $h$.
-  \item \textbf{E-String\_in}. By the definition of typing for internal terms, $\istrf{e} : \istr$. It suffices to show that $h(\strin[r]) = \istr$, which follows from the definition of $h$ for arbitrary $r$.
-  \item \textbf{E-concatval}. By the definition of typing for internal terms, $\istrf{e_1} + \istrf{e_2} : \istr$. So it suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
-  \item \textbf{E-concatR, E-concatL}. Consider E-concatR. By induction, $e_1' : \strin{l_1}$. By inversion of T-Concat at the premise, $e_2 : \strin{r_2}$. Therefore, $e_1 + e_2 : \strin[r_1 + r_2]$. The left rule is symmetric.
-  \item \textbf{E-Filterval}. We have that $\filter{\strin[r']}{e}:\strin[r\backslash r' + \emptyset]$. By inversion of T-Filter, $e:\strin[r]$.
-    By T-Equiv-string\_in (which is bidirectional), $e \in \lang{r}$.
-    By the Coercion Theorem, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
-    By T-Equiv-string\_in,  $e \in \lang{r}$ and ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$ implies ${\tt rl\_filter}(r,e):\strin[r\backslash r' + \emptyset]$.
-  \item \textbf{E-Filter}. By inversion, $e : \strin[r']$ $\reduces e'$ so by the induction $e':\strin[r']$.
-    Therefore, \\${\tt filter}(\strin[r], e'):$ $\strin[r \backslash r' + \emptyset]$ by T-Filter.
-  \item \textbf{E-Convertval}. It suffices to show that $h(\strin[r]) = \istr$, which is true by definition.
-  \item \textbf{E-Convert}. By inversion and induction, $e' : \strin[r]$. We know that $[\strin[r']](e) : \strin[r']$, so by inversion of T-Convert $\lang{r'} \subseteq \lang{r}$.
-    It follows that $[\strin[r']](e') : \strin[r']$.
-  \item \textbf{E-DConvert}. By inversion, $e : \strin[r'] \reduces e'$. By the induction hypothesis, $e' : \strin[r']$; therefore, by T-Dconvert, $\dconvert[\strin[r]](e):\strin[r]$.
-  \item \textbf{E-DConvertval}. By the definition of typing for internal terms, $\ifilter(r,\istrf{e}) : \istr$. It suffices to show that $h(\strin[r_1+r_2]) = \istr$, which follows from the definition of $h$.
-\end{itemize}
-\end{proof}
-
-\begin{thm}[Progress]
-  If $e:T$ then $e:T \reduces^* e' \ireduces^* i$ where $i \ival$.
-\end{thm}
-\begin{proof}
-By induction on the derivation of $e:T$.
-For \textbf{T-Equiv-Include}, note that $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval. 
-We have that $e \val$ and $e : \strin[r]$, so $e \ireduces \istrf{e}$ by E-string\_in.
-The remaining cases follow by induction on the hypotheses and application of corresponding evaluation rules.
-\end{proof}
-
-\section{Implementation Inside a Python}
-
-TODO-nrf rewrite
-The $\lcs$ language is implemented as a type system extension in Ace; this extension
-is illustrated in the examples at the beginning of this paper.
-
-Computing a regular expression representating the language
-$R \backslash S$ is necessary in order to type-check expressions in which the filter function
-occurs. This language is computed by translating $R$ and $S$ into finite automata,
-complementing the final states of $S$, then constructing the cross-product of $R$
-and $S'$. Type checking terminates only because this construction is decidable.
-
-In addition to this construction, other more typical operations -- such
-as equality checks for regular expressions and regular expression matching -- are
-also necessary. For these reasons, the Ace extension implementing $\lcs$ includes a library
-implementing each of these constructions.
+%\end{proof}
+%
+%\begin{thm}[Progress]
+%  If $e:T$ then $e:T \reduces^* e' \ireduces^* i$ where $i \ival$.
+%\end{thm}
+%\begin{proof}
+%By induction on the derivation of $e:T$.
+%For \textbf{T-Equiv-Include}, note that $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval. 
+%We have that $e \val$ and $e : \strin[r]$, so $e \ireduces \istrf{e}$ by E-string\_in.
+%The remaining cases follow by induction on the hypotheses and application of corresponding evaluation rules.
+%\end{proof}
+%
+%\section{Implementation Inside a Python}
+%
+%TODO-nrf rewrite
+%The $\lcs$ language is implemented as a type system extension in Ace; this extension
+%is illustrated in the examples at the beginning of this paper.
+%
+%Computing a regular expression representating the language
+%$R \backslash S$ is necessary in order to type-check expressions in which the filter function
+%occurs. This language is computed by translating $R$ and $S$ into finite automata,
+%complementing the final states of $S$, then constructing the cross-product of $R$
+%and $S'$. Type checking terminates only because this construction is decidable.
+%
+%In addition to this construction, other more typical operations -- such
+%as equality checks for regular expressions and regular expression matching -- are
+%also necessary. For these reasons, the Ace extension implementing $\lcs$ includes a library
+%implementing each of these constructions.
 
 \subsection{Background: Ace}
 TODO: Make a TR out of the OOPSLA submission.
