@@ -1,4 +1,3 @@
-%\documentclass[12pt]{article}
 \documentclass[10pt,preprint]{sigplanconf}
 \newcommand{\lamAce}{\lambda_{\text{Ace}}}
 % The following \documentclass options may be useful:
@@ -439,16 +438,17 @@ casting.
 % Begin Grammar 
 %
 \newcommand{\ereplace}[3]{{\tt replace}[#1](#2,#3)}
-\newcommand{\echeck}[2]{{\tt check}[#1](#2)}
-\newcommand{\estr}[2]{{\tt str[#1, #2]}}
-\newcommand{\estrt}[1]{{\tt strt[#1]}}
-\newcommand{\econcat}{+}
+\newcommand{\ecoerce}[2]{{\tt coerce}[#1](#2)}
+\newcommand{\estr}[1]{{\tt str\_in[#1]}}
+\newcommand{\estrt}[1]{{\tt string\_in[#1]}}
+\newcommand{\econcat}[2]{{\tt concat}(#1,#2)}
 
 \newcommand{\ireplace}[3]{{\tt ireplace}(#1,#2,#3)}
 \newcommand{\icheck}[2]{{\tt icheck}(#1, #2)}
 \newcommand{\istr}[1]{{{\tt istr}[#1]}}
 \newcommand{\istrt}{{\tt istrt}}
 \newcommand{\iconcat}{\hat{+}}
+\newcommand{\regext}{ {\tt regex} }
 
 % Special stuff for the semantics.
 \newcommand{\replacefn}[3]{\tt replacement(#1,#2,#3)}
@@ -461,32 +461,25 @@ casting.
 \begin{grammar}
 <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill Regex ($a \in \Sigma$).
 
-<$\tau$> ::=				\hfill	External types					\\
-$\tau \rightarrow \tau$ \alt
-$\estrt{r}$				\hfill Regular expression types
+<$\psi$> ::=				\hfill	External types					\\
+$\estrt{r}$				\hfill Regular expression types \alt
 
-<e> ::= \hfill External expressions \\
-      $x$ \alt
-      $\lambda x:\tau.e$ \alt
-      $e e$ \alt
-      $\estr{r}{s}$ \alt
-      $e \econcat e$ \hfill String concatenation \\
+<T> ::= \hfill External expressions \\
+      $\estr{s}$ \alt
+      $\econcat{e}{e}$ \hfill String concatenation \alt
       $\ereplace{r}{e}{e}$ \alt
-      $\echeck{r}{e}$
+      $\ecoerce{r}{e}$
 
-<$\sigma$> ::= \hfill Internal types \\
-$\tau \rightarrow \tau$ \alt $\istrt$
+<$\theta$> ::= \hfill Internal types \\
+$\istrt$ \alt $\regext$
 
-<i> ::= \hfill Internal expressions \\
-  $x$ \alt
-  $\lambda x:\sigma.i$ \alt
-  $i i$ \alt
+<S> ::= \hfill Internal expressions \\
   $\istr{s}$ \alt
-  $i \econcat i$ \alt
+  $\econcat{i}{i}$ \alt
   $\ireplace{r}{i}{i}$ \alt
   $\icheck{r}{i}$
 \end{grammar}
-\caption{Syntax of $\lcs$}
+\caption{Syntax for the string sanitation fragment of $\lcs$}
 \label{fig:lcsSyntax}
 \end{figure}
 
@@ -583,43 +576,140 @@ If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, 
 %
 
 \onecolumn
+\newcommand{\ectx}{?} % Context for external typing
+\newcommand{\ictx}{?} % Context for internal typing
+
+\newcommand{\ereduces}{\Downarrow}
+
 \begin{figure}
 \begin{center}
 \begin{tabular}{c r}
 
-\inferline{T-Var}
-{\gvd x : \tau}
-{x : \tau \in \Gamma}
+\inferline{Te-include}
+{\ectx \vdash \estr{s} : \estrt{r}}
+{s \in \lang{r}???}
 
-\inferline{T-Abs}
-{\gvd \lambda x : \tau .e : \tau \rightarrow \tau' \sreduces \lambda x : \sigma.i}
-{\Gamma, x : \tau \vdash e : \tau' \sreduces i \\ \sigma \equiv \trep(\tau)}
+\inferline{Te-Concat}
+{\ectx \vdash \econcat{S_1}{S_2} : \estrt{r_1 \cdot r_2}}
+{\ectx \vdash S_1 : \estrt{r_1} \\ \ectx \vdash S_2 : \estrt{r_2}}
 
-\inferline{T-App}
-{\Gamma \vdash e_1 e_2 \sreduces i_1 i_2}
-{\Gamma \vdash e_1 : \tau \rightarrow \tau' \sreduces i_1 \\ \Gamma \vdash e_2 : \tau \sreduces i_2}
+\inferline{Te-subst}
+{\ectx \vdash \ereplace{r}{S_1}{S_2} : r}
+{\ectx \vdash S_1 : \estrt{r_1} \\ \ectx \vdash S_2 : \estrt{r_2} \\ r = {\tt lsubst}(r,r_1,r_2)}
 
-\inferline{T-Replace}
-{\gvd \ereplace{r}{e_1}{e_2} : \estrt{r'} \sreduces \ireplace{r}{i_1}{i_2}}
-{\gvd e_1 : \estrt{r_1} \ireduces i_1 \\ \gvd e_2 : \estrt{r_2} \ireduces i_2 \\ r' \equiv \crl{r}{r_2}{r_1}}
-
-\inferline{T-Check-Ok}
-{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces i}
-{\gvd e : \estrt{r} \sreduces{i} \\ \lang{r'} \subseteq \lang{r}}
-
-\inferline{T-Check-NotOk}
-{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces \icheck{r}{i}}
-{\gvd e : \estrt{r} \sreduces i \\ \lang{r'} \not \subseteq \lang{r}}
-  
-%\inferline{E-dconvert (optional) }
-%{\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
-%{e \val }
+\inferline{Te-coerce}
+{\ectx \vdash \ecoerce{r'}{s} : \estrt{r'}}
+{\ectx \vdash S : \estrt{r}}
 
 \end{tabular}
-\caption{Type-directed translation to internal terms for $\lcs$}
+\caption{Typing rules for $\lcs$. Err cases?}
+\label{fig:etyping}
+\end{center}
+\end{figure}
+
+
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{c r}
+\inferline{Te-Include}
+{\estr{s} \val}
+{ \cdot }
+
+\inferline{Te-Concat}
+{\econcat{S_1}{S_2} \ereduces \estr{s_1 \cdot s_2}} % ???
+{S_1 \Downarrow \estr{s_1} \\ S_2 \Downarrow \estr{s_2}} 
+
+\inferline{Te-Subst}
+{\ereplace{r}{S_1}{S_2} \ereduces s}
+{S_1 \Downarrow \estr{s_1} \\ S_2 \Downarrow \estr{s_2} \\ s = {\tt substitution}(r,s_1,s_2)} 
+
+\inferline{Te-Coerce-OK}
+{\ecoerce{r}{s} \ereduces \estr{x}}
+{s \ereduces \estr{x} \\ x \in \lang{r}}
+
+\inferline{Te-Coerce-NotOk}
+{\ecoerce{r}{s} \ereduces \estr{x} \\ x \not \in \lang{r}}
+{s \ereduces \estr{x} \\ x \not \in \lang{r}}
+\end{tabular}
+\caption{Operational semantics for the external language $\lcs$.
+There are also unmentioned error propagation rules for for Te-Concat and Te-Subst.}
 \label{fig:eeval}
 \end{center}
 \end{figure}
+
+
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{c r}
+\inferline{Ti-Include}
+{\istr{s} \val}
+{ \cdot }
+
+\inferline{Ti-Include}
+{{\tt regex}[r] \val}
+{ \cdot }
+
+\inferline{Ti-Concat}
+{\iconcat{S_1}{S_2} \ireduces \istr{s_1 \cdot s_2}} % ???
+{S_1 \ireduces \istr{s_1} \\ S_2 \ireduces \istr{s_2}} 
+
+\inferline{Te-Subst}
+{\ireplace{r}{S_2}{S_3} \ireduces {\tt substitution(r,s_2,s_3)}}
+{T_1 \ireduces {\tt regex}[r] \\ T_2 \ireduces \istr{s_2} \\ T_3 \ireduces \istr{s_3} \\ } 
+
+\inferline{Te-Ccheck-OK}
+{\icheck{r}{s} \ireduces \istr{x}}
+{s \ireduces \estr{x} \\ x \in \lang{r}}
+
+\inferline{Te-Check-NotOk}
+{\icheck{r}{s} \ireduces \istr{x} \\ x \not \in \lang{r}}
+{s \ireduces \istr{x} \\ x \not \in \lang{r}}
+\end{tabular}
+\caption{Operational semantics for the internal language of $\lcs$.
+There are also unmentioned error propagation rules for for Te-Concat and Te-Subst.}
+\label{fig:ieval}
+\end{center}
+\end{figure}
+
+
+
+
+%
+%\begin{figure}
+%\begin{center}
+%\begin{tabular}{c r}
+%
+%\inferline{T-Abs}
+%{\gvd \lambda x : \tau .e : \tau \rightarrow \tau' \sreduces \lambda x : \sigma.i}
+%{\Gamma, x : \tau \vdash e : \tau' \sreduces i \\ \sigma \equiv \trep(\tau)}
+%
+%\inferline{T-App}
+%{\Gamma \vdash e_1 e_2 \sreduces i_1 i_2}
+%{\Gamma \vdash e_1 : \tau \rightarrow \tau' \sreduces i_1 \\ \Gamma \vdash e_2 : \tau \sreduces i_2}
+%
+%\inferline{T-Replace}
+%{\gvd \ereplace{r}{e_1}{e_2} : \estrt{r'} \sreduces \ireplace{r}{i_1}{i_2}}
+%{\gvd e_1 : \estrt{r_1} \ireduces i_1 \\ \gvd e_2 : \estrt{r_2} \ireduces i_2 \\ r' \equiv \crl{r}{r_2}{r_1}}
+%
+%\inferline{T-Check-Ok}
+%{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces i}
+%{\gvd e : \estrt{r} \sreduces{i} \\ \lang{r'} \subseteq \lang{r}}
+%
+%\inferline{T-Check-NotOk}
+%{\gvd \echeck{r'}{e} : \estrt{r'} \sreduces \icheck{r}{i}}
+%{\gvd e : \estrt{r} \sreduces i \\ \lang{r'} \not \subseteq \lang{r}}
+%  
+%%\inferline{E-dconvert (optional) }
+%%{\dconvert{\strin[r']}{e} : \strin[r'] \ireduces \ifilter{r'}{\istrf{e}}}
+%%{e \val }
+%
+%\end{tabular}
+%\caption{Type-directed translation to internal terms for $\lcs$}
+%\label{fig:eeval}
+%\end{center}
+%\end{figure}
 
 %
 % Begin typing relation for internal terms.
