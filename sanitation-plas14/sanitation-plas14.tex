@@ -776,7 +776,7 @@ If $\cdot \vdash e : \tau \sreduces i$ then $\cdot \vdash i : \sigma$ and $\sigm
 %The remaining cases follow by induction on the hypotheses and application of corresponding evaluation rules.
 %\end{proof}
 %
-%\section{Implementation Inside a Python}
+\section{Implementation Inside a Python}
 %
 %TODO-nrf rewrite
 %The $\lcs$ language is implemented as a type system extension in Ace; this extension
@@ -792,6 +792,62 @@ If $\cdot \vdash e : \tau \sreduces i$ then $\cdot \vdash i : \sigma$ and $\sigm
 %as equality checks for regular expressions and regular expression matching -- are
 %also necessary. For these reasons, the Ace extension implementing $\lcs$ includes a library
 %implementing each of these constructions.
+\newcommand{\F}[1]{\textsf{#1}~}
+\newcommand{\FF}[1]{\textsf{#1}}
+\newcommand{\Q}{\FF{Arg}}
+\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lamAce}}
+\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\texttt{ace}}$}
+\begin{figure*}
+\begin{tabular}{ l r l l }
+$\tau$ & & $\xlA{\tau}$ & \xA{\tau}\\
+\hline
+$\estrt{r}$ & & $\fvar{stringin}[r]$ & \verb|string_in["|$r$\verb|"]|\\
+\\
+  $e$ & & $\xlA{e}$ & \xA{e}\\
+  \hline
+  ${\tt str}[r, s]$ & \text{synthetic position} & $\FF{intro}[\FF{str}[s]]()$ : \fvar{stringin}[\FF{rx}[$r$]] & \verb|"|$s$\verb|" (string_in["|$r$\verb|"])|\\
+  & \text{analytic position} & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
+  ${\tt concat}(e_1; e_2)$ & & $\xlA{e_1}\cdot\FF{elim}[\tvar{concat}](\xlA{e_2})$ & \xA{e_1}\verb| + |\xA{e_2} \\
+  ${\tt replace}[r](e_1; e_2)$ & & $\xlA{e_1}\cdot\FF{elim}[\tvar{replace}~\FF{rx}[r]](\xlA{e_2})$ & \xA{e_1}\verb|.replace("|$r$\verb|", |\xA{e_2}\verb|)|\\
+  ${\tt coerce}[r](e)$ & & $\xlA{e}\cdot\FF{elim}[\tvar{coerce}~\FF{rx}[r]]()$ & \xA{e}\verb|.coerce("|$r$\verb|")|
+\end{tabular}
+\caption{Translation of $\lcs$ to $\lamAce$ and Ace.}
+\end{figure*}
+\begin{figure}
+\small\begin{flalign}
+& \F{tycon}\fvar{stringin}~\F{of}\FF{R}~\{\\
+& \quad \F{iana}\{\tlam{opidx}{\FF{String}}{
+	\tlam{tyidx}{\FF{R}}{
+	\tlam{a}{\klist{\Q}}{\\
+& \quad\quad \tvar{arity0}~\tvar{a}~(\tvar{check}~\tvar{opidx}~\tvar{tyidx}~\titerm{\iup{\tvar{opidx}}})
+	}}
+}\}\\
+& \quad \F{esyn}\{\tlam{opidx}{\kunit+(\FF{R}+\FF{R})}{
+	\tlam{a}{\klist{\Q}}{\\
+& \quad\quad \tsumcase{\tvar{opidx}}{\_}{\\
+& \quad\quad\quad \tvar{arity2}~\tvar{a}~\tlam{a1}{\Q}{\tlam{a2}{\Q}{\\
+& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a1}~\tlam{r1}{\FF{R}}{\tlam{i1}{\kITerm}{~}}\\
+& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a2}~\tlam{r2}{\FF{R}}{\tlam{i2}{\kITerm}{~}}\\
+& \quad\quad\quad\quad\quad (\ttype{stringin}{\FF{rseq}(\tvar{r1}; \tvar{r2})}, \\
+& \quad\quad\quad\quad\quad\titerm{{\tt iconcat}(\iup{\tvar{i1}}; \iup{\tvar{i2}})})
+}}\\
+& \quad\quad}{opidx'}{d}}
+}\}
+\}
+\end{flalign}
+\caption{Definition of ...}
+\end{figure}
+\begin{figure}
+\[
+\begin{array}{lcl}
+% & & Definition & Kind\\
+\tvar{concat} & := & \tinl{\kunit, R+R}{b}\\%& \kunit + (R + R)\\
+\tvar{replace} & := & \tlam{r}{R}{\tinr{\kunit, R+R}{\tinl{R,R}{\tvar{r}}}}\\% & \karrow{a}{b}\\
+\tvar{coerce} & := & \tlam{r}{R}{\tinr{\kunit, R+R}{\tinr{R,R}{\tvar{r}}}}\\
+\end{array}
+\]
+\caption{Definitions}
+\end{figure}
 
 \subsection{Background: Ace}
 TODO: Make a TR out of the OOPSLA submission.
