@@ -263,33 +263,39 @@
 %%
 %% Source and Target language definitions.
 %%
+\newcommand{\lambdas}{\lambda_S}
+\newcommand{\lambdap}{\lambda_P}
+
 % Source language terms.
-\newcommand{\sisubst}[3]{{\tt subst}[#1](#2,#3)}
-\newcommand{\coerce}[2]{ {\tt coerce}[#1](#2)}
-\newcommand{\sistr}[1]{{\tt si\_str}[#1]}
+\newcommand{\sisubst}[3]{{\sf rreplace}[#1](#2,#3)}
+\newcommand{\rssreplace}[3]{\sisubst{#1}{#2}{#2}} % TODO-nrf fix this.
+
+\newcommand{\coerce}[2]{ {\sf rcoerce}[#1](#2)}
+\newcommand{\sistr}[1]{{\sf rstr}[#1]}
 \newcommand{\strin}[1]{\sistr{#1}}
-\newcommand{\siconcat}[2]{{\tt siconcat}(#1,#2)}
+\newcommand{\rsconcat}[2]{{\sf rconcat}(#1,#2)}
 
 % Source language types.
-\newcommand{\stringin}[1]{{\tt string\_in}[#1]}
+\newcommand{\stringin}[1]{{\sf stringin}[#1]}
 
 % target language terms.
-\newcommand{\tsubst}[3]{{\tt tsubst}(#1,#2,#3)}
-\newcommand{\tcheck}[2]{{\tt tcheck}(#1, #2)}
-\renewcommand{\tstr}[1]{{{\tt tstr}[#1]}}
-\newcommand{\tconcat}[2]{{\tt tconcat}(#1,#2)}
+\newcommand{\tsubst}[3]{{\sf replace}(#1,#2,#3)} % TODO-nrf rename the commands.
+\newcommand{\tcheck}[2]{{\sf check}(#1, #2)}
+\renewcommand{\tstr}[1]{{{\sf str}[#1]}}
+\newcommand{\tconcat}[2]{{\sf concat}(#1,#2)}
+\newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
+\newcommand{\rx}[1]{ {\sf rx}[#1] }
 
 % Target language types
-\newcommand{\str}{{\tt string}}
-\newcommand{\regext}[1]{ {\tt rx}[#1] }
-\newcommand{\rx}[1]{ {\tt rx}[#1] }
+\newcommand{\str}{{\sf string}}
+\newcommand{\regex}{{\sf regex}}
 
 % Meta-theoretic functions
-\newcommand{\dosubst}[3]{{\tt dosubst}(#1,#2,#3)}
-\newcommand{\lsubst}[3]{{\tt lsubst}(#1,#2,#3)}
+\newcommand{\dosubst}[3]{{\tt replace}(#1,#2,#3)}
+\newcommand{\lsubst}[3]{{\tt lreplace}(#1,#2,#3)}
 
 % Judgements
-\newcommand{\err}{\ {\tt err}}
+\newcommand{\err}{\ {\sf err}}
 \newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
 
 % Relations
@@ -473,27 +479,42 @@ casting.
 
 \begin{figure}
 \begin{grammar}
-<r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill Regex ($a \in \Sigma$).
+<r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
-<$\psi$> ::=				\hfill	Source language types					\\
-$\stringin{r}$				\hfill Regular expression types \alt
+\caption{Regular expressions over the alphabet $\Sigma$.}
+\end{grammar}
+\end{figure}
 
-<S> ::= \hfill Source language expressions \\
-      $\strin{S}$ \alt
-      $\siconcat{S}{S}$ \hfill String concatenation \alt
+\begin{figure}
+\begin{grammar}
+
+<$\psi$> ::=	...			\hfill	source types					\alt
+$\stringin{r}$				 
+
+<S> ::= ... \hfill source terms \alt
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\rsconcat{S}{S}$ \alt
       $\sisubst{r}{S}{S}$ \alt
       $\coerce{r}{S}$
-
-<$\theta$> ::= \hfill Target language types \\
-$\str$ \alt $\regext$
-
-<P> ::= \hfill Internal expressions \\
-  $\tstr{P}$ \alt
-  $\siconcat{P}{P}$ \alt
-  $\tsubst{r}{P}{P}$ \alt
-  $\tcheck{r}{P}$
+\caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
 \end{grammar}
-\caption{Syntax for the string sanitation fragment of $\lcs$}
+\end{figure}
+
+\begin{figure}
+\begin{grammar}
+
+<$\theta$> ::= ... \hfill target types \alt
+$\str$ \alt $\regex$
+
+
+<P> ::= ... \hfill target terms \alt
+  $\tstr{s}$ \alt
+  $\rx{r}$ \alt
+  $\tconcat{P}{P}$ \alt
+  $\tsubst{P}{P}{P}$ \alt
+  $\tcheck{P}{P}$ 
+  \end{grammar}
+\caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
 \label{fig:lcsSyntax}
 \end{figure}
 
@@ -570,8 +591,8 @@ $\str$ \alt $\regext$
 %
 
 
-\newcommand{\sctx}{\Gamma} % Context for external typing
-\newcommand{\tctx}{\Omega} % Context for internal typing
+\newcommand{\sctx}{\Psi} % Context for external typing
+\newcommand{\tctx}{\Theta} % Context for internal typing
 
 \newcommand{\ereduces}{\Downarrow}
 
@@ -582,27 +603,26 @@ $\str$ \alt $\regext$
 $\fbox{\inferrule{}{\sctx \vdash S : \psi}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \psi$
 \begin{mathpar}
-
-\inferrule[S-T-include]
+\inferrule[S-T-Stringin-I]
 {s \in \lang{r}}
 {\sctx \vdash \strin{s} : \stringin{r}}
 
 \inferrule[S-T-Concat]
 {\sctx \vdash S_1 : \stringin{r_1} \\ \sctx \vdash S_2 : \stringin{r_2}}
-{\sctx \vdash \siconcat{S_1}{S_2} : \stringin{r_1 \cdot r_2}}
+{\sctx \vdash \rsconcat{S_1}{S_2} : \stringin{r_1 \cdot r_2}}
 
-\inferrule[S-T-subst]
-{\sctx \vdash S_1 : \stringin{r_1} \\ \sctx \vdash S_2 : \stringin{r_2} \\ {\tt lsubst}(r,r_1,r_2) = r'}
+\inferrule[S-T-replace]
+{\sctx \vdash S_1 : \stringin{r_1} \\ \sctx \vdash S_2 : \stringin{r_2} \\\\ {\tt lsubst}(r,r_1,r_2) = r'}
 {\sctx \vdash \sisubst{r}{S_1}{S_2} : \stringin{r'}}
 
 \inferrule[S-T-coerce]
-{\sctx \vdash S : \stringin{r}}
-{\sctx \vdash \coerce{r'}{s} : \stringin{r'}}
+{\sctx \vdash S : \stringin{r'}}
+{\sctx \vdash \coerce{r}{S} : \stringin{r}}
 
 \end{mathpar}
 
-\caption{Typing rules for source langauge terms (S). The metavariable s ranges over
-string literals.}
+\caption{Typing rules for our fragment of $\lambdas$. 
+The typing context $\sctx$ is standard.}
 \label{fig:etyping}
 \end{figure}
 
@@ -611,31 +631,31 @@ string literals.}
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{S \sreduces S}}$
+$\fbox{\inferrule{}{S \err}}$
 \begin{mathpar}
-
-\inferrule[S-E-Include]
+\inferrule[S-E-RStr]
 { \ }
 {\strin{s} \sreduces \strin{s}}
 
 \inferrule[S-E-Concat]
 {S_1 \sreduces \strin{s_1} \\ S_2 \sreduces \strin{s_2}} 
-{\siconcat{S_1}{S_2} \sreduces \strin{s_1 \cdot s_2}} % ???
+{\rsconcat{S_1}{S_2} \sreduces \strin{s_1 s_2}} % ???
 
-\inferrule[S-E-Subst]
+\inferrule[S-E-Replace]
 {S_1 \sreduces \strin{s_1} \\ S_2 \sreduces \strin{s_2} \\ \dosubst{r}{s_1}{s_2} = s} 
-{\sisubst{r}{S_1}{S_2} \sreduces s}
+{\sisubst{r}{S_1}{S_2} \sreduces \sistr{s}}
 
 \inferrule[S-E-Coerce-OK]
 {S \sreduces \strin{s} \\ s \in \lang{r}}
 {\coerce{r}{S} \sreduces \strin{s}}
 
-\inferrule[S-E-Coerce-NotOk]
-{\coerce{r}{S} \sreduces \strin{s} \\ s \not \in \lang{r}}
-{S \err}
+\inferrule[S-E-Coerce-Err]
+{S \sreduces \strin{s} \\ s \not \in \lang{r}}
+{\coerce{r}{S} \err}
 
 \end{mathpar}
-\caption{Big step semantics for the string fragment of the source language.
-There are also unmentioned error propagation rules for for S-E-Concat and S-E-Subst.}
+\caption{Big step semantics for our fragment of $\lambdas$.
+Error propagation rules are omitted.}
 \label{fig:eeval}
 \end{figure}
 
@@ -647,57 +667,64 @@ $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \theta$
 
 \begin{mathpar}
-
 \inferrule[P-T-String]
 { \ }
 {\tctx \vdash \tstr{s} : \str}
+
+\inferrule[P-T-Regex]
+{ \ }
+{\tctx \vdash \rx{r} : \regex}
 
 \inferrule[P-T-Concat]
 {\tctx \vdash P_1 : \str \\ \tctx \vdash P_2 : \str}
 {\tctx \vdash \tconcat{P_1}{P_2} : \str}
 
-\inferrule[P-T-Subst]
-{\tctx \vdash P_1 : \str \\ \tctx \vdash P_2 : \str}
-{\tctx \vdash \tsubst{\rx{r}}{P_1}{P_2} : \str}
+\inferrule[P-T-Replace]
+{\tctx \vdash P_1 : \regex \\ \tctx \vdash P_2 : \str \\ \tctx \vdash P_3 : \str }
+{\tctx \vdash \tsubst{P_1}{P_2}{P_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash P : \str}
-{\tctx \vdash \tcheck{\rx{r}}{s} : \str}
+{\tctx \vdash P_1 : \regex \\ \tctx \vdash P_2 : \str \\ }
+{\tctx \vdash \tcheck{P_1}{P_2} : \str}
 
 \end{mathpar}
-\caption{Typing rules for target langauge terms (P). The metavariable s ranges over
-string literals.}
+\caption{Typing rules for our fragment of $\lambdap$.
+The typing context $\tctx$ is standard.}
 \label{fig:etyping}
 \end{figure}
 
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{P \treduces P}}$
+$\fbox{\inferrule{}{P \err}}$
+
 \begin{mathpar}
-\inferrule[P-E-Strin]
+\inferrule[P-E-Str]
+{ \ }
+{\tstr{s} \treduces \tstr{s}}
+
+\inferrule[P-E-Rx]
 { \ }
 {\rx{r} \treduces \rx{r}}
 
-\\
-
 \inferrule[P-E-Concat]
 {P_1 \treduces \tstr{s_1} \\ P_2 \treduces \tstr{s_2}} 
-{\tconcat{P_1}{P_2} \treduces \tstr{s_1 \cdot s_2}} % ???
+{\tconcat{P_1}{P_2} \treduces \tstr{s_1 s_2}} % ???
 
-\inferrule[P-E-Subst]
+\inferrule[P-E-Replace]
 {P_1 \treduces \rx{r} \\ P_2 \treduces \tstr{s_2} \\ P_3 \treduces \tstr{s_3} \\ \dosubst{r}{s_2}{s_3} = s} 
-{\tsubst{r}{P_2}{P_3} \treduces \tstr{s}}
+{\tsubst{P_1}{P_2}{P_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{P \treduces \strin{s} \\ s \in \lang{r}}
-{\tcheck{r}{P} \treduces \tstr{s}}
+{P_1 \treduces \rx{r} \\ P_2 \treduces \strin{s} \\ s \in \lang{r}}
+{\tcheck{P_1}{P_2} \treduces \tstr{s}}
 
-\inferrule[P-E-Check-NotOk]
-{\tcheck{r}{P} \treduces \tstr{s} \\ s \not \in \lang{r}}
-{P \err}
+\inferrule[P-E-Check-Err]
+{P_1 \treduces \rx{r} \\ P_2 \treduces \tstr{s} \\ s \not \in \lang{r}}
+{\tcheck{P_1}{P_2} \err}
 \end{mathpar}
-\caption{Big step semantics for the target lanugage.
-There are also unimplemented error propagation rules for for P-E-Concat and P-E-Subst.}
+\caption{Big step semantics for our fragment of $\lambdap$.
+Error propagation rules are omitted.}
 \label{fig:ieval}
 \end{figure}
 
@@ -721,7 +748,7 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 
 \inferrule[Tr-Concat]
 { \trden{S_1} = P_1 \\ \trden{S_2} = P_2}
-{\trden{\siconcat{S_1}{S_2}} = \tconcat{P_1}{P_2}}
+{\trden{\rsconcat{S_1}{S_2}} = \tconcat{P_1}{P_2}}
 
 \inferrule[Tr-Subst]
 { \trden{S_1} = P_1 \\ \trden{S_2} = P_2 }
@@ -871,9 +898,9 @@ By inversion of the typing relaiton for the source lnaguage, $S_1 : \strin{r_1}$
 By induction on the left premise, $T_1 \treduces \tstr{s_1}$, $S_1 \sreduces \str{s_1}$ and $s_1 \in \lang{r_1}$
 or else $T_1 err$. 
 Similarly for $T_2$ and $S_2$.
-In the error cases, the propagations rules corresponding to S-E-Concat and T-E-Concat imply that $\tconcat{T_1}{T_2} \err$ and $\siconcat{S_1}{S_2} \err$.
-In the non-error case, $\siconcat{S_1}{S_2} \sreduces \strin{s_1 \cdot s_2}$ by S-E-Concat and $\tconcat{T_1}{T_2} \treduces \tstr{s_1 \cdot s_2}$ by T-E-Concat.
-Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ implies that $s_1 \cdot s_2 \in \lang{r}$ by \ref{lemmaregex}.
+In the error cases, the propagations rules corresponding to S-E-Concat and T-E-Concat imply that $\tconcat{T_1}{T_2} \err$ and $\rsconcat{S_1}{S_2} \err$.
+In the non-error case, $\rsconcat{S_1}{S_2} \sreduces \strin{s_1 s_2}$ by S-E-Concat and $\tconcat{T_1}{T_2} \treduces \tstr{s_1 s_2}$ by T-E-Concat.
+Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ implies that $s_1 s_2 \in \lang{r}$ by \ref{lemmaregex}.
 \item[Tr-subst]
 Suppose $\sisubst{r}{S_1}{S_2} : \strin{s}$ for some $x$. 
 By inverison, $S_1 : \strin{r_1}$ and $S_2 : \strin{r_2}$.
