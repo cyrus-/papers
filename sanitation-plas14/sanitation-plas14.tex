@@ -289,7 +289,7 @@
 
 % Judgements
 \newcommand{\err}{{\tt err}}
-\newcommand{\trden}[1]{[[#1]]} % = Translation Denotation.
+\newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
 
 % Relations
 \newcommand{\treduces}{ \Downarrow }
@@ -527,11 +527,11 @@ $\stringin{r}$				\hfill Regular expression types \alt
 <$\theta$> ::= \hfill Target language types \\
 $\str$ \alt $\regext$
 
-<T> ::= \hfill Internal expressions \\
-  $\tstr{T}$ \alt
-  $\siconcat{T}{T}$ \alt
-  $\tsubst{r}{T}{T}$ \alt
-  $\tcheck{r}{T}$
+<P> ::= \hfill Internal expressions \\
+  $\tstr{P}$ \alt
+  $\siconcat{P}{P}$ \alt
+  $\tsubst{r}{P}{P}$ \alt
+  $\tcheck{r}{P}$
 \end{grammar}
 \caption{Syntax for the string sanitation fragment of $\lcs$}
 \label{fig:lcsSyntax}
@@ -700,24 +700,24 @@ There are also unmentioned error propagation rules for for S-E-Concat and S-E-Su
 \begin{center}
 \begin{tabular}{c r}
 
-\inferline{T-T-String}
+\inferline{P-T-String}
 {\tctx \vdash \tstr{s} : \str}
 {\cdot}
 
-\inferline{T-T-Concat}
-{\tctx \vdash \tconcat{T_1}{T_2} : \str}
-{\tctx \vdash T_1 : \str \\ \tctx \vdash T_2 : \str}
+\inferline{P-T-Concat}
+{\tctx \vdash \tconcat{P_1}{P_2} : \str}
+{\tctx \vdash P_1 : \str \\ \tctx \vdash P_2 : \str}
 
-\inferline{T-T-Subst}
-{\tctx \vdash \tsubst{\rx{r}}{T_1}{T_2} : \str}
-{\tctx \vdash T_1 : \str \\ \tctx \vdash T_2 : \str}
+\inferline{P-T-Subst}
+{\tctx \vdash \tsubst{\rx{r}}{P_1}{P_2} : \str}
+{\tctx \vdash P_1 : \str \\ \tctx \vdash P_2 : \str}
 
-\inferline{T-T-Check}
+\inferline{P-T-Check}
 {\tctx \vdash \tcheck{\rx{r}}{s} : \str}
-{\tctx \vdash T : \str}
+{\tctx \vdash P : \str}
 
 \end{tabular}
-\caption{Typing rules for target langauge terms (T). The metavariable s ranges over
+\caption{Typing rules for target langauge terms (P). The metavariable s ranges over
 string literals.}
 \label{fig:etyping}
 \end{center}
@@ -727,28 +727,28 @@ string literals.}
 \begin{figure}
 \begin{center}
 \begin{tabular}{c r}
-\inferline{T-E-Str}
+\inferline{P-E-Str}
 {\tstr{s} \treduces \str{s}}
 { \cdot }
 
-\inferline{T-E-Include}
+\inferline{P-E-Include}
 {\rx{r} \treduces \rx{r}}
 { \cdot }
 
-\inferline{T-E-Concat}
-{\tconcat{T_1}{T_2} \treduces \tstr{s_1 \cdot s_2}} % ???
-{T_1 \treduces \tstr{s_1} \\ T_2 \treduces \tstr{s_2}} 
+\inferline{P-E-Concat}
+{\tconcat{P_1}{P_2} \treduces \tstr{s_1 \cdot s_2}} % ???
+{P_1 \treduces \tstr{s_1} \\ P_2 \treduces \tstr{s_2}} 
 
-\inferline{T-E-Subst}
-{\tsubst{r}{T_2}{T_3} \treduces \tstr{s}}
-{T_1 \treduces \rx{r} \\ T_2 \treduces \tstr{s_2} \\ T_3 \treduces \tstr{s_3} \\ \dosubst{r}{s_2}{s_3} = s} 
+\inferline{P-E-Subst}
+{\tsubst{r}{P_2}{P_3} \treduces \tstr{s}}
+{P_1 \treduces \rx{r} \\ P_2 \treduces \tstr{s_2} \\ P_3 \treduces \tstr{s_3} \\ \dosubst{r}{s_2}{s_3} = s} 
 
-\inferline{T-E-Check-OK}
-{\tcheck{r}{T} \treduces \tstr{s}}
-{T \treduces \strin{s} \\ s \in \lang{r}}
+\inferline{P-E-Check-OK}
+{\tcheck{r}{P} \treduces \tstr{s}}
+{P \treduces \strin{s} \\ s \in \lang{r}}
 
-\inferline{T-E-Check-NotOk}
-{T \err}
+\inferline{P-E-Check-NotOk}
+{P \err}
 {\tcheck{r}{T} \treduces \tstr{s} \\ s \not \in \lang{r}}
 
 \end{tabular}
@@ -772,23 +772,23 @@ There are also unimplemented error propagation rules for for Te-Concat and Te-Su
 { \ }
 
 \inferline{Tr-Concat}
-{\trden{\siconcat{S_1}{S_2}} = \tconcat{T_1}{T_2}}
-{ \trden{S_1} = T_1 \\ \trden{S_2} = T_2}
+{\trden{\siconcat{S_1}{S_2}} = \tconcat{P_1}{P_2}}
+{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2}
 
 \inferline{Tr-Subst}
-{\trden{ \sisubst{r}{S_1}{S_2} } = \tsubst{\rx{r}}{T_1}{T_2} }
-{ \trden{S_1} = T_1 \\ \trden{S_2} = T_2 }
+{\trden{ \sisubst{r}{S_1}{S_2} } = \tsubst{\rx{r}}{P_1}{P_2} }
+{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2 }
 
 \inferline{Tr-Subst}
-{\trden{ \coerce{r'}{S} } = T}
-{ \trden{s} = T \\ S : \strin{r} \\ \lang{r'} \subseteq \lang{r}}
+{\trden{ \coerce{r'}{S} } = P}
+{ \trden{s} = P \\ S : \strin{r} \\ \lang{r'} \subseteq \lang{r}}
 
 \inferline{Tr-Coerce-NotOk}
 {\trden{\coerce{r'}{S}} = \tcheck{\rx{r'}}{S}}
-{\trden{S} = T \\ s : \strin{r} \\ \lang{r'} \not \subseteq \lang{r}}
+{\trden{S} = P \\ s : \strin{r} \\ \lang{r'} \not \subseteq \lang{r}}
 
 \end{tabular}
-\caption{Translation from source terms (S) to target terms (T).
+\caption{Translation from source terms (S) to target terms (P).
 The translation is type-directed in the Tr-Coerce cases.}
 \end{center}
 \end{figure}
@@ -797,7 +797,7 @@ The translation is type-directed in the Tr-Coerce cases.}
 
 Note that we never insert an internal check where the type of the string implies
 that a check must succeed. Furthermore, expensive calculations (such as language
-inclusion or ${\tt computer\_replacement\_language}$, all occur at compile time.
+inclusion or ${\tt dsubst}$, all occur at compile time.
 Since sanitation problems are generally expressible with smalle, simple expressions,
 we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
 support this assertion.
