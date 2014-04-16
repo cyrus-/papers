@@ -6,6 +6,7 @@
 % 10pt          To set in 10-point type instead of 9-point.
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
+\usepackage{afterpage}
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{mathpartir}
@@ -24,6 +25,8 @@
 \usepackage{listings}
 \usepackage{wasysym}
     \makeatletter
+\usepackage{enumitem}
+\usepackage{enumerate}
 
 % \btIfInRange{number}{range list}{TRUE}{FALSE}
 %
@@ -572,6 +575,8 @@ $\str$ \alt $\regext$
 
 \newcommand{\ereduces}{\Downarrow}
 
+\afterpage{
+
 \begin{figure}[t]
 \small
 $\fbox{\inferrule{}{\sctx \vdash S : \psi}}$
@@ -696,6 +701,9 @@ There are also unimplemented error propagation rules for for P-E-Concat and P-E-
 \label{fig:ieval}
 \end{figure}
 
+\clearpage
+} % End \afterpage
+
 \newpage
 
 %
@@ -805,18 +813,41 @@ If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, 
 
 \subsection{Safety of the Source and Target Languages}
 
+
+\begin{lem}
+  If $\sctx \vdash S : \stringin[r]$ then $r$ is a well-formed regular expression. 
+\end{lem}
+\begin{proof}
+  By induction on the typing derivation and the closure lemmas for regular
+  expressions.
+\end{proof}
+
+
 We now prove safety for the string fragment of the source and target languages.
 
 \begin{thm}
   Let $S$ be a term in the source language. If $\sctx \vdash S : \psi$ 
   then $S \sreduces S'$ and $S' : \psi$.
 \end{thm}
+\begin{proof}
+  TODO-nrf
+
+By a straightforward induction on the derivation of $\sctx \vdash S : \psi$.
+Note that preservation depends upon the substitution correspondence theorem
+for the T-T-Subst case and the closure lemmas for the T-T-Concat case.
+\end{proof}
 
 \begin{thm}
-  Let $P$ be a term in the target language. If $\sctx \vdash P : \theta$ 
+  Let $P$ be a term in the target language. If $\tctx \vdash P : \theta$ 
   then $P \sreduces P'$ and $P' : \theta$.
 \end{thm}
+\begin{proof}
+TODO-nrf
 
+  By a straightforward induction on the derivation of $\tctx \vdash P : \theta$.
+Note that the well-formedness of regular expressions indexing ${\tt rx}$ types
+depends upon the closure lemmas.
+\end{proof}
 
 \subsection{Translation Correctness}
 
@@ -824,18 +855,18 @@ We now present the main correctness result.
 
 \begin{thm}
 If $S : \strin{r}$ then there exists a T such that $\trden{s} = T$ and either: 
-\begin{itemize}
-\item (a) $T \treduces \tstr{s}$ and $S \sreduces \strin{s}$, and $s \in lang{r}$.
-\item (b) $T \err$ and $S \err$.
-\end{itemize}
+\begin{description}
+  \item[(a)] $T \treduces \tstr{s}$ and $S \sreduces \strin{s}$, and $s \in lang{r}$.
+  \item[(b)] $T \err$ and $S \err$.
+  \end{description}
 \end{thm}
 \begin{proof}
 By induction on the derivation of $\trden{S} = T$. TODO-nrf add case magic.
-\begin{itemize}
-\item Tr-string. By assumption $\trden{S} = \tstr{s}$. The (a) property follows.
+\begin{description}
+\item[Tr-string] By assumption $\trden{S} = \tstr{s}$. The (a) property follows.
 By S-E-Str, $S \sreduces \str{s}$ and by T-E-Str, $\tstr{s} \treduces \tstr{s}$.
 By source language type safety, it follows that $s \in \lang{r}$.
-\item Tr-Concat.
+\item[Tr-Concat]
 By inversion of the typing relaiton for the source lnaguage, $S_1 : \strin{r_1}$ and $S_2 : \stringin{S_2}$.
 By induction on the left premise, $T_1 \treduces \tstr{s_1}$, $S_1 \sreduces \str{s_1}$ and $s_1 \in \lang{r_1}$
 or else $T_1 err$. 
@@ -843,7 +874,7 @@ Similarly for $T_2$ and $S_2$.
 In the error cases, the propagations rules corresponding to S-E-Concat and T-E-Concat imply that $\tconcat{T_1}{T_2} \err$ and $\siconcat{S_1}{S_2} \err$.
 In the non-error case, $\siconcat{S_1}{S_2} \sreduces \strin{s_1 \cdot s_2}$ by S-E-Concat and $\tconcat{T_1}{T_2} \treduces \tstr{s_1 \cdot s_2}$ by T-E-Concat.
 Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ implies that $s_1 \cdot s_2 \in \lang{r}$ by \ref{lemmaregex}.
-\item T-subst.
+\item[Tr-subst]
 Suppose $\sisubst{r}{S_1}{S_2} : \strin{s}$ for some $x$. 
 By inverison, $S_1 : \strin{r_1}$ and $S_2 : \strin{r_2}$.
 Note that $s : \subst{r}{S_1}{S_2} : \stringin{\tsubst{r}{r_1}{r_2}}$ by S-T-Subst.
@@ -857,89 +888,20 @@ Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$, which implies that $\dos
 
 If (b) holds for either the left or right premise, then $\sisubst{r}{S_1}{S_2} \err$ by the propagation rules corresponding to S-T-subst, 
 and $\tsubst{S_1}{S_2} \err$ by the propagation rules corresponding to T-T-Subst.
-\end{itemize}
+
+\item[Tr-Coerce-Ok] TODO-nrf.
+
+\item[Tr-Coerce-NotOk] TODO-nrf.
+
+\end{description}
 \end{proof}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% END SECTION TWO -- THIS IS THE CONFLICT LINE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
-\subsection{Type Safety Proof}
-
-\subsection{New Theorems}
-
-\begin{thm}[Progress for Internal Language]
-\end{thm}
-
-\begin{thm}[Preservation for Internal Language]
-\end{thm}
-
-
-\begin{thm}[Representational Consistency]
-If $\cdot \vdash e : \tau \sreduces i$ then $\cdot \vdash i : \sigma$ and $\sigma \equiv \trep(\tau)$.
-\end{thm}
-
-\begin{thm}[Main Soundness Result]
-  If $\cdot \vdash e : \strin{r} \sreduces i$ then either $i \treduces \err$ or
-  if $i \sreduces v$ for $v$??? then $v \in r$.
-\end{thm}
-
-%\begin{thm}[Preservation]
-%  Let $T$ be a type in $\lcs$ and $h(T)=\sigma$ the corresponding type in the internal language.
-%  For all terms $e$:
-%  \begin{itemize}
-%    \item If $e:T$ and $e:T \treduces i$ then $i : \sigma$ such that $h(T) = \sigma$.
-%    \item If $e:T$ and $e:T \reduces e'$ then $e':T$.
-%  \end{itemize}
-%\end{thm}
-%\begin{proof}
-%The proof is a straightforward induction on the derivation of the combined evaluation relation.
-%\begin{itemize}[label=$ $,itemsep=1ex]
-%  \item \textbf{E-Ival, E-Ifilterval}. Both cases hold since the terms at hand are not $\lcs$ terms.
-%  \item \textbf{E-Stringval, E-strval}. Both cases hold since no reduction is possible. 
-%  \item \textbf{E-String}. By the definition of typing for internal terms, $\tstrf{e} : istr$. It suffices to show that $h(\str) = istr$, which follows from the definition of $h$.
-%  \item \textbf{E-String\_in}. By the definition of typing for internal terms, $\tstrf{e} : istr$. It suffices to show that $h(\strin[r]) = istr$, which follows from the definition of $h$ for arbitrary $r$.
-%  \item \textbf{E-concatval}. By the definition of typing for internal terms, $\tstrf{e_1} + \tstrf{e_2} : istr$. So it suffices to show that $h(\strin[r_1+r_2]) = istr$, which follows from the definition of $h$ for arbitrary $r_1$, $r_2$.
-%  \item \textbf{E-concatR, E-concatL}. Consider E-concatR. By induction, $e_1' : \strin{l_1}$. By inversion of T-Concat at the premise, $e_2 : \strin{r_2}$. Therefore, $e_1 + e_2 : \strin[r_1 + r_2]$. The left rule is symmetric.
-%  \item \textbf{E-Filterval}. We have that $\filter{\strin[r']}{e}:\strin[r\backslash r' + \emptyset]$. By inversion of T-Filter, $e:\strin[r]$.
-%    By T-Equiv-string\_in (which is bidirectional), $e \in \lang{r}$.
-%    By the Coercion Theorem, ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$.
-%    By T-Equiv-string\_in,  $e \in \lang{r}$ and ${\tt rl\_filter}(r,e) \in \lang{r\backslash r' + \emptyset}$ implies ${\tt rl\_filter}(r,e):\strin[r\backslash r' + \emptyset]$.
-%  \item \textbf{E-Filter}. By inversion, $e : \strin[r']$ $\reduces e'$ so by the induction $e':\strin[r']$.
-%    Therefore, \\${\tt filter}(\strin[r], e'):$ $\strin[r \backslash r' + \emptyset]$ by T-Filter.
-%  \item \textbf{E-Convertval}. It suffices to show that $h(\strin[r]) = istr$, which is true by definition.
-%  \item \textbf{E-Convert}. By inversion and induction, $e' : \strin[r]$. We know that $[\strin[r']](e) : \strin[r']$, so by inversion of T-Convert $\lang{r'} \subseteq \lang{r}$.
-%    It follows that $[\strin[r']](e') : \strin[r']$.
-%  \item \textbf{E-DConvert}. By inversion, $e : \strin[r'] \reduces e'$. By the induction hypothesis, $e' : \strin[r']$; therefore, by T-Dconvert, $\dconvert[\strin[r]](e):\strin[r]$.
-%  \item \textbf{E-DConvertval}. By the definition of typing for internal terms, $\ifilter(r,\tstrf{e}) : istr$. It suffices to show that $h(\strin[r_1+r_2]) = istr$, which follows from the definition of $h$.
-%\end{itemize}
-%\end{proof}
-%
-%\begin{thm}[Progress]
-%  If $e:T$ then $e:T \reduces^* e' \treduces^* i$ where $i \ival$.
-%\end{thm}
-%\begin{proof}
-%By induction on the derivation of $e:T$.
-%For \textbf{T-Equiv-Include}, note that $e \in \lang{r}$, $e = \strf{s}$ for some $s$; therefore, $e \val$ by E-Strinval. 
-%We have that $e \val$ and $e : \strin[r]$, so $e \treduces \tstrf{e}$ by E-string\_in.
-%The remaining cases follow by induction on the hypotheses and application of corresponding evaluation rules.
-%\end{proof}
-%
-\section{Implementation Inside a Python}
-%
-%TODO-nrf rewrite
-%The $\lcs$ language is implemented as a type system extension in Ace; this extension
-%is illustrated in the examples at the beginning of this paper.
-%
-%Computing a regular expression representating the language
-%$R \backslash S$ is necessary in order to type-check expressions in which the filter function
-%occurs. This language is computed by translating $R$ and $S$ into finite automata,
-%complementing the final states of $S$, then constructing the cross-product of $R$
-%and $S'$. Type checking terminates only because this construction is decidable.
-%
-%In addition to this construction, other more typical operations -- such
-%as equality checks for regular expressions and regular expression matching -- are
-%also necessary. For these reasons, the Ace extension implementing $\lcs$ includes a library
-%implementing each of these constructions.
 \newcommand{\F}[1]{\textsf{#1}~}
 \newcommand{\FF}[1]{\textsf{#1}}
 \newcommand{\Q}{\FF{Arg}}
