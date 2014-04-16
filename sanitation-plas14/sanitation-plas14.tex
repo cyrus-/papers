@@ -881,25 +881,191 @@ If $\cdot \vdash e : \tau \sreduces i$ then $\cdot \vdash i : \sigma$ and $\sigm
 \newcommand{\F}[1]{\textsf{#1}~}
 \newcommand{\FF}[1]{\textsf{#1}}
 \newcommand{\Q}{\FF{Arg}}
-\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lamAce}}
-\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\texttt{ace}}$}
-\begin{figure*}
-\begin{tabular}{ l r l l }
-$\tau$ & & $\xlA{\tau}$ & \xA{\tau}\\
+\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lambda}}
+\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\text{Ace}}$}
+\newcommand{\rtotau}[1]{\lfloor #1 \rfloor}
+
+\newcommand{\tremp}{{\tt tremp}}
+\newcommand{\trdot}{{\tt trdot}}
+\newcommand{\trchar}[1]{{\tt trchar}[#1]}
+\newcommand{\trseq}[2]{{\tt trseq}(#1; #2)}
+\newcommand{\tror}[2]{{\tt tror}(#1; #2)}
+\newcommand{\tlstr}[1]{{\tt tstr}[#1]}
+\begin{table*}[t]
+\centering
+\begin{tabular}{ l l l }
+$r$ & $\xlA{r}$ & \xA{r}\\
 \hline
-$\estrt{r}$ & & $\fvar{stringin}[r]$ & \verb|string_in["|$r$\verb|"]|\\
+$\epsilon$ & $\tremp$ & \verb|""|\\
+$.$ & $\trdot$ & \verb|"."|\\
+$a$ & $\trchar{a}$ & \verb|"|$a$\verb|"|\\
+$r_1 \cdot r_2$ & $\trseq{\xlA{r_1}}{\xlA{r_2}}$ & \xA{r_1}\verb| + |\xA{r_2}\\
+$r_1 + r_2$ & $\tror{\xlA{r_1}}{\xlA{r_2}}$ & \verb|"(" + |\xA{r_1}\verb! + "|" + !\xA{r_2}\verb| + ")"|\\
 \\
-  $e$ & & $\xlA{e}$ & \xA{e}\\
+$\psi$ & $\xlA{\psi}$ & \xA{\psi}\\
+\hline
+${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|string_in[|\xA{r}\verb|]|\\
+\\
+  $S$ & $\xlA{S}$ & \xA{S} \\
   \hline
-  ${\tt str}[r, s]$ & \text{synthetic position} & $\FF{intro}[\FF{str}[s]]()$ : \fvar{stringin}[\FF{rx}[$r$]] & \verb|"|$s$\verb|" (string_in["|$r$\verb|"])|\\
-  & \text{analytic position} & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
-  ${\tt concat}(e_1; e_2)$ & & $\xlA{e_1}\cdot\FF{elim}[\tvar{concat}](\xlA{e_2})$ & \xA{e_1}\verb| + |\xA{e_2} \\
-  ${\tt replace}[r](e_1; e_2)$ & & $\xlA{e_1}\cdot\FF{elim}[\tvar{replace}~\FF{rx}[r]](\xlA{e_2})$ & \xA{e_1}\verb|.replace("|$r$\verb|", |\xA{e_2}\verb|)|\\
-  ${\tt coerce}[r](e)$ & & $\xlA{e}\cdot\FF{elim}[\tvar{coerce}~\FF{rx}[r]]()$ & \xA{e}\verb|.coerce("|$r$\verb|")|
+  ${\tt str\_in}[s]$ & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
+  ${\tt concat}(S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{concat}](\xlA{S_2})$ & \xA{S_1}\verb| + |\xA{S_2} \\
+  ${\tt subst}[r](S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{subst}~\xlA{r}](\xlA{S_2})$ & \xA{S_1}\verb|.subst(|\xA{r}\verb|, |\xA{S_2}\verb|)|\\
+  ${\tt coerce}[r](S)$  & $\xlA{S}\cdot\FF{elim}[\tvar{coerce}~\xlA{r}]()$ & \xA{S}\verb|.coerce(|\xA{r}\verb|)|
 \end{tabular}
-\caption{Translation of $\lcs$ to $\lamAce$ and Ace.}
+\caption{Embeddings of the ${\tt string\_in}$ fragment into $\lamAce$ and Ace.}
+\end{table*}
+%
+\newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
+\newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
+\newcommand{\atjerrX}[1]{\Gamma \vdash_\fvalCtx #1~ \mathtt{error}}
+\begin{figure*}[t]
+\small
+$\fbox{\inferrule{}{\atjsynX{e}{\tau}{i}}}$~~~~
+$\fbox{\inferrule{}{\atjanaX{e}{\tau}{i}}}$~~~~
+%$\fbox{\inferrule{}{\atjerrX{e}}}$
+\begin{mathpar}
+\inferrule[att-flip]{
+	\atjsynX{e}{\tau}{i}
+}{
+	\atjanaX{e}{\tau}{i}
+}
+
+%\inferrule[att-var]{
+%	x \Rightarrow \tau \in \Gamma
+%}{
+%	\atjsynX{x}{\tau}{x}
+%}
+%
+%\inferrule[att-asc]{
+%    \tau \Downarrow_\fvalCtx \tau'\\
+%	\atjanaX{e}{\tau'}{i}
+%}{
+%	\atjsynX{e : \tau}{\tau'}{i}
+%}
+%
+%\inferrule[att-let-syn]{
+%	\atjsynX{e_1}{\tau_1}{i_1}\\
+%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e_2 \Rightarrow \tau_2 \leadsto i_2\\
+%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%}{
+%	\atjsynX{\F{let}x = e_1~\F{in}e_2}{\tau_2}{(\ilam{x}{\sigma_1}{i_2})~i_1}
+%}
+%
+%\inferrule[att-lam-ana]{
+%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e \Leftarrow \tau_2 \leadsto i\\
+%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%}{
+%	\atjanaX{\lambda x.e}{\ttype{arrow}{(\tau_1, \tau_2)}}{\ilam{x}{\sigma_1}{i}}
+%}
+%
+%\inferrule[att-lam]{
+%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
+%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
+%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto i
+%%	i \hookrightarrow_\fvalCtx i'\\
+%%		\sigma \hookrightarrow_\fvalCtx \sigma'
+%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
+%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%}{
+%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{i}}
+%}
+%
+\inferrule[att-intro-ana]{
+	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
+	\taudef~\taut{opidx}~\taut{tyidx}~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{i}\\\\
+%	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+		\trepof{\ttype{tycon}{\taut{tyidx}}} \Downarrow_\fvalCtx \titype{\sigma}\\
+		\Gamma \vdash_\fvalCtx i : \sigma
+}{
+	\atjanaX{\FF{intro}[\taut{opidx}](e_1; \ldots; e_n)}{\ttype{tycon}{\taut{tyidx}}}{i}
+}
+
+%\inferrule[att-i-asc-ty]{
+%	\atjanaX{I}{\tau}{i}
+%}{
+%	\atjsynX{I : \tau}{\tau}{i}
+%}
+%
+%\inferrule[att-i-asc-tycon]{
+%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
+%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{i}}{\ttype{tycon}{\tauidx'}}\\
+%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx i : \sigma
+%}{
+%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\ttype{tycon}{\tauidx'}}{i'}
+%}
+%
+\inferrule[att-elim-syn]{
+	\atjsynX{e}{\ttype{tycon}{\taut{tyidx}}}{i}\\
+	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\\\
+	\taudef~\taut{opidx}~\taut{tyidx}~\titerm{i}~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx (\tau, \titerm{i'})\\\\
+			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
+	\Gamma \vdash_\fvalCtx i' : \sigma
+}{
+	\atjsynX{e\cdot\FF{elim}[\taut{opidx}](e_1; \ldots; e_n)}{\tau}{i'}
+}
+\end{mathpar}
+%\vspace{-10px}
+\caption{The bidirectional active typechecking and translation judgements.}
+\label{atj}
 \end{figure*}
-\begin{figure}
+\newcommand{\tlevalX}[2]{#1 \Downarrow_\fvalCtx #2}
+\begin{figure*}[t]
+\small
+$\fbox{\inferrule{}{\tau \Downarrow_\fvalCtx \tau'}}$~~~~
+\begin{mathpar}
+\inferrule[trstr-eval]{ }{\tlevalX{\tlstr{s}}{\tlstr{s}}}
+
+\inferrule[tremp-eval]{ }{\tremp \Downarrow_\fvalCtx \tremp}
+
+\cdots
+
+\inferrule[tror-eval]{
+	\tlevalX{\tau_1}{\tau_1'}\\
+	\tlevalX{\tau_2}{\tau_2'}
+}{
+	\tlevalX{\tror{\tau_1}{\tau_2}}{\tror{\tau_1'}{\tau_2'}}
+}
+
+trmatch
+
+trlsubst
+
+trsublang
+
+
+%\inferrule[repof]{
+%	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
+%	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
+%	\taurep~\tauidx \Downarrow_\fvalCtx \titype{\sigma}
+%}{
+%	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
+%}
+%
+\inferrule[syn]{
+    \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
+	\atjsynX{e}{\tau}{\iota}\\\\
+    [\tau/\tvar{t}_{ty}, \titerm{\iota}/\tvar{t}_{trans}]\tau_2 \Downarrow_\fvalCtx \tau_2'
+}{
+	\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2) \Downarrow_\fvalCtx \tau_2'
+}
+
+\inferrule[ana]{
+	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
+	\tau_2 \Downarrow_\fvalCtx \tau_2'\\
+	\atjanaX{e}{\tau_2'}{\iota}\\\\
+	[\titerm{\iota}/\tvar{t}_{trans}]\tau_3 \Downarrow_\fvalCtx \tau_3'
+}{
+	\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3) \Downarrow_\fvalCtx \tau_3'
+}
+
+TODO: add rx, str stuff
+\end{mathpar}
+\caption{\small Normalization semantics for the type-level language. Missing rules (including error propagation rules and normalization of quoted internal terms and types) are unsurprising and will be given later.}
+\label{tleval}
+\end{figure*}
+\begin{figure}[t]
 \small\begin{flalign}
 & \F{tycon}\fvar{stringin}~\F{of}\FF{R}~\{\\
 & \quad \F{iana}\{\tlam{opidx}{\FF{String}}{
@@ -919,21 +1085,24 @@ $\estrt{r}$ & & $\fvar{stringin}[r]$ & \verb|string_in["|$r$\verb|"]|\\
 }}\\
 & \quad\quad}{opidx'}{d}}
 }\}
-\}
+\};\\
+& \F{def}\tvar{concat} = \tinl{\kunit, \FF{R}+\FF{R}}{\tunit};\\
+& \F{def}\tvar{subst} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}};\\
+& \F{def}\tvar{coerce} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}
 \end{flalign}
-\caption{Definition of ...}
+\caption{Definition of $\phi_S$, which enables the embedding of fragment $S$ into $\lamAce$.}
 \end{figure}
-\begin{figure}
-\[
-\begin{array}{lcl}
-% & & Definition & Kind\\
-\tvar{concat} & := & \tinl{\kunit, R+R}{b}\\%& \kunit + (R + R)\\
-\tvar{replace} & := & \tlam{r}{R}{\tinr{\kunit, R+R}{\tinl{R,R}{\tvar{r}}}}\\% & \karrow{a}{b}\\
-\tvar{coerce} & := & \tlam{r}{R}{\tinr{\kunit, R+R}{\tinr{R,R}{\tvar{r}}}}\\
-\end{array}
-\]
-\caption{Definitions}
-\end{figure}
+%\begin{figure}
+%\[
+%\begin{array}{lcl}
+%% & & Definition & Kind\\
+%\tvar{concat} & := & \tinl{\kunit, \FF{R}+\FF{R}}{\tunit}\\%& \kunit + (R + R)\\
+%\tvar{replace} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}}\\% & \karrow{a}{b}\\
+%\tvar{coerce} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}\\
+%\end{array}
+%\]
+%\caption{Definitions}
+%\end{figure}
 
 \subsection{Background: Ace}
 TODO: Make a TR out of the OOPSLA submission.
