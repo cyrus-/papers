@@ -1,15 +1,57 @@
-tree = lambda name, a: fp.data(name, 
-  lambda tree: {
-    'Empty': fp.unit,
-    'Leaf': a,
-    'Node': fp.tuple(tree, tree)
-  })
+import examples.fp
+__ace_base__ = fp
 
-dyntree = tree(dyn)
+@datatype
+def tree(a): [
+  Empty,
+  Node : (tree[a], tree[a]),
+  Leaf : a
+]
+
+def pair_trees(x, y):
+  {x, y : tree[a]]}
+  with (x, y).cases:
+    if Empty, Empty: 
+      Empty [:m,:p]
+    elif Node(x, y), Node(y): 
+      Node((x, y))
+    elif Leaf(x), Leaf(y): 
+      Leaf((x, y))
+    else:
+      raise
+
+
+
+
+@fp.datatype
+def x(a):
+  {'B': fp.unit,
+   'R': y}
+
+@fp.datatype
+def y(a):
+  {'B': fp.unit,
+   'R': x}
+
+@cl.struct
+def hello(): {
+  a : A,
+  b : B
+}
+
+@cl.struct
+def hello(): [
+  a : A,
+  b : B
+]
+
+
+   'Node': tuple(tree(a), tree(a))}
+@fp.datatype()
 
 @py
 def depth_gt_2(x):
-  {x : dyntree}
+  {x : tree[dyn]}
   return x.case({
     DT.Node(DT.Node(_), _): True,
     DT.Node(_, DT.Node(_)): True,

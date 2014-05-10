@@ -12,6 +12,9 @@
 \usepackage{amsmath}
 \usepackage{amssymb} 
 \usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
 \usepackage{ stmaryrd }
 \usepackage{verbatimbox}
 \input{../att-icfp14/macros-atlam}
@@ -375,7 +378,7 @@ Transferring 15.00 to Annie Ace.
 \begin{lstlisting}
 import examples.num.runtime as __ace_0
 
-def print_transfer(t):
+def log_transfer(t):
   print ("Transferring %s to %s." % (
     __ace_0.decimal_to_str(t[0],2), t[1][0]))
 
@@ -739,178 +742,421 @@ To support external compilation, the target must have an \verb|emit| method that
 %%
 %%\todo{To be revised from here on down}The core of Ace consists of about 1500 lines of Python code implementing its primary concepts: generic functions, concrete functions, active types, active bases and active targets.  The latter three comprise Ace's extension mechanism. Extensions provide semantics to, and govern the compilation of, Ace functions, rather than logic in Ace's core. %Indeed, the name ``Ace'' might itself be an acronym: it is an ``active compilation environment''.
 
-\section{Theoretical Foundations}\label{theory}
-\newcommand{\F}[1]{\textsf{#1}~}
-\newcommand{\FF}[1]{\textsf{#1}}
+\section{@$\lambda$: Foundations of Active Typechecking and Translation}\label{theory}
+\newcommand{\F}[1]{{\sf #1}~}
+\newcommand{\FF}[1]{{\sf #1}}
 \newcommand{\Q}{\FF{Arg}}
 \renewcommand{\tnil}[1]{[]}
-\begin{figure}[t]
+\newcommand{\ltxt}[1]{\ell_{\text{#1}}}
+\begin{figure*}[t]
 \small
-$$\begin{array}{rcl}	
-%\textbf{programs} & 
-\rho & ::= & \F{tycon}\fvar{tycon}~\F{of}\kappaidx~{\{}TC{\}}; \rho \pipe e\\ %\pfam{\familyDf}{\progsort}
-%\\&  \pipe & \pdef{t}{\kappa}{\tau}{\progsort}  \pipe e
-%\pipe \pdef{t}{\kappa}{\tau}{\progsort} 
- TC & ::= & \F{iana} \{\tau\}; \F{isyn} \{\tau\}; \F{esyn} \{\tau\}; \F{rep} \{\tau\}\\
-\\ 
-e & ::= & \evar{x} \pipe \elam{\evar{x}}{\tau}{e} \pipe I \pipe I : \tau \pipe I :: \fvar{tycon} \pipe E\\
-I & ::= &  \FF{intro}[\tauidx](\splat{e}{1}{n})\\
-E & ::= & e\cdot\FF{elim}[\tauidx](\splat{e}{1}{n})\\
-\\
- \tau 	& ::= 	& 	\tvar{t} \pipe 
-														\tlam{t}{\kappa}{\tau} \pipe 
-														\tapp{\tau_1}{\tau_2}  
-\\&\pipe&											
-														\tnil{\kappa} \pipe \tcons{\tau_1}{\tau_2} \pipe 
-									                     \tfold{\tau_1}{\tau_2}{h}{t}{r}{\tau_3}
-														\\
- 		& \pipe	& 	  \ell \pipe 
-		\tunit \pipe 
-														\tpair{\tau_{1}}{\tau_{2}} \pipe 
-														\tfst{\tau} \pipe 
-														\tsnd{\tau} \pipe \cdots 
-														\\	
-%     & \pipe & \tinl{\kappa_2}{\tau_1} \pipe \tinr{\kappa_1}{\tau_2} \\
-%     &\pipe& \tsumcase{\tau}{t}{\tau_1}{t}{\tau_2} \\
-&\pipe	& 	\ttype{tycon}{\tauidx} \\&\pipe& \tfamcase{\tau}{tycon}{x}{\tau_1}{\tau_2}\\
-&\pipe & 					\tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} 
-%														\\													%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
-%																								
-\\ 		 & 	\pipe	&	\tden{\tau_2}{\tau_1} \pipe \terr %\pipe \tden{\ibar}{\tau}^{\checkmark} 
-\pipe \ttypeof{\tau} \pipe \itransof{\tau} \\% \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
-% %& & \pipe & 
-%%														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
-%%														 \\
-%
- & \pipe & \titerm{\iota}
-			\pipe	\titype{\sigma} \pipe \trepof{\tau} \\
-		& \pipe &  (\Gamma; e)? \pipe \FF{syn}(\tau) \pipe \FF{ana}(\tau; \tau')\\
-%\textbf{external terms} 				&	e	&	::=	&	\evar{x} \pipe 
-%%														\efix{x}{\tau}{e} \pipe 
-%														\elam{\evar{x}}{\tau}{e} \pipe 
-%														\eop{tycon}{op}{
-%															\tauidx
-%														}{
-%  												    		\splat{e}{1}{n}
-%														} \\
-%									& 		&		& 	\\
-%
-%
-%												
-%%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
-%												
-%\\
-%\\
-%							
-%% &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
-%% 												\trepof{\tau} \pipe \dup{\tau}\\
-%\text{translational IL}	& \bar{\iota} & ::= & x \pipe \ifix{x}{\bar \sigma}{\bar \iota} 
-%	%\pipe \ilam{x}{\bar \sigma}{\bar \iota} \pipe \iapp{\bar \iota_1}{\bar \iota_2} 
-%	\pipe \cdots \pipe \itransof{\tau} \\						
-% & \bar{\sigma} & ::= & \darrow{\bar \sigma_1}{\bar \sigma_2} \pipe \cdots \pipe \dup{\tau} \pipe \trepof{\tau} \\
-%%\text{abstracted} & \sabs & ::= & \darrow{\sabs_1}{\sabs_2} \pipe \cdots \pipe \sabsrep{\tau}
-%											\\
-\kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \FF{L} \pipe \kunit \pipe \kpair{\kappa_1}{\kappa_2} \pipe \cdots \\
- & \pipe & \kTypeBlur \pipe \FF{TT} \pipe \kITerm \pipe \kIType \pipe \Q
-%											    \klabel \pipe
-%											    \klist{\kappa} \pipe
-%												\kunit \pipe 
-%												\kpair{\kappa_{1}}{\kappa_{2}} \\
-%												&&\pipe&
-%												\ksum{\kappa_1}{\kappa_2} \pipe
-%												\kTypeBlur \pipe \kDen \pipe 
-%												\kIType								
-%%\textbf{ops signature}			& \Theta	&	::=	&	\kOpEmpty \pipe \kOp{\Theta}{op}{\kappai}\\
-%%											 							&		&		&	\\
-\\
-\\
-\iota	&	::=	&	\evar{x} \pipe 
-												\ifix{\evar{x}}{\sigma}{\iota} \pipe
-												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
-												\iapp{\iota_{1}}{\iota_{2}} 
-												\\ & \pipe & \iunit \pipe \ipair{\iota_1}{\iota_2} \pipe \ifst{\iota} \pipe \isnd{\iota} \pipe \cdots \pipe \iup{\tau}
-%\\&\pipe&								\cdots \pipe 	
-%												n \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}} \\
-%& \pipe & 
-%												\iunit \pipe
-%												\ipair{\iota_{1}}{\iota_{2}} \pipe 
-%												\ifst{\iota} \pipe
-%												\isnd{\iota} 
-%\\&\pipe&												
-%												 \iinl{\sigma_2}{\iota_1} \pipe \iinr{\sigma_1}{\iota_2} \\&\pipe & \icase{e}{x}{e_1}{x}{e_2} \\
-\\	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} %\pipe \dint \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} \pipe \dsum{\sigma_1}{\sigma_2}  
-\pipe \cdots \pipe \dup{\tau}
-\end{array}$$
+$
+\begin{array}{l}
+\F{using} \phi_{\texttt{nat}}; \phi_{\texttt{lprod}}\\
+\elet{one}{\tvar{s}\langle\tvar{z}\langle\rangle\rangle}{\\
+\elet{plus}{(\lambda x.\lambda y.\tvar{natrec}~x~\langle y; \lambda p.\lambda r.\tvar{s}\langle r\rangle\rangle) : \tvar{nat} \rightharpoonup \tvar{nat} \rightharpoonup \tvar{nat}}{\\
+\FF{let}~y = \{\ltxt{1}=one, \ltxt{2}=plus~one~one\} : \ttype{lprod}{(\ltxt{1}, \tvar{nat}) :: (\ltxt{2}, \tvar{nat}) :: []}}}~\FF{in}\\
+y.\ell_2
+\end{array}
+$
+\caption{\small A program that uses the natural number fragment, $\phi_\texttt{nat}$, defined in Figure \ref{nat-atfrag}, written with the syntactic sugar defined in Figure \ref{desugaring}.}
+\label{nat-sugared}
+\end{figure*}
+\begin{figure*}[t]
+\small
+\hspace{-5px}
+$
+\begin{array}{l}
+\F{using} \hat\phi_{\texttt{nat}}; \hat\phi_{\texttt{lprod}}\\
+\elet{one}{\FF{intro}[\FF{in}[\ltxt{s}](\tunit)](\FF{intro}[\FF{in}[\ltxt{z}](\tunit)]()) : \ttype{nat}{\tunit}}{\\
+\elet{plus}{(\lambda x.\lambda y.x\cdot\FF{elim}[()](y; \lambda p.\lambda r.\FF{intro}[\FF{in}[\ltxt{s}]()](r)) :\ttype{parr}{(\ttype{nat}{\tunit}, \ttype{parr}{(\ttype{nat}{\tunit}, \ttype{nat}{\tunit})})}}{\\
+\FF{let}~y = \FF{intro}[\ell_1 :: \ell_2 :: []](one; plus\cdot\FF{elim}[()](one)\cdot\FF{elim}[()](one)) : \ttype{lprod}{(\ltxt{1}, \tvar{nat}) :: (\ltxt{2}, \tvar{nat}) :: []}}}~\FF{in}\\
+y\cdot\FF{elim}[\ell_2]()
+\end{array}
+$
+\caption{\small An equivalent program written in core @$\lambda$ without syntactic sugar and with type-level terms normalized.}
+\label{nat-desugared}
+\end{figure*}
+\begin{figure*}
+\small
+$
+\begin{array}{lcl}
+\phi_{\texttt{nat}} & := & \F{tycon}\fvar{nat}~\F{of}\kunit~\{\delta_{\texttt{nat}}\}\\
+&& \F{def}\tvar{nat}:\kTypeBlur = \ttype{nat}{\tunit};\\
+&& \F{def}\tvar{z}:\Pi[\{\ltxt{idx}\hookrightarrow\kappa_{\text{nat-intro-idx}},\ltxt{ty}\hookrightarrow\kTypeBlur\}]={(\ltxt{idx}=\FF{in}[\ltxt{z}](\tunit), \ltxt{ty}=\tvar{nat})};\\
+&& \F{def}\tvar{s}:\Pi[\{\ltxt{idx}\hookrightarrow\kappa_{\text{nat-intro-idx}},\ltxt{ty}\hookrightarrow\kTypeBlur\}]={(\ltxt{idx}=\FF{in}[\ltxt{s}](\tunit), \ltxt{ty}=\tvar{nat})};\\
+&& \F{def}\tvar{natrec}:\kappa_{\text{nat-elim-idx}} =\tunit\\
+\kappa_{\text{nat-intro-idx}} & := & \Sigma[\{l_z \hookrightarrow \kunit, l_s \hookrightarrow \kunit\}]\\
+\kappa_{\text{nat-elim-idx}} & := & \kunit\\
+\end{array}
+$
 %\vspace{-10pt}
-\caption{\small Syntax of Core $\lamAce$. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{tycon}$ ranges over type constructor names and $\ell$ ranges over labels.
-\label{grammar}}
-\end{figure}
-\begin{figure}
-\small
-\begin{flalign}
-& \F{tycon}\fvar{record}~\F{of}\klist{\kpair{\FF{L}}{\kTypeBlur}}~\{\\
-& \quad \FF{iana}~\{\tlam{i}{\kpair{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{\klist{\FF{L}}}}{\tlam{a}{\klist{\Q}}{\\& \quad\quad\tfold{\tvar{zip3}~\tfst{\tvar{i}}~\tsnd{\tvar{i}}~\tvar{a}}
-	 {\titerm{\tunit}}{h}{t}{r}{
-	\\&\quad\quad\quad\tifeq{\tfst{\tvar{first}~\tvar{h}}}{\tvar{second}~\tvar{h}}{\FF{L}}{
-	\\&\quad\quad\quad\quad
-	\F{let}~\tvar{x}:\kITerm~=~\FF{ana}(\tvar{third}~\tvar{h}; \tsnd{\tvar{first}~\tvar{h}})
-~\FF{in}
-\\ & \quad\quad\quad\quad \tfold{\tvar{t}}{\tvar{x}
-}{\_}{\_}{\_}{\titerm{(\iup{\tvar{x}},\iup{\tvar{r}})}}	}{\terr}
-%     \F{let}~\tvar{tt}:\FF{TT}=~\FF{syn}(\tsnd{\tsnd{\tvar{h}}}) \F{in}\\
-%\\     & \quad\quad\quad 
-}
-}}\}\\
-& \quad \FF{isyn}~\{\tlam{i}{\klist{\FF{L}}}{\tlam{a}{\klist{\Q}}{
-\\&\quad\quad \tfold{\tvar{zip2}~\tvar{i}~\tvar{a}}{\tden{\titerm{()}}{\ttype{record}{\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}}}{h}{t}{r}{
-\\&\quad\quad\quad \F{let}~\tvar{htt}:\FF{TT}~=~\FF{syn}(\tsnd{\tvar{h}})
-~\FF{in}
-\\&\quad\quad\quad \F{let}~\tvar{hty}:\kTypeBlur~=~\ttypeof{\tvar{htt}}
-\\&\quad\quad\quad \F{let}~\tvar{ty}:\kTypeBlur~=~\ttype{record}{(\tfst{\tvar{h}}, \tvar{hty})::\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}
-~\FF{in}
-\\&\quad\quad\quad \tfold{\tvar t}{\tden{\itransof{\tvar{htt}}}{\tvar{ty}}}{\_}{\_}{\_}{
-\\&\quad\quad\quad\quad \tden{\titerm{(\iup{\itransof{\tvar{htt}}},\iup{\itransof{\tvar{r}}})}}{\tvar{ty}}}}
-}}\}\\
-& \quad \FF{esyn}~\{\tlam{i}{\FF{L}}{\tlam{a}{\klist{\Q}}{
-	\tvar{arity1}~\tvar{a}~\tlam{ty}{\kTypeBlur}{\tlam{x}{\kITerm}{
-\\&\quad\quad		\tfamcase{\tvar{ty}}{record}{sig}{
-\\&\quad\quad\quad \tfold{\tvar{sig}}{\terr}{h}{t}{r}{
-\\&\quad\quad\quad\quad \tifeq{\tfst{\tvar{h}}}{\tvar{i}}{\FF{L}}{\tfold{\tvar{t}}{\tden{\tvar{x}}{\tsnd{\tvar{h}}}}{\_}{t'}{\_}{
-\\&\quad\quad\quad\quad\quad \tfold{\tvar{t'}}{\tden{\titerm{\ifst{\iup{\tvar{x}}}}}{\tsnd{\tvar{h}}}}{\_}{\_}{\tvar{r'}}{
-\\&\quad\quad\quad\quad\quad\quad \tden{\titerm{\isnd{\iup{{\itransof{\tvar r}}}}}}{\tsnd{\tvar{h}}}}}\\&\quad\quad\quad\quad\hspace{-3px}}{\tvar{r}}
-}\\&\quad\quad\hspace{-3px}}{\terr}
-	}}
-}}\\
-& \quad \FF{rep}~\{\tlam{i}{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{ 	\\& \quad \quad \tfold{\tvar{i}}{\titype{\dunit}}{s}{j}{r}{
- 		\tfold{\tvar{j}}{\trepof{\tsnd{\tvar{s}}}}{\_}{\_}{\_}{\\
-		&\quad\quad\quad
- 		\titype{\dpair{\dup{\trepof{\tsnd{\tvar{s}}}}}{\dup{\tvar{r}}}}
- 		}
- 	}}\}\\
-& \}; \\
-& \F{let}\tvar{R} : \kTypeBlur = \ttype{record}{(\ell_1, \ttype{record}{\tnil{{\FF{L}\times\kTypeBlur}}}) :: \tnil{{\FF{L}\times\kTypeBlur}}}~\F{in}\\
-&\F{let}id = \elam{x}{\tvar{R}}{\{\ell_1=~x\cdot\ell_1\} :: \fvar{record}}\\
-&\F{let}triv = id[\{\ell_1 = \{\}\}]\cdot\ell_1
-%&\F{let}one = \FF{intro}[\ell_\text{succ}]
-%&\F{let}plus = \elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{\FF{elim}[()](x; y; \\
-%& \quad \elam{r}{\tvar{nat}}{intro[\ell_\text{succ}](r) : \tvar{nat}}})}
-\end{flalign}
-\caption{The definition of the record type in $\lamAce$ using the desugarings in Figure \ref{desugaring} and with the addition of simple let bindings for both type and term variables (not shown). Some type-level helper functions also omitted for concision.}
+\caption{\small The natural number fragment, including definitions used by the assisted intro and elim desugarings, defined and shown being used above.}
+\label{nat-atfrag}
+\end{figure*}
+In this section, we will describe the foundations of \emph{active typechecking and translation} by constructing a core lambda calculus, @$\lambda$. 
+A \emph{program} in @$\lambda$, $\rho$, consists of a series of fragment definitions, $\phi$, for use by an external term, $e$. An example of an @$\lambda$ program, $\rho_{\text{example}}$, that uses {fragment definitions} $\phi_{\texttt{nat}}$ and $\phi_{\texttt{lprod}}$, defining primitive natural numbers and labeled products (i.e. ordered records), is shown in Fig. \ref{nat-sugared}. In Ace,  fragment definitions are packaged separately; we do not include this in the core calculus for simplicity.
 
-\label{record-theory}
-\end{figure}
-We will now give a core typed lambda calculus, $\lamAce$, that captures the semantics described in the previous sections. It is intended to make precise how active typechecking and translation works and how our mechanism relates to existing work on bidirectional typechecking, type-level computation and typed compilation while abstracting away from the details of Python's syntax and imposing a stronger type-level semantics that will allow us to state metatheoretic properties of interest. We will assume a fixed base for functions (providing the standard semantics of lambda functions) and target language, which we here call the \emph{internal language}.
+In this example, we see the introduction and elimination forms for natural numbers, functions and labeled tuples all being used. However, in the core syntax, shown (from the perspective of fragment clients) in Fig. \ref{client-syntax}, there are only two external introductory forms, $\lambda x.e$ and $\FF{intro}[\sigma](\overline{e})$, and one external elimination form, $e\cdot\FF{elim}[\sigma](\overline{e})$, where $\overline{e}$ is shorthand for zero or more semicolon-separated external terms, called the \emph{arguments} of the introduction or elimination operation. The forms used in Fig. \ref{nat-sugared} are \emph{derived forms}, defined in terms of these core forms in Fig. \ref{derived}. 
 
-The syntax of $\lamAce$ is shown in Figure \ref{grammar} and an example \emph{program} that defines a type constructor, $\fvar{record}$, with a semantics similar to that given in Listing \ref{record}\footnote{Technically, this defines labeled tuples, because the order of labels matters.}, using it to write an identity function and compute the value $triv$ (the empty record), is shown in Figure \ref{record-theory}.
+Both fragments and external terms can contain \emph{static terms}, $\sigma$, which are evaluated statically to \emph{static values}, $\hat\sigma$. The static language is itself a simply-typed lambda calculus. We call the types of static terms \emph{kinds}, $\kappa$, by convention. Static variables are written in bold font, $\tvar{x}$, to emphasize that they are distinct from variables bound by external terms, written $x$. For example, in the example in Figure \ref{nat-sugared}, $\tvar{nat}$ is a static variable bound by the fragment $\phi_{\texttt{nat}}$ to the natural number type. Types have kind $\kTypeBlur$ and are introduced by naming a \emph{type constructor}, written in small-caps, e.g. $\fvar{nat}$ and $\fvar{lprod}$, and providing an \emph{index}, which is a static term of the \emph{index kind} of the type constructor.  For example, $\fvar{nat}$ is indexed by $\kunit$ (because there is only one natural number type), so $\tvar{nat}$ is defined to be $\ttype{nat}{\tunit}$, and $\fvar{lprod}$ is indexed by $\klist{\kpair{\FF{L}}{\kTypeBlur}}$, classifying static lists pairing \emph{labels} with types. Labels are static values of kind $\FF{L}$, written abstractly using the metavariables containing $\ell$ in our examples. 
+
+Before typechecking the external term in a program, the program is kind checked and its static terms are normalized to static values.  We write static values using the hatted metavariable $\hat \sigma$. Other syntactic metavariables in our system also have hatted forms if they can contain static terms. The desugared, statically normalized version of the example in Figure \ref{nat-sugared}, $\hat\rho_{\text{example}}$, is shown in Figure \ref{nat-normal}. %The syntax of @$\lambda$ from the perspective of a fragment client is given in Fig. \ref{atlam-syntax}. We will see a few additions relevant only to fragment providers when we discuss defining fragments below.
+
+\subsection{External Terms}
+ a program consists of first \emph{kind checking} its static terms, then normalizing its static terms, then typechecking the external term and,  simultaneously, \emph{translating} it to a term, $\iota$, in the \emph{typed internal language}. The dynamic behavior of an external term is determined entirely by its translation to this language. Internal types are written $\tau$. The internal language is only exposed to fragment providers, not to clients (i.e. normal developers).
+
+
+%We will now give a core typed lambda calculus, @$\lambda$, that captures the semantics described in the previous sections. It is intended to make precise how active typechecking and translation works and how our mechanism relates to existing work on bidirectional typechecking, type-level computation and typed compilation while abstracting away from the details of Python's syntax and imposing a stronger type-level semantics that will allow us to state metatheoretic properties of interest. We will assume a fixed base for functions (providing the standard semantics of lambda functions) and target language, which we here call the \emph{internal language}.
+ % program written in core @$\lambda$, without syntactic sugar and with all static terms normalized, is shown in Fig. \ref{nat-desugared}. The syntax of core @$\lambda$ is shown in Fig. \ref{grammar} and the syntactic desugarings are shown in Fig. \ref{desugaring}. The definition of $\phi_{\texttt{nat}}$ is shown in Fig. \ref{nat-atfrag}. We will discuss these in the following sections.
 
 %In this section, we will develop an ``actively typed'' version of the simply-typed lambda calculus with simply-kinded type-level computation called $\lamAce$. More specifically, the level of types, $\tau$, will itself form a simply-typed lambda calculus. \emph{Kinds} classify type-level terms in the same way that types conventionally classify expressions. Types become just one kind  of type-level value (which we will write $\kTypeBlur$, though it is also variously written $\star$, \verb|T| and \verb|Type| in various settings). Rather than there being a fixed set of type and operator constructors, we allow the programmer to declare new  constructors, and give their static and dynamic semantics by writing type-level functions. The kind system combined with techniques borrowed from the typed compilation literature and a form of type abstraction will allow us to prove strong type safety, decidability and conservativity theorems.
 %
 %The syntax of Core $\lamAce$ is given in Fig. \ref{grammar}. An example of a program defining type and operator constructors that can be used to construct an active embedding of G\"odel's \textbf{T} into $\lamAce$ is given in Fig. \ref{nat}. We will discuss its semantics and how precisely the embedding, seen being used starting on line 15 to ultimately compute the sum of two and two, works as we go on. Natural numbers can, of course, be isomorphically embedded in existing languages, with a similar usage and asymptotic performance profile (up to function call overhead as an abstract type, for example). We will provide more sophisticated examples where this is less feasible later on (and note that type abstraction is an orthogonal mechanism).
 %a type constructor declaration, $\fvar{Nat}$, indexed trivially, together with three operator constructors, also all indexed trivially, that implement the standard introductory forms for natural numbers as well as the recursor operator (as in G\"odel's T \cite{pfpl}). Following the type constructor declaration, we apply $\fvar{Nat}$ with the trivial index, $\tunit$, to form the type $\tvar{nat}$. Finally, we write an external term that uses the operators associated with $\fvar{nat}$ and the built-in constructor $\fvar{Parr}$, governing partial functions, to define an addition function and compute the addition of the natural numbers  two and two. We will introduce a more convenient concrete syntax in later portions of this thesis; for now we will restrict ourselves to the abstract syntax so that this example can directly aid in understanding the semantics.
 
-\subsection{Overview}\label{programs}
+%\begin{figure}[t]
+%\small
+%$$\begin{array}{rrcl}	
+%%\textbf{programs} & 
+%\text{programs} & \rho & ::= & \F{using}\phi~\F{in}e \\
+%\text{fragments} & \phi &  ::= & \F{tycon}\fvar{tycon}~\F{of}\kappat{tyidx}~{\{}\F{iana} \tau_1; \F{esyn} \tau_2; \F{rep} \tau_3{\}} %\pipe \phi; \phi %\\
+%%\\
+%%& \pipe & 
+%\pipe \F{def}\tvar{t} : \kappa = \tau \pipe \phi; \phi%\pdef{t}{\kappa}{\tau}{\progsort} \pipe 
+%\\ %\pfam{\familyDf}{\progsort}
+%%\\&  \pipe & \pdef{t}{\kappa}{\tau}{\progsort}  \pipe e
+%%\pipe \pdef{t}{\kappa}{\tau}{\progsort} 
+%\text{external terms}& e & ::= & \evar{x} \pipe \F{let} x = e_1~\F{in} e_2 \pipe \lambda x.e \pipe e : \tau\\
+%&& \pipe & \FF{intro}[\taut{opidx}](\splat{e}{1}{n})\pipe e\cdot\FF{elim}[\taut{opidx}](\splat{e}{1}{n}) \\
+%
+%\text{type-level terms} & \tau 	& ::= 	& 	\tvar{t} \pipe \tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} \pipe \terr  \\
+% && \pipe & 
+% %\F{let}\tvar{t}{:}\kappa=\tau_1~\F{in} \tau_2 \pipe 
+%														\tlam{t}{\kappa}{\tau} \pipe 
+%														\tapp{\tau_1}{\tau_2} \\
+%&&\pipe&											
+%														\tnil{\kappa} \pipe \tcons{\tau_1}{\tau_2} \pipe 
+%									                     \tfold{\tau_1}{\tau_2}{\tvar{t}_{hd}}{\tvar{t}_{tl}}{\tvar{t}_{rec}}{\tau_3}
+%														\\
+% 		&& \pipe	& 	  \ell  \\
+%	    && \pipe &  
+%		\tunit \pipe 
+%														\tpair{\tau_{1}}{\tau_{2}} \pipe 
+%														\tfst{\tau} \pipe 
+%														\tsnd{\tau} 
+%														\\	
+%     && \pipe & \tinl{\kappa_1, \kappa_2}{\tau_1} \pipe \tinr{\kappa_1, \kappa_2}{\tau_2} \pipe \tsumcase{\tau}{t}{\tau_1}{t}{\tau_2}\\
+%&&\pipe	& 	\ttype{tycon}{\taut{tyidx}} \pipe  \tfamcase{\tau}{tycon}{t}{\tau_1}{\tau_2}\\
+%%														\\													%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
+%%																								
+%%\\ 		 & 	\pipe	&	\tden{\tau_2}{\tau_1} \pipe \terr %\pipe \tden{\ibar}{\tau}^{\checkmark} 
+%%\pipe \ttypeof{\tau} \pipe \itransof{\tau} \\% \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
+%% %& & \pipe & 
+%%%														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
+%%%														 \\
+%%
+% && \pipe & \titerm{\iota}
+%			\pipe	\titype{\sigma} \pipe \trepof{\tau} \\
+%		&& \pipe &  (\Gamma; e)? \pipe \FF{syn}(\tau_1; \tvar{t}_{ty},\tvar{t}_{trans}.\tau_2) \pipe \FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3)\\
+%%\textbf{external terms} 				&	e	&	::=	&	\evar{x} \pipe 
+%%%														\efix{x}{\tau}{e} \pipe 
+%%														\elam{\evar{x}}{\tau}{e} \pipe 
+%%														\eop{tycon}{op}{
+%%															\tauidx
+%%														}{
+%%  												    		\splat{e}{1}{n}
+%%														} \\
+%%									& 		&		& 	\\
+%%
+%%
+%%												
+%%%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
+%%												
+%%\\
+%%\\
+%%							
+%%% &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
+%%% 												\trepof{\tau} \pipe \dup{\tau}\\
+%%\text{translational IL}	& \bar{\iota} & ::= & x \pipe \ifix{x}{\bar \sigma}{\bar \iota} 
+%%	%\pipe \ilam{x}{\bar \sigma}{\bar \iota} \pipe \iapp{\bar \iota_1}{\bar \iota_2} 
+%%	\pipe \cdots \pipe \itransof{\tau} \\						
+%% & \bar{\sigma} & ::= & \darrow{\bar \sigma_1}{\bar \sigma_2} \pipe \cdots \pipe \dup{\tau} \pipe \trepof{\tau} \\
+%%%\text{abstracted} & \sabs & ::= & \darrow{\sabs_1}{\sabs_2} \pipe \cdots \pipe \sabsrep{\tau}
+%%											\\
+%\text{kinds} & \kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \FF{L} \pipe \kunit \pipe \kpair{\kappa_1}{\kappa_2} \pipe \ksum{\kappa_1}{\kappa_2} \pipe \kTypeBlur \pipe \kITerm \pipe \kIType \pipe \Q
+%%											    \klabel \pipe
+%%											    \klist{\kappa} \pipe
+%%												\kunit \pipe 
+%%												\kpair{\kappa_{1}}{\kappa_{2}} \\
+%%												&&\pipe&
+%%												\ksum{\kappa_1}{\kappa_2} \pipe
+%%												\kTypeBlur \pipe \kDen \pipe 
+%%												\kIType								
+%%%\textbf{ops signature}			& \Theta	&	::=	&	\kOpEmpty \pipe \kOp{\Theta}{op}{\kappai}\\
+%%%											 							&		&		&	\\
+%\\
+%\text{typing contexts} & \Gamma & ::= & \emptyset \pipe \Gamma, x \Rightarrow \tau\\
+%\\
+%\text{internal terms} & \iota	&	::=	&	\evar{x} \pipe 
+%												\ifix{\evar{x}}{\sigma}{\iota} \pipe
+%												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
+%												\iapp{\iota_{1}}{\iota_{2}} \pipe n \pipe \iota_1 \pm \iota_2 \pipe \FF{if0}(\iota; \iota_1; \iota_2)\\
+%		&& \pipe &  \iunit \pipe \ipair{\iota_1}{\iota_2} \pipe \ifst{\iota} \pipe \isnd{\iota} \pipe \iup{\tau} 
+%%\\&\pipe&								\cdots \pipe 	
+%%												n \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}} \\
+%%& \pipe & 
+%%												\iunit \pipe
+%%												\ipair{\iota_{1}}{\iota_{2}} \pipe 
+%%												\ifst{\iota} \pipe
+%%												\isnd{\iota} 
+%%\\&\pipe&												
+%%												 \iinl{\sigma_2}{\iota_1} \pipe \iinr{\sigma_1}{\iota_2} \\&\pipe & \icase{e}{x}{e_1}{x}{e_2} \\
+%\\	\text{internal types} & \sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe \dint \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} %\pipe \dint \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} \pipe \dsum{\sigma_1}{\sigma_2}  
+% \pipe \dup{\tau}
+%\end{array}$$
+%%\vspace{-10pt}
+%\caption{\small Syntax of Core @$\lambda$. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{tycon}$ ranges over type constructor names, $\ell$ ranges over labels, $n$ ranges over integers and $\pm$ ranges over standard binary operations over integers. The introductory form for arguments, $(\Gamma; e)?$, should only be constructed by the compiler, not by type constructor providers.
+%\label{grammar}}
+%\end{figure}
+\begin{figure*}[t]
+\small
+\begin{tabular}{r l l l}
+ & \textbf{initial} & \textbf{statically normal}\\
+\textbf{programs} & $\rho ::=$ & $\hat\rho ::=$\\
+ & ~~$\FF{using}~{\phi}~\FF{in}~e$ & ~~$\FF{using}~{\hat\phi}~\FF{in}~\hat e$\\
+\textbf{fragment decls.} & $\phi ::=$ & $\hat\phi ::=$\\
+tycon decls. & ~~$\FF{tycon}~\fvar{tycon} : \Theta = \theta$ & ~~$\FF{tycon}~\fvar{tycon} : \Theta = \hat\theta$\\
+static binding & ~~$\FF{def}~\tvar{x} : \kappa = \sigma$ & \\
+ & ~~$\phi; \phi$ & ~~$\hat\phi; \hat\phi$\\
+\textbf{static terms} & $\sigma ::=$ & $\hat\sigma ::= $ &\textbf{kinds}~~~  $\kappa ::= $\\
+static values & ~~$\hat \sigma$\\
+static variables & ~~$\tvar{x}$ & ~ & ~\\
+types & ~~$\ttype{tycon}{\sigma}$ & ~~$\ttype{tycon}{\hat\sigma}$ & ~~$\kTypeBlur$\\
+static products & ~~$\tunit$ & ~~$\tunit$ & ~~$\kunit$\\
+& ~~$(\sigma, \sigma)$ & ~~$(\hat\sigma, \hat\sigma)$ & ~~$\kpair{\kappa}{\kappa}$\\
+static sums & ~~$\FF{in}[\ell](\sigma)$ & ~~$\FF{in}[\ell](\hat\sigma)$ & ~~$\Sigma[\{\overline{\ell \hookrightarrow \kappa}\}]$\\
+static lists & ~~$[]_\kappa$ & ~~$[]_\kappa$ & ~~$\klist{\kappa}$\\
+ & ~~$\sigma :: \sigma$ & ~~$\hat\sigma :: \hat\sigma$ & \\
+static labels & ~~$\ell$ & ~~$\ell$ & ~~$\FF{L}$\\
+\\
+\textbf{external terms} & $e ::= $ & $\hat e ::=$ \\
+variables & ~~$x$ & ~~$x$\\
+binding & ~~$\FF{let}~x=e~\FF{in}~e$ & ~~$\FF{let}~x=\hat{e}~\FF{in}~\hat{e}$\\
+fixpoints & ~~$\FF{fix}~x{:}\sigma~\FF{is}~e$ & ~~$\FF{fix}~x{:}\hat\sigma~\FF{is}~\hat e$\\
+ascription & ~~$e : \sigma$ & ~~$\hat{e} : \hat\sigma$\\
+%introductory forms & ~~$\nu$ & ~~$\hat\nu$\\
+%eliminatory forms & ~~$\eta$ & ~~$\hat\eta$\\
+% & $\nu ::= $ & $\hat \nu ::=$\\
+analytic lambda & ~~$\lambda x.e$ & ~~$\lambda x.\hat{e}$\\
+%synthetic lambda & ~~$\lambda x {:} \sigma.e$ & ~~$\lambda x{:}\hat\sigma.\hat e$\\
+analytic intro & ~~$\FF{intro}[\sigma](\overline{e})$ & ~~$\FF{intro}[\hat\sigma](\overline{\hat e})$\\
+%synthetic intro & ~~$\fvar{tycon}\cdot\FF{intro}[\sigma](\overline{e})$ & ~~$\fvar{tycon}\cdot\FF{intro}[\hat \sigma](\overline{\hat e})$\\
+% & $\eta ::= $ & $\hat\eta ::=$\\
+synthetic elim & ~~$e\cdot\FF{elim}[\sigma](\overline{e})$ & ~~$\hat e\cdot\FF{elim}[\hat \sigma](\overline{\hat e})$\\
+\end{tabular}
+\caption{Syntax from the perspective of fragment clients (i.e. normal developers)}
+\end{figure*}
+\begin{figure*}[t]
+\small
+\hspace{-5px}
+$
+\begin{array}{rclr}
+%\FF{intro}(e_1; \ldots; e_n) & := & \FF{intro}[()](e_1; \ldots; e_n)\\
+\sigma\langle e_1; \ldots; e_n \rangle & := & \FF{intro}[\tfst{\sigma}](e_1; \ldots; e_n) : \tsnd{\sigma} & \text{assisted intro}\\
+%\langle\sigmaidx\rangle(e_1; \ldots; e_n) & := & \FF{intro}[\sigmaidx](e_1; \ldots; e_n)\\
+%[\sigmaidx](e_1; \ldots; e_n) & := & \FF{intro}[\sigmaidx](e_1; \ldots; e_n)\\
+\{ \ell_1{=}~e_1, \ldots, \ell_n{=}~e_n \} & := & \FF{intro}[\ell_1 :: \ldots :: \ell_n :: []_{\FF{L}}](e_1; \ldots; e_n) & \text{labeled seq.}  \\
+(e_1, ..., e_n) & := & \FF{intro}[()](e_1; \ldots; e_n) & \text{unlabeled seq.}\\
+%n & := & \FF{intro}[n]() & \text{number literal} \\
+%s & := & \FF{intro}[s]() & \text{string literal}\\
+%e\cdot\FF{elim}(e_1; \ldots; e_n) & := & e\cdot\FF{elim}[()](e_1; \ldots; e_n)\\
+e~e_1 & := & e\cdot\FF{elim}[()](e_1) & \text{application}\\
+\sigma~e~\langle e_1; \ldots; e_n \rangle  & := & e\cdot\FF{elim}[\sigma](e_1; \ldots; e_n) & \text{assisted elim}\\
+e.\ell & := & e\cdot\FF{elim}[\ell]() & \text{projection}\\
+\F{case}e~\{\ell_1\langle x_1 \rangle \Rightarrow e_1~|~\ldots~|~\ell_n\langle x_n \rangle \Rightarrow e_n\} & := & e\cdot\FF{elim}[\ell_1 :: \ldots :: \ell_n :: []_{\FF{L}}]( & \text{case analysis}\\
+ & & \quad \lambda x_1.e_1; \ldots; \lambda x_n.e_n)\\
+\sigma_1 \rightharpoonup \sigma_2 & := & \ttype{parr}{(\sigma_1, \sigma_2)} & \text{arrow types}
+%!TEX encoding = UTF-8 Unicodee.\ell(e_1; ...; e_n) & := & e\cdot\FF{elim}[\ell](e_1; \ldots; e_n)
+%(e_1, ..., e_n) & := & intro[()](e_1; ...; e_n)
+%n &  := & intro[n]()
+%s & := & intro[s]()
+%
+%e.l & := & elim[l](e)
+%e[e_1; ...; e_n] & := & elim[()](e_1, ..., e_n)
+%e.l(e_1; ...; e_n) & := & elim[l]
+\end{array}
+$
+\caption{\small Desugaring from conventional concrete syntax to core forms. The number and string literal forms assume type-level numbers, $n$, and strings, $s$ (details not shown).}
+\label{desugaring}
+\end{figure*}
+\newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
+\newcommand{\tri}{\cev\iota}
+\newcommand{\trt}{\cev\tau}
+\begin{figure*}
+\newcommand{\tcl}[1]{\multicolumn{2}{l}{#1}}
+\small
+\begin{tabular}{r l l l l}
+ & \tcl{\textbf{initial}} & \textbf{statically normal} \\
+\textbf{tycon definitions} & \tcl{$\delta ::=$}  & $\hat\delta ::=$ \\
+ & \tcl{~~$\FF{iana}~\sigma; \FF{esyn}~\sigma; \FF{rep}~\sigma$} & ~~$\FF{iana}~\hat\sigma; \FF{esyn}~\hat\sigma; \FF{rep}~\hat\sigma$\\
+ \\
+\textbf{(static language, cont.)} & \tcl{$\sigma ::= ...$} & $\hat\sigma ::= ...$ & $\kappa ::= ...$\\
+type elim & \tcl{~~$\tfamcase{\sigma}{tycon}{x}{\sigma}{\sigma}$} & \\
+static product elim & \tcl{~~$\sigma.\FF{prl}$} &\\
+ & \tcl{~~$\sigma.\FF{prr}$} &\\
+static sum elim & \tcl{~~$\FF{case}~\sigma~\{\overline{l\langle\tvar{x}\rangle\Rightarrow\sigma}\}$} &\\
+static list elim & \tcl{~~$\FF{listrec}(\sigma; \sigma; \tvar{h}, \tvar{t}, \tvar{r}.\sigma)$} & ~\\
+decidable equality & \tcl{~~$\tifeq{\hat\sigma}{\hat\sigma}{\kappa}{\hat\sigma}{\hat\sigma}$} & ~ & ~\\
+type error & \tcl{~~$\FF{tyerr}$} & ~ \\
+static functions & \tcl{~~$\tlam{x}{\kappa}{\sigma}$} & ~~$\tlam{x}{\kappa}{\sigma}$ & ~~$\karrow{\kappa}{\kappa}$\\
+ & \tcl{~~$\sigma~\sigma$} & ~ & ~\\
+term translations & \tcl{~~$\titerm{\tri}$} & ~~$\titerm{\iota}$ & ~~$\kITerm$\\
+type translations & \tcl{~~$\titype{\trt}$} & ~~$\titype{\tau}$ & ~~$\kIType$\\
+ & \tcl{~~$\trepof{\sigma}$} & ~\\
+arguments & \multicolumn{3}{c}{\color{gray}(introduced only by typechecker)} & ~~$\Q$\\
+ & \tcl{~~$\FF{ana}(\sigma; \sigma; \tvar{x}.\sigma)$} & \\
+ & \tcl{~~$\FF{syn}(\sigma; \tvar{x}, \tvar{t}.\sigma)$} & \\
+\\
+\textbf{internal language} & $\tri ::= $ & $\trt ::= $ & $\iota ::= $ & $\tau ::=$\\
+splice & ~~$\iup{\sigma}$ & ~~$\dup{\sigma}$ & \\
+variables & ~~$x$ &  & ~~$x$ & \\
+fixpoints & ~~$\FF{fix}~x{:}\trt~\FF{is}~\tri$ & & ~~$\FF{fix}~x{:}\tau~\FF{is}~\iota$\\
+functions & ~~$\lambda x{:}\trt.\tri$ & ~~$\trt \rightharpoonup \trt$ & ~~$\lambda x{:}\tau.\iota$ & ~~$\tau \rightharpoonup \tau$\\
+ & ~~$\tri~\tri$ & ~ & ~~$\iota~\iota$\\
+products & ~~$()$ & ~~$\dunit$ & ~~$()$ & ~~$\dunit$\\
+ & ~~$(\tri, \tri)$ & ~~$\dpair{\trt}{\trt}$ & ~~$(\iota, \iota)$ & ~~$\dpair{\tau}{\tau}$\\
+ & ~~$\tri.\FF{prl}$ & ~ & ~~$\tri.\FF{prl}$ & ~\\
+  & ~~$\tri.\FF{prr}$ & ~ & ~~$\tri.\FF{prr}$ & ~\\
+%products & ~~$(\overline{l=\tri})$ & ~~$\Pi[\overline{(l, \trt)}]$ & ~~$(\overline{l = \iota})$ & ~~$\Pi[\overline{(l, \tau)}]$\\
+% & ~~$\tri\cdot l$ & ~ & ~~$\iota\cdot l$ & ~\\
+sums & ~~$\FF{in}[\ell](\tri)$ & ~~$\Sigma[\{\overline{\ell \hookrightarrow \trt}\}]$ & ~~$\FF{in}[\ell](\iota)$ & ~~$\Sigma[\{\overline{\ell \hookrightarrow \tau}\}]$\\
+ & ~~$\FF{case}~ \tri ~\{\overline{\ell(x) \Rightarrow \tri}\}$ & ~ & ~~$\FF{case}~\iota~\{\overline{\ell(x)\Rightarrow \iota}\}$ & ~\\
+integers & ~~$\FF{int}[z]$ & ~~$\FF{int}$ & ~~$\FF{int}[z]$ & ~~$\FF{int}$\\
+ & ~~$\tri \pm \tri$ & ~ & ~~$\iota \pm \iota$ & ~\\
+ & ~~$\FF{if0}(\tri; \tri; \tri; \tri)$ & ~ & ~~$\FF{if0}(\iota; \iota; \iota; \iota)$ & ~
+ %& ~~$
+\end{tabular}
+\caption{Syntax from the perspective of fragment providers also includes an internal language and static language.}
+\end{figure*}
+\begin{figure*}
+\small
+\begin{tabular}{r l l}
+external typing context & $\Gamma ::= \emptyset \pipe \Gamma, x \Rightarrow \ttype{tycon}{\hat\sigma}$\\
+\\
+ & \textbf{initial} & \textbf{statically normal} \\
+\textbf{static language, cont.} & $\sigma ::= ...$ & $\hat\sigma ::= ...$\\
+argument intro & ~~$\FF{arg}(\Gamma; \hat e)$ & ~~$\FF{arg}(\Gamma; \hat e)$
+\end{tabular}
+\caption{Syntax from the perspective of the semantics / compiler.}
+\end{figure*}
+\newcommand{\fkctx}{\mathcal{F}}
+\newcommand{\ok}[1]{#1~\mathtt{ok}}
+\newcommand{\normalize}[3]{#1 \curlyveedownarrow_{#2} #3}
+\newcommand{\normalizeX}[2]{\normalize{#1}{\Phi}{#2}}
+\newcommand{\serr}[1]{#1~\mathtt{tyerr}}
+\begin{figure*}
+\small
+\begin{tabular}{r l l}
+\textbf{context} & \textbf{syntax} & \textbf{well-formedness}\\
+fragment kind context & $\fkctx ::= \fkctx_0 \pipe \fkctx, \fvar{tycon}[\kappa]~\{\FF{intro}[\kappa]; \FF{elim}[\kappa]\}$ & $\vdash \fkctx$\\
+kinding context & $\Delta ::= \Delta \pipe \Delta, \tvar{x} : \kappa$\\
+fragment context & $\Phi ::= \Phi_0 \pipe \Phi, \fvar{tycon}~\{\hat\delta\}$ & $\vdash \Phi \sim \fkctx$\\
+external typing context & $\Gamma ::= \emptyset \pipe \Gamma, x \Rightarrow \hat\sigma$ & $\vdash_\Phi \Gamma$\\
+internal typing context & $\Omega ::= \emptyset \pipe \Omega, x : \tau$\\
+~
+\end{tabular}
+\\
+\\
+\begin{tabular}{l l l l l}
+\textbf{kinding}& \multicolumn{2}{l}{\textbf{static normalization}} & \multicolumn{2}{l}{\textbf{program compilation}}\\
+$\ok{\rho}$ & $\normalize{\rho}{}{\hat\rho}$ & $\serr{\rho}$ & $\hat\rho \leadsto \iota$\\
+$\Delta \vdash_\fkctx {\phi}\sim\fkctx$ & $\normalizeX{\phi}{\hat\phi}$ & $\serr{\phi}$ & $\hat\phi \sim \Phi$\\
+$\Delta \vdash_\fkctx \delta\sim\{\kappa; \kappa\}$ & $\normalizeX{\delta}{\hat\delta}$ & $\serr{\delta}$ & \multicolumn{2}{l}{\textbf{active typechecking and translation}}\\
+$\Delta \vdash_\fkctx \sigma : \kappa$ & $\normalizeX{\sigma}{\hat \sigma}$ & $\serr{\sigma}$ & $\Gamma \vdash_\Phi \hat e \Leftarrow \hat\sigma \leadsto \iota$ & $\Gamma \vdash_\Phi \hat e \Rightarrow \hat\sigma \leadsto \iota$\\
+$\Delta \vdash_\fkctx \ok{e}$ & $\normalizeX{e}{\hat e}$ & $\serr{e}$ & $\vdash_\Phi \hat\sigma \leadsto \tau$ & $\vdash_\Phi \Gamma \leadsto \Omega$\\
+$\Delta \vdash_\fkctx \ok{\tri}$ & $\normalizeX{\tri}{\iota}$ & $\serr{\tri}$ & \multicolumn{1}{l}{\textbf{internal statics}} & \textbf{internal dynamics}\\
+$\Delta \vdash_\fkctx \ok{\trt}$ & $\normalizeX{\trt}{\tau}$ & $\serr{\trt}$ & $\Omega \vdash \iota : \tau$ & $\iota \mapsto \iota$~~~~~~~~$\iota~\mathtt{val}$
+\end{tabular}
+\caption{Summary of judgements}
+\end{figure*}
+\begin{figure*}
+\small
+$
+\begin{array}{lcl}
+\delta_{\texttt{nat}} & := & \quad \FF{iana}~\tlam{opidx}{\kunit+\kunit}{\tlam{tyidx}{\kunit}{\tlam{args}{\klist{\FF{Arg}}}{
+	\tsumcase{\tvar{opidx}\\
+&&\quad\quad}{\_}{\tvar{arity0}~\tvar{args}~\titerm{0}\\
+&&\quad\quad}{\_}{\tvar{arity1}~\tvar{args}~\tlam{a}{\FF{Arg}}{\FF{ana}(\tvar{a}; \ttype{nat}{\tunit}; \tvar{x}.\titerm{\iup{\tvar{x}}+1})}}
+}}}\\
+&&\quad \FF{esyn}~\tlam{opidx}{\kunit}{\tlam{tyidx}{\kunit}{\tlam{x}{\kITerm}{\tlam{args}{\klist{\FF{Arg}}}{\tvar{arity2}~\tvar{args}~\tlam{a1}{\FF{Arg}}{\tlam{a2}{\FF{Arg}}{\\
+&&\quad\quad \FF{syn}(\tvar{a1}; \tvar{t1}, \tvar{x1}.\\
+&&\quad\quad\quad \F{let}\tvar{t2} : \kTypeBlur = \ttype{arrow}{(\ttype{nat}{\tunit}, \ttype{arrow}{(\tvar{t1}, \tvar{t1})})}~\F{in} \\
+&&\quad\quad\quad \FF{ana}(\tvar{a2}; \tvar{t2}; \tvar{x2}.(\tvar{t1},\\
+&&\quad\quad\quad\quad \titerm{\iapp{(\ifix{f}{\darrow{\dint}{\dup{\trepof{\tvar{t2}}}}}{\ilam{x}{\dint}{\\&&\quad\quad\quad\quad\quad\quad \FF{if0}(x; \iup{\tvar{x1}}; {
+		%\\&\quad\quad\quad\quad\quad\quad
+		\iapp{\iup{\tvar{x2}}~(x-1)}{(\iapp{f}{(x-1)})}})}}\\
+		&&\quad\quad\quad\quad\quad)}{\iup{\tvar{x}}}})))}}}}}}\\
+&&\quad \FF{rep}~\tlam{tyidx}{\kunit}{\titype{\dint}}\\
+\end{array}
+$
+\caption{\small The definition of the nat type constronstructor.}
+\end{figure*}
+%\begin{figure}
+%\small
+%\begin{flalign}
+%& \F{tycon}\fvar{record}~\F{of}\klist{\kpair{\FF{L}}{\kTypeBlur}}~\{\\
+%& \quad \FF{iana}~\{\tlam{i}{\kpair{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{\klist{\FF{L}}}}{\tlam{a}{\klist{\Q}}{\\& \quad\quad\tfold{\tvar{zip3}~\tfst{\tvar{i}}~\tsnd{\tvar{i}}~\tvar{a}}
+%	 {\titerm{\tunit}}{h}{t}{r}{
+%	\\&\quad\quad\quad\tifeq{\tfst{\tvar{first}~\tvar{h}}}{\tvar{second}~\tvar{h}}{\FF{L}}{
+%	\\&\quad\quad\quad\quad
+%	\F{let}~\tvar{x}:\kITerm~=~\FF{ana}(\tvar{third}~\tvar{h}; \tsnd{\tvar{first}~\tvar{h}})
+%~\FF{in}
+%\\ & \quad\quad\quad\quad \tfold{\tvar{t}}{\tvar{x}
+%}{\_}{\_}{\_}{\titerm{(\iup{\tvar{x}},\iup{\tvar{r}})}}	}{\terr}
+%%     \F{let}~\tvar{tt}:\FF{TT}=~\FF{syn}(\tsnd{\tsnd{\tvar{h}}}) \F{in}\\
+%%\\     & \quad\quad\quad 
+%}
+%}}\}\\
+%& \quad \FF{isyn}~\{\tlam{i}{\klist{\FF{L}}}{\tlam{a}{\klist{\Q}}{
+%\\&\quad\quad \tfold{\tvar{zip2}~\tvar{i}~\tvar{a}}{\tden{\titerm{()}}{\ttype{record}{\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}}}{h}{t}{r}{
+%\\&\quad\quad\quad \F{let}~\tvar{htt}:\FF{TT}~=~\FF{syn}(\tsnd{\tvar{h}})
+%~\FF{in}
+%\\&\quad\quad\quad \F{let}~\tvar{hty}:\kTypeBlur~=~\ttypeof{\tvar{htt}}
+%\\&\quad\quad\quad \F{let}~\tvar{ty}:\kTypeBlur~=~\ttype{record}{(\tfst{\tvar{h}}, \tvar{hty})::\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}
+%~\FF{in}
+%\\&\quad\quad\quad \tfold{\tvar t}{\tden{\itransof{\tvar{htt}}}{\tvar{ty}}}{\_}{\_}{\_}{
+%\\&\quad\quad\quad\quad \tden{\titerm{(\iup{\itransof{\tvar{htt}}},\iup{\itransof{\tvar{r}}})}}{\tvar{ty}}}}
+%}}\}\\
+%& \quad \FF{esyn}~\{\tlam{i}{\FF{L}}{\tlam{a}{\klist{\Q}}{
+%	\tvar{arity1}~\tvar{a}~\tlam{ty}{\kTypeBlur}{\tlam{x}{\kITerm}{
+%\\&\quad\quad		\tfamcase{\tvar{ty}}{record}{sig}{
+%\\&\quad\quad\quad \tfold{\tvar{sig}}{\terr}{h}{t}{r}{
+%\\&\quad\quad\quad\quad \tifeq{\tfst{\tvar{h}}}{\tvar{i}}{\FF{L}}{\tfold{\tvar{t}}{\tden{\tvar{x}}{\tsnd{\tvar{h}}}}{\_}{t'}{\_}{
+%\\&\quad\quad\quad\quad\quad \tfold{\tvar{t'}}{\tden{\titerm{\ifst{\iup{\tvar{x}}}}}{\tsnd{\tvar{h}}}}{\_}{\_}{\tvar{r'}}{
+%\\&\quad\quad\quad\quad\quad\quad \tden{\titerm{\isnd{\iup{{\itransof{\tvar r}}}}}}{\tsnd{\tvar{h}}}}}\\&\quad\quad\quad\quad\hspace{-3px}}{\tvar{r}}
+%}\\&\quad\quad\hspace{-3px}}{\terr}
+%	}}
+%}}\\
+%& \quad \FF{rep}~\{\tlam{i}{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{ 	\\& \quad \quad \tfold{\tvar{i}}{\titype{\dunit}}{s}{j}{r}{
+% 		\tfold{\tvar{j}}{\trepof{\tsnd{\tvar{s}}}}{\_}{\_}{\_}{\\
+%		&\quad\quad\quad
+% 		\titype{\dpair{\dup{\trepof{\tsnd{\tvar{s}}}}}{\dup{\tvar{r}}}}
+% 		}
+% 	}}\}\\
+%& \}; \\
+%& \F{let}\tvar{R} : \kTypeBlur = \ttype{record}{(\ell_1, \ttype{record}{\tnil{{\FF{L}\times\kTypeBlur}}}) :: \tnil{{\FF{L}\times\kTypeBlur}}}~\F{in}\\
+%&\F{let}id = \elam{x}{\tvar{R}}{\{\ell_1=~x\cdot\ell_1\} :: \fvar{record}}\\
+%&\F{let}triv = id[\{\ell_1 = \{\}\}]\cdot\ell_1
+%%&\F{let}one = \FF{intro}[\ell_\text{succ}]
+%%&\F{let}plus = \elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{\FF{elim}[()](x; y; \\
+%%& \quad \elam{r}{\tvar{nat}}{intro[\ell_\text{succ}](r) : \tvar{nat}}})}
+%\end{flalign}
+%\caption{The definition of the record type in $\lamAce$ using the desugarings in Figure \ref{desugaring} and with the addition of simple let bindings for both type and term variables (not shown). Some type-level helper functions also omitted for concision.}
+%\label{record-theory}
+%\end{figure}
 
-A \emph{program}, $\rho$, consists of a series of constructor declarations followed by an external term, $e$.  Compiling a program consists of first \emph{kind checking} it (see below), then typechecking the external term and simultaneously {translating} it to a term, $\iota$, in the {typed internal language}. 
+
 %These correspond to the premises of the \emph{central compilation judgement} $\pkcompiles{\rho}{\iota}$:
 %\[
 %\inferrule[p-compiles]{
@@ -920,30 +1166,30 @@ A \emph{program}, $\rho$, consists of a series of constructor declarations follo
 %}{\pkcompiles{\rho}{\iota}}
 %\]
 %This anchors our exposition; we will describe how it is derived (i.e. how to write a compiler for $\lamAce$) in the following sections. 
-The key judgements are the \emph{bidirectional active typing judgements}  (Fig. \ref{att}, which we describe starting in Sec. \ref{opcons}). They relate an external term, $e$, to a {type}, $\tau$, called its \emph{type assignment}, and an internal term, $\iota$, called its \emph{translation}, under \emph{typing context} $\Gamma$ and \emph{constructor context} $\Phi$. The first is synthesis, the second analysis.
+The key judgements are the \emph{bidirectional active typechecking and translation judgements}, relating an external term, $e$, to a {type}, $\tau$, and an internal term, $\iota$, called its \emph{translation}, under \emph{typing context} $\Gamma$ and \emph{constructor context} $\Phi$.
 \[\Gamma \vdash_\fvalCtx e \Rightarrow \tau \leadsto \iota
-~~~~~~~
+~~~~~~~\text{and}~~~~~~~
 \Gamma \vdash_\fvalCtx e \Leftarrow \tau \leadsto \iota\]
 %\[\ecompilesAX{e}{\tau}{\iota}\]
 
-The typing context, $\Gamma$, maps variables to types in essentially the conventional way (\cite{pfpl} contains the necessary background for this section). The constructor context, $\Phi$, tracks user-defined type  constructors. % Weakening and exchange of the constructor context closely related to the issue of conservativity that we will return to. Each constructor is identified by name, so there is no analog to contraction.
+The typing context, $\Gamma$, maps variables to types in essentially the conventional way (\cite{pfpl} contains the necessary background for this section). The constructor context, $\Phi$, tracks user-defined type  constructors introduced in the ``imported'' fragments. %Note that fragments can also export type-level values bound to type-level variables (written in bold font, e.g. $\tvar{nat}$, $\tvar{s}$, $\tvar{z}$, etc.), but substitution will be performed prior to typechecking, so they need not be tracked by $\Phi$. % Weakening and exchange of the constructor context closely related to the issue of conservativity that we will return to. Each constructor is identified by name, so there is no analog to contraction. 
+ This form of semantics can be seen as lifting into the language specification the first stage of a type-directed compiler like the TIL compiler for Standard ML \cite{tarditi+:til-OLD} and has some parallels to the Harper-Stone semantics for Standard ML \cite{Harper00atype-theoretic}. There, as in Wyvern, external terms were given meaning by elaboration from the EL to an IL having the same type system. Here the two languages have different type systems, so we call it a translation rather than an elaboration (arranging the judgement form slightly differently to emphasize this distinction, cf. above).
 
-The dynamic behavior of an external term is determined entirely by its translation to the internal language, which has a conventional operational semantics. This form of semantics can be seen as lifting into the language specification the first stage of a type-directed compiler like the TIL compiler for Standard ML \cite{tarditi+:til-OLD} and has some parallels to the Harper-Stone semantics for Standard ML, where external terms were also given meaning by elaboration from the EL to an IL \cite{Harper00atype-theoretic}. %
+In @$\lambda$, the internal language (IL) provides partial functions (via the generic fixpoint operator of Plotkin's PCF), simple product  types and integers for the sake of our example (and as a nod toward practicality on contemporary machines). In practice, the internal language could be any typed  language with a specification for which type safety and decidability of typechecking have been satisfyingly determined. In Sec. \ref{ace}, we will see how the internal language can itself be made user-definable. The internal type system serves as a ``floor'': guarantees that must hold for terms of any type (e.g. that out-of-bounds access to memory never occurs) must be maintained by the internal type system. User-defined constructors can enforce invariants stronger than those the internal type system maintains at particular types, however. Performance is also ultimately limited by the internal language and downstream compilation stages that we do not here consider (safe compiler extension has been discussed in previous work, e.g. \cite{conf/pldi/TatlockL10}).
 
-In $\lamAce$, the internal language (IL) provides partial functions (via the generic fixpoint operator of Plotkin's PCF) and simple product  types for the sake of our example. In practice, the internal language could be any typed  language with a specification for which type safety and decidability of typechecking have been satisfyingly determined. The internal type system serves as a ``floor'': guarantees that must hold for terms of any type (e.g. that out-of-bounds access to memory never occurs) must be maintained by the internal type system. User-defined constructors can enforce invariants stronger than those the internal type system maintains at particular types, however. Performance is also ultimately limited by the internal language and downstream compilation stages that we do not here consider (safe compiler extension has been discussed in previous work, e.g. \cite{conf/pldi/TatlockL10}).
-
+The external language has a fixed syntax with six forms: variables, $\FF{let}$-bindings, lambda terms, type ascription and generalized introductory and elimination forms. As we will see, the generalized introductory form is given meaning by the type it is analyzed against (similar to the protocol for TSLs in Wyvern), and the elimination form is given meaning by the type of the external term being eliminated ($e$). This represents an internalization into the language of Gentzen's inversion principle \cite{gentzen}\todo{what to cite for this?}. Fig. \ref{desugaring} shows how to recover more conventional introductory and elimination forms by a purely syntactic desugaring.%\footnote{Note that for even more flexibility, we could also include TSLs, but we choose to avoid that for simplicity (and to show that, strictly speaking, one need not have an extensible syntax to have an extensible type system, and \textit{vice versa}).}
 
 \subsection{Types and Type-Level Computation}\label{types}
-$\lamAce$ supports, and makes extensive use of, simply-kinded type-level computation. Specifically, type-level terms, $\tau$, themselves form a typed lambda calculus. The classifiers of type-level terms are called \emph{kinds}, $\kappa$, to distinguish them from  \emph{types}. Types are  type-level values of kind $\kTypeBlur$. In Ace, the type-level language (together with the level of programs) is written in Python, which can be thought of as having a rather limited kind system (with one kind, \verb|dyn|). Here, we are able to more precisely discuss the kinds of values in the type-level language. 
+@$\lambda$ supports, and makes extensive use of, simply-kinded type-level computation. Specifically, type-level terms, $\tau$, themselves form a typed lambda calculus. The classifiers of type-level terms are called \emph{kinds}, $\kappa$, to distinguish them from  \emph{types}, which are  type-level values of kind $\kTypeBlur$. %In Ace, the type-level language (together with the level of programs) is written in Python, which can be thought of as having a rather limited kind system (with one kind, \verb|dyn|). Here, we are able to more precisely discuss the kinds of values in the type-level language. 
+As in Sec. \ref{att}, types are formed by applying a \emph{type constructor} to an \emph{index}. User-defined type constructors are declared in fragment definitions using $\FF{tycon}$. Each constructor in the program must have a unique name, written e.g. \fvar{nat} or \fvar{lprod}. %\footnote{We assume naming conflicts can be avoided by some extrinsic mechanism.} 
+A type constructor must also declare an \emph{index kind}, $\kappat{tyidx}$. A type is introduced by applying a type constructor to an index of this kind, written $\ttype{Tycon}{\taut{tyidx}}$.  For example, the type of natural numbers is indexed trivially (i.e. by kind $\kunit$), so it is written $\ttype{Nat}{\tunit}$.
 
-In most languages, types are formed by applying one of a collection of \emph{type constructors} to zero or more \emph{indices}. In $\lamAce$, the situation is notionally similar. User-defined type constructors can be declared at the top of a program (or lifted to the top, in practice) using \textsf{tycon}. Each constructor in the program must have a unique name, written e.g. \fvar{record}.\footnote{We assume naming conflicts can be avoided by some extrinsic mechanism.} A type constructor must also declare an \emph{index kind}, $\kappaidx$. 
-
- To permit the embedding of interesting type systems, the type-level language includes several kinds other than $\kTypeBlur$. We functional data structures to the type level: here, only unit ($\kunit$), binary products ($\kpair{\kappa_1}{\kappa_2}$) and lists ($\klist{\kappa}$), in addition to labels (introduced as $\ell$, possibly with a subscript, having kind \FF{L}).  Our record type constructor is indexed by a list of pairs of {labels}  and types (a signature, in essence; line 1). The type constructor $\fvar{arrow}$ is included in the initial constructor context, $\fvalCtx_0$ and has index kind $\kpair{\kTypeBlur}{\kTypeBlur}$.
- In practice, one could include a richer functional programming language and retain the spirit of the calculus, as long as it does not introduce general recursion at the type level. 
+ To permit the embedding of interesting type systems, the type-level language includes several kinds other than $\kTypeBlur$. We lift several functional data structures to the type level: here, only unit ($\kunit$), binary products ($\kpair{\kappa_1}{\kappa_2}$), binary sums ($\ksum{\kappa_1}{\kappa_2}$) and lists ($\klist{\kappa}$), in addition to labels (introduced as $\ell$, possibly with a subscript, having kind \FF{L}).  The type constructor $\fvar{nat}$ is indexed trivially because there is only one natural number type, but $\fvar{lprod}$ would be indexed by a list of pairs of {labels}  and types. The type constructor $\fvar{arrow}$ is included in the initial constructor context, $\fvalCtx_0$, and has index kind $\kpair{\kTypeBlur}{\kTypeBlur}$.
+ As with the internal language, in practice, one could include a richer programming language and retain the spirit of the calculus, as long as it does not introduce general recursion at the type level. For example, our desugarings add support for number literals and string literals, which require adding numbers and strings to the type-level language (and providing a means for lifting them from the type-level language to the internal language, as we will discuss).
   
-A type is introduced by applying a type constructor to an index of this kind, written $\ttype{Tycon}{\tauidx}$.  For example, the type of natural numbers is indexed trivially, so it is written $\ttype{Nat}{\tunit}$. We see a record type, abbreviated $\tvar{R}$, constructed on line 26. 
+ %We see a record type, abbreviated $\tvar{R}$, constructed on line 26. 
 
-The kind $\kTypeBlur$ also has an elimination form, $$\tfamcase{\tau}{Tycon}{x}{\tau_1}{\tau_2}$$ allowing the extraction of a type index by case analysis against a contextually-available type constructor. To a first approximation, one might think of type constructors as constructors of a built-in open \cite{conf/ppdp/LohH06}, $\kTypeBlur$, at the type-level. Like open datatypes, there is no notion of exhaustiveness so the default case is required for totality. We will see where this is used shortly.
+The kind $\kTypeBlur$ also has an elimination form, $\tfamcase{\tau}{Tycon}{x}{\tau_1}{\tau_2}$ allowing the extraction of a type index by case analysis against a contextually-available type constructor. To a first approximation, one might think of type constructors as constructors of a built-in open datatype \cite{conf/ppdp/LohH06}, $\kTypeBlur$, at the type-level. Like open datatypes, there is no notion of exhaustiveness so the default case is required for totality. %We will see where this is used shortly.
 
 
 
@@ -954,165 +1200,624 @@ The kind $\kTypeBlur$ also has an elimination form, $$\tfamcase{\tau}{Tycon}{x}{
 
 % and integers ($\dint$). We also include labels ($\klabel$), written in a slanted font, e.g. $\tlabel{myLabel}$, which are string-like values that only support comparison and play a distinguished role in the expanded syntax, as we will later discuss. Our first example, $\fvar{nat}$, is indexed trivially, i.e. by unit kind, $\kunit$, so there is only one natural number type, $\ttype{nat}{\tunit}$, but we will show examples of type constructors that are indexed in more interesting ways in later portions of this work. For example, $\fvar{LabeledTuple}$ has index kind $\klist{\kpair{\klabel}{\kTypeBlur}}$. 
  
- Type constructors are not first-class; they do not themselves have arrow kind as in some kind systems (e.g.  \cite{watkins2008specifying}; Ch. 22 of \emph{PFPL} describes a related system \cite{pfpl}). The type-level language does, however, include total functions of arrow kind, written $\karrow{\kappa_1}{\kappa_2}$. Type constructor application can be wrapped in a type-level function to emulate a first-class or uncurried version of a type constructor for convenience (indeed, such a wrapper could be generated automatically, though we do not do so). 
+ Type constructors are not first-class; they do not themselves have arrow kind as in some kind systems (e.g.  \cite{watkins2008specifying}; Ch. 22 of \emph{PFPL} describes a related system \cite{pfpl}). The type-level language does, however, include total functions of arrow kind, written $\karrow{\kappa_1}{\kappa_2}$. Type constructor application can be wrapped in a type-level function to emulate a first-class or uncurried version of a type constructor for convenience.% (indeed, such a wrapper could be generated automatically, though we do not do so). 
 
 Two type-level terms of kind $\kTypeBlur$ are equivalent if they apply the same constructor, identified by name, to equivalent indices. Going further, we ensure that deciding type equivalence requires only checking for syntactic equality after normalization by imposing the restriction that equivalence at a type constructor's index kind must be decidable in this way. Our treatment of equivalence in the type-level language is thus quite similar to the treatment of term-level equality using ``equality types'' in a language like Standard ML.
 % A kind $\kappa$ is an  \emph{equality kind} if $\kEq{\kappa}$ can be derived (see appendix). 
 Conditional branching on the basis of equality at an equality kind can be performed in the type-level language. Equivalence at arrow kind is not decidable by our criteria, so type-level functions cannot appear within type indices. This also prevents general recursion from arising at the type level. Without this restriction, a type-level function taking a type as an argument could ``smuggle in'' a self reference as a type index, extracting it via case analysis (continuing our analogy to open datatypes, this is closely related to the positivity condition for inductive datatypes in total functional languages like Coq).% as maintaining the metatheoretic guarantee that typing respects type equivalence would impose a substantial burden in such a setting.% (a na\"ive approach to this would impose non-trivial extrinsic proof obligations onto extension developers that, unlike in others in this thesis, could threaten type safety).
 
-Every type constructor also defines a \emph{representation}, a type-level function that associates with every type an internal \emph{representation type} (analagous to \verb|trans_type| above). We will return to this after introducing the external forms and operator definitions.
-
-\subsection{Core External Forms and Desugaring}\label{opcons}
-The syntax for external terms (Figure \ref{grammar}) contains variables, $\lambda$ terms, three generalized introductory forms and a single generalized elimination form. The introductory forms are either unascribed, ascribed with a type or ascribed with a type constructor, as in our discussion of Ace. These generalized forms take a single a type-level value as an {index} and $n \geq 0$ arguments, which are other external terms. To better motivate this choice, we can give a purely syntactic desugaring of a Python-like syntax with labels to these forms, shown in Figure \ref{desugaring}. It is instructive to rewrite lines 27-28 of Figure \ref{record-theory} using these desugarings.% In Ace, desugarings can be user-defined 
-\begin{figure}[t]
-\small
-\[
-\begin{array}{rcl}
-\{ \ell_1{=}~e_1, \ldots, \ell_n{=}~e_n \} & := & \FF{intro}[\ell_1 :: \ldots :: \ell_n :: []](e_1; \ldots; e_n)\\
-(e_1, ..., e_n) & := & \FF{intro}[()](e_1; \ldots; e_n)\\
-\#n & := & \FF{intro}[n]()\\
-"s" & := & \FF{intro}[s]()\\
-e.\ell & := & e\cdot\FF{elim}[\ell]()\\
-e[e_1; \ldots; e_n] & := & e\cdot\FF{elim}[()](e_1; \ldots; e_n)\\
-e.\ell(e_1; ...; e_n) & := & e\cdot\FF{elim}[\ell](e_1; \ldots; e_n)
-%(e_1, ..., e_n) & := & intro[()](e_1; ...; e_n)
-%n &  := & intro[n]()
-%s & := & intro[s]()
+%Every type constructor also defines type-level functions called $\FF{iana}$ and $\FF{esyn}$, which we will describe below, and a \emph{representation schema}, a type-level function that associates with every type an internal type. We will return to this after introducing operators.
 %
-%e.l & := & elim[l](e)
-%e[e_1; ...; e_n] & := & elim[()](e_1, ..., e_n)
-%e.l(e_1; ...; e_n) & := & elim[l]
-\end{array}
-\]
-\caption{Desugaring from conventional syntax to core forms. We assume that the type-level language has numbers, $n$, and strings, $s$ (not shown for concision).}
-\label{desugaring}
-\end{figure}
-
+%\subsection{Core External Forms and Desugaring}\label{opcons}
+%The syntax for external terms (Figure \ref{grammar}) contains variables, $\lambda$ terms, three generalized introductory forms and a single generalized elimination form. The introductory forms are either unascribed, ascribed with a type or ascribed with a type constructor, as in our discussion of Ace. These generalized forms take a single a type-level value as an {index} and $n \geq 0$ arguments, which are other external terms. To better motivate this choice, we can give a purely syntactic desugaring of a Python-like syntax with labels to these forms, shown in Figure \ref{desugaring}. It is instructive to rewrite lines 27-28 of Figure \ref{record-theory} using these desugarings.% In Ace, desugarings can be user-defined 
+%
 %User-defined operator constructors are declared using \textsf{opcon}.  For reasons that we will discuss, our calculus associates every operator  constructor with a type constructor. The \emph{fully-qualified name} of every operator constructor, e.g. $\fvar{Nat}.\opvar{z}$, must be unique. Operator constructors, like type constructors, declare an index kind, $\kappaidx$. In our first example, all the operator constructors are indexed trivially (by index kind $\kunit$), but other examples use more interesting indices. For example, in SML, the projection operator \verb|#3| can be applied to an $n$-tuple, $e$, iff $n \geq 3$. Note that it thus cannot be a function with a standard arrow type. Notionally, \verb|#| is an operator constructor and \verb|3| is its index. In an active embedding of $n$-tuples into $\lamAce$, this would be written $\eop{Tuple}{prj}{3}{e}$ (we will nearly recover ML's syntax later). $\fvar{LabeledTuple}.\opvar{prj}$ is the operator constructor used to access a field of a labeled tuple, so it has index kind $\klabel$. An operator itself is, notionally, selected by indexing an operator constructor, e.g. $\fvar{Nat}.\opvar{s}\langle \tunit \rangle$, but technically neither operator constructors nor operators are first-class at any level (additional machinery would be needed, e.g. an \textsf{Op} kind, but this is not fundamental to our calculus). 
 %Instead, in the external language, an operator constructor is applied by simultaneously providing an index and  $n \geq 0$ \emph{arguments}, written $\eop{Tycon}{op}{\tauidx}{\splat{e}{1}{n}}$\footnote{It may be helpful to distinguish between type/operator constructors and \emph{term formers}. There are term formers at all levels in the calculus. For example, operator constructor application and $\lambda$ are  external term formers, and type constructor application is a type-level term former. We might write these following Harper's conventions for abstract syntax to highlight this distinction \cite{pfpl}: $\mathtt{lam}[\tau](x.e)$, $\mathtt{ocapp}[\fvar{Tycon}, \opvar{op}, \tauidx](\splat{e}{1}{n})$ and $\texttt{tcapp}[\fvar{Tycon}](\tau)$.}. For example, on line 18 of Fig. \ref{nat}, we see the operator constructors $\fvar{Nat}.\opvar{z}$ and $\fvar{Nat}.\opvar{s}$ being applied to compute $two$. %\footnote{Although our focus here is entirely on semantics, a brief note on syntax: in the expanded syntax, the trivial indices and empty argument lists can be omitted, so we could write \texttt{Nat.s(Nat.s(Nat.z))}. With the ability to ``open'' a type's operators into the context, we could shorten this still to \texttt{s(s(z))}. Alternatively, with the ability to define a TSL in a manner similar to that in Sec. \ref{aparsing}, we might instead just write \texttt{2}.}
 
-\subsection{Operator Definitions and Representational Consistency}
+\subsection{Bidirectional Active Typechecking and Translation}
 
 %
 \newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
 \newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
+\newcommand{\atjerrX}[1]{\Gamma \vdash_\fvalCtx #1~ \mathtt{error}}
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{\ecompilesAX{e}{\tau}{\iota}}}$
-~~~~$\Gamma ::= \emptyset \pipe \Gamma, x \Rightarrow \tau$
+$\fbox{\inferrule{}{\atjsynX{e}{\tau}{\iota}}}$~~~~
+$\fbox{\inferrule{}{\atjanaX{e}{\tau}{\iota}}}$~~~~
+%$\fbox{\inferrule{}{\atjerrX{e}}}$
 \begin{mathpar}
+\inferrule[att-flip]{
+	\atjsynX{e}{\tau}{\iota}
+}{
+	\atjanaX{e}{\tau}{\iota}
+}
+
 \inferrule[att-var]{
 	x \Rightarrow \tau \in \Gamma
 }{
 	\atjsynX{x}{\tau}{x}
 }
 
-\inferrule[att-syn-to-ana]{
-	\atjsynX{e}{\tau}{\iota}
+\inferrule[att-asc]{
+    \tau \Downarrow_\fvalCtx \tau'\\
+	\atjanaX{e}{\tau'}{\iota}
 }{
-	\atjanaX{e}{\tau}{\iota}
+	\atjsynX{e : \tau}{\tau'}{\iota}
 }
 
-\inferrule[att-lam]{
-	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
-		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
-	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto \iota
-%	\iota \hookrightarrow_\fvalCtx \iota'\\
-%		\sigma \hookrightarrow_\fvalCtx \sigma'
-%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
-	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+\inferrule[att-let-syn]{
+	\atjsynX{e_1}{\tau_1}{\iota_1}\\
+	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e_2 \Rightarrow \tau_2 \leadsto \iota_2\\
+	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
 }{
-	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{\iota}}
+	\atjsynX{\F{let}x = e_1~\F{in}e_2}{\tau_2}{(\ilam{x}{\sigma_1}{\iota_2})~\iota_1}
 }
 
-\inferrule[att-i-unasc]{
+\inferrule[att-lam-ana]{
+	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e \Leftarrow \tau_2 \leadsto \iota\\
+	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+}{
+	\atjanaX{\lambda x.e}{\ttype{arrow}{(\tau_1, \tau_2)}}{\ilam{x}{\sigma_1}{\iota}}
+}
+
+%\inferrule[att-lam]{
+%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
+%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
+%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto \iota
+%%	\iota \hookrightarrow_\fvalCtx \iota'\\
+%%		\sigma \hookrightarrow_\fvalCtx \sigma'
+%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
+%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%}{
+%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{\iota}}
+%}
+%
+\inferrule[att-intro-ana]{
 	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
-	\taudef~(\tauidx, \tauidx')~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{\iota}\\
+	\taudef~\taut{opidx}~\taut{tyidx}~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{\iota}\\
 %	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
-		\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+		\trepof{\ttype{tycon}{\taut{tyidx}}} \Downarrow_\fvalCtx \titype{\sigma}\\
 		\Gamma \vdash_\fvalCtx \iota : \sigma
 }{
-	\atjanaX{\FF{intro}[\tauidx](e_1; \ldots; e_n)}{\ttype{tycon}{\tauidx'}}{\iota}
+	\atjanaX{\FF{intro}[\taut{opidx}](e_1; \ldots; e_n)}{\ttype{tycon}{\taut{tyidx}}}{\iota}
 }
 
-\inferrule[att-i-asc-ty]{
-	\atjanaX{I}{\tau}{\iota}
-}{
-	\atjsynX{I : \tau}{\tau}{\iota}
-}
-
-\inferrule[att-i-asc-tycon]{
-	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
-	\taudef~\tauidx~(\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{\iota}}{\ttype{tycon}{\tauidx'}}\\
-			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
-	\Gamma \vdash_\fvalCtx \iota : \sigma
-}{
-	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\tau}{\iota'}
-}
-
-\inferrule[att-elim]{
-	\atjsynX{e}{\ttype{tycon}{-}}{-}\\
-	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\
-	\taudef~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \tden{\tau}{\iota}\\
+%\inferrule[att-i-asc-ty]{
+%	\atjanaX{I}{\tau}{\iota}
+%}{
+%	\atjsynX{I : \tau}{\tau}{\iota}
+%}
+%
+%\inferrule[att-i-asc-tycon]{
+%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
+%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{\iota}}{\ttype{tycon}{\tauidx'}}\\
+%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx \iota : \sigma
+%}{
+%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\ttype{tycon}{\tauidx'}}{\iota'}
+%}
+%
+\inferrule[att-elim-syn]{
+	\atjsynX{e}{\ttype{tycon}{\taut{tyidx}}}{\iota}\\
+	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\\\
+	\taudef~\taut{opidx}~\taut{tyidx}~\titerm{\iota}~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx (\tau, \titerm{\iota'})\\
 			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
-	\Gamma \vdash_\fvalCtx \iota : \sigma
+	\Gamma \vdash_\fvalCtx \iota' : \sigma
 }{
-	\atjsynX{e\cdot\FF{elim}[\tauidx](e_1; \ldots; e_n)}{\tau}{\iota}
+	\atjsynX{e\cdot\FF{elim}[\taut{opidx}](e_1; \ldots; e_n)}{\tau}{\iota'}
 }
 \end{mathpar}
-\caption{\small The active typing judgement. The normalization judgement for type-level terms ($\Downarrow$) and the representational consistency check will be in an appendix.}
+\vspace{-10px}
+\caption{\small The bidirectional active typechecking and translation judgements.}
 \label{atj}
 \end{figure}
-\begin{figure}
+\begin{figure}[t]
 \small
+$\fbox{\inferrule{}{\tau \Downarrow_\fvalCtx \tau'}}$~~~~
 \begin{mathpar}
 \inferrule[repof]{
 	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
 	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
-	\taurep \tauidx \Downarrow_\fvalCtx \titype{\sigma}
+	\taurep~\tauidx \Downarrow_\fvalCtx \titype{\sigma}
 }{
 	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
 }
 
 \inferrule[syn]{
     \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
-	\atjsynX{e}{\tau}{\iota}
+	\atjsynX{e}{\tau}{\iota}\\
+    [\tau/\tvar{t}_{ty}, \titerm{\iota}/\tvar{t}_{trans}]\tau_2 \Downarrow_\fvalCtx \tau_2'
 }{
-	\FF{syn}(\tau) \Downarrow_\fvalCtx \tden{\titerm{\iota}}{\tau}
+	\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2) \Downarrow_\fvalCtx \tau_2'
 }
 
 \inferrule[ana]{
 	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
-	\tau_2 \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\\\
-	\atjanaX{e}{\ttype{tycon}{\tauidx}}{\iota}\\
+	\tau_2 \Downarrow_\fvalCtx \tau_2'\\
+	\atjanaX{e}{\tau_2'}{\iota}\\
+	[\titerm{\iota}/\tvar{t}_{trans}]\tau_3 \Downarrow_\fvalCtx \tau_3'
 }{
-	\FF{ana}(\tau_1; \tau_2) \Downarrow_\fvalCtx \titerm{\iota}
+	\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3) \Downarrow_\fvalCtx \tau_3'
 }
 \end{mathpar}
-\caption{\small Evaluation semantics for the type-level language. Missing rules (including error propagation rules, which immediately cause failure of typechecking) are unsurprising and will be given in an appendix.}
+\caption{\small Normalization semantics for the type-level language. Missing rules (including error propagation rules and normalization of quoted internal terms and types) are unsurprising and will be given later.}
 \label{tleval}
 \end{figure}
-The expressive and metatheoretic power of the calculus arises from how the rules for the active typing judgement handle these  generalized forms. Rather than fixing the specification of a finite collection of operator constructors and tasking the \emph{compiler} with deciding a typing derivation on its basis, the specification instead delegates to a type-level function associated with a type constructor. In the core calculus, this is one of three functions, called \FF{iana}, \FF{isyn} and \FF{esyn} in the grammar.\footnote{This means that any particular type constructor only supports a single introduction and elimination desugaring. This is a minor inconvenience in some cases that is resolved in Ace by the use of methods.} We see how this is done with the rules for the active typing judgements, given in Figure \ref{atj}.
+The rules for bidirectional active typechecking and translation are shown in Fig. \ref{atj}. 
 
-The first two rules are standard in bidirectional type systems: variables synthesize types and if a term synthesizes a type, it can be analyzed against a type (cf. Listing \ref{context}). Variables translate to variables, and if we are simply converting from synthesis to analysis, translation is not affected.
+%The expressive and metatheoretic power of the calculus arises from how the rules for the active typing judgement handle these  generalized forms. Rather than fixing the specification of a finite collection of operator constructors and tasking the \emph{compiler} with deciding a typing derivation on its basis, the specification instead delegates to a type-level function associated with a type constructor. In the core calculus, this is one of three functions, called \FF{iana}, \FF{isyn} and \FF{esyn} in the grammar.\footnote{This means that any particular type constructor only supports a single introduction and elimination desugaring. This is a minor inconvenience in some cases that is resolved in Ace by the use of methods.} We see how this is done with the rules for the active typing judgements, given in Figure \ref{atj}.
+\begin{enumerate}
+\item The rule $\textsc{att-flip}$ is standard in bidirectional type systems (without subtyping): if a term synthesizes a type, it can be analyzed against that type; the translation is unaffected by this.
+\item The rule $\textsc{att-var}$ says that variables synthesize the type they have in the typing context and translate to variables in the internal language.
+\item The rule $\textsc{att-asc}$ says that a term ascribed by a type synthesizes that type if the term can be  analyzed against that type, after it has been normalized. The normalization judgement for type-level terms is written $\tau \Downarrow_\fvalCtx \tau'$. The kinding rules (not shown here) guarantee that normalization of type-level terms cannot go wrong (we will refine what precisely this means later).
+\item The rule $\textsc{att-let-syn}$ first synthesizes a type for the bound value, then adds this binding to the context and synthesizes a type for the term the binding is scoped over. The translation is to a function application, in the conventional manner. 
 
-The rule $\fvar{att-lam}$ must take into account the fact that, because we support type-level computation, the type annotation on the argument may not be in normal form. Thus, we evaluate it to normal form. Note that the kinding rules (not shown) will guarantee that, because $\tau_1$ is of kind $\kTypeBlur$, its normal form, $\tau'_1$, is of the form $\ttype{tycon}{\tauidx}$ for some normal $\tauidx$. To generate an appropriate internal type annotation in the translation, we need to compute the representation type of $\tau_1'$. This involves calling the representation function associated with its type constructor (rule \fvar{repof} in Figure \ref{tleval}). The form $\titerm{\sigma}$ is a \emph{quoted internal type}. Note in the syntax that there is an unquote form, $\dup{\tau}$, which allows us to compose internal types compositionally without needing to expose an elimination form. Indeed, it is an interesting facet of our calculus that we never need to examine syntax trees directly to implement extensions. The evaluation semantics remove quotations, so the normal form of a quoted internal type contains an internal type with no quotations.
+To do so, however, we must also translate the type itself so that an appropriate type annotation for the function argument can be emitted. Every type has an internal type associated with it called its \emph{representation type}. The type-level operator $\FF{repof}(\tau)$ evaluates to a \emph{quoted internal type}, $\titype{\sigma}$ (of kind $\kIType$), where $\sigma$ is the representation type of $\tau$. Type constructors define the representation type for every possible index by providing a type-level function called the \emph{representation schema}, written after the keyword $\FF{rep}$. The normalization rule showing this is given in Fig. \ref{tleval}. In our example, the representation schema is simple: natural numbers translate to integers. We will see an example where this is less trivial later. Note that quoted internal types support splicing using the $\dup{\tau}$ form. These forms are eliminated during normalization.
+\item The rule $\textsc{att-lam}$ says that lambda terms can only be analyzed against arrow types and translate to lambda terms in the internal language.
+\item The rule $\textsc{att-intro-ana}$ says that generalized introductory forms can only be analyzed against a type. That type constructor is consulted to extract its \emph{introductory operator definition}, written (e.g. in Figure \ref{nat-atfrag}) after the $\FF{iana}$ keyword as a type-level function. This function is given the provided operator index, the type's type index and a list encapsulating the operator's  \emph{arguments}. An argument is reified as a type-level term of the form $(\Gamma, e)?$ and has kind $\FF{Arg}$. Note that only the compiler should construct such a term (in practice, this could be enforced purely syntactically, so we do not enforce this judgmentally here). The operator definition is responsible for producing a translation, or evaluating to $\terr$ if this is not possible. A translation is simply a quoted internal term, written $\titerm{\iota}$, with kind $\kITerm$. Like quoted internal types, quoted internal terms support an unquote form, written $\iup{\tau}$, which is normalized away (in a capture-avoiding manner, not shown).
 
-Lambda functions are the only introductory form requiring special support in the calculus (because they need to  manipulate the context; see Discussion). The next three rules show how any other abstractions that we define (e.g. records, decimals, etc.) make use of a generalized introductory form. 
+Natural numbers have two introductory forms, each indexed trivially. Because there is only one generalized introductory form, we instead index the operator by a simple sum kind with two trivial cases, $\kunit + \kunit$. The first case corresponds to the zero operator and the second to the successor. In the introductory operator definition, we see in the first case that the translation $0$ is produced after checking that no arguments were provided (using a simple helper function, $\tvar{arity0}$, not shown). In the second case, we first extract the single argument (using the helper function $\tvar{arity1}$, not shown). We then analyze it against the type $\ttype{nat}{\tunit}$ using one of the elimination forms for arguments, $\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3)$. If it succeeds, we construct the appropriate translation based on the translation of the argument. The normalization rule for successful analysis, $\textsc{ana}$, is shown in Figure \ref{tleval}. 
 
-The rule  $\fvar{att-i-unasc}$ shows that unascribed introductory forms can only be analyzed against a type. Given such a type, the rule extracts a definition, named $\FF{iana}$, from the type constructor (cf. the \verb|ana_Dict| and \verb|trans_Dict| methods earlier). It calls this function with a pair containing the operator and type index and a list of \emph{reified arguments}, which have kind $\Q$ and introductory form $(\Gamma; e)?$. These are only constructed by the compiler (there would be no corresponding form in the concrete syntax). Their purpose is to allow the definition to programatically invoke synthesis and analysis as needed using the $\FF{ana}$ and $\FF{syn}$ operators. We can see the $\fvar{record}$ type constructor doing so on line 5 of Figure \ref{record-theory} to ensure that the field value provided as an argument has the same type as the corresponding label (accomplished by simultaneously folding over all three pieces of input data). The rule for performing analysis, $\fvar{ana}$, is in Figure \ref{tleval}. If it succeeds, analysis returns a \emph{translation}, which is a quoted internal term with kind $\kITerm$ and introductory form $\titerm{\iota}$. Like quoted internal types, there is an unquote form that is eliminated during evaluation. The operator definition uses this to construct a translation for the record. As before, empty records translate to units and records with a single field are unadorned. In this example, records with two or more fields translate to nested tuples. 
+Note that we do not show here the error propagation rules. We need two additional judgements for this: the judgement $\Gamma \vdash_\fvalCtx e~\mathtt{error}$ says that $e$ has a type error, and the judgement $\tau~\mathtt{err}_\fvalCtx$ says that normalizing $\tau$ produced an $\terr$ term. Appropriate error propagation rules need to be written down.
 
-Because we have a representation type associated with the type, we can check that the translation is \emph{representationally consistent} (the final premise). As we will discuss, representational consistency combined with type safety of the internal language implies type safety overall (it arises as a strengthening of the inductive hypothesis needed to prove type safety, and is closely related to work on \emph{type-preserving compilation} in the TIL compiler for Standard ML, \cite{tarditi+:til-OLD}).
+If analysis of the introductory form succeeds, the translation is checked for \emph{representational consistency}: that the produced translation has the type indicated by the type constructor's representation schema. This is expressed by essentially a standard typechecking judgement for the internal language, written $\Gamma \vdash_\fvalCtx \iota : \sigma$ (not shown). Note that the typing context will need to be translated to a corresponding typing context for the internal language. We will discuss this further below.
 
-The next rule, $\fvar{att-i-asc-ty}$ states that introductory forms ascribed with a type are analyzed against that type.
+Notice that the assisted introductory form in Figure \ref{desugaring} allows us to define type-level variables $\tvar{z}$ and $\tvar{s}$ that simultaneously provide an operator index and type ascription, simulating introductory forms that synthesize a type without requiring support for such in the semantics (we will discuss a more expressive variant of the system in Sec. \ref{ace} where ascriptions can also be type constructors, not just types, permitting a form of synthetic introductory form).
 
-Introductory forms ascribed with a type constructor can, according to the final introductory rule, $\fvar{att-i-asc-tycon}$, synthesize a type via the definition $\FF{isyn}$. It is passed the operator index (there is no type index, since we only have a type constructor) and a list of arguments, as before. In this case, it must return not just a translation, but also a type. We use the form $\tden{\tau_2}{\tau_1}$ for such a pairing, which has kind $\FF{TT}$. The type and translation can be extracted from it using the appropriately named elimination forms (indeed, as given, it is merely a pair, but we give it special syntax for clarity -- it looks like the conclusion of the typing judgement -- and for other reasons that will become clear in future work). To synthesize a type from a list of labels and arguments, we must be able to synthesize types from the arguments. The $\FF{syn}(\tau)$ operator permits this, per rule $\fvar{syn}$, seen being used in Listing \ref{record-theory}. We check representational consistency of the result, as before.
+Note also that lambda is technically the introductory form for the $\fvar{arrow}$ type constructor, but because it requires manipulating the context, it must be built in to @$\lambda$. We do not currently support type system fragments that require adding or manipulating existing contexts.
 
-Finally, we show the rule for elimination forms. It operates by first synthesizing a type for the ``primary'' subterm, then extracting the $\FF{esyn}$ definition from its type constructor. As before, it is called with the arguments and representational consistency is checked. Note that the primary subterm is itself the first argument (though we have already synthesized a type for it, it is more uniform and clear to allow the operator  to do so again, which is done in our example by the $\tvar{arity1}$ helper function).
+\item The rule $\textsc{att-elim-syn}$ says that elimination forms synthesize a type. This is done again by consulting a type-level function, called the \emph{eliminatory operator definition}, associated with a type constructor, here the type constructor of the type  recursively synthesized for the primary operand, $e$. This definition is invoked with the type index, the operator index, the translation of the primary operand and a list of arguments. Because elimination forms synthesize a type, this definition must produce both a type and a translation. Representational consistency is then checked.
 
-\subsection{Metatheory}
-The metatheoretic properties of interest are: type safety and termination of the type-level language (guaranteed by our kind system, though the details will need to be provided in an appendix; termination is non-trivial), type safety and decidability of the internal language (it is a standard variant of PCF, so this is trivial) and representational consistency (discussed above, follows because we check it explicitly). Type safety for the language as a whole comes as a corollary of these lemmas. We plan to provide detailed proofs of these, but for now, they should be treated as conjectures and our formulation above as expository. 
-We believe that despite this, the formalization is surprisingly elegant and concise, given its expressive power. It is a useful exercise to implement natural numbers, ala G\"odel's \textbf{T}, using this calculus, assuming that the type-level and internal languages include integers and one can lift them from the former into the latter.
+In our example, the elimination form for natural numbers is the recursor (shown in Fig. \ref{natfrag}). Our definition of it first checks that exactly two arguments were provided (not including the primary operand), then synthesizes a type and extracts a translation from the first argument using the form $\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2)$ (Fig. \ref{tleval}). The second argument is analyzed against an appropriate arrow type to support variable binding. If successful, the type $\tvar{t1}$ (the type of the base case) is synthesized and a translation implementing the dynamic semantics of the recursor by a fixpoint computation is produced.
+
+The assisted elimination form shown in Fig. \ref{desugaring} provides a means to avoid providing an operator index explicitly. Here, we simply define $\tvar{natrec}$ as the trivial value to avoid needing to write it explicitly (and for clarity).
+
+Note that the elimination form for the $\fvar{arrow}$ type constructor can be defined in this manner (because it does not require binding variables), so application is simply syntactic sugar, rather than a built-in operator in the external language.
+\end{enumerate}
+
+%The rule $\fvar{att-lam}$ must take into account the fact that, because we support type-level computation, the type annotation on the argument may not be in normal form. Thus, we evaluate it to normal form. Note that the kinding rules (not shown) will guarantee that, because $\tau_1$ is of kind $\kTypeBlur$, its normal form, $\tau'_1$, is of the form $\ttype{tycon}{\tauidx}$ for some normal $\tauidx$. To generate an appropriate internal type annotation in the translation, we need to compute the representation type of $\tau_1'$. This involves calling the representation function associated with its type constructor (rule \fvar{repof} in Figure \ref{tleval}). The form $\titerm{\sigma}$ is a \emph{quoted internal type}. Note in the syntax that there is an unquote form, $\dup{\tau}$, which allows us to compose internal types compositionally without needing to expose an elimination form. Indeed, it is an interesting facet of our calculus that we never need to examine syntax trees directly to implement extensions. The evaluation semantics remove quotations, so the normal form of a quoted internal type contains an internal type with no quotations.
+%
+%Lambda functions are the only introductory form requiring special support in the calculus (because they need to  manipulate the context; see Discussion). The next three rules show how any other abstractions that we define (e.g. records, decimals, etc.) make use of a generalized introductory form. 
+%
+%The rule  $\fvar{att-i-unasc}$ shows that unascribed introductory forms can only be analyzed against a type. Given such a type, the rule extracts a definition, named $\FF{iana}$, from the type constructor (cf. the \verb|ana_Dict| and \verb|trans_Dict| methods earlier). It calls this function with a pair containing the operator and type index and a list of \emph{reified arguments}, which have kind $\Q$ and introductory form $(\Gamma; e)?$. These are only constructed by the compiler (there would be no corresponding form in the concrete syntax). Their purpose is to allow the definition to programatically invoke synthesis and analysis as needed using the $\FF{ana}$ and $\FF{syn}$ operators. We can see the $\fvar{record}$ type constructor doing so on line 5 of Figure \ref{record-theory} to ensure that the field value provided as an argument has the same type as the corresponding label (accomplished by simultaneously folding over all three pieces of input data). The rule for performing analysis, $\fvar{ana}$, is in Figure \ref{tleval}. If it succeeds, analysis returns a \emph{translation}, which is a quoted internal term with kind $\kITerm$ and introductory form $\titerm{\iota}$. Like quoted internal types, there is an unquote form that is eliminated during evaluation. The operator definition uses this to construct a translation for the record. As before, empty records translate to units and records with a single field are unadorned. In this example, records with two or more fields translate to nested tuples. 
+%
+%Because we have a representation type associated with the type, we can check that the translation is \emph{representationally consistent} (the final premise). As we will discuss, representational consistency combined with type safety of the internal language implies type safety overall (it arises as a strengthening of the inductive hypothesis needed to prove type safety, and is closely related to work on \emph{type-preserving compilation} in the TIL compiler for Standard ML, \cite{tarditi+:til-OLD}).
+%
+%The next rule, $\fvar{att-i-asc-ty}$ states that introductory forms ascribed with a type are analyzed against that type.
+%
+%Introductory forms ascribed with a type constructor can, according to the final introductory rule, $\fvar{att-i-asc-tycon}$, synthesize a type via the definition $\FF{isyn}$. It is passed the operator index (there is no type index, since we only have a type constructor) and a list of arguments, as before. In this case, it must return not just a translation, but also a type. We use the form $\tden{\tau_2}{\tau_1}$ for such a pairing, which has kind $\FF{TT}$. The type and translation can be extracted from it using the appropriately named elimination forms (indeed, as given, it is merely a pair, but we give it special syntax for clarity -- it looks like the conclusion of the typing judgement -- and for other reasons that will become clear in future work). To synthesize a type from a list of labels and arguments, we must be able to synthesize types from the arguments. The $\FF{syn}(\tau)$ operator permits this, per rule $\fvar{syn}$, seen being used in Listing \ref{record-theory}. We check representational consistency of the result, as before.
+%
+%Finally, we show the rule for elimination forms. It operates by first synthesizing a type for the ``primary'' subterm, then extracting the $\FF{esyn}$ definition from its type constructor. As before, it is called with the arguments and representational consistency is checked. Note that the primary subterm is itself the first argument (though we have already synthesized a type for it, it is more uniform and clear to allow the operator  to do so again, which is done in our example by the $\tvar{arity1}$ helper function).
+
+\subsection{Representational Consistency Implies Type Safety}\label{repcon}
+A key invariant that our operator definitions maintain is that well-typed external terms of type $\ttype{Nat}{\tunit}$ always translate to well-typed internal terms of internal type $\dint$, the representation type of $\ttype{Nat}{\tunit}$. Verifying this for the zero case is simple. For the translation produced by the successor case to be of internal type $\dint$ requires that $\iup{\tvar{x}}$ be of internal type $\dint$. Because it is the result of analyzing an argument against $\ttype{Nat}{\tunit}$, and the only other introductory form is the zero case, this holds inductively. We will discuss the recursor later, but it also maintains this invariant inductively.
+
+This invariant would not hold if, for example, we allowed the type and translation: $$({{\ttype{Nat}{\tunit},\titerm{(0, ())}}})$$
+\noindent
+In this case, there would be two different internal types, $\dint$ and $\dpair{\dint}{\dunit}$,  associated with a single external type, $\ttype{Nat}{\tunit}$. This would make it impossible to reason \emph{compositionally} about the translation of an external term of type $\ttype{Nat}{\tunit}$, so our implementation of the successor would produce ill-typed translations in some cases but not others. Similarly, we wouldn't be able to write functions over all natural numbers because there would not be a well-typed translation to give to such a function. This violates type safety: there are now well-typed external terms, according to the active typechecking and translation judgement, for which evaluating the corresponding translation would ``go wrong''. 
+
+To reason compositionally about the semantics of well-typed external terms when they are given meaning by translation to a typed internal language, the system must maintain the following property: for every  type, $\tau$, there must exist an internal type, $\sigma$, called its \emph{representation type}, such that the translation of every external term of type $\tau$ has internal type $\sigma$. This principle of \emph{representational consistency} arises essentially as a strengthening of the inductive hypothesis necessary to prove that all well-typed external terms translate to well-typed internal terms because $\lambda$ and successor are defined compositionally. It is closely related to the concept of \emph{type-preserving compilation} developed by Morrisett et al. for the TIL compiler for SML \cite{tarditi+:til-OLD}, here lifted into the language. Our judgements check this extension correctness property directly by typechecking each translation produced by a user extension (the translations of, for example, lambda terms will be inductively representationally consistent, so no additional check is needed).%That is, instead of being used as a necessary condition for compiler correctness, we are using it as a sufficient condition for type safety. 
+%We emphasize the distinction between translation (which in our calculus endows terms with a dynamic semantics) and compilation (which must preserve the dynamic semantics of terms). %In the presence of extensions, checking for representational consistency becomes subtle if we wish to guarantee conservativity, as we will discuss in the next subsection.
+
+%For the semantics to ensure that representational consistency is maintained by all operator definitions, we require, as briefly mentioned in Sec. \ref{types}, that each type constructor declare a \emph{representation schema} after the keyword \textsf{schema}. This is a type-level function of kind $\karrow{\kappaidx}{\kIType}$, where $\kappaidx$ is the index kind of the type constructor. The kind $\kIType$ has introductory form $\titype{\bar \sigma}$ and no elimination form, and is similar to the kind $\kITerm$ introduced above. There are two forms of \emph{translational internal type}, $\bar \sigma$, that do not correspond to forms in $\sigma$. As with translational internal terms, these are included to allow an internal type to be formed compositionally:
+%\begin{enumerate}
+%\item $\dup{\tau}$ splices in another translational internal type $\tau$
+%\item $\trepof{\tau}$ refers to the representation type of type $\tau$
+%\end{enumerate}
+%
+%When the semantics (i.e. the compiler) needs to determine the representation type of the type $\ttype{Tycon}{\tauidx}$ it simply applies the representation schema of $\fvar{Tycon}$ to ${\tauidx}$. Note that the representation type of a type cannot be extracted directly from within the type-level language, again for reasons that we will discuss below. 
+%
+%These additional forms are not needed by the representation schema of $\fvar{Nat}$  because it is trivially indexed. In Fig. \ref{tuple}, we will discuss an example of the type constructor $\fvar{Tuple}$, implementing the semantics of $n$-tuples by translation to nested binary products. Here, the representation schema refers to the representations of the tuple's constituent types and is computed by folding over a list, so both of these are used\todo{add this example from appendix of ESOP}. 
+
+Translational internal terms can contain translational internal types. We see this in the definition of the recursor on natural numbers. The type assignment is the arbitrary type, $\tvar{t2}$. We cannot know what the representation type of $\tvar{t2}$ is, so we refer to it abstractly using $\trepof{\tvar{t2}}$. Luckily, the proof of representational consistency of this operator is parametric over the representation type of $\tvar{t2}$. 
+
+\subsection{Metatheory}\label{theory}
+%\newcommand{\F}[1]{\textsf{#1}~}
+%\newcommand{\FF}[1]{\textsf{#1}}
+%\newcommand{\Q}{\FF{Arg}}
+%\renewcommand{\tnil}[1]{[]}
+%\begin{figure}[t]
+%\small
+%$$\begin{array}{rcl}	
+%%\textbf{programs} & 
+%\rho & ::= & \F{tycon}\fvar{tycon}~\F{of}\kappaidx~{\{}TC{\}}; \rho \pipe e\\ %\pfam{\familyDf}{\progsort}
+%%\\&  \pipe & \pdef{t}{\kappa}{\tau}{\progsort}  \pipe e
+%%\pipe \pdef{t}{\kappa}{\tau}{\progsort} 
+% TC & ::= & \F{iana} \{\tau\}; \F{isyn} \{\tau\}; \F{esyn} \{\tau\}; \F{rep} \{\tau\}\\
+%\\ 
+%e & ::= & \evar{x} \pipe \elam{\evar{x}}{\tau}{e} \pipe I \pipe I : \tau \pipe I :: \fvar{tycon} \pipe E\\
+%I & ::= &  \FF{intro}[\tauidx](\splat{e}{1}{n})\\
+%E & ::= & e\cdot\FF{elim}[\tauidx](\splat{e}{1}{n})\\
+%\\
+% \tau 	& ::= 	& 	\tvar{t} \pipe 
+%														\tlam{t}{\kappa}{\tau} \pipe 
+%														\tapp{\tau_1}{\tau_2}  
+%\\&\pipe&											
+%														\tnil{\kappa} \pipe \tcons{\tau_1}{\tau_2} \pipe 
+%									                     \tfold{\tau_1}{\tau_2}{h}{t}{r}{\tau_3}
+%														\\
+% 		& \pipe	& 	  \ell \pipe 
+%		\tunit \pipe 
+%														\tpair{\tau_{1}}{\tau_{2}} \pipe 
+%														\tfst{\tau} \pipe 
+%														\tsnd{\tau} \pipe \cdots 
+%														\\	
+%%     & \pipe & \tinl{\kappa_2}{\tau_1} \pipe \tinr{\kappa_1}{\tau_2} \\
+%%     &\pipe& \tsumcase{\tau}{t}{\tau_1}{t}{\tau_2} \\
+%&\pipe	& 	\ttype{tycon}{\tauidx} \\&\pipe& \tfamcase{\tau}{tycon}{x}{\tau_1}{\tau_2}\\
+%&\pipe & 					\tifeq{\tau_{1}}{\tau_{2}}{\kappa}{\tau_{3}}{\tau_{4}} 
+%%														\\													%				& & \pipe & \tfamcase{\tau}{Fam}{x}{\tau_1}{\tau_2}\\
+%%																								
+%\\ 		 & 	\pipe	&	\tden{\tau_2}{\tau_1} \pipe \terr %\pipe \tden{\ibar}{\tau}^{\checkmark} 
+%\pipe \ttypeof{\tau} \pipe \itransof{\tau} \\% \tdencase{\tau}{x}{t}{\tau_1}{\tau_2}\\
+%% %& & \pipe & 
+%%%														\tdencase{\tau}{y}{x}{\tau_1}{\tau_2}
+%%%														 \\
+%%
+% & \pipe & \titerm{\iota}
+%			\pipe	\titype{\sigma} \pipe \trepof{\tau} \\
+%		& \pipe &  (\Gamma; e)? \pipe \FF{syn}(\tau) \pipe \FF{ana}(\tau; \tau')\\
+%%\textbf{external terms} 				&	e	&	::=	&	\evar{x} \pipe 
+%%%														\efix{x}{\tau}{e} \pipe 
+%%														\elam{\evar{x}}{\tau}{e} \pipe 
+%%														\eop{tycon}{op}{
+%%															\tauidx
+%%														}{
+%%  												    		\splat{e}{1}{n}
+%%														} \\
+%%									& 		&		& 	\\
+%%
+%%
+%%												
+%%%\text{deabstracted}& \iota & ::= & \mathcal{G}[\iota, \sigma]\\
+%%												
+%%\\
+%%\\
+%%							
+%%% &  & \pipe & \tvalof{\tau_1}{\tau_2} \pipe \iup{\tau} \\
+%%% 												\trepof{\tau} \pipe \dup{\tau}\\
+%%\text{translational IL}	& \bar{\iota} & ::= & x \pipe \ifix{x}{\bar \sigma}{\bar \iota} 
+%%	%\pipe \ilam{x}{\bar \sigma}{\bar \iota} \pipe \iapp{\bar \iota_1}{\bar \iota_2} 
+%%	\pipe \cdots \pipe \itransof{\tau} \\						
+%% & \bar{\sigma} & ::= & \darrow{\bar \sigma_1}{\bar \sigma_2} \pipe \cdots \pipe \dup{\tau} \pipe \trepof{\tau} \\
+%%%\text{abstracted} & \sabs & ::= & \darrow{\sabs_1}{\sabs_2} \pipe \cdots \pipe \sabsrep{\tau}
+%%											\\
+%\kappa	&	::=	&	\karrow{\kappa_1}{\kappa_2} \pipe \klist{\kappa} \pipe \FF{L} \pipe \kunit \pipe \kpair{\kappa_1}{\kappa_2} \pipe \cdots \\
+% & \pipe & \kTypeBlur \pipe \FF{TT} \pipe \kITerm \pipe \kIType \pipe \Q
+%%											    \klabel \pipe
+%%											    \klist{\kappa} \pipe
+%%												\kunit \pipe 
+%%												\kpair{\kappa_{1}}{\kappa_{2}} \\
+%%												&&\pipe&
+%%												\ksum{\kappa_1}{\kappa_2} \pipe
+%%												\kTypeBlur \pipe \kDen \pipe 
+%%												\kIType								
+%%%\textbf{ops signature}			& \Theta	&	::=	&	\kOpEmpty \pipe \kOp{\Theta}{op}{\kappai}\\
+%%%											 							&		&		&	\\
+%\\
+%\\
+%\iota	&	::=	&	\evar{x} \pipe 
+%												\ifix{\evar{x}}{\sigma}{\iota} \pipe
+%												\ilam{\evar{x}}{\sigma}{\iota} \pipe 
+%												\iapp{\iota_{1}}{\iota_{2}} 
+%												\\ & \pipe & \iunit \pipe \ipair{\iota_1}{\iota_2} \pipe \ifst{\iota} \pipe \isnd{\iota} \pipe \cdots \pipe \iup{\tau}
+%%\\&\pipe&								\cdots \pipe 	
+%%												n \pipe \iop{\iota_{1}}{\iota_{2}} \pipe \iIfEq{\iota_{1}}{\iota_{2}}{\dint}{\iota_{3}}{\iota_{4}} \\
+%%& \pipe & 
+%%												\iunit \pipe
+%%												\ipair{\iota_{1}}{\iota_{2}} \pipe 
+%%												\ifst{\iota} \pipe
+%%												\isnd{\iota} 
+%%\\&\pipe&												
+%%												 \iinl{\sigma_2}{\iota_1} \pipe \iinr{\sigma_1}{\iota_2} \\&\pipe & \icase{e}{x}{e_1}{x}{e_2} \\
+%\\	\sigma	&	::=	&    \darrow{\sigma_1}{\sigma_2} \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} %\pipe \dint \pipe \dunit \pipe \dpair{\sigma_1}{\sigma_2} \pipe \dsum{\sigma_1}{\sigma_2}  
+%\pipe \cdots \pipe \dup{\tau}
+%\end{array}$$
+%%\vspace{-10pt}
+%\caption{\small Syntax of Core $\lamAce$. Here, $x$ ranges over external and internal language variables, $\tvar{t}$ ranges over type-level variables, $\fvar{tycon}$ ranges over type constructor names and $\ell$ ranges over labels.
+%\label{grammar}}
+%\end{figure}
+%\begin{figure}
+%\small
+%\begin{flalign}
+%& \F{tycon}\fvar{record}~\F{of}\klist{\kpair{\FF{L}}{\kTypeBlur}}~\{\\
+%& \quad \FF{iana}~\{\tlam{i}{\kpair{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{\klist{\FF{L}}}}{\tlam{a}{\klist{\Q}}{\\& \quad\quad\tfold{\tvar{zip3}~\tfst{\tvar{i}}~\tsnd{\tvar{i}}~\tvar{a}}
+%	 {\titerm{\tunit}}{h}{t}{r}{
+%	\\&\quad\quad\quad\tifeq{\tfst{\tvar{first}~\tvar{h}}}{\tvar{second}~\tvar{h}}{\FF{L}}{
+%	\\&\quad\quad\quad\quad
+%	\F{let}~\tvar{x}:\kITerm~=~\FF{ana}(\tvar{third}~\tvar{h}; \tsnd{\tvar{first}~\tvar{h}})
+%~\FF{in}
+%\\ & \quad\quad\quad\quad \tfold{\tvar{t}}{\tvar{x}
+%}{\_}{\_}{\_}{\titerm{(\iup{\tvar{x}},\iup{\tvar{r}})}}	}{\terr}
+%%     \F{let}~\tvar{tt}:\FF{TT}=~\FF{syn}(\tsnd{\tsnd{\tvar{h}}}) \F{in}\\
+%%\\     & \quad\quad\quad 
+%}
+%}}\}\\
+%& \quad \FF{isyn}~\{\tlam{i}{\klist{\FF{L}}}{\tlam{a}{\klist{\Q}}{
+%\\&\quad\quad \tfold{\tvar{zip2}~\tvar{i}~\tvar{a}}{\tden{\titerm{()}}{\ttype{record}{\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}}}{h}{t}{r}{
+%\\&\quad\quad\quad \F{let}~\tvar{htt}:\FF{TT}~=~\FF{syn}(\tsnd{\tvar{h}})
+%~\FF{in}
+%\\&\quad\quad\quad \F{let}~\tvar{hty}:\kTypeBlur~=~\ttypeof{\tvar{htt}}
+%\\&\quad\quad\quad \F{let}~\tvar{ty}:\kTypeBlur~=~\ttype{record}{(\tfst{\tvar{h}}, \tvar{hty})::\tnil{{\kpair{\FF{L}}{\kTypeBlur}}}}
+%~\FF{in}
+%\\&\quad\quad\quad \tfold{\tvar t}{\tden{\itransof{\tvar{htt}}}{\tvar{ty}}}{\_}{\_}{\_}{
+%\\&\quad\quad\quad\quad \tden{\titerm{(\iup{\itransof{\tvar{htt}}},\iup{\itransof{\tvar{r}}})}}{\tvar{ty}}}}
+%}}\}\\
+%& \quad \FF{esyn}~\{\tlam{i}{\FF{L}}{\tlam{a}{\klist{\Q}}{
+%	\tvar{arity1}~\tvar{a}~\tlam{ty}{\kTypeBlur}{\tlam{x}{\kITerm}{
+%\\&\quad\quad		\tfamcase{\tvar{ty}}{record}{sig}{
+%\\&\quad\quad\quad \tfold{\tvar{sig}}{\terr}{h}{t}{r}{
+%\\&\quad\quad\quad\quad \tifeq{\tfst{\tvar{h}}}{\tvar{i}}{\FF{L}}{\tfold{\tvar{t}}{\tden{\tvar{x}}{\tsnd{\tvar{h}}}}{\_}{t'}{\_}{
+%\\&\quad\quad\quad\quad\quad \tfold{\tvar{t'}}{\tden{\titerm{\ifst{\iup{\tvar{x}}}}}{\tsnd{\tvar{h}}}}{\_}{\_}{\tvar{r'}}{
+%\\&\quad\quad\quad\quad\quad\quad \tden{\titerm{\isnd{\iup{{\itransof{\tvar r}}}}}}{\tsnd{\tvar{h}}}}}\\&\quad\quad\quad\quad\hspace{-3px}}{\tvar{r}}
+%}\\&\quad\quad\hspace{-3px}}{\terr}
+%	}}
+%}}\\
+%& \quad \FF{rep}~\{\tlam{i}{\klist{\kpair{\FF{L}}{\kTypeBlur}}}{ 	\\& \quad \quad \tfold{\tvar{i}}{\titype{\dunit}}{s}{j}{r}{
+% 		\tfold{\tvar{j}}{\trepof{\tsnd{\tvar{s}}}}{\_}{\_}{\_}{\\
+%		&\quad\quad\quad
+% 		\titype{\dpair{\dup{\trepof{\tsnd{\tvar{s}}}}}{\dup{\tvar{r}}}}
+% 		}
+% 	}}\}\\
+%& \}; \\
+%& \F{let}\tvar{R} : \kTypeBlur = \ttype{record}{(\ell_1, \ttype{record}{\tnil{{\FF{L}\times\kTypeBlur}}}) :: \tnil{{\FF{L}\times\kTypeBlur}}}~\F{in}\\
+%&\F{let}id = \elam{x}{\tvar{R}}{\{\ell_1=~x\cdot\ell_1\} :: \fvar{record}}\\
+%&\F{let}triv = id[\{\ell_1 = \{\}\}]\cdot\ell_1
+%%&\F{let}one = \FF{intro}[\ell_\text{succ}]
+%%&\F{let}plus = \elam{x}{\tvar{nat}}{\elam{y}{\tvar{nat}}{\FF{elim}[()](x; y; \\
+%%& \quad \elam{r}{\tvar{nat}}{intro[\ell_\text{succ}](r) : \tvar{nat}}})}
+%\end{flalign}
+%\caption{The definition of the record type in $\lamAce$ using the desugarings in Figure \ref{desugaring} and with the addition of simple let bindings for both type and term variables (not shown). Some type-level helper functions also omitted for concision.}
+%
+%\label{record-theory}
+%\end{figure}
+%We will now give a core typed lambda calculus, $\lamAce$, that captures the semantics described in the previous sections. It is intended to make precise how active typechecking and translation works and how our mechanism relates to existing work on bidirectional typechecking, type-level computation and typed compilation while abstracting away from the details of Python's syntax and imposing a stronger type-level semantics that will allow us to state metatheoretic properties of interest. We will assume a fixed base for functions (providing the standard semantics of lambda functions) and target language, which we here call the \emph{internal language}.
+%
+%The syntax of $\lamAce$ is shown in Figure \ref{grammar} and an example \emph{program} that defines a type constructor, $\fvar{record}$, with a semantics similar to that given in Listing \ref{record}\footnote{Technically, this defines labeled tuples, because the order of labels matters.}, using it to write an identity function and compute the value $triv$ (the empty record), is shown in Figure \ref{record-theory}.
+%
+%%In this section, we will develop an ``actively typed'' version of the simply-typed lambda calculus with simply-kinded type-level computation called $\lamAce$. More specifically, the level of types, $\tau$, will itself form a simply-typed lambda calculus. \emph{Kinds} classify type-level terms in the same way that types conventionally classify expressions. Types become just one kind  of type-level value (which we will write $\kTypeBlur$, though it is also variously written $\star$, \verb|T| and \verb|Type| in various settings). Rather than there being a fixed set of type and operator constructors, we allow the programmer to declare new  constructors, and give their static and dynamic semantics by writing type-level functions. The kind system combined with techniques borrowed from the typed compilation literature and a form of type abstraction will allow us to prove strong type safety, decidability and conservativity theorems.
+%%
+%%The syntax of Core $\lamAce$ is given in Fig. \ref{grammar}. An example of a program defining type and operator constructors that can be used to construct an active embedding of G\"odel's \textbf{T} into $\lamAce$ is given in Fig. \ref{nat}. We will discuss its semantics and how precisely the embedding, seen being used starting on line 15 to ultimately compute the sum of two and two, works as we go on. Natural numbers can, of course, be isomorphically embedded in existing languages, with a similar usage and asymptotic performance profile (up to function call overhead as an abstract type, for example). We will provide more sophisticated examples where this is less feasible later on (and note that type abstraction is an orthogonal mechanism).
+%%a type constructor declaration, $\fvar{Nat}$, indexed trivially, together with three operator constructors, also all indexed trivially, that implement the standard introductory forms for natural numbers as well as the recursor operator (as in G\"odel's T \cite{pfpl}). Following the type constructor declaration, we apply $\fvar{Nat}$ with the trivial index, $\tunit$, to form the type $\tvar{nat}$. Finally, we write an external term that uses the operators associated with $\fvar{nat}$ and the built-in constructor $\fvar{Parr}$, governing partial functions, to define an addition function and compute the addition of the natural numbers  two and two. We will introduce a more convenient concrete syntax in later portions of this thesis; for now we will restrict ourselves to the abstract syntax so that this example can directly aid in understanding the semantics.
+%
+%\subsection{Overview}\label{programs}
+%
+%A \emph{program}, $\rho$, consists of a series of constructor declarations followed by an external term, $e$.  Compiling a program consists of first \emph{kind checking} it (see below), then typechecking the external term and simultaneously {translating} it to a term, $\iota$, in the {typed internal language}. 
+%%These correspond to the premises of the \emph{central compilation judgement} $\pkcompiles{\rho}{\iota}$:
+%%\[
+%%\inferrule[p-compiles]{
+%%	\emptyset \vdash_{\fvalCtx_0} \rho\\
+%%%	\progOK{\emptyset}{\fvalCtx_0}{\rho}\\
+%%	\pcompiles{\fvalCtx_0}{\rho}{\iota}
+%%}{\pkcompiles{\rho}{\iota}}
+%%\]
+%%This anchors our exposition; we will describe how it is derived (i.e. how to write a compiler for $\lamAce$) in the following sections. 
+%The key judgements are the \emph{bidirectional active typing judgements}  (Fig. \ref{att}, which we describe starting in Sec. \ref{opcons}). They relate an external term, $e$, to a {type}, $\tau$, called its \emph{type assignment}, and an internal term, $\iota$, called its \emph{translation}, under \emph{typing context} $\Gamma$ and \emph{constructor context} $\Phi$. The first is synthesis, the second analysis.
+%\[\Gamma \vdash_\fvalCtx e \Rightarrow \tau \leadsto \iota
+%~~~~~~~
+%\Gamma \vdash_\fvalCtx e \Leftarrow \tau \leadsto \iota\]
+%%\[\ecompilesAX{e}{\tau}{\iota}\]
+%
+%The typing context, $\Gamma$, maps variables to types in essentially the conventional way (\cite{pfpl} contains the necessary background for this section). The constructor context, $\Phi$, tracks user-defined type  constructors. % Weakening and exchange of the constructor context closely related to the issue of conservativity that we will return to. Each constructor is identified by name, so there is no analog to contraction.
+%
+%The dynamic behavior of an external term is determined entirely by its translation to the internal language, which has a conventional operational semantics. This form of semantics can be seen as lifting into the language specification the first stage of a type-directed compiler like the TIL compiler for Standard ML \cite{tarditi+:til-OLD} and has some parallels to the Harper-Stone semantics for Standard ML, where external terms were also given meaning by elaboration from the EL to an IL \cite{Harper00atype-theoretic}. %
+%
+%In $\lamAce$, the internal language (IL) provides partial functions (via the generic fixpoint operator of Plotkin's PCF) and simple product  types for the sake of our example. In practice, the internal language could be any typed  language with a specification for which type safety and decidability of typechecking have been satisfyingly determined. The internal type system serves as a ``floor'': guarantees that must hold for terms of any type (e.g. that out-of-bounds access to memory never occurs) must be maintained by the internal type system. User-defined constructors can enforce invariants stronger than those the internal type system maintains at particular types, however. Performance is also ultimately limited by the internal language and downstream compilation stages that we do not here consider (safe compiler extension has been discussed in previous work, e.g. \cite{conf/pldi/TatlockL10}).
+%
+%
+%\subsection{Types and Type-Level Computation}\label{types}
+%$\lamAce$ supports, and makes extensive use of, simply-kinded type-level computation. Specifically, type-level terms, $\tau$, themselves form a typed lambda calculus. The classifiers of type-level terms are called \emph{kinds}, $\kappa$, to distinguish them from  \emph{types}. Types are  type-level values of kind $\kTypeBlur$. In Ace, the type-level language (together with the level of programs) is written in Python, which can be thought of as having a rather limited kind system (with one kind, \verb|dyn|). Here, we are able to more precisely discuss the kinds of values in the type-level language. 
+%
+%In most languages, types are formed by applying one of a collection of \emph{type constructors} to zero or more \emph{indices}. In $\lamAce$, the situation is notionally similar. User-defined type constructors can be declared at the top of a program (or lifted to the top, in practice) using \textsf{tycon}. Each constructor in the program must have a unique name, written e.g. \fvar{record}.\footnote{We assume naming conflicts can be avoided by some extrinsic mechanism.} A type constructor must also declare an \emph{index kind}, $\kappaidx$. 
+%
+% To permit the embedding of interesting type systems, the type-level language includes several kinds other than $\kTypeBlur$. We lift several functional data structures to the type level: here, only unit ($\kunit$), binary products ($\kpair{\kappa_1}{\kappa_2}$) and lists ($\klist{\kappa}$), in addition to labels (introduced as $\ell$, possibly with a subscript, having kind \FF{L}).  Our record type constructor is indexed by a list of pairs of {labels}  and types (a signature, in essence; line 1). The type constructor $\fvar{arrow}$ is included in the initial constructor context, $\fvalCtx_0$ and has index kind $\kpair{\kTypeBlur}{\kTypeBlur}$.
+% In practice, one could include a richer functional programming language and retain the spirit of the calculus, as long as it does not introduce general recursion at the type level. 
+%  
+%A type is introduced by applying a type constructor to an index of this kind, written $\ttype{Tycon}{\tauidx}$.  For example, the type of natural numbers is indexed trivially, so it is written $\ttype{Nat}{\tunit}$. We see a record type, abbreviated $\tvar{R}$, constructed on line 26. 
+%
+%The kind $\kTypeBlur$ also has an elimination form, $$\tfamcase{\tau}{Tycon}{x}{\tau_1}{\tau_2}$$ allowing the extraction of a type index by case analysis against a contextually-available type constructor. To a first approximation, one might think of type constructors as constructors of a built-in open \cite{conf/ppdp/LohH06}, $\kTypeBlur$, at the type-level. Like open datatypes, there is no notion of exhaustiveness so the default case is required for totality. We will see where this is used shortly.
+%
+%
+%
+%%We will write the kind of types as $\kTypeBlur$, though it is also written $\star$ or \verb|Type| in various similarly structured languages (see Sec. \ref{related-work}). 
+%% Rather than there being a fixed set of type constructors, we allow the programmer to declare new type  constructors, and give the static and dynamic semantics of their associated operators, by writing type-level functions. In the semantics for this calculus, our kind system combined with techniques borrowed from the typed compilation literature and a form of type abstraction allow us to prove strong type safety, decidability and conservativity theorems.
+%
+%
+%
+%% and integers ($\dint$). We also include labels ($\klabel$), written in a slanted font, e.g. $\tlabel{myLabel}$, which are string-like values that only support comparison and play a distinguished role in the expanded syntax, as we will later discuss. Our first example, $\fvar{nat}$, is indexed trivially, i.e. by unit kind, $\kunit$, so there is only one natural number type, $\ttype{nat}{\tunit}$, but we will show examples of type constructors that are indexed in more interesting ways in later portions of this work. For example, $\fvar{LabeledTuple}$ has index kind $\klist{\kpair{\klabel}{\kTypeBlur}}$. 
+% 
+% Type constructors are not first-class; they do not themselves have arrow kind as in some kind systems (e.g.  \cite{watkins2008specifying}; Ch. 22 of \emph{PFPL} describes a related system \cite{pfpl}). The type-level language does, however, include total functions of arrow kind, written $\karrow{\kappa_1}{\kappa_2}$. Type constructor application can be wrapped in a type-level function to emulate a first-class or uncurried version of a type constructor for convenience (indeed, such a wrapper could be generated automatically, though we do not do so). 
+%
+%Two type-level terms of kind $\kTypeBlur$ are equivalent if they apply the same constructor, identified by name, to equivalent indices. Going further, we ensure that deciding type equivalence requires only checking for syntactic equality after normalization by imposing the restriction that equivalence at a type constructor's index kind must be decidable in this way. Our treatment of equivalence in the type-level language is thus quite similar to the treatment of term-level equality using ``equality types'' in a language like Standard ML.
+%% A kind $\kappa$ is an  \emph{equality kind} if $\kEq{\kappa}$ can be derived (see appendix). 
+%Conditional branching on the basis of equality at an equality kind can be performed in the type-level language. Equivalence at arrow kind is not decidable by our criteria, so type-level functions cannot appear within type indices. This also prevents general recursion from arising at the type level. Without this restriction, a type-level function taking a type as an argument could ``smuggle in'' a self reference as a type index, extracting it via case analysis (continuing our analogy to open datatypes, this is closely related to the positivity condition for inductive datatypes in total functional languages like Coq).% as maintaining the metatheoretic guarantee that typing respects type equivalence would impose a substantial burden in such a setting.% (a na\"ive approach to this would impose non-trivial extrinsic proof obligations onto extension developers that, unlike in others in this thesis, could threaten type safety).
+%
+%Every type constructor also defines a \emph{representation}, a type-level function that associates with every type an internal \emph{representation type} (analagous to \verb|trans_type| above). We will return to this after introducing the external forms and operator definitions.
+%
+%\subsection{Core External Forms and Desugaring}\label{opcons}
+%The syntax for external terms (Figure \ref{grammar}) contains variables, $\lambda$ terms, three generalized introductory forms and a single generalized elimination form. The introductory forms are either unascribed, ascribed with a type or ascribed with a type constructor, as in our discussion of Ace. These generalized forms take a single a type-level value as an {index} and $n \geq 0$ arguments, which are other external terms. To better motivate this choice, we can give a purely syntactic desugaring of a Python-like syntax with labels to these forms, shown in Figure \ref{desugaring}. It is instructive to rewrite lines 27-28 of Figure \ref{record-theory} using these desugarings:% In Ace, desugarings can be user-defined 
+%\noindent
+%\vspace{-5px}
+%$$
+%\begin{array}{l}
+%\FF{let}~id=\lambda x:\tvar{R}.\FF{intro}[\ell_1 :: []](x\cdot\FF{elim}[\ell_1]()) :: \fvar{record}\\
+%\FF{let}~triv=id\cdot\FF{elim}[()](\FF{intro}[\ell_1 :: []](\FF{intro}[[]]()))\cdot\FF{elim}[\ell_1]()
+%\end{array}
+%$$
+%\vspace{-5px}
+%\begin{figure}[t]
+%\small
+%\[
+%\begin{array}{rcl}
+%\{ \ell_1{=}~e_1, \ldots, \ell_n{=}~e_n \} & := & \FF{intro}[\ell_1 :: \ldots :: \ell_n :: []](e_1; \ldots; e_n)\\
+%(e_1, ..., e_n) & := & \FF{intro}[()](e_1; \ldots; e_n)\\
+%\#n & := & \FF{intro}[n]()\\
+%"s" & := & \FF{intro}[s]()\\
+%e.\ell & := & e\cdot\FF{elim}[\ell]()\\
+%e[e_1; \ldots; e_n] & := & e\cdot\FF{elim}[()](e_1; \ldots; e_n)\\
+%e.\ell(e_1; ...; e_n) & := & e\cdot\FF{elim}[\ell](e_1; \ldots; e_n)
+%%(e_1, ..., e_n) & := & intro[()](e_1; ...; e_n)
+%%n &  := & intro[n]()
+%%s & := & intro[s]()
+%%
+%%e.l & := & elim[l](e)
+%%e[e_1; ...; e_n] & := & elim[()](e_1, ..., e_n)
+%%e.l(e_1; ...; e_n) & := & elim[l]
+%\end{array}
+%\]
+%\caption{Desugaring from conventional syntax to core forms. We assume that the type-level language has numbers, $n$, and strings, $s$ (not shown for concision).}
+%\label{desugaring}
+%\end{figure}
+%
+%%User-defined operator constructors are declared using \textsf{opcon}.  For reasons that we will discuss, our calculus associates every operator  constructor with a type constructor. The \emph{fully-qualified name} of every operator constructor, e.g. $\fvar{Nat}.\opvar{z}$, must be unique. Operator constructors, like type constructors, declare an index kind, $\kappaidx$. In our first example, all the operator constructors are indexed trivially (by index kind $\kunit$), but other examples use more interesting indices. For example, in SML, the projection operator \verb|#3| can be applied to an $n$-tuple, $e$, iff $n \geq 3$. Note that it thus cannot be a function with a standard arrow type. Notionally, \verb|#| is an operator constructor and \verb|3| is its index. In an active embedding of $n$-tuples into $\lamAce$, this would be written $\eop{Tuple}{prj}{3}{e}$ (we will nearly recover ML's syntax later). $\fvar{LabeledTuple}.\opvar{prj}$ is the operator constructor used to access a field of a labeled tuple, so it has index kind $\klabel$. An operator itself is, notionally, selected by indexing an operator constructor, e.g. $\fvar{Nat}.\opvar{s}\langle \tunit \rangle$, but technically neither operator constructors nor operators are first-class at any level (additional machinery would be needed, e.g. an \textsf{Op} kind, but this is not fundamental to our calculus). 
+%%Instead, in the external language, an operator constructor is applied by simultaneously providing an index and  $n \geq 0$ \emph{arguments}, written $\eop{Tycon}{op}{\tauidx}{\splat{e}{1}{n}}$\footnote{It may be helpful to distinguish between type/operator constructors and \emph{term formers}. There are term formers at all levels in the calculus. For example, operator constructor application and $\lambda$ are  external term formers, and type constructor application is a type-level term former. We might write these following Harper's conventions for abstract syntax to highlight this distinction \cite{pfpl}: $\mathtt{lam}[\tau](x.e)$, $\mathtt{ocapp}[\fvar{Tycon}, \opvar{op}, \tauidx](\splat{e}{1}{n})$ and $\texttt{tcapp}[\fvar{Tycon}](\tau)$.}. For example, on line 18 of Fig. \ref{nat}, we see the operator constructors $\fvar{Nat}.\opvar{z}$ and $\fvar{Nat}.\opvar{s}$ being applied to compute $two$. %\footnote{Although our focus here is entirely on semantics, a brief note on syntax: in the expanded syntax, the trivial indices and empty argument lists can be omitted, so we could write \texttt{Nat.s(Nat.s(Nat.z))}. With the ability to ``open'' a type's operators into the context, we could shorten this still to \texttt{s(s(z))}. Alternatively, with the ability to define a TSL in a manner similar to that in Sec. \ref{aparsing}, we might instead just write \texttt{2}.}
+%
+%\subsection{Operator Definitions and Representational Consistency}
+%
+%%
+%\newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
+%\newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
+%\begin{figure}[t]
+%\small
+%$\fbox{\inferrule{}{\ecompilesAX{e}{\tau}{\iota}}}$
+%~~~~$\Gamma ::= \emptyset \pipe \Gamma, x \Rightarrow \tau$
+%\begin{mathpar}
+%\inferrule[att-var]{
+%	x \Rightarrow \tau \in \Gamma
+%}{
+%	\atjsynX{x}{\tau}{x}
+%}
+%
+%\inferrule[att-syn-to-ana]{
+%	\atjsynX{e}{\tau}{\iota}
+%}{
+%	\atjanaX{e}{\tau}{\iota}
+%}
+%
+%\inferrule[att-lam]{
+%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
+%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
+%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto \iota
+%%	\iota \hookrightarrow_\fvalCtx \iota'\\
+%%		\sigma \hookrightarrow_\fvalCtx \sigma'
+%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
+%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%}{
+%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{\iota}}
+%}
+%
+%\inferrule[att-i-unasc]{
+%	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
+%	\taudef~(\tauidx, \tauidx')~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{\iota}\\
+%%	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\Gamma \vdash_\fvalCtx \iota : \sigma
+%}{
+%	\atjanaX{\FF{intro}[\tauidx](e_1; \ldots; e_n)}{\ttype{tycon}{\tauidx'}}{\iota}
+%}
+%
+%\inferrule[att-i-asc-ty]{
+%	\atjanaX{I}{\tau}{\iota}
+%}{
+%	\atjsynX{I : \tau}{\tau}{\iota}
+%}
+%
+%\inferrule[att-i-asc-tycon]{
+%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
+%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{\iota}}{\ttype{tycon}{\tauidx'}}\\
+%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx \iota : \sigma
+%}{
+%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\tau}{\iota'}
+%}
+%
+%\inferrule[att-elim]{
+%	\atjsynX{e}{\ttype{tycon}{-}}{-}\\
+%	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\
+%	\taudef~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \tden{\tau}{\iota}\\
+%			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx \iota : \sigma
+%}{
+%	\atjsynX{e\cdot\FF{elim}[\tauidx](e_1; \ldots; e_n)}{\tau}{\iota}
+%}
+%\end{mathpar}
+%\caption{\small The active typing judgement. The normalization judgement for type-level terms ($\Downarrow$) and the representational consistency check will be in an appendix.}
+%\label{atj}
+%\end{figure}
+%\begin{figure}
+%\small
+%\begin{mathpar}
+%\inferrule[repof]{
+%	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
+%	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
+%	\taurep \tauidx \Downarrow_\fvalCtx \titype{\sigma}
+%}{
+%	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
+%}
+%
+%\inferrule[syn]{
+%    \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\atjsynX{e}{\tau}{\iota}
+%}{
+%	\FF{syn}(\tau) \Downarrow_\fvalCtx \tden{\titerm{\iota}}{\tau}
+%}
+%
+%\inferrule[ana]{
+%	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\tau_2 \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\\\
+%	\atjanaX{e}{\ttype{tycon}{\tauidx}}{\iota}\\
+%}{
+%	\FF{ana}(\tau_1; \tau_2) \Downarrow_\fvalCtx \titerm{\iota}
+%}
+%\end{mathpar}
+%\caption{\small Evaluation semantics for the type-level language. Missing rules (including error propagation rules, which immediately cause failure of typechecking) are unsurprising and will be given in an appendix.}
+%\label{tleval}
+%\end{figure}
+%The expressive and metatheoretic power of the calculus arises from how the rules for the active typing judgement handle these  generalized forms. Rather than fixing the specification of a finite collection of operator constructors and tasking the \emph{compiler} with deciding a typing derivation on its basis, the specification instead delegates to a type-level function associated with a type constructor. In the core calculus, this is one of three functions, called \FF{iana}, \FF{isyn} and \FF{esyn} in the grammar.\footnote{This means that any particular type constructor only supports a single introduction and elimination desugaring. This is a minor inconvenience in some cases that is resolved in Ace by the use of methods.} We see how this is done with the rules for the active typing judgements, given in Figure \ref{atj}.
+%
+%The first two rules are standard in bidirectional type systems: variables synthesize types and if a term synthesizes a type, it can be analyzed against a type (cf. Listing \ref{context}). Variables translate to variables, and if we are simply converting from synthesis to analysis, translation is not affected.
+%
+%The rule $\fvar{att-lam}$ must take into account the fact that, because we support type-level computation, the type annotation on the argument may not be in normal form. Thus, we evaluate it to normal form. Note that the kinding rules (not shown) will guarantee that, because $\tau_1$ is of kind $\kTypeBlur$, its normal form, $\tau'_1$, is of the form $\ttype{tycon}{\tauidx}$ for some normal $\tauidx$. To generate an appropriate internal type annotation in the translation, we need to compute the representation type of $\tau_1'$. This involves calling the representation function associated with its type constructor (rule \fvar{repof} in Figure \ref{tleval}). The form $\titerm{\sigma}$ is a \emph{quoted internal type}. Note in the syntax that there is an unquote form, $\dup{\tau}$, which allows us to compose internal types compositionally without needing to expose an elimination form. Indeed, it is an interesting facet of our calculus that we never need to examine syntax trees directly to implement extensions. The evaluation semantics remove quotations, so the normal form of a quoted internal type contains an internal type with no quotations.
+%
+%Lambda functions are the only introductory form requiring special support in the calculus (because they need to  manipulate the context; see Discussion). The next three rules show how any other abstractions that we define (e.g. records, decimals, etc.) make use of a generalized introductory form. 
+%
+%The rule  $\fvar{att-i-unasc}$ shows that unascribed introductory forms can only be analyzed against a type. Given such a type, the rule extracts a definition, named $\FF{iana}$, from the type constructor (cf. the \verb|ana_Dict| and \verb|trans_Dict| methods earlier). It calls this function with a pair containing the operator and type index and a list of \emph{reified arguments}, which have kind $\Q$ and introductory form $(\Gamma; e)?$. These are only constructed by the compiler (there would be no corresponding form in the concrete syntax). Their purpose is to allow the definition to programatically invoke synthesis and analysis as needed using the $\FF{ana}$ and $\FF{syn}$ operators. We can see the $\fvar{record}$ type constructor doing so on line 5 of Figure \ref{record-theory} to ensure that the field value provided as an argument has the same type as the corresponding label (accomplished by simultaneously folding over all three pieces of input data). The rule for performing analysis, $\fvar{ana}$, is in Figure \ref{tleval}. If it succeeds, analysis returns a \emph{translation}, which is a quoted internal term with kind $\kITerm$ and introductory form $\titerm{\iota}$. Like quoted internal types, there is an unquote form that is eliminated during evaluation. The operator definition uses this to construct a translation for the record. As before, empty records translate to units and records with a single field are unadorned. In this example, records with two or more fields translate to nested tuples. 
+%
+%Because we have a representation type associated with the type, we can check that the translation is \emph{representationally consistent} (the final premise). As we will discuss, representational consistency combined with type safety of the internal language implies type safety overall (it arises as a strengthening of the inductive hypothesis needed to prove type safety, and is closely related to work on \emph{type-preserving compilation} in the TIL compiler for Standard ML, \cite{tarditi+:til-OLD}).
+%
+%The next rule, $\fvar{att-i-asc-ty}$ states that introductory forms ascribed with a type are analyzed against that type.
+%
+%Introductory forms ascribed with a type constructor can, according to the final introductory rule, $\fvar{att-i-asc-tycon}$, synthesize a type via the definition $\FF{isyn}$. It is passed the operator index (there is no type index, since we only have a type constructor) and a list of arguments, as before. In this case, it must return not just a translation, but also a type. We use the form $\tden{\tau_2}{\tau_1}$ for such a pairing, which has kind $\FF{TT}$. The type and translation can be extracted from it using the appropriately named elimination forms (indeed, as given, it is merely a pair, but we give it special syntax for clarity -- it looks like the conclusion of the typing judgement -- and for other reasons that will become clear in future work). To synthesize a type from a list of labels and arguments, we must be able to synthesize types from the arguments. The $\FF{syn}(\tau)$ operator permits this, per rule $\fvar{syn}$, seen being used in Listing \ref{record-theory}. We check representational consistency of the result, as before.
+%
+%Finally, we show the rule for elimination forms. It operates by first synthesizing a type for the ``primary'' subterm, then extracting the $\FF{esyn}$ definition from its type constructor. As before, it is called with the arguments and representational consistency is checked. Note that the primary subterm is itself the first argument (though we have already synthesized a type for it, it is more uniform and clear to allow the operator  to do so again, which is done in our example by the $\tvar{arity1}$ helper function).
+%
+\subsubsection{Representational Consistency}
+The representational consistency lemmas says that active typechecking and translation of an external term, if it succeeds (producing a type, $\hat\sigma$ and a translation $\iota$), always produces a well-typed translation. More specifically, the translation's type is the representation type of $\hat\sigma$.
+
+\begin{theorem}[Representational Consistency]
+Given well-kinded contexts and an external term that is both well-kinded and well-typed:
+\begin{enumerate}
+\item $\vdash \Phi$ 
+\item $\vdash_\Phi \Gamma$
+\item $\vdash_\Phi e$
+\item Either:
+\begin{enumerate}
+\item[a.] $\Gamma \vdash_\Phi e \Leftarrow \hat{\sigma} \leadsto \iota$
+\item[b.] $\Gamma \vdash_\Phi e \Rightarrow \hat{\sigma} \leadsto \iota$
+\end{enumerate}
+\end{enumerate}
+there exists an internal typing context, $\Omega$, and an internal type, $\tau$, such that  $\vdash_\Phi \Gamma \leadsto \Omega$ and $\FF{rep}(\hat\sigma) \Downarrow_\Phi \titype{\tau}$ and $\Omega \vdash \iota : \tau$.
+\end{theorem}
+\begin{proof}
+The proof proceeds by induction on the typing derivation (4a or 4b). Because the representational consistency is explicitly checked in the rules for intro and elim forms, these cases follow directly. The remaining cases are standard and follow inductively, given standard lemmas about valid contexts and a lemma about type safety of the static language. This is a fixed, standard functional language with only a few simple additions (TODO detail this).
+\end{proof}
+
+\subsubsection{Type Safety}
+Representational safety implies that well-typed external terms produce well-typed internal terms. If the internal language is type safe, then we know that well-typed external terms do not ``go wrong''. The internal language is simply PCF with sums and products, and a base type of integers, so this is a completely standard result \cite{pfpl}.
+
+%\subsubsection{Decidability}
+%The metatheoretic properties of interest are: type safety and termination of the type-level language (guaranteed by our kind system, though the details will need to be provided in an appendix; termination is non-trivial), type safety and decidability of the internal language (it i.s a standard variant of PCF, so this is trivial) and representational consistency. Type safety for the language as a whole comes as a corollary of these lemmas. We plan to provide detailed proofs of these, but for now, they should be treated as conjectures and our formulation above as expository. 
+%We believe that despite this, the formalization is surprisingly elegant and concise, given its expressive power. It is a useful exercise to implement natural numbers, ala G\"odel's \textbf{T}, using this calculus, assuming that the type-level and internal languages include integers and one can lift them from the former into the latter.
 %%
 %
 %For the synthetic functions, it must decide the type assignment and the translation on the basis of the index and arguments, or decide that this is not possible. An operator constructor with index kind $\kappaidx$ must have a definition of kind \[\kappaidx \rightarrow \klist{\kDen} \rightarrow (\kDen + \kunit)\] 
@@ -1484,6 +2189,8 @@ When the mechanisms available in an existing language prove insufficient, resear
 Extensible compilers like Xoc \cite{conf/asplos/CoxBCKK08} can be considered a form of language framework as well. It is difficult or impossible for these language-external approaches to achieve interoperability, because languages are not aware of each other's semantics and merging languages is not guaranteed to be unambiguous and sound. A few approaches (e.g. ) have made steps toward addressing the issue of ambiguity (albeit with some cost in expressiveness), but soundness is not guaranteed. In Ace (and in the theory, assuming a suitable packaging system), using different type constructors at the same time cannot cause type safety issues because representational consistency is checked. Representational consistency permits compositional reasoning.
 
 Bidirectional type systems have been used for adding refinement checking to languages like ML and Twelf \cite{Lovas08abidirectional}. Refinement types can add stronger static logic, but do not have control over translation and have not been shown practical in a language as widely adopted as Python. We believe this is a fruitful avenue for future work. The Wyvern programming language uses bidirectional typechecking to control aspects of parsing in a manner similar to how we treat introductory forms, but Wyvern is also a language dialect and does not have an extensible type system \cite{Omar:2013:TWP:2489812.2489815}.
+
+TODO: mention this http://blog.codeclimate.com/blog/2014/05/06/gradual-type-checking-for-ruby/
 
 \section{Discussion}\label{discussion}
 This work aimed to show that one can add static typechecking to a language like Python as a library, without undue syntactic overhead. Moreover, the type system is not fixed, but flexibly extensible. We achieve this by using a bidrectional type system and an elaboration semantics targeting a user-defined target language, along with per-function base semantic annotations. We show that the core of this mechanism leads to a surprisingly clean theoretical formalism that combines work on type-level computation, typed compilation and bidirectional type systems to enable type system extensions over a fixed, but flexible, syntax.
