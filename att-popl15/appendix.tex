@@ -1,0 +1,409 @@
+\documentclass{llncs}
+\usepackage{amsmath}
+\usepackage{llncsdoc}
+\usepackage{amssymb} 
+%\usepackage{amsthm}
+\usepackage{ stmaryrd }
+\usepackage{mathpartir}
+%\usepackage{cite}
+%\renewcommand{\citepunct}{,\,} % IEEEtran wants to use ],\,[ for this but that looks dumb...
+
+\input{macros-atlam}
+
+\renewcommand{\ttdefault}{txtt}
+\usepackage{alltt}
+\usepackage{listings}
+\lstset{language=ML,
+showstringspaces=false,
+basicstyle=\ttfamily\footnotesize,
+morekeywords={newcase,extends}}
+
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{codelisting}{tp}{lop}
+\floatname{codelisting}{Listing}
+
+\usepackage{url}
+% url.sty was written by Donald Arseneau. It provides better support for
+% handling and breaking URLs. url.sty is already installed on most LaTeX
+% systems. The latest version can be obtained at:
+% http://www.ctan.org/tex-archive/macros/latex/contrib/misc/
+% Read the url.sty source comments for usage information. Basically,
+% \url{my_url_here}.
+
+\usepackage{placeins}
+
+%\lefthyphenmin=4
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\usepackage{todonotes}
+
+\begin{document}
+\mainmatter  % start of an individual contribution
+
+% first the title is needed
+\title{Active Typechecking and Translation: A Safe Language-Internal Extension Mechanism}
+\subtitle{Appendix}
+
+% a short form should be given in case it is too long for the running head
+\titlerunning{Lecture Notes in Computer Science: Authors' Instructions}
+
+% the name(s) of the author(s) follow(s) next
+%
+% NB: Chinese authors should write their first names(s) in front of
+% their surnames. This ensures that the names appear correctly in
+% the running heads and the author index.
+%
+\author{Cyrus Omar%
+\and Jonathan Aldrich}
+%
+\authorrunning{Lecture Notes in Computer Science: Authors' Instructions}
+% (feature abused for this document to repeat the title also on left hand pages)
+
+% the affiliations are given next; don't give your e-mail address
+% unless you accept that it will be published
+\institute{Carnegie Mellon University, Pittsburgh, PA 15213, USA\\
+\texttt{\{comar,aldrich\}@cs.cmu.edu}
+}
+
+%
+% NB: a more complex sample for affiliations and the mapping to the
+% corresponding authors can be found in the file "llncs.dem"
+% (search for the string "\mainmatter" where a contribution starts).
+% "llncs.dem" accompanies the document class "llncs.cls".
+%
+
+\toctitle{Lecture Notes in Computer Science}
+\tocauthor{Authors' Instructions}
+\maketitle
+
+\appendix
+\section{\atlam}
+\subsection{Helper Functions}\label{helper}
+The following helper functions are useful for working with lists of denotations:
+\[\begin{array}{rcl}
+\tvar{const} & := & (\tlam{a}{\klist{\kDen}}{\tlam{d}{\kDen}{\tfold{\tvar{a}}{\tvar{d}}{\_}{\_}{\_}{\terr}}})\\
+\tvar{pop} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\karrow{\klist{\kDen}}{\kDen}}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\tdencase{\tvar{d}}{x}{t}{
+	\tapp{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\tvar{b}}}{\terr}}}})\\
+\tvar{pop\_final} & := & (\tlam{a}{\klist{\kDen}}{\tlam{f}{\karrow{\kITerm}{\karrow{\kTypeBlur}{\kDen}}}{\\& & \quad\tfold{\tvar{a}}{\terr}{d}{b}{\_}{\\& & \quad \tfold{\tvar{b}}{\tdencase{\tvar{d}}{x}{t}{\tapp{\tapp{\tvar{f}}{\tvar{x}}}{\tvar{t}}}{\terr}}{\_}{\_}{\_}{\terr}}}})
+\end{array}\]
+\noindent
+The following helper function is useful for checking the equivalence of two types before producing a denotation. If the two types are not equivalent, an error is returned.
+\[\begin{array}{rcl}
+\tvar{check\_type} & := & (\tlam{t1}{\kTypeBlur}{\tlam{t2}{\kTypeBlur}{\tlam{d}{\kDen}{\tifeq{\tvar{t1}}{\tvar{t2}}{\kTypeBlur}{\tvar{d}}{\terr}}}})
+\end{array}\]
+
+\subsection{Definition of Arrow types}
+The definition of the $\fvar{Arrow}$ type family is built into \atlam~as follows:
+\[
+\begin{array}{rcl}
+\Sigma_0 & := & \fvarOfType{Arrow}{\kpair{\kTypeBlur}{\kTypeBlur}}{\kOpS{ap}{\kunit}}\\
+\Phi_0 & := & \fval{Arrow}{\theta_0}{i}{\titype{\darrow{\trepof{\tfst{\tvar{i}}}}{\trepof{\tsnd{\tvar{i}}}}}}\\
+\theta_0 & := & \tops{ap}{\kunit}{i}{a}{
+	\tapp{\tapp{\tvar{pop}}{\tvar{a}}}{\tlam{x1}{\kDen}{\tlam{t1}{\kTypeBlur}{\tlam{b}{\klist{\kDen}}{
+		\\ & & \quad \tapp{\tapp{\tvar{pop\_final}}{\tvar{b}}}{\tlam{x2}{\kDen}{\tlam{t2}{\kTypeBlur}{
+		\\ & & \quad \tfamcase{\tvar{t1}}{Arrow}{j}{
+		\\ & & \quad \quad \tapp{\tapp{\tapp{\tvar{check\_type}}{\tfst{\tvar{j}}}}{\tvar{t2}}}{\tden{\titerm{\iapp{\iup{\tvar{x1}}}{\iup{\tvar{x2}}}}}{\tsnd{\tvar{j}}}}
+		\\ & & \quad\hspace{-.33em}}{\terr}
+		}}}
+	}}}}
+	%\tapp{\tapp{\tvar{check\_type}}{\tvar{a}}}{c}
+}\\
+\Xi_0 & := & \fvar{Arrow}
+\end{array}
+\]
+
+\subsection{Deabstraction}\label{deabstraction}
+%\begin{figure}[t]
+\small
+$\fbox{\inferrule{}{\eraseX{\sigma}{\sigma'}}}$
+\begin{mathpar}
+\inferrule[deabs-int]{ }{
+	\eraseX{\dint}{\dint}
+}
+
+\inferrule[deabs-arrow]{
+	\eraseX{\sigma_1}{\sigma_1'}\\
+	\eraseX{\sigma_2}{\sigma_2'}
+}{
+	\eraseX{\darrow{\sigma_1}{\sigma_2}}{\darrow{\sigma_1'}{\sigma_2'}}
+}
+
+\inferrule[deabs-prod]{
+	\eraseX{\sigma_1}{\sigma_1'}\\
+	\eraseX{\sigma_2}{\sigma_2'}
+}{
+	\eraseX{\dpair{\sigma_1}{\sigma_2}}{\dpair{\sigma_1'}{\sigma_2'}}
+}
+
+\inferrule[deabs-rep]{
+	\fvalDf \in \fvalCtx\\
+	\tEvalX{[\tauidx/\tvar{i}]\tau}{\titype{\sigma}}\\
+	\ddbar{\Xi_0}{\fvalCtx}{\sigma}{\sigma'}\\
+	\eraseX{\sigma'}{\sigma''}
+}{
+	\eraseX{\trepof{\ttype{Fam}{\tauidx}}}{\sigma''}
+}
+\end{mathpar}
+$\fbox{\inferrule{}{\eraseX{\gamma}{\gamma'}}}$
+\begin{mathpar}
+\inferrule[deabs-var]{ }{
+	\eraseX{\evar{x}}{\evar{x}}
+}
+
+\inferrule[deabs-lam]{
+	\ddbar{\Xi_0}{\fvalCtx}{\sigma}{\sigma'}\\
+	\eraseX{\sigma'}{\sigma''}\\\\
+	\eraseX{\gamma}{\gamma'}
+}{
+	\eraseX{\ilam{x}{\sigma}{\gamma}}{\ilam{x}{\sigma''}{\gamma'}}
+}
+
+%\inferrule[deabs ap]{
+%	\eraseX{\gamma_1}{\gamma_1}\\
+%	\eraseX{\gamma_2}{\gamma_2}
+%}{
+%	\eraseX{\iapp{\gamma_1}{\gamma_2}}{\iapp{\gamma_1}{\gamma_2}}
+%}
+%
+\inferrule[deabs-fix]{
+	\ddbar{\Xi_0}{\fvalCtx}{\sigma}{\sigma'}\\
+	\eraseX{\sigma'}{\sigma''}\\\\
+	\eraseX{\gamma}{\gamma'}
+}{
+	\eraseX{\ifix{x}{\sigma}{\gamma}}{\ifix{x}{\sigma''}{\gamma'}}
+}
+\\
+\text{\color{gray} (omitted forms have trivially recursive rules)}
+\\
+\inferrule[deabs-cancel]{
+	\eraseX{\gamma}{\gamma'}
+}{
+	\eraseX{\iup{\titerm{\gamma}}}{\gamma'}
+}
+
+\inferrule[deabs-trans]{
+	\eraseX{\gamma}{\gamma'}
+}{
+	\eraseX{\tvalof{\titerm{\gamma}}{\ttype{Fam}{\tauidx}}}{\gamma'}
+}
+\end{mathpar}
+%\caption{\small Deabstraction rules}
+%\label{deabs}
+%\end{figure}
+
+\section{Examples}
+\subsection{G\"odel's T}\label{T}
+The implementation of G\"odel's T in \atlam~encodes the following static and dynamic semantics.
+\subsubsection{Statics}
+\newcommand{\lam}[3]{\lambda #1{:}#2.#3}
+\newcommand{\ap}[2]{#1~#2}
+\newcommand{\z}{\textsf{z}}
+\newcommand{\s}[1]{\textsf{s}(#1)}
+\newcommand{\natrec}[3]{\textsf{rec}(#1; #2; #3)}
+\newcommand{\pair}[2]{(#1, #2)}
+\newcommand{\fst}[1]{\textsf{fst}(#1)}
+\newcommand{\snd}[1]{\textsf{snd}(#1)}
+
+\newcommand{\tArrow}[2]{#1 \rightarrow #2}
+\newcommand{\nat}{\texttt{nat}}
+\renewcommand{\prod}[2]{#1 \times #2}
+
+%\newcommand{\eCtx}{\Gamma}
+\newcommand{\eCtxX}[3]{#1, #2 : #3}
+\newcommand{\jet}[3]{#1 \vdash #2 : #3}
+\newcommand{\jetX}[2]{\jet{\eCtx}{#1}{#2}}
+%\begin{figure}
+%\small
+\begin{mathpar}
+\small
+\inferrule[var]{ }{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{x}{\tau}
+}
+
+\inferrule[arrow-intro]{
+	\jet{\eCtxX{\eCtx}{x}{\tau}}{e}{\tau'}	
+}{
+	\jetX{\lam{x}{\tau}{e}}{\tArrow{\tau}{\tau'}}
+}
+
+\inferrule[arrow-elim]{
+	\jetX{e_1}{\tArrow{\tau}{\tau'}}\\
+	\jetX{e_2}{\tau}
+}{
+	\jetX{\ap{e_1}{e_2}}{\tau'}
+}
+
+\inferrule[nat-intro-z]{ }{
+	\jetX{\z}{\nat}
+}
+~~~~~~~~
+\inferrule[nat-intro-s]{
+	\jetX{e}{\nat}
+}{
+	\jetX{\s{e}}{\nat}
+}
+~~~~~~~~
+\inferrule[nat-elim]{
+	\jetX{e_1}{\nat}\\
+	\jetX{e_2}{\tau}\\
+	\jetX{e_3}{\tArrow{\nat}{\tArrow{\tau}{\tau}}}
+}{
+	\jetX{\natrec{e_1}{e_2}{e_3}}{\tau}
+}
+\end{mathpar}
+%\caption{Static semantics of G\"odel's T}
+%\end{figure}
+\subsubsection{Dynamics}
+\newcommand{\steps}[2]{#1 \mapsto #2}
+\newcommand{\val}[1]{#1~\texttt{val}}
+\begin{mathpar}
+\inferrule[lam-val]{ }{
+	\val{\lam{x}{\tau}{e}}
+}
+
+\inferrule[ap-step-l]{
+	\steps{e_1}{e_1'}
+}{
+	\steps{\ap{e_1}{e_2}}{\ap{e_1'}{e_2}}
+}
+
+\inferrule[ap-step-r]{
+	\steps{e_2}{e_2'}
+}{
+	\steps{\ap{\lam{x}{\tau}{e}}{e_2}}{\ap{\lam{x}{\tau}{e}}{e_2'}}
+}
+
+\inferrule[ap-subst]{
+	\val{e_2}
+}{
+	\steps{\ap{\lam{x}{\tau}{e}}{e_2}}{[e_2/x]e}
+}
+\\
+\inferrule[z-val]{ }{
+	\val{\z}
+}
+
+\inferrule[s-step]{
+	\steps{e}{e'}
+}{
+	\steps{\s{e}}{\s{e'}}
+}
+
+\inferrule[s-val]{
+	\val{e}
+}{
+	\val{\s{e}}
+}
+
+\inferrule[rec-step]{
+	\steps{e_1}{e_1'}
+}{
+	\steps{\natrec{e_1}{e_2}{e_3}}{\natrec{e_1'}{e_2}{e_3}}
+}
+
+\inferrule[rec-z]{ }{
+	\steps{\natrec{\z}{e_2}{e_3}}{e_2}
+}
+
+\inferrule[rec-s]{ }{
+	\steps{\natrec{\s{e}}{e_2}{e_3}}{\ap{\ap{e_3}{e}}{{\natrec{e}{e_2}{e_3}}}}
+}
+\end{mathpar}
+\subsection{$n$-tuples}
+The static and dynamic semantics of $n$-tuples (that is, $n$-ary products) shown below can be encoded in \atlam. Notice that this judgemental description of $n$-tuples relies on elipses frequently. This  correspond to folds over the list of types that an $n$-tuple is indexed by, and underscores the need for a more concrete functional language for extensions, rather than a simple declarative scheme which is only completely precise and decidable when complex side conditions, elipses and search schemes are not necessary.
+\newcommand{\pr}[2]{\textsf{pr}[#1](#2)}
+\subsubsection{Statics}
+\begin{mathpar}
+\inferrule[$n$-tuple-intro]{
+	\jetX{e_1}{\tau_1}\\
+	\cdots\\
+	\jetX{e_n}{\tau_n}
+}{
+	\jetX{(e_1, \ldots, e_n)}{(\tau_1, \ldots, \tau_n)}
+}~(n \geq 0)
+
+\inferrule[$n$-tuple-elim]{
+	\jetX{e}{(\tau_1, \ldots, \tau_n)}
+}{
+	\jetX{\pr{i}{e}}{\tau_i}
+}~(1 \leq i \leq n)
+\end{mathpar}
+\subsubsection{Dynamics}
+\begin{mathpar}
+\inferrule[$n$-tuple-step]{
+	\val{e_1}\\
+	\cdots\\
+	\val{e_{i-1}}\\
+	\steps{e_i}{e_i'}
+}{
+	\steps{(e_1,  \ldots, e_i, \ldots, e_n)}{(e_1, \ldots, e_i', \ldots, e_n)}
+}
+
+\inferrule[$n$-tuple-val]{
+	\val{e_1}\\
+	\cdots\\
+	\val{e_n}
+}{
+	\val{(e_1, \ldots, e_n)}
+}
+
+\inferrule[proj-$i$-step]{
+	\steps{e}{e'}
+}{
+	\steps{\pr{i}{e}}{\pr{i}{e'}}
+}~(1 \leq i \leq n)
+
+\inferrule[proj-$i$-of-$n$]{
+	\val{(e_1, \ldots, e_n)}
+}{
+	\steps{\pr{i}{(e_1, \ldots, e_n)}}{e_i}
+}~(1 \leq i \leq n)
+\end{mathpar}
+\subsubsection{Implementation in \atlam}
+$n$-tuples are implemented differently depending on $n$. For $n=0$ (that is, the unit value), the integer $0$ is used. For $n=1$, the tuple only contains 1 element so it is represented without any additional run-time adornment. For $n > 1$, nested pairs are used.
+\begin{flalign}
+ & \family{Ntuple}{\klist{\kTypeBlur}}{\\
+ & \quad \tops{new}{\kunit}{\_}{a}{
+ 	\tfold{\tvar{a}}{\tden{\titerm{0}}{\ttype{Ntuple}{\tnil{\kTypeBlur}}}}{d}{b}{r}{\\
+		& \quad\quad\quad \tdencase{\tvar{d}}{dx}{dt}{\tdencase{\tvar{r}}{rx}{rt}{\\
+			& \quad\quad\quad \tfamcase{\tvar{rt}}{Ntuple}{i}{\tfold{\tvar{b}}{\tden{\tvar{dx}}{\ttype{Ntuple}{\tcons{\tvar{dt}}{\tvar{i}}}}}{\_}{\_}{\_}{\\
+			& \quad\quad\quad\quad \tden{\titerm{(\iup{\tvar{dx}},\iup{\tvar{rx}})}}{\ttype{Ntuple}{\tcons{{\tvar{dt}}}{\tvar{i}}}}}
+			}{\terr}
+		}{\terr}}{\terr}
+	}
+ };\\
+ & \quad \tops{pr}{\dint}{i}{a}{
+ 	\tapp{\tvar{pop\_final}}{\tapp{\tvar{a}}{\tlam{x}{\kDen}{\tlam{nt}{\kTypeBlur}{\tfamcase{\tvar{nt}}{Ntuple}{nl}{\\
+ & \quad\quad \tfold{\tvar{nl}}{\terr}{t1}{j}{\_}{\\
+ & \quad\quad \tfold{\tvar{j}}{\tifeq{\tvar{i}}{1}{\dint}{\tden{\tvar{x}}{\tvar{t1}}}{\terr}}{\_}{\_}{\_}{\\
+ & \quad\quad\quad (\tlam{p}{\kpair{\kDen}{\dint}}{\tifeq{\tsnd{\tvar{p}}}{\tvar{i}}{\dint}{\tfst{\tvar{p}}}{\terr}})\\
+ & \quad\quad\quad (\tapp{\tvar{foldl}}{\tapp{\tvar{nl}}{\tapp{(\tden{\tvar{x}}{\tvar{nt}},0)}{
+ 	\tlam{r}{\kpair{\kDen}{\dint}}{\tlam{t}{\kTypeBlur}{\tlam{ts}{\klist{\kTypeBlur}}{\\
+	& \quad\quad\quad\quad \tifeq{\tvar{i}}{\tsnd{\tvar{r}}}{\dint}{\tvar{r}}{\tdencase{\tfst{\tvar{r}}}{rx}{\_}{\\
+	& \quad\quad\quad\quad\quad \tifeq{\tvar{i}}{\tsnd{\tvar{r}}+1}{\dint}{\\
+	& \quad\quad\quad\quad\quad\quad \tifeq{\tvar{ts}}{\tnil{\kTypeBlur}}{\klist{\kTypeBlur}}{(\tden{\tvar{rx}}{\tvar{t}},\tvar{i})\\
+	& \quad\quad\quad\quad\quad\quad}{(\tden{\titerm{\ifst{\iup{\tvar{rx}}}}}{\tvar{t}},\tvar{i})}\\	
+	& \quad\quad\quad\quad\quad}{(\tden{\titerm{\isnd{\iup{\tvar{rx}}}}}{\tvar{t}},\tsnd{\tvar{r}}+1)}}{\terr}}}}}
+ }}})}
+ }}{\terr}}}}}
+ }\\ & 
+%& \quad \tops{pr}a}{b}{c}{d}
+ }{d}{i}{
+ 	\\& \quad \quad \tfold{\tvar{i}}{\titype{\dint}}{s}{j}{r}{
+ 		\tfold{\tvar{j}}{\titype{\trepof{\tvar{s}}}}{\_}{\_}{\_}{
+ 		\titype{\dpair{\trepof{\tvar{s}}}{\dup{\tvar{r}}}}
+ 		}
+ 	}
+ }
+\end{flalign}
+\noindent
+This definition uses a left fold function, $\tvar{foldl}$, defined in terms of the right fold operator built into the type-level language in the usual way, as follows:
+\[
+\begin{array}{rcl}
+\tvar{foldl} & := & \tlam{l}{\klist{\kTypeBlur}}{\tlam{b}{\kpair{\kDen}{\dint}}{\tlam{f}{\karrow{(\kpair{\kDen}{\dint})}{\karrow{\kTypeBlur}{\karrow{\klist{\kTypeBlur}}{(\kpair{\kDen}{\dint})}}}}{\\
+& & \quad \tapp{\tfold{\tvar{l}}{\tlam{x}{\kpair{\kDen}{\dint}}{\tvar{x}}}{t}{ts}{r}{\tlam{x}{\kpair{\kDen}{\dint}}{\tapp{\tvar{r}}{(\tapp{\tvar{f}}{\tapp{\tvar{x}}{\tapp{\tvar{t}}{\tvar{ts}}}})}}}}}}{\tvar{b}}}
+\end{array}
+\]
+
+\end{document}
