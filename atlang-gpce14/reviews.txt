@@ -1,0 +1,197 @@
+----------------------- REVIEW 1 ---------------------
+PAPER: 44
+TITLE: Active Type Constructors
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: 1 (weak accept)
+REVIEWER'S CONFIDENCE: 3 (medium)
+
+----------- REVIEW -----------
+Summary:
+
+This paper presents active constructors: an approach to achieve
+internal extensibility of languages. In particular the authors show
+that using various introspection features of Python it is possible to
+implement a type system for Python without any additional
+infrastructure. Furthermore the authors study the essence of the
+mechanism using a minimal calculus.
+
+Evaluation:
+
+Pros:
+
++ Growing a type system for Python without language extensions
+is nice.
+
++ Implementation and formalization of active type constructors.
+
+Cons:
+
+- Going through S2 was a bit painful.
+
+- I'd like to see a better comparison with other mechanisms sharing
+similar goals. In particular Typed Racket.
+
+This seems to interesting work. From a practical point of view, the
+fact that the authors have essentially shown that we can develop a
+type system for Python without extending Python itself seems quite
+interesting. However, not being an expert in the area, it remains
+unclear to me what are the essential technical differences to other
+approaches like Typed Racket for example. My understanding is that
+Typed Racket is itself developed as a library, without having built-in
+support in Racket for adding a type system. There's a paragraph in
+related work comparing this work to Typed Racket, but this paragraph
+seems to be about a minor technical difference (replacing bags by
+lists to avoid ambiguity).
+
+Another criticism that I have is with respect to S2. I found this
+section long and relatively hard to follow. There are alot of python
+snippets (some with @lang code), and there is quite a bit of text;
+but I got a bit lost on all of that. I think part of the problem is
+that this section goes into the details quite fast. Perhaps a more
+high-level overview first would be better. I did have a better
+understanding of S3 (which provides a higher-level, more abstract
+presentation). I wonder if switching the order of these two sections
+would be helpful somehow.
+
+Typos & Minor Comments:
+
+* Listing 1, "An @lang compilation script" --> "A @lang compilation unit"
+
+* page 4, "In this examples" --> "In these examples"
+
+* Figure 3, Rules ATT-SYN-IDX-LAM and ATT-SYN-IDX-LIT seem a bit ad-hoc.
+They require matching on subterms.
+
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 44
+TITLE: Active Type Constructors
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: -2 (reject)
+REVIEWER'S CONFIDENCE: 3 (medium)
+
+----------- REVIEW -----------
+This paper describes a mechanism for implementing a static type system as a
+library in Python. It presents a statically typed language, @lang, and
+describes its core calculus. The system works by associating each term with an
+"active type constructor", defined in a library, which are type constructors
+plus some static functions which give semantics, expression forms, etc.
+
+The paper gives a few examples of @lang programs, with records and functions
+then goes on to give a type theoretic formulation of the underlying calculus.
+
+There is clear motivation for this work: the claim is that programmers are more
+likely to adopt extensions to existing languages than to use an entirely new
+dialect, with several examples given of Java dialects in particular with
+interesting type abstractions which are nevertheless hard to adopt. So the idea
+is certainly promising - add new type abstractions to Python, which can be used
+in various combinations and easily interact with existing Python code.
+
+Unfortunately, though, I found the technical content in the rest of the paper
+hard to get into to, and for me it didn't really do enough to justify the
+claims made in the introduction.  I think the technical presentation could be
+far better organised. In particular, it seems much of the text could be
+replaced with example program listings. This would give a much better intuition
+for what @lang can do, and what the workflow is for the Python programmer
+working with new type abstractions. Perhaps a diagram of the overall workflow
+would also help - showing what the input and output of each stage is. If we see
+an @lang file as a compilation script, what is its output?
+
+There is a lot of talk of "active type constructors" in the first few pages,
+but no precise definition of what that actually means, which would be helpful.
+It would be good to have a brief description of what the typed language
+fragment provider needs to do to implement a simple example (e.g. the PROD type
+mentioned at the end of page 1).
+
+The closest to a definition I found early on was "user-defined type
+constructors equipped with static functions", but what are these static
+functions for? I didn't find the paragraph after this enlightening at all.
+
+Maybe the paper is trying to do too much with the core calculus described in
+section 3. I would have preferred to see more on @lang itself, particularly
+examples of other type abstractions you might find in a statically typed
+language (e.g. can you do algebraic data types?) You mention a case study of
+OpenCL - this would be interesting to see! It would also make it far easier to
+evaluate the type system than the minimal examples shown in section 2. You
+also remark on the ability to compute types, which makes me wonder to what extent
+you could implement a dependent type system (this sort of thing can be done in
+Haskell and Scala for example).
+
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 44
+TITLE: Active Type Constructors
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: -1 (weak reject)
+REVIEWER'S CONFIDENCE: 3 (medium)
+
+----------- REVIEW -----------
+= Summary =
+
+The authors propose to define both the static and dynamic semantics of a
+programming language piece-wise, by defining "objects" (sets of methods) in a
+two-stage programming language whose methods perform typechecking and desugaring
+to the second-stage language of one particular fragment of the source language,
+and delegate the typechekcing and desugaring of the other fragments to other
+objects. For instance, the object for the "product" fragment of some source
+language featuring products would delegate the typechecking of each member of a
+pair to whatever objects are associated to them, and would desugar a pair to,
+say, its church encoding.
+
+This allows for importing fragments of a language, type system included, as
+libraries in the first stage of the program.
+
+The authors formalize an idealized version of such a two stage language and
+prove that type checking always synthetizes a type provided some well-formedness
+condition. In a first part of the paper, the authors also present an
+implementation of these ideas as a language defined as a set of python libraries
+(the first stage of the two-stage computation is then some python program that
+uses python's reflection facilities). The authors argue that overriding the
+semantics of a language that way without changing its syntax is key to its
+adoption.
+
+= Main Remarks =
+
+The idea of being able to import parts of a language, type system included is
+interesting and the formalization of such a system is very welcome. The paper
+however suffers from the following shortcomings:
+
+  - The first part of the paper (python implementation) takes too much room and
+    doesn't bring much: it details, construct by construct, how python
+    reflection was used to override python's semantics in order to define
+    another language inside python. There is no need for each construct to be
+    detailed for the reader to get the idea. In contrast, the second part is
+    very dense and lacks explanations (see below).
+
+  - Essential notations aren't introduced: the authors briefly mention that
+    their notations are reminiscent of Harper's book. Unfortunately this book's
+    notations aren't widely used in the literature. Theorem 1 (arguably the
+    pinnacle of the paper) features two notations that aren't introduced at all:
+    "\Gamma ctx_0" and "\sigma ty_0".
+
+  - Essential notions are not or not enough explained: this holds for the
+    peculiar abstract syntax which contains static and dynamic parts. (Why
+    proj[left](e) instead of proj_left(e) for instance? What is a trivial
+    index? This becomes clearer when the two-stage language is introduced but
+    remains rather obscure until then.) This also holds for the normalization
+    semantics which aren't commented at all. This also holds for the notion
+    of "well-formed context" which is central to Theorem 1.
+
+  - The authors don't compare their work to compile-time java annotation which
+    provide very similar features: extended type system, source-code
+    translation. Yet they cite two "failed" (adoption wise) Java extension
+    projects as the motivation for their work. The authors also don't mention
+    Bracha's pluggable type systems which are very handwavy compared to this
+    work but very much in the same spirit.
+
+= Minor Remarks =
+
+- The name "type constructor" means something else in dependant type theory
+  which is unfortunate. Also it is quite misleading on its own since it is as
+  much about types as about dynamic semantics.
+
+- Page 5, "typehecking" -> "typechecking"
+
