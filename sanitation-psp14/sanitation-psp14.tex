@@ -1,5 +1,5 @@
 
-\documentclass[10pt,preprint]{sigplanconf}
+\documentclass{acm_proc_article-sp}
 \newcommand{\lamAce}{\lambda_{\text{Ace}}}
 % The following \documentclass options may be useful:
 %
@@ -12,7 +12,12 @@
 \usepackage{mathpartir}
 \usepackage{amsmath}
 \usepackage{amssymb} 
+
+% Hack. Something's wrong with PLAS paper when using the ACM Proc docclass
+\let\proof\relax
+\let\endproof\relax
 \usepackage{amsthm}
+
 \usepackage{ stmaryrd }
 \usepackage{verbatimbox}
 \input{../att-icfp14/macros-atlam}
@@ -267,11 +272,13 @@
 \newcommand{\lambdap}{\lambda_P}
 
 % Source language terms.
-\newcommand{\sisubst}[3]{{\sf rreplace}[#1](#2,#3)}
+\newcommand{\sisubst}[3]{{\sf rreplace}[#1](#2,#3)} \newcommand{\rreplace}[3]{{\sf rreplace}[#1](#2,#3)} % lots of legacy naming around these parts...
+
 \newcommand{\rssreplace}[3]{\sisubst{#1}{#2}{#2}} % TODO-nrf fix this.
 
 \newcommand{\coerce}[2]{ {\sf rcoerce}[#1](#2)}
-\newcommand{\sistr}[1]{{\sf rstr}[#1]}
+\newcommand{\sistr}[1]{{\sf rstr}[#1]}   \newcommand{\rstr}[1]{{\sf rstr}[#1]} % Lots of legacy naming around these parts...
+
 \newcommand{\strin}[1]{\sistr{#1}}
 \newcommand{\rsconcat}[2]{{\sf rconcat}(#1,#2)}
 
@@ -279,7 +286,8 @@
 \newcommand{\stringin}[1]{{\sf stringin}[#1]}
 
 % target language terms.
-\newcommand{\tsubst}[3]{{\sf replace}(#1,#2,#3)} % TODO-nrf rename the commands.
+\newcommand{\tsubst}[3]{{\sf replace}(#1,#2,#3)} \newcommand{\metareplace}[3]{{\sf replace}(#1,#2,#3)} % TODO-nrf rename the commands. Lots of legacy naming around these parts...
+
 \newcommand{\tcheck}[2]{{\sf check}(#1, #2)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
 \newcommand{\tconcat}[2]{{\sf concat}(#1,#2)}
@@ -319,9 +327,9 @@
 
 \begin{document}
 
-\conferenceinfo{-}{-} 
-\copyrightyear{-} 
-\copyrightdata{[to be supplied]} 
+%dep_docclass\conferenceinfo{-}{-} 
+%dep_docclass\copyrightyear{-} 
+%dep_docclass\copyrightdata{[to be supplied]} 
 
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
 %\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
@@ -331,10 +339,10 @@
 \title{A Type System for String Sanitation\\Implemented Inside a Python}
 
 %\authorinfo{~}{~}{~}
-\authorinfo{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
-           {School of Computer Science\\
-            Carnegie Mellon University}
-           {\{nathanfu, comar, aldrich\}@cs.cmu.edu}
+%dep_docclass\authorinfo{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
+%dep_docclass           {School of Computer Science\\
+%dep_docclass            Carnegie Mellon University}
+%dep_docclass           {\{nathanfu, comar, aldrich\}@cs.cmu.edu}
 
 \maketitle
 \begin{abstract}
@@ -518,6 +526,8 @@ $\str$ \alt $\regex$
 \label{fig:lcsSyntax}
 \end{figure}
 
+there's extra space here because of the next page...
+
 %The $\lcs$ language gives static semantics for common regular expression library
 %functions. In this treatment, we include concatenation and filtering.
 %The ${\tt filter}$ function removes all instances of a regular expression in a string,
@@ -586,6 +596,56 @@ $\str$ \alt $\regex$
 %
 
 
+% I can't achieve the correct latout here. We should have something like:
+%       Lam_S Synax         Lam_P Syntax
+%       Lam_S Sematics      LAm_P Semantics
+%                Translation rules
+% Or, alternatively, we can flip reflect things so that the entire page
+% reads top-down (Lam_S syntax Lam_S smantics horizontally aligned w/ one
+% another).
+
+% Unfortunately, I can't get that to work. So, we're settling for something
+% slightly ugly, where the fitures appear in the incorrect order and the 
+% translation rules are on top.
+
+% The translations rules *just won't* go to the bottom of the page, so 
+% instead I am placing them at the top. Since the figures are out of order,
+% it's even more important that we get the number gith. therefore, the counter
+% is modified before and after this figure.
+\addtocounter{figure}{4}
+\begin{figure*}
+
+$\fbox{\inferrule{}{\trden{S} = P}}$
+\begin{mathpar}
+
+\inferrule[Tr-string]
+{ \ }
+{\trden{\strin{s}} = \tstr{s}}
+
+\inferrule[Tr-Concat]
+{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2}
+{\trden{\rsconcat{S_1}{S_2}} = \tconcat{P_1}{P_2}}
+
+\inferrule[Tr-Subst]
+{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2 }
+{\trden{ \sisubst{r}{S_1}{S_2} } = \tsubst{\rx{r}}{P_1}{P_2} }
+
+\inferrule[Tr-Coerce-Ok]
+{ S : \strin{r} \\ \lang{r'} \subseteq \lang{r}}
+{\trden{ \coerce{r'}{S} } = \tstr{s}}
+
+\inferrule[Tr-Coerce-NotOk]
+{\trden{S} = P \\ S : \strin{r} \\ \lang{r'} \not \subseteq \lang{r}}
+{\trden{\coerce{r'}{S}} = \tcheck{\rx{r'}}{P}}
+
+\end{mathpar}
+\caption{Translation from source terms (S) to target terms (P).
+The translation is type-directed in the Tr-Coerce cases.}
+\end{figure*}
+\addtocounter{figure}{-5}
+
+
+
 %
 % Begin typing/translation relation
 %
@@ -595,8 +655,6 @@ $\str$ \alt $\regex$
 \newcommand{\tctx}{\Theta} % Context for internal typing
 
 \newcommand{\ereduces}{\Downarrow}
-
-\afterpage{
 
 \begin{figure}[t]
 \small
@@ -686,7 +744,6 @@ $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 \inferrule[P-T-Check]
 {\tctx \vdash P_1 : \regex \\ \tctx \vdash P_2 : \str \\ }
 {\tctx \vdash \tcheck{P_1}{P_2} : \str}
-
 \end{mathpar}
 \caption{Typing rules for our fragment of $\lambdap$.
 The typing context $\tctx$ is standard.}
@@ -728,46 +785,12 @@ Error propagation rules are omitted.}
 \label{fig:ieval}
 \end{figure}
 
-\clearpage
-} % End \afterpage
 
 \newpage
-
-%
-% Begin translation
-%
-
-\begin{figure}[t]
-
-$\fbox{\inferrule{}{\trden{S} = P}}$
-\begin{mathpar}
-
-\inferrule[Tr-string]
-{ \ }
-{\trden{\strin{s}} = \tstr{s}}
-
-\inferrule[Tr-Concat]
-{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2}
-{\trden{\rsconcat{S_1}{S_2}} = \tconcat{P_1}{P_2}}
-
-\inferrule[Tr-Subst]
-{ \trden{S_1} = P_1 \\ \trden{S_2} = P_2 }
-{\trden{ \sisubst{r}{S_1}{S_2} } = \tsubst{\rx{r}}{P_1}{P_2} }
-
-\inferrule[Tr-Coerce-Ok]
-{ S : \strin{r} \\ \lang{r'} \subseteq \lang{r}}
-{\trden{ \coerce{r'}{S} } = \tstr{s}}
-
-\inferrule[Tr-Coerce-NotOk]
-{\trden{S} = P \\ S : \strin{r} \\ \lang{r'} \not \subseteq \lang{r}}
-{\trden{\coerce{r'}{S}} = \tcheck{\rx{r'}}{P}}
-
-\end{mathpar}
-\caption{Translation from source terms (S) to target terms (P).
-The translation is type-directed in the Tr-Coerce cases.}
-\end{figure}
-
-
+\ 
+\newpage
+\ 
+\newpage
 Note that we never insert an internal check where the type of the string implies
 that a check must succeed. Furthermore, expensive calculations (such as language
 inclusion or ${\tt dsubst}$, all occur at compile time.
@@ -853,15 +876,46 @@ If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, 
 We now prove safety for the string fragment of the source and target languages.
 
 \begin{thm}
-  Let $S$ be a term in the source language. If $\sctx \vdash S : \psi$ 
-  then $S \sreduces S'$ and $S' : \psi$.
+  Let $S$ be a term in the source language. If $\sctx \vdash S : \stringin{r}$ 
+  then $S \sreduces \rstr{s}$ and $\rstr{s} : \stringin{r}$, or else $S \sreduces \err$.
 \end{thm}
 \begin{proof}
-  TODO-nrf
+By induction on the derivation of $\sctx \vdash S : \psi$. The interesting case
+is S-T-Replace, which requires Lemma C.
 
-By a straightforward induction on the derivation of $\sctx \vdash S : \psi$.
-Note that preservation depends upon the substitution correspondence theorem
-for the T-T-Subst case and the closure lemmas for the T-T-Concat case.
+\begin{description}
+\item[S-T-Stringin-I:]
+If $S = \rsconcat{S_1}{S_2} : \stringin{r}$ then
+$S \treduces S$ by S-E-RStr, and $\sctx \vdash S : \psi$ by assumption.
+
+\item[S-T-Concat:] 
+Suppose $S = \rsconcat{S_1}{S_2} : \stringin{r_1 r_2}$.
+By inversion, $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_1 : \stringin{r_2}$.
+It follows by induction that either $S_1 \treduces \err$, $S_2 \treduces \err$, 
+or $S_1 \treduces \rstr{s_1}$ and $S_2 \treduces \rstr{s_2}$ for some $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
+In the latter case $S \reduces \rstr{s_1s_2}$ by S-E-Concat and $\sctx \vdash \rstr{s_1s_2} : \tstr{r_1r_2}$ by Lemma B.
+In the former cases, $S \sreduces \err$.
+
+\item[S-T-Replace]:
+Suppose $S = \rreplace{r}{S_1}{S_2}$ and $\sctx \vdash S : \stringin{r'}$.
+By inversion $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_2 : \stringin{r_2}$ such that $\lsubst{r}{r_1}{r_2} = r'$.
+By induction, $S_1 \sreduces \err$, $S_2 \sreduces \err$ 
+or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ such that 
+In the latter case, we know $\metareplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$ by Lemma C;
+therefore by S-E-Replace, $S \treduces \rstr{s}$ such that  $s \in \lang{\lsubst{r}{r_1}{r_2}} = \lang{r'}$.
+So by S-T-String-I, $\rstr{s} : \stringin{r'}$.
+In the former cases, $S \treduces \err$.
+
+\item[S-T-Coerce]:
+Suppose $S = \coerce{r}{S_1}$ and $S : \stringin{r}$.
+By inversion, $\sctx \vdash S_1 : \stringin{r'}$.
+By induction, $S_1 \treduces \err$ or $S_1 \treduces \rstr{s}$.
+In the former case $S \treduces \err$ by propagation rules.
+In the latter case we have by Lemma B(2) that $s \in \lang{r}$ or else
+$s \not \in \lang{r}$.
+If $s \in \lang{r}$ then $\rstr{s} : \stringin{r}$.
+If $s \not \in \lang{r}$ then $S \treduces \err$. 
+\end{description}
 \end{proof}
 
 \begin{thm}
@@ -869,11 +923,8 @@ for the T-T-Subst case and the closure lemmas for the T-T-Concat case.
   then $P \sreduces P'$ and $P' : \theta$.
 \end{thm}
 \begin{proof}
-TODO-nrf
-
-  By a straightforward induction on the derivation of $\tctx \vdash P : \theta$.
-Note that the well-formedness of regular expressions indexing ${\tt rx}$ types
-depends upon the closure lemmas.
+The proof proceeds by induction on the typing relation and is trivial give
+and inversion lemma for the typing relation. \texbf{We can write up this proof if we end up having enough space...}
 \end{proof}
 
 \subsection{Translation Correctness}
