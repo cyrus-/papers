@@ -277,10 +277,11 @@
 \newcommand{\rssreplace}[3]{\sisubst{#1}{#2}{#2}} % TODO-nrf fix this.
 
 \newcommand{\coerce}[2]{ {\sf rcoerce}[#1](#2)}
+\newcommand{\rcoerce}[2]{{\sf rcoerce}[#1](#2)}
 \newcommand{\sistr}[1]{{\sf rstr}[#1]}   \newcommand{\rstr}[1]{{\sf rstr}[#1]} % Lots of legacy naming around these parts...
 
 \newcommand{\strin}[1]{\sistr{#1}}
-\newcommand{\rsconcat}[2]{{\sf rconcat}(#1,#2)}
+\newcommand{\rsconcat}[2]{{\sf rconcat}(#1,#2)} \newcommand{\rconcat}[2]{{\sf rconcat}(#1,#2)} % lots of legact naming around these parts..
 
 % Source language types.
 \newcommand{\stringin}[1]{{\sf stringin}[#1]}
@@ -290,7 +291,9 @@
 
 \newcommand{\tcheck}[2]{{\sf check}(#1, #2)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
-\newcommand{\tconcat}[2]{{\sf concat}(#1,#2)}
+\newcommand{\preplace}[3]{{\sf preplace}(#1,#2,#3)}
+\newcommand{\tconcat}[2]{{\sf concat}(#1,#2)} \newcommand{\concat}[2]{{\sf concat}(#1,#2)} % lots of legacy naming around these parts...
+
 \newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
 \newcommand{\rx}[1]{ {\sf rx}[#1] }
 
@@ -300,7 +303,9 @@
 
 % Meta-theoretic functions
 \newcommand{\dosubst}[3]{{\tt replace}(#1,#2,#3)}
-\newcommand{\lsubst}[3]{{\tt lreplace}(#1,#2,#3)}
+\newcommand{\lsubst}[3]{{\tt lsubst}(#1,#2,#3)} % This used to render lreplace(...) so there're probably mistkes wherever this command was used now.
+\newcommand{\lreplace}[3]{{\tt lreplace}(#1, #2, #3)}
+
 
 % Judgements
 \newcommand{\err}{\ {\sf err}}
@@ -478,14 +483,27 @@ These constraints are captured by the internal term valuations.
 The internal language does not necessarily need a regex filter function because
 any dynamic conversion is easily definable using a combination of filters and safe
 casting.
-%
-% Begin Grammar 
-%
 
-% Remove the < > from grammar productions.
+Note that we never insert an internal check where the type of the string implies
+that a check must succeed. Furthermore, expensive calculations (such as language
+inclusion or ${\tt dsubst}$, all occur at compile time.
+Since sanitation problems are generally expressible with smalle, simple expressions,
+we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
+support this assertion.
+
+Due to Ei-Replace, all of our meta-theory depends upon a correct implementation
+of both regular expression replacement and inclusion checking in the internal language.
+We believe this assumption is okay for two reasons. First, our system is still
+superior to the status quo, which relies upon the correctness of these libraries
+\emph{in addition to} correct application logic. Second, regular expression libraries are
+generally well-tested and there exist verified implementations.
+
+
+% Begin Grammar 
+% Removes the < > from grammar productions.
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
-\begin{figure}
+\begin{figure}[h]
 \begin{grammar}
 <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
@@ -493,7 +511,7 @@ casting.
 \end{grammar}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \begin{grammar}
 
 <$\psi$> ::=	...			\hfill	source types					\alt
@@ -508,7 +526,7 @@ $\stringin{r}$
 \end{grammar}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \begin{grammar}
 
 <$\theta$> ::= ... \hfill target types \alt
@@ -739,7 +757,7 @@ $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 
 \inferrule[P-T-Replace]
 {\tctx \vdash P_1 : \regex \\ \tctx \vdash P_2 : \str \\ \tctx \vdash P_3 : \str }
-{\tctx \vdash \tsubst{P_1}{P_2}{P_3} : \str}
+{\tctx \vdash \preplace{P_1}{P_2}{P_3} : \str}
 
 \inferrule[P-T-Check]
 {\tctx \vdash P_1 : \regex \\ \tctx \vdash P_2 : \str \\ }
@@ -770,7 +788,7 @@ $\fbox{\inferrule{}{P \err}}$
 
 \inferrule[P-E-Replace]
 {P_1 \treduces \rx{r} \\ P_2 \treduces \tstr{s_2} \\ P_3 \treduces \tstr{s_3} \\ \dosubst{r}{s_2}{s_3} = s} 
-{\tsubst{P_1}{P_2}{P_3} \treduces \tstr{s}}
+{\preplace{P_1}{P_2}{P_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
 {P_1 \treduces \rx{r} \\ P_2 \treduces \strin{s} \\ s \in \lang{r}}
@@ -791,91 +809,98 @@ Error propagation rules are omitted.}
 \newpage
 \ 
 \newpage
-Note that we never insert an internal check where the type of the string implies
-that a check must succeed. Furthermore, expensive calculations (such as language
-inclusion or ${\tt dsubst}$, all occur at compile time.
-Since sanitation problems are generally expressible with smalle, simple expressions,
-we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
-support this assertion.
-
-Due to Ei-Replace, all of our meta-theory depends upon a correct implementation
-of both regular expression replacement and inclusion checking in the internal language.
-We believe this assumption is okay for two reasons. First, our system is still
-superior to the status quo, which relies upon the correctness of these libraries
-\emph{in addition to} correct application logic. Second, regular expression libraries are
-generally well-tested and there exist verified implementations.
-
 
 \subsection{Properties of Regular Languages}
 
-The soundness theorems in this section depend upon some well-known properties
-of regular expressions. Throughout this section, suppose regular expression
-$r$ and strings $s$ are defined over a single, fixed, finite alphabet $\Sigma$.
+Our type safety proofs for languages S and P and our translation correctness
+result all depend on some properties of regular languages. The crucial property
+is a relationship between string substitution -- which is available in any regular
+expression library -- and regular language substitution, which is a corresponding operation
+on languages instead of strings \ref{thm:substcorrespondence}.
+The decidability of language substitution is what enables static analysis of 
+sanitation algorithms implemented in terms of string replacement
 
-\begin{thm} \label{thm:closure}
-The regular expressions are closed under complements and concatenation.
-\end{thm}
-\begin{proof}
-See \cite{cinderella}.
-\end{proof}
+Throughout this section, we fix an alphabet $\Sigma$ over which strings $s$ and
+regular expressions $r$ are defined. throughout the paper, $\lang{r}$ refers to the
+language recognized by the expression $r$. This distinction between the expression
+and its language -- typically elided in the literature -- makes our definition and
+proofs about systems S and P more readable.
 
-
-\begin{defn}[$\tt{subst}$]
-  The function $\subst{r}{s_1}{s_2}$ produces a string in which all substrings
-  of $s_1$ matching $r$ are replaced with $s_2$.
-\end{defn}
+\begin{lem}{Properties of Regular Languages and Expressions.} \label{thm:regexprops}
+The following are well-known properties of regular expressions which are necessary for our proofs:
+\begin{description}
+\item[(1):] If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$
+\item[(2):] For all strings $s$ and expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+\end{description}
+\item[(3):] Regular languages are closed under complements and concatenation.
+\item[(4):] The regular expressions correspond bijectively to the regular languages.
+\end{lem}
 
 \begin{defn}[$\tt{lsubst}$]
-  The function $\lsubst{r}{r_1}{r_2}$ produces a regular expression in which
-  and sublanguage $r_1'$ of $r_1$ satisfying the condition $\lang{r_1'} \subseteq{r}$
-  is replaced with $r_2$.
+The function $\lsubst{r}{s_1}{s_2}$ produces a string in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
 \end{defn}
 
-We now present some properties about substitution.
+\begin{defn}[$\tt{lreplace}$]
+The function $\lreplace{r}{r_1}{r_2}$ produces a regular expression in which any sublanguage $\lang{r_1'}$ of $\lang{r_1}$ satisfying the condition $\lang{r_1'} \subseteq{\lang{r}}$ is replaced with $\lang{r_2}$.
+\end{defn}
 
-\begin{thm}
-  String substitution ($\subst{r}{s_1}{s_2}$) is decidable and defined for all expressions
-  and strings over similar alpha.
-\end{thm}
-
-\begin{thm}
-  Language substittion $(\lsubst{r}{r_1}{r_2})$ is decidable and defined for
-  all expressions.
-\end{thm}
-
-The following relationship between string substituion and language substitution is at
-the heart of our main correctness reesult.
-
-\begin{thm}
-  For all $r$, if $s_1 \in r_1$ and $s_2 \in r_2$ then 
-  $\subst{r}{s_1}{s_2} \subseteq \lsubst{r}{r_1}{r_2}$.
-\end{thm}
-
-\begin{lem}{Coercion Lemma.} \label{thm:coercionalemma}
-Suppose that $R$ and $L$ are regular expressions, and that $s \in R$ is a finite string.  Let $s' := coerce(R,L,s)$ with all maximal substrings recognized by $L$ replaced with $\epsilon$.  Then $s'$ is recognized by $(R \backslash L) + \emptyset$ and the construction of $R \backslash L$ is decidable.
+\begin{lem}{Closure and Totality of Replacement.} \label{thm:total}
+If $r, r_1$ and $r_2$ are regular expressions, then $\lreplace{r}{r_1}{r_2}$ is also a regular expression.
 \end{lem}
 \begin{proof}
-Let $F,G$ be FAs corresponding to $R$ and $L$, and let $G'$ be $G$ with its final states inverted (so that $G'$ is the complement of $L$).  Define an FA $H$ as a DFA corresponding to the NFA found by combining $F$ and $G'$ such that $H$ accepts only if $R$ and $L'$ accept or if $s$ is empty (this construction may result in an exponential blowup in state size.)  Clearly, $H$ corresponds to $R \backslash L + \emptyset$.  Thus, the construction of $R \backslash L + \emptyset$ is decidable.
-
-If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, or $s' \in R$ and $s' \not \in L$. If $R$ and $L$ are not subsets of one another, then it may be the case that $L$ recognizes part of $R$.  Consider $L$ as the union of two languages, one which is a subset of $R$ and one which is disjoint.  The subset language is considered above and the disjoint language is inconsequential.
+TODO-nrf 
 \end{proof}
 
+\begin{lem}{Substitution Correspondence.} \label{thm:substcorrespondence}
+If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lreplace{r}{r_1}{r_2}$.
+\end{lem}
+\begin{proof}
+TODO-nrf 
+\end{proof}
+
+
+% NRF The coercion lemma is no longer necessary, because it is a property of
+% "strip"-style sanitation rather than the more general case of replacement 
+% treated in this paper. However, we should mention this difference between my
+% undergraduate thesis and this paper in the related work section if we are
+% going tin clude a discussio of unpublished or quasi-published (e.g. src)
+% results.
+%\begin{lem}{Coercion Lemma.} \label{thm:coercionalemma}
+%Suppose that $R$ and $L$ are regular expressions, and that $s \in R$ is a finite string.  
+%Let $s' = \coerce(R,L,s)$ with all maximal substrings recognized by $L$ replaced with $\epsilon$.  Then $s'$ is recognized by $(R \backslash L) + \emptyset$ and the construction of $R \backslash L$ is decidable.
+%\end{lem}
+%\begin{proof}
+%Let $F,G$ be FAs corresponding to $R$ and $L$, and let $G'$ be $G$ with its final states inverted (so that $G'$ is the complement of $L$).  Define an FA $H$ as a DFA corresponding to the NFA found by combining $F$ and $G'$ such that $H$ accepts only if $R$ and $L'$ accept or if $s$ is empty (this construction may result in an exponential blowup in state size.)  Clearly, $H$ corresponds to $R \backslash L + \emptyset$.  Thus, the construction of $R \backslash L + \emptyset$ is decidable.
+%
+%If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, or $s' \in R$ and $s' \not \in L$. If $R$ and $L$ are not subsets of one another, then it may be the case that $L$ recognizes part of $R$.  Consider $L$ as the union of two languages, one which is a subset of $R$ and one which is disjoint.  The subset language is considered above and the disjoint language is inconsequential.
+%\end{proof}
+
+% Why is this necessary?
+%\begin{lem}
+%  For all $r$, if $s_1 \in r_1$ and $s_2 \in r_2$ then $\subst{r}{s_1}{s_2} \subseteq \lsubst{r}{r_1}{r_2}$.
+%\end{lem}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% BEGIN PROOFS ABOUT S AND P
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Safety of the Source and Target Languages}
 
-
 \begin{lem}
-  If $\sctx \vdash S : \stringin[r]$ then $r$ is a well-formed regular expression. 
+  If $\sctx \vdash S : \stringin{r}$ then $r$ is a well-formed regular expression. 
 \end{lem}
 \begin{proof}
-  By induction on the typing derivation and the closure lemmas for regular
-  expressions.
+  The only non-trivial case is S-T-Replace, which follows from \ref{thm:total}. 
 \end{proof}
 
+\begin{lem}
+  If $\tctx \vdash P : \regex$ then $P \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\end{lem}
 
 We now prove safety for the string fragment of the source and target languages.
 
-\begin{thm}
+\begin{thm}{Safety for the String Fragment of P.}
   Let $S$ be a term in the source language. If $\sctx \vdash S : \stringin{r}$ 
   then $S \sreduces \rstr{s}$ and $\rstr{s} : \stringin{r}$, or else $S \sreduces \err$.
 \end{thm}
@@ -886,35 +911,35 @@ is S-T-Replace, which requires Lemma C.
 \begin{description}
 \item[S-T-Stringin-I:]
 If $S = \rsconcat{S_1}{S_2} : \stringin{r}$ then
-$S \treduces S$ by S-E-RStr, and $\sctx \vdash S : \psi$ by assumption.
+$S \sreduces S$ by S-E-RStr, and $\sctx \vdash S : \psi$ by assumption.
 
 \item[S-T-Concat:] 
 Suppose $S = \rsconcat{S_1}{S_2} : \stringin{r_1 r_2}$.
 By inversion, $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_1 : \stringin{r_2}$.
-It follows by induction that either $S_1 \treduces \err$, $S_2 \treduces \err$, 
-or $S_1 \treduces \rstr{s_1}$ and $S_2 \treduces \rstr{s_2}$ for some $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
-In the latter case $S \reduces \rstr{s_1s_2}$ by S-E-Concat and $\sctx \vdash \rstr{s_1s_2} : \tstr{r_1r_2}$ by Lemma B.
+It follows by induction that either $S_1 \sreduces \err$, $S_2 \sreduces \err$, 
+or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ for some $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
+In the latter case $S \reduces \rstr{s_1s_2}$ by S-E-Concat and $\sctx \vdash \rstr{s_1s_2} : \tstr{r_1r_2}$ by \ref{thm:regexprops}.
 In the former cases, $S \sreduces \err$.
 
-\item[S-T-Replace]:
+\item[S-T-Replace:]
 Suppose $S = \rreplace{r}{S_1}{S_2}$ and $\sctx \vdash S : \stringin{r'}$.
 By inversion $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_2 : \stringin{r_2}$ such that $\lsubst{r}{r_1}{r_2} = r'$.
 By induction, $S_1 \sreduces \err$, $S_2 \sreduces \err$ 
 or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ such that 
-In the latter case, we know $\metareplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$ by Lemma C;
-therefore by S-E-Replace, $S \treduces \rstr{s}$ such that  $s \in \lang{\lsubst{r}{r_1}{r_2}} = \lang{r'}$.
+In the latter case, we know $\lreplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$ by Lemma C;
+therefore by S-E-Replace, $S \sreduces \rstr{s}$ such that  $s \in \lang{\lsubst{r}{r_1}{r_2}} = \lang{r'}$.
 So by S-T-String-I, $\rstr{s} : \stringin{r'}$.
-In the former cases, $S \treduces \err$.
+In the former cases, $S \sreduces \err$.
 
-\item[S-T-Coerce]:
+\item[S-T-Coerce:]
 Suppose $S = \coerce{r}{S_1}$ and $S : \stringin{r}$.
 By inversion, $\sctx \vdash S_1 : \stringin{r'}$.
-By induction, $S_1 \treduces \err$ or $S_1 \treduces \rstr{s}$.
-In the former case $S \treduces \err$ by propagation rules.
-In the latter case we have by Lemma B(2) that $s \in \lang{r}$ or else
+By induction, $S_1 \sreduces \err$ or $S_1 \sreduces \rstr{s}$.
+In the former case $S \sreduces \err$ by propagation rules.
+In the latter case we have by property 2 of \ref{thm:regexprops} that $s \in \lang{r}$ or else
 $s \not \in \lang{r}$.
 If $s \in \lang{r}$ then $\rstr{s} : \stringin{r}$.
-If $s \not \in \lang{r}$ then $S \treduces \err$. 
+If $s \not \in \lang{r}$ then $S \sreduces \err$. 
 \end{description}
 \end{proof}
 
@@ -932,301 +957,333 @@ and inversion lemma for the typing relation. \textbf{We can write up this proof 
 We now present the main correctness result.
 
 \begin{thm}
-If $S : \strin{r}$ then there exists a T such that $\trden{s} = T$ and either: 
+If $S : \strin{r}$ then there exists a P such that $\trden{s} = P$ and either: 
 \begin{description}
-  \item[(a)] $T \treduces \tstr{s}$ and $S \sreduces \strin{s}$, and $s \in lang{r}$.
-  \item[(b)] $T \err$ and $S \err$.
+  \item[(a)] $P \treduces \tstr{s}$ and $S \sreduces \strin{s}$, and $s \in lang{r}$.
+  \item[(b)] $P \err$ and $S \err$.
   \end{description}
 \end{thm}
+
 \begin{proof}
-  \textbf{This is a proof for a different theorem that was swapped out at some point, 
-    and is no longer valid. Working on the new proof now, by induction on the typing
-  relation and correct choice of T}.
-  By induction on the derivation of $\trden{S} = T$. (is this an old proof?) 
+The proof proceeds by induction on the typing relation for $S$.
+Throughout the proof, properties from the closure lemma for regular languages
+are necessary; for brevity, we elide these references.
+
 \begin{description}
-\item[Tr-string] By assumption $\trden{S} = \tstr{s}$. The (a) property follows.
-By S-E-Str, $S \sreduces \str{s}$ and by T-E-Str, $\tstr{s} \treduces \tstr{s}$.
-By source language type safety, it follows that $s \in \lang{r}$.
-\item[Tr-Concat]
-By inversion of the typing relaiton for the source lnaguage, $S_1 : \strin{r_1}$ and $S_2 : \stringin{S_2}$.
-By induction on the left premise, $T_1 \treduces \tstr{s_1}$, $S_1 \sreduces \str{s_1}$ and $s_1 \in \lang{r_1}$
-or else $T_1 err$. 
-Similarly for $T_2$ and $S_2$.
-In the error cases, the propagations rules corresponding to S-E-Concat and T-E-Concat imply that $\tconcat{T_1}{T_2} \err$ and $\rsconcat{S_1}{S_2} \err$.
-In the non-error case, $\rsconcat{S_1}{S_2} \sreduces \strin{s_1 s_2}$ by S-E-Concat and $\tconcat{T_1}{T_2} \treduces \tstr{s_1 s_2}$ by T-E-Concat.
-Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ implies that $s_1 s_2 \in \lang{r}$ by \ref{lemmaregex}.
-\item[Tr-subst]
-Suppose $\sisubst{r}{S_1}{S_2} : \strin{s}$ for some $x$. 
-By inverison, $S_1 : \strin{r_1}$ and $S_2 : \strin{r_2}$.
-Note that $s : \subst{r}{S_1}{S_2} : \stringin{\tsubst{r}{r_1}{r_2}}$ by S-T-Subst.
-By induction, $\trden{S_1} = T_1$ and $\trden{S_2} = T_2$.
-Either (a) or (b) holds for each.
+\item[S-T-String-I:] 
+Let $S = \rstr{s}$ and suppose $\sctx \vdash \rstr{s} : \stringin{r}$.
+Choose $T = \str{s}$ and note that $\trden{S} = P$ by Tr-String.
+By P-E-String, $P \treduces \str{s}$ and by S-E-String $S \treduces \rstr{s}$.
+Finally, by inversion of S-T-Stringin-I, $s \in \lang{r}$.
 
-If (a) holds for both, the $S_1 \sreduces \strin{S_1}$ and $S_2 \sreduces \strin{S_2}$ for $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
-Therefore, $\sisubst{r}{S_1}{S_2} \sreduces \strin{\dosubst{r,s_1,s_2}}$.
-The same fact can be shown in an analogous manner for $T_1$ and $T_2$.
-Finally, $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$, which implies that $\dosubst{r}{s_1}{s_2} \in \lang{\sisubst{r}{s_1}{s_2}}$ by \ref{substhm}.
+\item[S-T-Concat:]
+Let $S = \rconcat{S_1}{S_2}$ and suppose $\sctx \vdash S : \stringin{r_1 r_2}$.
+By inversion, $\sctx \vdash S_1 : \stringin{r_1}$.
+It follows by induction that there exists a $P_1$ such that $\trden{S_1} = P_1$.
+By a similar argument for $S_2$ and $r_2$, there exists a $P_2$ such that $\trden{S_2} = P_2$.
+Choose $P = \concat{P_1}{P_2}$.
 
-If (b) holds for either the left or right premise, then $\sisubst{r}{S_1}{S_2} \err$ by the propagation rules corresponding to S-T-subst, 
-and $\tsubst{S_1}{S_2} \err$ by the propagation rules corresponding to T-T-Subst.
+We first prove property (a).
+Note that $S_1$ and $P_1$ are well typed (nrf ACTUALLY WE DON'T KNOW THAT $P_1$ IS WELL-TYPED!) and do not result in errors.
+Therefore, $S_1 \sreduces \rstr{s_1}$ and $P_1 \treduces \str{s_1}$ for some $s_1 \in \lang{r_1}$ by theorems 8 and 9 respectively. % TODO-nrf make sure this numbering is correct
+Similarly, $S_2 \sreduces \rstr{s_2}$ and $P_2 \treduces \str{s_2}$ for some $s_2 \in \lang{r_2}$.
+Therefore, $S \sreduces \rstr{s_1 s_2}$ by S-E-Concat and $\concat{P_1}{P_2} \treduces \str{s_1 s_2}$ by P-E-Concat.
+Finally, $s_1s_2 \in \lang{r_1}{r_2}$ by \ref{thm:regexprops}.
 
-\item[Tr-Coerce-Ok] TODO-nrf.
+Consider property (b).
+If $S_1 \err$ then $P_1 \err$ by induction, and it follows that $S \err$ and $P \err$ by respective error propagation rules.
+Similarly, if $S_2 \err$ then $P_2 \err$ and it follow that $S \err$ and $P \err$ by induction and propagation.
 
-\item[Tr-Coerce-NotOk] TODO-nrf.
+\item[S-T-Replace:]
+Let $S = \rreplace{r}{S_1}{S_2}$ and suppose $\sctx \vdash S : \stringin{r'}$ for some $s$.
+By inversion of S-T-Replace, , $\sctx S_1 : \stringin{r_1}$ and $\sctx : \stringin{r_2}$ 
+such that $\lsubst{r}{r_1}{r_2} = r'$.
+By induction, there exists some $P_1, P_2$ such that $\trden{S_1} = P_1$, $\trden{S_2} = P_2$
+and either (a) or (b) holds.
+
+If (a) holds then $S_1 \sreduces \rstr{s_1}$ and $P_1 \treduces \str{s_1}$ for some $s_1 \in \lang{r_1}$,
+and similarly for $S_2, P_2$ and some $s_2 \in \lang{r_2}$.
+Therefore, by S-E-Replace, $S \sreduces \rstr{s}$ for some $s = \lreplace{r}{s_1}{s_2}$.
+Choose $P = \preplace{r}{s_1}{s_2}$.
+By a similar argument and P-E-Replace, $P \treduces \str{s}$ for some $s = \lreplace{r}{s_1}{s_2}$.
+What remains to be shown is $\lreplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$,
+which follows from Leamm D since $s_1 \in r_1$ and $s_2 \in r_2$.
+
+If (b) holds for $S_1$ and $P_1$, then $S \err$ and $P \err$ by propagation rules.
+Similarly, if (b) hols for $S_2$ and $P_2$ then $S \err$ and $P \err$ by propagation rules.
+
+\item[S-T-Coerce:]
+Let $S = \rcoerce{r}{S'}$ and suppose $\sctx \vdash \rcoerce{r}{S} : \stringin{r}$.
+By inverstion $\Psi \vdash S' : \stringin{r'}$ for an arbitrary $r'$.
+By induction there exists a $P'$ such that $\trden{S'} = P'$ and either (a) or (b)
+holds for $S'$ and $P'$.
+
+If (a) holds then $S' \sreduces \rstr{s'}$ and $P' \treduces \str{s'}$ for some $s' \in \lang{r'}$.
+Note that either $s' \in \lang{r}$ or $s' \not \in \lang{r}$ by property 2 of \ref{thm:regexprops}.
+Suppose $s' \in \lang{r}$. Then $\rcoerce{r}{S} \sreduces \rstr{S'}$ by S-E-Coerce.
+Choose $P = \check{\rx{r}}{P'}$ and note that $P \treduces \str{s'}$ by P-E-Coerce.
+Now suppose $s' \not \in \lang{r}$. Then $S \err$ and $P \err$ by P-E-Check-Err
+and S-E-Coerce-Err.
+
+Finally, if (b) holds then $S \err$ and $P \err$ by propagation.
 
 \end{description}
 \end{proof}
+
+% NRF commented out section 2 in order to determine the length of section 1.
+% Replace the pattern ^% with an emptty string in the selection starting at
+% the first empty line of section 2 and ending just before \end{document}. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % END SECTION TWO -- THIS IS THE CONFLICT LINE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
-\newcommand{\F}[1]{\textsf{#1}~}
-\newcommand{\FF}[1]{\textsf{#1}}
-\newcommand{\Q}{\FF{Arg}}
-\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lambda}}
-\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\text{Ace}}$}
-\newcommand{\rtotau}[1]{\lfloor #1 \rfloor}
-
-\newcommand{\tremp}{{\tt tremp}}
-\newcommand{\trdot}{{\tt trdot}}
-\newcommand{\trchar}[1]{{\tt trchar}[#1]}
-\newcommand{\trseq}[2]{{\tt trseq}(#1; #2)}
-\newcommand{\tror}[2]{{\tt tror}(#1; #2)}
-\newcommand{\tlstr}[1]{{\tt tstr}[#1]}
-\begin{table*}[t]
-\centering
-\begin{tabular}{ l l l }
-$r$ & $\xlA{r}$ & \xA{r}\\
-\hline
-$\epsilon$ & $\tremp$ & \verb|""|\\
-$.$ & $\trdot$ & \verb|"."|\\
-$a$ & $\trchar{a}$ & \verb|"|$a$\verb|"|\\
-$r_1 \cdot r_2$ & $\trseq{\xlA{r_1}}{\xlA{r_2}}$ & \xA{r_1}\verb| + |\xA{r_2}\\
-$r_1 + r_2$ & $\tror{\xlA{r_1}}{\xlA{r_2}}$ & \verb|"(" + |\xA{r_1}\verb! + "|" + !\xA{r_2}\verb| + ")"|\\
-\\
-$\psi$ & $\xlA{\psi}$ & \xA{\psi}\\
-\hline
-${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|string_in[|\xA{r}\verb|]|\\
-\\
-  $S$ & $\xlA{S}$ & \xA{S} \\
-  \hline
-  ${\tt str\_in}[s]$ & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
-  ${\tt concat}(S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{concat}](\xlA{S_2})$ & \xA{S_1}\verb| + |\xA{S_2} \\
-  ${\tt subst}[r](S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{subst}~\xlA{r}](\xlA{S_2})$ & \xA{S_1}\verb|.subst(|\xA{r}\verb|, |\xA{S_2}\verb|)|\\
-  ${\tt coerce}[r](S)$  & $\xlA{S}\cdot\FF{elim}[\tvar{coerce}~\xlA{r}]()$ & \xA{S}\verb|.coerce(|\xA{r}\verb|)|
-\end{tabular}
-\caption{Embeddings of the ${\tt string\_in}$ fragment into $\lamAce$ and Ace.}
-\end{table*}
+%\newcommand{\F}[1]{\textsf{#1}~}
+%\newcommand{\FF}[1]{\textsf{#1}}
+%\newcommand{\Q}{\FF{Arg}}
+%\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lambda}}
+%\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\text{Ace}}$}
+%\newcommand{\rtotau}[1]{\lfloor #1 \rfloor}
 %
-\newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
-\newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
-\newcommand{\atjerrX}[1]{\Gamma \vdash_\fvalCtx #1~ \mathtt{error}}
-\begin{figure*}[t]
-\small
-$\fbox{\inferrule{}{\atjsynX{e}{\tau}{i}}}$~~~~
-$\fbox{\inferrule{}{\atjanaX{e}{\tau}{i}}}$~~~~
-%$\fbox{\inferrule{}{\atjerrX{e}}}$
-\begin{mathpar}
-\inferrule[att-flip]{
-	\atjsynX{e}{\tau}{i}
-}{
-	\atjanaX{e}{\tau}{i}
-}
-
-%\inferrule[att-var]{
-%	x \Rightarrow \tau \in \Gamma
+%\newcommand{\tremp}{{\tt tremp}}
+%\newcommand{\trdot}{{\tt trdot}}
+%\newcommand{\trchar}[1]{{\tt trchar}[#1]}
+%\newcommand{\trseq}[2]{{\tt trseq}(#1; #2)}
+%\newcommand{\tror}[2]{{\tt tror}(#1; #2)}
+%\newcommand{\tlstr}[1]{{\tt tstr}[#1]}
+%\begin{table*}[t]
+%\centering
+%\begin{tabular}{ l l l }
+%$r$ & $\xlA{r}$ & \xA{r}\\
+%\hline
+%$\epsilon$ & $\tremp$ & \verb|""|\\
+%$.$ & $\trdot$ & \verb|"."|\\
+%$a$ & $\trchar{a}$ & \verb|"|$a$\verb|"|\\
+%$r_1 \cdot r_2$ & $\trseq{\xlA{r_1}}{\xlA{r_2}}$ & \xA{r_1}\verb| + |\xA{r_2}\\
+%$r_1 + r_2$ & $\tror{\xlA{r_1}}{\xlA{r_2}}$ & \verb|"(" + |\xA{r_1}\verb! + "|" + !\xA{r_2}\verb| + ")"|\\
+%\\
+%$\psi$ & $\xlA{\psi}$ & \xA{\psi}\\
+%\hline
+%${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|string_in[|\xA{r}\verb|]|\\
+%\\
+%  $S$ & $\xlA{S}$ & \xA{S} \\
+%  \hline
+%  ${\tt str\_in}[s]$ & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
+%  ${\tt concat}(S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{concat}](\xlA{S_2})$ & \xA{S_1}\verb| + |\xA{S_2} \\
+%  ${\tt subst}[r](S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{subst}~\xlA{r}](\xlA{S_2})$ & \xA{S_1}\verb|.subst(|\xA{r}\verb|, |\xA{S_2}\verb|)|\\
+%  ${\tt coerce}[r](S)$  & $\xlA{S}\cdot\FF{elim}[\tvar{coerce}~\xlA{r}]()$ & \xA{S}\verb|.coerce(|\xA{r}\verb|)|
+%\end{tabular}
+%\caption{Embeddings of the ${\tt string\_in}$ fragment into $\lamAce$ and Ace.}
+%\end{table*}
+%%
+%\newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
+%\newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
+%\newcommand{\atjerrX}[1]{\Gamma \vdash_\fvalCtx #1~ \mathtt{error}}
+%\begin{figure*}[t]
+%\small
+%$\fbox{\inferrule{}{\atjsynX{e}{\tau}{i}}}$~~~~
+%$\fbox{\inferrule{}{\atjanaX{e}{\tau}{i}}}$~~~~
+%%$\fbox{\inferrule{}{\atjerrX{e}}}$
+%\begin{mathpar}
+%\inferrule[att-flip]{
+%	\atjsynX{e}{\tau}{i}
 %}{
-%	\atjsynX{x}{\tau}{x}
+%	\atjanaX{e}{\tau}{i}
 %}
 %
-%\inferrule[att-asc]{
-%    \tau \Downarrow_\fvalCtx \tau'\\
-%	\atjanaX{e}{\tau'}{i}
+%%\inferrule[att-var]{
+%%	x \Rightarrow \tau \in \Gamma
+%%}{
+%%	\atjsynX{x}{\tau}{x}
+%%}
+%%
+%%\inferrule[att-asc]{
+%%    \tau \Downarrow_\fvalCtx \tau'\\
+%%	\atjanaX{e}{\tau'}{i}
+%%}{
+%%	\atjsynX{e : \tau}{\tau'}{i}
+%%}
+%%
+%%\inferrule[att-let-syn]{
+%%	\atjsynX{e_1}{\tau_1}{i_1}\\
+%%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e_2 \Rightarrow \tau_2 \leadsto i_2\\
+%%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%%}{
+%%	\atjsynX{\F{let}x = e_1~\F{in}e_2}{\tau_2}{(\ilam{x}{\sigma_1}{i_2})~i_1}
+%%}
+%%
+%%\inferrule[att-lam-ana]{
+%%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e \Leftarrow \tau_2 \leadsto i\\
+%%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%%}{
+%%	\atjanaX{\lambda x.e}{\ttype{arrow}{(\tau_1, \tau_2)}}{\ilam{x}{\sigma_1}{i}}
+%%}
+%%
+%%\inferrule[att-lam]{
+%%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
+%%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
+%%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto i
+%%%	i \hookrightarrow_\fvalCtx i'\\
+%%%		\sigma \hookrightarrow_\fvalCtx \sigma'
+%%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
+%%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%%}{
+%%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{i}}
+%%}
+%%
+%\inferrule[att-intro-ana]{
+%	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
+%	\taudef~\taut{opidx}~\taut{tyidx}~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{i}\\\\
+%%	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\trepof{\ttype{tycon}{\taut{tyidx}}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\Gamma \vdash_\fvalCtx i : \sigma
 %}{
-%	\atjsynX{e : \tau}{\tau'}{i}
+%	\atjanaX{\FF{intro}[\taut{opidx}](e_1; \ldots; e_n)}{\ttype{tycon}{\taut{tyidx}}}{i}
 %}
 %
-%\inferrule[att-let-syn]{
-%	\atjsynX{e_1}{\tau_1}{i_1}\\
-%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e_2 \Rightarrow \tau_2 \leadsto i_2\\
-%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%%\inferrule[att-i-asc-ty]{
+%%	\atjanaX{I}{\tau}{i}
+%%}{
+%%	\atjsynX{I : \tau}{\tau}{i}
+%%}
+%%
+%%\inferrule[att-i-asc-tycon]{
+%%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
+%%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{i}}{\ttype{tycon}{\tauidx'}}\\
+%%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
+%%	\Gamma \vdash_\fvalCtx i : \sigma
+%%}{
+%%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\ttype{tycon}{\tauidx'}}{i'}
+%%}
+%%
+%\inferrule[att-elim-syn]{
+%	\atjsynX{e}{\ttype{tycon}{\taut{tyidx}}}{i}\\
+%	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\\\
+%	\taudef~\taut{opidx}~\taut{tyidx}~\titerm{i}~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx (\tau, \titerm{i'})\\\\
+%			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx i' : \sigma
 %}{
-%	\atjsynX{\F{let}x = e_1~\F{in}e_2}{\tau_2}{(\ilam{x}{\sigma_1}{i_2})~i_1}
+%	\atjsynX{e\cdot\FF{elim}[\taut{opidx}](e_1; \ldots; e_n)}{\tau}{i'}
+%}
+%\end{mathpar}
+%%\vspace{-10px}
+%\caption{The bidirectional active typechecking and translation judgements.}
+%\label{atj}
+%\end{figure*}
+%\newcommand{\tlevalX}[2]{#1 \Downarrow_\fvalCtx #2}
+%\begin{figure*}[t]
+%\small
+%$\fbox{\inferrule{}{\tau \Downarrow_\fvalCtx \tau'}}$~~~~
+%\begin{mathpar}
+%\inferrule[trstr-eval]{ }{\tlevalX{\tlstr{s}}{\tlstr{s}}}
+%
+%\inferrule[tremp-eval]{ }{\tremp \Downarrow_\fvalCtx \tremp}
+%
+%\cdots
+%
+%\inferrule[tror-eval]{
+%	\tlevalX{\tau_1}{\tau_1'}\\
+%	\tlevalX{\tau_2}{\tau_2'}
+%}{
+%	\tlevalX{\tror{\tau_1}{\tau_2}}{\tror{\tau_1'}{\tau_2'}}
 %}
 %
-%\inferrule[att-lam-ana]{
-%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e \Leftarrow \tau_2 \leadsto i\\
-%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%trmatch
+%
+%trlsubst
+%
+%trsublang
+%
+%
+%%\inferrule[repof]{
+%%	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
+%%	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
+%%	\taurep~\tauidx \Downarrow_\fvalCtx \titype{\sigma}
+%%}{
+%%	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
+%%}
+%%
+%\inferrule[syn]{
+%    \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\atjsynX{e}{\tau}{\iota}\\\\
+%    [\tau/\tvar{t}_{ty}, \titerm{\iota}/\tvar{t}_{trans}]\tau_2 \Downarrow_\fvalCtx \tau_2'
 %}{
-%	\atjanaX{\lambda x.e}{\ttype{arrow}{(\tau_1, \tau_2)}}{\ilam{x}{\sigma_1}{i}}
+%	\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2) \Downarrow_\fvalCtx \tau_2'
 %}
 %
-%\inferrule[att-lam]{
-%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
-%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
-%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto i
-%%	i \hookrightarrow_\fvalCtx i'\\
-%%		\sigma \hookrightarrow_\fvalCtx \sigma'
-%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
-%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%\inferrule[ana]{
+%	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\tau_2 \Downarrow_\fvalCtx \tau_2'\\
+%	\atjanaX{e}{\tau_2'}{\iota}\\\\
+%	[\titerm{\iota}/\tvar{t}_{trans}]\tau_3 \Downarrow_\fvalCtx \tau_3'
 %}{
-%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{i}}
+%	\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3) \Downarrow_\fvalCtx \tau_3'
 %}
 %
-\inferrule[att-intro-ana]{
-	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
-	\taudef~\taut{opidx}~\taut{tyidx}~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{i}\\\\
-%	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
-		\trepof{\ttype{tycon}{\taut{tyidx}}} \Downarrow_\fvalCtx \titype{\sigma}\\
-		\Gamma \vdash_\fvalCtx i : \sigma
-}{
-	\atjanaX{\FF{intro}[\taut{opidx}](e_1; \ldots; e_n)}{\ttype{tycon}{\taut{tyidx}}}{i}
-}
-
-%\inferrule[att-i-asc-ty]{
-%	\atjanaX{I}{\tau}{i}
-%}{
-%	\atjsynX{I : \tau}{\tau}{i}
-%}
-%
-%\inferrule[att-i-asc-tycon]{
-%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
-%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{i}}{\ttype{tycon}{\tauidx'}}\\
-%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
-%	\Gamma \vdash_\fvalCtx i : \sigma
-%}{
-%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\ttype{tycon}{\tauidx'}}{i'}
-%}
-%
-\inferrule[att-elim-syn]{
-	\atjsynX{e}{\ttype{tycon}{\taut{tyidx}}}{i}\\
-	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\\\
-	\taudef~\taut{opidx}~\taut{tyidx}~\titerm{i}~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx (\tau, \titerm{i'})\\\\
-			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
-	\Gamma \vdash_\fvalCtx i' : \sigma
-}{
-	\atjsynX{e\cdot\FF{elim}[\taut{opidx}](e_1; \ldots; e_n)}{\tau}{i'}
-}
-\end{mathpar}
-%\vspace{-10px}
-\caption{The bidirectional active typechecking and translation judgements.}
-\label{atj}
-\end{figure*}
-\newcommand{\tlevalX}[2]{#1 \Downarrow_\fvalCtx #2}
-\begin{figure*}[t]
-\small
-$\fbox{\inferrule{}{\tau \Downarrow_\fvalCtx \tau'}}$~~~~
-\begin{mathpar}
-\inferrule[trstr-eval]{ }{\tlevalX{\tlstr{s}}{\tlstr{s}}}
-
-\inferrule[tremp-eval]{ }{\tremp \Downarrow_\fvalCtx \tremp}
-
-\cdots
-
-\inferrule[tror-eval]{
-	\tlevalX{\tau_1}{\tau_1'}\\
-	\tlevalX{\tau_2}{\tau_2'}
-}{
-	\tlevalX{\tror{\tau_1}{\tau_2}}{\tror{\tau_1'}{\tau_2'}}
-}
-
-trmatch
-
-trlsubst
-
-trsublang
-
-
-%\inferrule[repof]{
-%	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
-%	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
-%	\taurep~\tauidx \Downarrow_\fvalCtx \titype{\sigma}
-%}{
-%	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
-%}
-%
-\inferrule[syn]{
-    \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
-	\atjsynX{e}{\tau}{\iota}\\\\
-    [\tau/\tvar{t}_{ty}, \titerm{\iota}/\tvar{t}_{trans}]\tau_2 \Downarrow_\fvalCtx \tau_2'
-}{
-	\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2) \Downarrow_\fvalCtx \tau_2'
-}
-
-\inferrule[ana]{
-	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
-	\tau_2 \Downarrow_\fvalCtx \tau_2'\\
-	\atjanaX{e}{\tau_2'}{\iota}\\\\
-	[\titerm{\iota}/\tvar{t}_{trans}]\tau_3 \Downarrow_\fvalCtx \tau_3'
-}{
-	\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3) \Downarrow_\fvalCtx \tau_3'
-}
-
-TODO: add rx, str stuff
-\end{mathpar}
-\caption{\small Normalization semantics for the type-level language. Missing rules (including error propagation rules and normalization of quoted internal terms and types) are unsurprising and will be given later.}
-\label{tleval}
-\end{figure*}
-\begin{figure}[t]
-\small\begin{flalign}
-& \F{tycon}\fvar{stringin}~\F{of}\FF{R}~\{\\
-& \quad \F{iana}\{\tlam{opidx}{\FF{String}}{
-	\tlam{tyidx}{\FF{R}}{
-	\tlam{a}{\klist{\Q}}{\\
-& \quad\quad \tvar{arity0}~\tvar{a}~(\tvar{check}~\tvar{opidx}~\tvar{tyidx}~\titerm{\iup{\tvar{opidx}}})
-	}}
-}\}\\
-& \quad \F{esyn}\{\tlam{opidx}{\kunit+(\FF{R}+\FF{R})}{
-	\tlam{a}{\klist{\Q}}{\\
-& \quad\quad \tsumcase{\tvar{opidx}}{\_}{\\
-& \quad\quad\quad \tvar{arity2}~\tvar{a}~\tlam{a1}{\Q}{\tlam{a2}{\Q}{\\
-& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a1}~\tlam{r1}{\FF{R}}{\tlam{i1}{\kITerm}{~}}\\
-& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a2}~\tlam{r2}{\FF{R}}{\tlam{i2}{\kITerm}{~}}\\
-& \quad\quad\quad\quad\quad (\ttype{stringin}{\FF{rseq}(\tvar{r1}; \tvar{r2})}, \\
-& \quad\quad\quad\quad\quad\titerm{{\tt iconcat}(\iup{\tvar{i1}}; \iup{\tvar{i2}})})
-}}\\
-& \quad\quad}{opidx'}{d}}
-}\}
-\};\\
-& \F{def}\tvar{concat} = \tinl{\kunit, \FF{R}+\FF{R}}{\tunit};\\
-& \F{def}\tvar{subst} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}};\\
-& \F{def}\tvar{coerce} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}
-\end{flalign}
-\caption{Definition of $\phi_S$, which enables the embedding of fragment $S$ into $\lamAce$.}
-\end{figure}
-%\begin{figure}
-%\[
-%\begin{array}{lcl}
-%% & & Definition & Kind\\
-%\tvar{concat} & := & \tinl{\kunit, \FF{R}+\FF{R}}{\tunit}\\%& \kunit + (R + R)\\
-%\tvar{replace} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}}\\% & \karrow{a}{b}\\
-%\tvar{coerce} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}\\
-%\end{array}
-%\]
-%\caption{Definitions}
+%TODO: add rx, str stuff
+%\end{mathpar}
+%\caption{\small Normalization semantics for the type-level language. Missing rules (including error propagation rules and normalization of quoted internal terms and types) are unsurprising and will be given later.}
+%\label{tleval}
+%\end{figure*}
+%\begin{figure}[t]
+%\small\begin{flalign}
+%& \F{tycon}\fvar{stringin}~\F{of}\FF{R}~\{\\
+%& \quad \F{iana}\{\tlam{opidx}{\FF{String}}{
+%	\tlam{tyidx}{\FF{R}}{
+%	\tlam{a}{\klist{\Q}}{\\
+%& \quad\quad \tvar{arity0}~\tvar{a}~(\tvar{check}~\tvar{opidx}~\tvar{tyidx}~\titerm{\iup{\tvar{opidx}}})
+%	}}
+%}\}\\
+%& \quad \F{esyn}\{\tlam{opidx}{\kunit+(\FF{R}+\FF{R})}{
+%	\tlam{a}{\klist{\Q}}{\\
+%& \quad\quad \tsumcase{\tvar{opidx}}{\_}{\\
+%& \quad\quad\quad \tvar{arity2}~\tvar{a}~\tlam{a1}{\Q}{\tlam{a2}{\Q}{\\
+%& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a1}~\tlam{r1}{\FF{R}}{\tlam{i1}{\kITerm}{~}}\\
+%& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a2}~\tlam{r2}{\FF{R}}{\tlam{i2}{\kITerm}{~}}\\
+%& \quad\quad\quad\quad\quad (\ttype{stringin}{\FF{rseq}(\tvar{r1}; \tvar{r2})}, \\
+%& \quad\quad\quad\quad\quad\titerm{{\tt iconcat}(\iup{\tvar{i1}}; \iup{\tvar{i2}})})
+%}}\\
+%& \quad\quad}{opidx'}{d}}
+%}\}
+%\};\\
+%& \F{def}\tvar{concat} = \tinl{\kunit, \FF{R}+\FF{R}}{\tunit};\\
+%& \F{def}\tvar{subst} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}};\\
+%& \F{def}\tvar{coerce} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}
+%\end{flalign}
+%\caption{Definition of $\phi_S$, which enables the embedding of fragment $S$ into $\lamAce$.}
 %\end{figure}
-
-\subsection{Background: Ace}
-TODO: Make a TR out of the OOPSLA submission.
-\subsection{Explicit Conversions}
-\subsection{Adding Subtyping to Ace}
-\subsection{Theory}
-
-\section{Related Work}
-
-\section{Discussion}
-
-
-\bibliographystyle{abbrv}
-
-% The bibliography should be embedded for final submission.
-
-\bibliography{../research}
-%\softraggedright
-%P. Q. Smith, and X. Y. Jones. ...reference text...
-
+%%\begin{figure}
+%%\[
+%%\begin{array}{lcl}
+%%% & & Definition & Kind\\
+%%\tvar{concat} & := & \tinl{\kunit, \FF{R}+\FF{R}}{\tunit}\\%& \kunit + (R + R)\\
+%%\tvar{replace} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}}\\% & \karrow{a}{b}\\
+%%\tvar{coerce} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}\\
+%%\end{array}
+%%\]
+%%\caption{Definitions}
+%%\end{figure}
+%
+%\subsection{Background: Ace}
+%TODO: Make a TR out of the OOPSLA submission.
+%\subsection{Explicit Conversions}
+%\subsection{Adding Subtyping to Ace}
+%\subsection{Theory}
+%
+%\section{Related Work}
+%
+%\section{Discussion}
+%
+%
+%\bibliographystyle{abbrv}
+%
+%% The bibliography should be embedded for final submission.
+%
+%\bibliography{../research}
+%%\softraggedright
+%%P. Q. Smith, and X. Y. Jones. ...reference text...
+%
+%
 
 \end{document}
