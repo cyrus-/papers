@@ -265,6 +265,8 @@
 \newcommand{\tstrf}[1]{`#1\textrm'} %??
 \newcommand{\strf}[1]{``#1"}
 
+
+\newcommand{\iso}{\cong}
 %%
 %% Source and Target language definitions.
 %%
@@ -361,12 +363,11 @@ ABSTRACT HERE
 %\keywords
 %type-level computation, typed compilation
 \section{Introduction}\label{intro}
-In web applications and other settings, incorrect input sanitation often causes
-security vulnerabilities. In fact, ...OWASP says it's important... .
-Mention CVE stats.
+Improper input sanitation is a leading cause of security vulnerabilities in web
+applications [OWASP].
 For this reason, modern web frameworks and libraries use various techniques to
-ensure proper sanitation of arbitrary user input. On the rare occasions when
-these methods are unavailable or insufficient, developers (hopefully) create 
+ensure proper sanitation of arbitrary user input. When
+these methods are unavailable or insufficient, developers create 
 ad hoc sanitation algorithms. Im most cases, sanitation algorithms -- ad hoc 
 or otherwise -- are ultimately implemented using the language's regular
 expression capabilities. Therefore, a system capable of statically 
@@ -384,12 +385,37 @@ Although we believe are general approach extends to a wider class of problems
 regular tree languages), these generalizations are beyond the scope of the 
 present paper.
 
+
+
+%%
+% This is the paragraph which ties the paper back to the CFP.
+%
+% For refernce, here's a copy of the cfp:
+%The importance of security and privacy in software engineering is now a pressing concern. 
+%Over the last decade, many programmers have recognized the importance of including 
+%security and privacy requirements at project start. This has led to efforts 
+%in secure/security engineering and privacy engineering, which focus on guidelines and 
+%best practices that can be used at the design stage to create safer code. 
+%Unfortunately, these disciplines are not pervasive and still in their infancy.
+%The goal of this workshop is to make security and privacy first class citizens in programming and programming languages. 
+
+%This forum aims to gather research and industry professionals to further the discussion on how to:
+%   codify the principles from secure and privacy engineering into programming language constructs and or tools, 
+%   create programming languages that have security and privacy as foundational tenets, and 
+%   create/codify constructs or tools that enables secure and privacy-preserving (business) operations.
+%   All submissions connected to the goals above, and their associated topics, are encouraged.
+%%
+
 This paper presents a language extension, definable in the Ace programming language,
 for ensuring that input sanitation algorithms are implemented correctly with
-respect to use site specifications. If use site specifications are sufficient, 
-then type checking ensures the absence of vulnerabilities and other bugs which
-arise from improper sanitation. Our extension focuses on sanitation algorithms 
-which aim to prevent command-injection style attacks (e.g. SQL injection or RFI). 
+respect to use site specifications. 
+
+\emph{Instead of developing a top-down and holistic solution to the always-shifting security challenge,
+we propose an approach which allows developers to incorporate light-weight static
+analyses which best validate their privacy or security requirements.}
+In this paper, we present a type system which ensures the absence of vulnerabilities and other bugs
+which arise from imporper input sanitation.
+We then demonstrate how this system is embeddable in an extensible type system.
 
 \subsection{Related Work and Alternative Approaches}
 
@@ -403,20 +429,21 @@ Unlike frameworks provided by languages such as Haskell and
 Ruby, our type system provides a \emph{static} guarantee that input is always 
 properly sanitized before use. We achieve this by defining a typing relation
 which captures idiomatic sanitation algorithms. Type safety in our system relies upon 
-several closure and decidability results about regular languages. 
+several closure and decidability results about operations on 
+regular languages which correspond to typical operations for sanitizing strings. 
 
 Libraries and frameworks available in functional programming language communities often
-make claims about security and sometimes even sophistically mention sophisticated
-type systems as evidence of freedom from injection-style attacked.
-However, even the specification that input is always sanitized properly before use is not
-actually captured by the type system or anywhere else; in fact, the full specification of these
-algorithms is rarely characterized by anything more specific than the type
-String $\rightarrow$ String, which is a class of safe input sanitation algorithms
-only in the most degenerate case.
+make claims about security and sometimes even mention sophisticated
+type systems as evidence of freedom from injection-style attacks.
+In reality, many of these approaches ultimately depend upon the correct implementation
+of library or framework input sanitation functions. In these cases, our type system
+provides a stronger (compile-time) guarantee and is additionally orthogonal because
+the correctness of the library or framework itself could be checked by implementing its
+sanitation functions in terms of our system.
 
-A number of research languages provide actually static guarantees that a program
+A number of research languages provide static guarantees that a program
 is free of input sanitation vulnerabilities. Most rely on some form of information
-flow. TODO-nrf  give citations and examples. Our extension to Ace differs from
+flow TODO-nrf citations. Our extension to Ace differs from
 these systems in the ways following:
 \begin{itemize}
   \item Our system is a light-weight solution to a single class of sanitation
@@ -425,30 +452,22 @@ these systems in the ways following:
   evidence that composable, light-weight and simple analyses can address security
   problems.
   \item Our system is defined as a library in terms of an extensible type system,
-  as opposed to a stand-alone language. This is important for two reasons.
-  First, our system is one of the first large examples written in Ace, and serves
-  as an extended case study. Second, although our approach requires
-  developers to adopt a new language, it does not require developers to adopt
-  a language specifically for web development.
+  as opposed to a stand-alone language. Instead of introducing new technologies
+  and methodologies for addressing security problems, we provide a light-weight
+  static analysis \emph{based upon existing approaches to the problem} which are
+  already well-understood by developers. We believe extensibility is a viable
+  and attractive alternative to highly specialized programming languages.
   \item Ace is implemented in Python and shares its grammar. Since Python is a 
   popular programming language among web developers, the barrier between our research
   and adopted technologies is far lower than is e.g. Ur/Web's.
-  \item In general, our is a composable, light-weight and
-  natural solution to a single problem -- rather than a comprehensive 
-  solution to the web security problem. Our goal is to demonstrate that extensible
-  type systems can capture static properties of common idioms, and thereby ensure
-  safety without introducing much additional complexity.
 \end{itemize}
 
-Finally, incorporating regular expressions into the type system is not novel.
+Incorporating regular expressions into the type system is not novel.
 The XDuce system \cite{pierce} typechecks XML schemas using regular expressions.
 We differ from this and related work in at least two ways.
 First, our system  is defined within an extensible type system;
-this first difference introduced an interesting class of design problems (see \S ???).
-TODO-nrf this is the second time this is used as a warrant. Factor out this argument
-and place it at the top???
-Second, our focus on security required novel design decisions; for instance, the
-filter elimination form is unique to Ace.
+second, and more importantly, we have demonstrated that regular expression types
+are applicable to the web security domain.
 
 In conclusion, our system is novel in at least two ways:
 \begin{itemize}
@@ -463,41 +482,43 @@ idiomatic code.
 
 An outline of this paper follows:
 
-TODO-nrf real outline!
 \begin{itemize}
-  \item In \S 2, we define the type system's static and dynamic semantics.
-  \item Section 3 recalls some classical results about regular expressions and presents meta-theory for our system, including
-    the main soundness theorem for $\lcs$.
-  \item Finally, \S 4 discusses our implemention of $\lcs$ as a type system extension  within the Ace programming language.
+  \item In \S 2, we define the type system which is embedded in Ace. We include a type safety proof for the string
+    segment of this language and prove the correctness of a translation to an underlying langguage $P$. In our theory,
+    $P$ is a simply typed lambda calculus equipped with a minimal regular expression library; in an implementation, $P$
+    stands in for Python or another underlying general-purpose programming language.
+  \item In \S 3, we discuss our implemention of this translation as a type system extension  within the Ace programming language.
 \end{itemize}
 
 \section{A Type System for String Sanitation}
 
-The $\lcs$ language is characterized by a type of strings indexed by regular
+The $\lambdas$ language is characterized by a type of strings indexed by regular
 expressions, together with operations on such strings which correspond to common
 input sanitation patterns.
+This section presents the grammar, typing rules and operational semantics for
+$\lambdas$ as well as an underlying language $\lambdap$.
 
-This section presents the grammar and semantics of $\lcs$.
-The semantics are defined in terms of an internal language with at least strings and a regex filter function.
-These constraints are captured by the internal term valuations.
-The internal language does not necessarily need a regex filter function because
-any dynamic conversion is easily definable using a combination of filters and safe
-casting.
+The system $\lambdas$ \ref{fig:lambdas} is the simply typed lambda calculus extended with \emph{regular expression types}, which are string
+types ensuring a string belongs to a specified language. For instance, 
+$S : \rstr{r}$ reads ``$s$ is a string matching $r$".
+the system includes an operation for replacing all instances of a pattern $r$ in a string $s_1$ with another string $s_2$. 
+Input sanitation algorithms -- as implemented by developers or within popular libraries and frameworks -- are often implemented in terms of this replace operation.
+For instance, a developer might all potentially unsafe charapcters with excaped versions of the same character.
+Regular expression types are used both to specify input sanitation algorithms, and at use sites as specifications.
+Note that runtime error states ($S \err$) are introduced by coercion, not by replacement. 
 
-Note that we never insert an internal check where the type of the string implies
-that a check must succeed. Furthermore, expensive calculations (such as language
-inclusion or ${\tt dsubst}$, all occur at compile time.
-Since sanitation problems are generally expressible with smalle, simple expressions,
-we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
-support this assertion.
+The language $\lambdap$ \ref{fig:lambdap} is a simple functional language extended with a minimal regular expression library.
+Any general purpose programming language could stand in for $\lambdap$; for instance, SML has a regular expression library.
+In an implementation, our correctness results are modulo the underlying language's correct implementation of regular expression matching (see P-E-Replace).
 
-Due to Ei-Replace, all of our meta-theory depends upon a correct implementation
-of both regular expression replacement and inclusion checking in the internal language.
-We believe this assumption is okay for two reasons. First, our system is still
-superior to the status quo, which relies upon the correctness of these libraries
-\emph{in addition to} correct application logic. Second, regular expression libraries are
-generally well-tested and there exist verified implementations.
+Finally, we define a translation from our type system $\lambdas$ into $\lambdap$.
 
+%Note that we never insert an internal check where the type of the string implies
+%that a check must succeed. Furthermore, expensive calculations (such as language
+%inclusion or ${\sf rreplace}$) all occur at compile time.
+%Since sanitation problems are generally expressible with smalle, simple expressions,
+%we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
+%support this assertion.
 
 % Begin Grammar 
 % Removes the < > from grammar productions.
@@ -544,7 +565,6 @@ $\str$ \alt $\regex$
 \label{fig:lcsSyntax}
 \end{figure}
 
-there's extra space here because of the next page...
 
 %The $\lcs$ language gives static semantics for common regular expression library
 %functions. In this treatment, we include concatenation and filtering.
@@ -631,7 +651,7 @@ there's extra space here because of the next page...
 % it's even more important that we get the number gith. therefore, the counter
 % is modified before and after this figure.
 \addtocounter{figure}{4}
-\begin{figure*}
+\begin{figure*}\label{fig:trans}
 
 $\fbox{\inferrule{}{\trden{S} = P}}$
 \begin{mathpar}
@@ -674,7 +694,7 @@ The translation is type-directed in the Tr-Coerce cases.}
 
 \newcommand{\ereduces}{\Downarrow}
 
-\begin{figure}[t]
+\begin{figure}[t]\label{fig:lambdas}
 \small
 $\fbox{\inferrule{}{\sctx \vdash S : \psi}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \psi$
@@ -737,7 +757,7 @@ Error propagation rules are omitted.}
 
 \newpage
 
-\begin{figure}[t]
+\begin{figure}[t]\label{fig:lambdap}
 \small
 $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \theta$
@@ -831,9 +851,9 @@ The following are well-known properties of regular expressions which are necessa
 \begin{description}
 \item[(1):] If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$
 \item[(2):] For all strings $s$ and expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
-\end{description}
 \item[(3):] Regular languages are closed under complements and concatenation.
 \item[(4):] The regular expressions correspond bijectively to the regular languages.
+\end{description}
 \end{lem}
 
 \begin{defn}[$\tt{lsubst}$]
@@ -848,14 +868,37 @@ The function $\lreplace{r}{r_1}{r_2}$ produces a regular expression in which any
 If $r, r_1$ and $r_2$ are regular expressions, then $\lreplace{r}{r_1}{r_2}$ is also a regular expression.
 \end{lem}
 \begin{proof}
-TODO-nrf 
+By induction on $r$ and closure properties of regular expressions.
 \end{proof}
 
 \begin{lem}{Substitution Correspondence.} \label{thm:substcorrespondence}
 If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lreplace{r}{r_1}{r_2}$.
 \end{lem}
 \begin{proof}
-TODO-nrf 
+The proof proceeds by structural induction on $r$.
+
+\begin{description}
+\item[case $r=\alpha$.]
+If $s_1 = \alpha$ then $\alpha \in \lang{r_1}$ by assumption.
+Therefore, $\lsubst{r}{s_1}{s_2} = \lsubst{\alpha}{\alpha}{s_2} = s_2$ and
+$\lreplace{r}{r_1}{r_2} = \lreplace{\alpha}{r_1}{r_2}$. 
+Since $s_1 = \alpha$ and $\alpha \in \lang{r_1}$, $r_1 \iso \alpha | r_1'$ for some $r_1'$.
+Therefore, $\lreplace{\alpha}{r_1}{r_2} \iso \lreplace{\alpha}{\alpha|r_1'}{r_2}$ by Lemma X(1).
+Finally, $s_2 \in \lang{r_2}$ which implies $s_1 \in \lang{r_2|r'}$.
+If $s_1 \not = \alpha$ the $\lsubst{r}{s_1}{s_2} = s_1$ and $\lreplace{\alpha}{r_1}{r_2} = r_1$.
+
+\item[case $r = a|b$].
+Note that $\subst{a|b}{s_1}{s_2} = \lsubst{a}{\lsubst{b}{s_1}{s_2}}{s_2}$
+and $\lsubst{b}{s_1}{s_2} \in \lreplace{b}{r_1}{r_2}$ by induction.
+Therefore, $\lsubst{a|b}{s_1}{s_2}$ $\in \lreplace{a}{\lreplace{b}{r_1}{r_2}}{r_2}$ by induction and the definition of lreplace.
+Finally, applying definitions once more, $\lsubst{a|b}{s_1}{s_2} \in \lreplace{a|b}{r_1}{r_2}$.
+
+\item[case $r = ab$].
+By a similar argument to the disjunctive case.
+
+\item[case $r = a*$].
+By considering the once unwinding of $a*$, noting that $s_1$ and $s_2$ are finite.
+\end{description}
 \end{proof}
 
 
@@ -881,6 +924,10 @@ TODO-nrf
 %\end{lem}
 
 
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % BEGIN PROOFS ABOUT S AND P
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -902,7 +949,7 @@ We now prove safety for the string fragment of the source and target languages.
 
 \begin{thm}{Safety for the String Fragment of P.}
   Let $S$ be a term in the source language. If $\sctx \vdash S : \stringin{r}$ 
-  then $S \sreduces \rstr{s}$ and $\rstr{s} : \stringin{r}$, or else $S \sreduces \err$.
+  then $S \sreduces \rstr{s}$ and $\rstr{s} : \stringin{r}$, or else $S \err$.
 \end{thm}
 \begin{proof}
 By induction on the derivation of $\sctx \vdash S : \psi$. The interesting case
@@ -916,30 +963,30 @@ $S \sreduces S$ by S-E-RStr, and $\sctx \vdash S : \psi$ by assumption.
 \item[S-T-Concat:] 
 Suppose $S = \rsconcat{S_1}{S_2} : \stringin{r_1 r_2}$.
 By inversion, $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_1 : \stringin{r_2}$.
-It follows by induction that either $S_1 \sreduces \err$, $S_2 \sreduces \err$, 
+It follows by induction that either $S_1 \err$, $S_2 \err$, 
 or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ for some $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
 In the latter case $S \reduces \rstr{s_1s_2}$ by S-E-Concat and $\sctx \vdash \rstr{s_1s_2} : \tstr{r_1r_2}$ by \ref{thm:regexprops}.
-In the former cases, $S \sreduces \err$.
+In the former cases, $S \err$.
 
 \item[S-T-Replace:]
 Suppose $S = \rreplace{r}{S_1}{S_2}$ and $\sctx \vdash S : \stringin{r'}$.
 By inversion $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_2 : \stringin{r_2}$ such that $\lsubst{r}{r_1}{r_2} = r'$.
-By induction, $S_1 \sreduces \err$, $S_2 \sreduces \err$ 
+By induction, $S_1 \err$, $S_2 \err$ 
 or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ such that 
 In the latter case, we know $\lreplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$ by Lemma C;
 therefore by S-E-Replace, $S \sreduces \rstr{s}$ such that  $s \in \lang{\lsubst{r}{r_1}{r_2}} = \lang{r'}$.
 So by S-T-String-I, $\rstr{s} : \stringin{r'}$.
-In the former cases, $S \sreduces \err$.
+In the former cases, $S \err$.
 
 \item[S-T-Coerce:]
 Suppose $S = \coerce{r}{S_1}$ and $S : \stringin{r}$.
 By inversion, $\sctx \vdash S_1 : \stringin{r'}$.
-By induction, $S_1 \sreduces \err$ or $S_1 \sreduces \rstr{s}$.
-In the former case $S \sreduces \err$ by propagation rules.
+By induction, $S_1 \err$ or $S_1 \sreduces \rstr{s}$.
+In the former case $S \err$ by propagation rules.
 In the latter case we have by property 2 of \ref{thm:regexprops} that $s \in \lang{r}$ or else
 $s \not \in \lang{r}$.
 If $s \in \lang{r}$ then $\rstr{s} : \stringin{r}$.
-If $s \not \in \lang{r}$ then $S \sreduces \err$. 
+If $s \not \in \lang{r}$ then $S \err$. 
 \end{description}
 \end{proof}
 
@@ -1033,6 +1080,22 @@ Finally, if (b) holds then $S \err$ and $P \err$ by propagation.
 % NRF commented out section 2 in order to determine the length of section 1.
 % Replace the pattern ^% with an emptty string in the selection starting at
 % the first empty line of section 2 and ending just before \end{document}. 
+
+
+
+Papers that needs to be cited in this section:
+\begin{itemize}
+  \item Ur/Web OSDI paper
+  \item Jif?
+  \item OWASP
+  \item XDuce and related papers. 
+  \item src?
+  \item Ace or Wyvern paper?
+  \item hotsos?
+  \item Haskell extension paper
+  \item Maybe some popular FOSS libraries/frameworks that do input sanitation?
+\end{itemize}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % END SECTION TWO -- THIS IS THE CONFLICT LINE
