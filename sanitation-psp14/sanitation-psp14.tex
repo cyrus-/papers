@@ -363,29 +363,13 @@ ABSTRACT HERE
 %\keywords
 %type-level computation, typed compilation
 \section{Introduction}\label{intro}
-Improper input sanitation is a leading cause of security vulnerabilities in web
-applications [OWASP].
-For this reason, modern web frameworks and libraries use various techniques to
-ensure proper sanitation of arbitrary user input. When
-these methods are unavailable or insufficient, developers create 
-ad hoc sanitation algorithms. Im most cases, sanitation algorithms -- ad hoc 
-or otherwise -- are ultimately implemented using the language's regular
-expression capabilities. Therefore, a system capable of statically 
-checking properties about operations performed using regular expressions will
-be expressive enough to capture real-world implementations of sanitation 
-algorithms.
+Improper input sanitation is a leading cause of security vulnerabilities in web applications [OWASP]. Command injection attacks exploit improper input sanitation by inserting malicious code into an otherwise benign command. Modern web frameworks, libraries, and database abstraction layers attempt to ensure proper sanitation of user input. When these methods are unavailable or insufficient, developers implement custom sanitation techniques. Im both cases, sanitation algorithms are implemented using the language's regular expression capabilities and usually \emph{replace} potentially unsafe strings with equivalent escaped strings.
 
-Input sanitation is the problem of ensuring that an arbitrary string
-is coerced into a safe form before potentially unsafe use. For example, 
-preventing SQL injection attacks requires ensuring that any string
-coming from user input to a query does not contain unescaped SQL. 
-The point at which arbitrary user input is concatenated into a SQL query is called a use site.
-Although we believe are general approach extends to a wider class of problems
-(e.g. sanitation algorithms for preventing XSS attacks might be definable using
-regular tree languages), these generalizations are beyond the scope of the 
-present paper.
+In this paper, we present a type system for implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
+To demonstrate this approach, we present a simply typed lambda calculus with \emph{constrained strings}; that is, a set of string types parameterized by regular expressions. If $s : \stringin{r}$, then $s$ is a string matching the language $r$. Additionally, we include an operation $\rreplace{r}{s_1}{s_2}$ which corresponds to the replace mechanism available in most regular expression libraries; that is, any substring of $s_1$ matching $r$ is replaced with $s_2$. The type of this expression is the computed, and is likely ``smaller" or more constrained than the type of $s_1$. Libraries, frameworks or functions which construct and execute commands containing input can specify a safe subset $\stringin{r_{\sf spec}}$ of strings, and input sanitation algorithms can construct such a string using ${\sf rreplace}$ or, optionally, by coercion (in which case a runtime check is inserted). We also show how this simple can be translated into a host language containing a regular expression library such that the safety guarantee of the extended language is preserved.
 
+Summarily, we present a simple type system extension which ensures the absence of input sanitation vulnerabilities by statically checking input sanitation algorithms which use an underlying regular expression library. This approach is \emph{composable} in the sense that it is a conservative extension. This approach is also \emph{complementary} to existing input sanitation techniques which use string replacement for input sanitation.
 
 %%
 % This is the paragraph which ties the paper back to the CFP.
@@ -406,68 +390,23 @@ present paper.
 %   All submissions connected to the goals above, and their associated topics, are encouraged.
 %%
 
-This paper presents a language extension, definable in the Ace programming language,
-for ensuring that input sanitation algorithms are implemented correctly with
-respect to use site specifications. 
-
-\emph{Instead of developing a top-down and holistic solution to the always-shifting security challenge,
-we propose an approach which allows developers to incorporate light-weight static
-analyses which best validate their privacy or security requirements.}
-In this paper, we present a type system which ensures the absence of vulnerabilities and other bugs
-which arise from imporper input sanitation.
-We then demonstrate how this system is embeddable in an extensible type system.
-
 \subsection{Related Work and Alternative Approaches}
 
-The input sanitation problem is well-understood. There exist a large number
-of techniques and technologies, proposed by both practitioners and researchers, for
-preventing injection-style attacks. In this section, we defend the novelty and
-significance of our approach with respect to the state of the art in practice 
-and in research.
+The input sanitation problem is well-understood. There exist a large number of techniques and technologies, proposed by both practitioners and researchers, for preventing injection-style attacks. In this section, we explain how our approach to the input sanitation problem differs from each of these approaches. More important than these differences, however, is our more general assertion that language extensibility is a promising approach toward consideration of security goals in programming lanugage design.
 
-Unlike frameworks provided by languages such as Haskell and
-Ruby, our type system provides a \emph{static} guarantee that input is always 
-properly sanitized before use. We achieve this by defining a typing relation
-which captures idiomatic sanitation algorithms. Type safety in our system relies upon 
-several closure and decidability results about operations on 
-regular languages which correspond to typical operations for sanitizing strings. 
+Unlike \emph{frameworks and libraries} provided by languages such as Haskell and Ruby, our type system provides a \emph{static} guarantee that input is always properly sanitized before use. Doing so requires reasoning about the operations on regular languages corresponding to standard operations on strings; we are unaware of any production system which contains this form of reasoning. Therefore, even where frameworks and libraries provide a viable interface or wrapper around input sanitation, our approach is complementary because it ensurees the correctness of the framework or library itself. Furthermore, our approach is more general than database abstraction layers because our mechanism is applicable to all forms of command injection (e.g. shell injection or remote file inclusion).
 
-Libraries and frameworks available in functional programming language communities often
-make claims about security and sometimes even mention sophisticated
-type systems as evidence of freedom from injection-style attacks.
-In reality, many of these approaches ultimately depend upon the correct implementation
-of library or framework input sanitation functions. In these cases, our type system
-provides a stronger (compile-time) guarantee and is additionally orthogonal because
-the correctness of the library or framework itself could be checked by implementing its
-sanitation functions in terms of our system.
+A number of research languages provide static guarantees that a program is free of input sanitation vulnerabilities [Jif][Ur/Web]. Our work differes from these contributions in the ways following:
 
-A number of research languages provide static guarantees that a program
-is free of input sanitation vulnerabilities. Most rely on some form of information
-flow TODO-nrf citations. Our extension to Ace differs from
-these systems in the ways following:
 \begin{itemize}
-  \item Our system is a light-weight solution to a single class of sanitation
-  vulnerabilities (e.g. we do not address Cross-Site Scripting). We present our
-  system not as a comprehensive solution to the web security problem, but rather as
-  evidence that composable, light-weight and simple analyses can address security
-  problems.
-  \item Our system is defined as a library in terms of an extensible type system,
-  as opposed to a stand-alone language. Instead of introducing new technologies
-  and methodologies for addressing security problems, we provide a light-weight
-  static analysis \emph{based upon existing approaches to the problem} which are
-  already well-understood by developers. We believe extensibility is a viable
-  and attractive alternative to highly specialized programming languages.
-  \item Ace is implemented in Python and shares its grammar. Since Python is a 
-  popular programming language among web developers, the barrier between our research
-  and adopted technologies is far lower than is e.g. Ur/Web's.
+  \item Our system is a light-weight solution to a single class of sanitation vulnerabilities (e.g. we do not address Cross-Site Scripting).
+  \item Our system is defined as a library in terms of an extensible type system, as opposed to a stand-alone language. Instead of introducing new technologies and methodologies for addressing security problems, we provide a light-weight static analysis which complements approaches developers already understand well.
+  \item Our implementation of the translation is implemented in Python and shares its grammar. Since Python is a popular programming language among web developers, the barrier between our research and adopted technologies is lower than for greenfield security-oriented languages.
 \end{itemize}
 
-Incorporating regular expressions into the type system is not novel.
-The XDuce system \cite{pierce} typechecks XML schemas using regular expressions.
-We differ from this and related work in at least two ways.
-First, our system  is defined within an extensible type system;
-second, and more importantly, we have demonstrated that regular expression types
-are applicable to the web security domain.
+We are also unaware of any extensible programming languages which emphasize applications to security concerns (TRUE?).
+
+Incorporating regular expressions into the type system is not novel. The XDuce system \cite{pierce} typechecks XML schemas using regular expressions. We differ from this and related work in at least two ways. First, our system  is defined within an extensible type system; second, and more importantly, we have demonstrated that regular expression types are applicable to the web security domain.
 
 In conclusion, our system is novel in at least two ways:
 \begin{itemize}
@@ -558,7 +497,7 @@ $\str$ \alt $\regex$
   $\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{P}{P}$ \alt
-  $\tsubst{P}{P}{P}$ \alt
+  $\preplace{P}{P}{P}$ \alt
   $\tcheck{P}{P}$ 
   \end{grammar}
 \caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
