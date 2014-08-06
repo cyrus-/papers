@@ -453,31 +453,42 @@ idiomatic code.
 
 \section{A Type System for String Sanitation}
 
-The $\lambdas$ language is characterized by a type of strings indexed by regular
-expressions, together with operations on such strings which correspond to common
-input sanitation patterns.
-This section presents the grammar, typing rules and operational semantics for
-$\lambdas$ as well as an underlying language $\lambdap$.
+In this section we define a language for statically checked string sanitation ($\lambdas$)
+and prove that its correctness property is preserved under translation to a language
+with regular expression matching capabilities ($\lambdap$). A brief outline of this section
+follows:
+\begin{itemize}
+  \item Page 3 contains a definition of $\lambdas, \lambdap$ and the translation from $\lambdas$ to $\lambdap$.
+  \item In \S 2.1 we state some properties about regular expressions which are needed in our correctness proofs.
+  \item In \S 2.2 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
+  \item In \S 2.3 we prove that translation preserves the correctness reesult about $\lambdas$.
+\end{itemize}
 
-The system $\lambdas$ is the simply typed lambda calculus extended with \emph{regular expression types}, which are string
-types ensuring a string belongs to a specified language. For instance, 
-$S : \stringin{r}$ reads ``$s$ is a string matching $r$".
-the system includes an operation for replacing all instances of a pattern $r$ in a string $s_1$ with another string $s_2$. 
-Input sanitation algorithms -- as implemented by developers or within popular libraries and frameworks -- are often implemented in terms of this replace operation.
-
-The language $\lambdap$ is a simple functional language extended with a minimal regular expression library.
-Any general purpose programming language could stand in for $\lambdap$; for instance, SML or Python.
-In an implementation, our correctness results are modulo the underlying language's correct implementation of regular expression matching (see P-E-Replace).
-
-Finally, we define a translation from our type system $\lambdas$ into $\lambdap$ which preserves the safety guarnatee codified in the string types of $\lambdas$. Because our extension is conservative and its guarnatees are preserved under translation to an underlying language, it is highly composable with other analyses.
-
-Unfortunately, we are unable to present full proofs in this paper due to space constraints; however, proofs are given in full in the accompanying technical report?.
-%Note that we never insert an internal check where the type of the string implies
-%that a check must succeed. Furthermore, expensive calculations (such as language
-%inclusion or ${\sf rreplace}$) all occur at compile time.
-%Since sanitation problems are generally expressible with smalle, simple expressions,
-%we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
-%support this assertion.
+%The $\lambdas$ language is characterized by a type of strings indexed by regular
+%expressions, together with operations on such strings which correspond to common
+%input sanitation patterns.
+%This section presents the grammar, typing rules and operational semantics for
+%$\lambdas$ as well as an underlying language $\lambdap$.
+%
+%The system $\lambdas$ is the simply typed lambda calculus extended with \emph{regular expression types}, which are string
+%types ensuring a string belongs to a specified language. For instance, 
+%$S : \stringin{r}$ reads ``$s$ is a string matching $r$".
+%the system includes an operation for replacing all instances of a pattern $r$ in a string $s_1$ with another string $s_2$. 
+%Input sanitation algorithms -- as implemented by developers or within popular libraries and frameworks -- are often implemented in terms of this replace operation.
+%
+%The language $\lambdap$ is a simple functional language extended with a minimal regular expression library.
+%Any general purpose programming language could stand in for $\lambdap$; for instance, SML or Python.
+%In an implementation, our correctness results are modulo the underlying language's correct implementation of regular expression matching (see P-E-Replace).
+%
+%Finally, we define a translation from our type system $\lambdas$ into $\lambdap$ which preserves the safety guarnatee codified in the string types of $\lambdas$. Because our extension is conservative and its guarnatees are preserved under translation to an underlying language, it is highly composable with other analyses.
+%
+%Unfortunately, we are unable to present full proofs in this paper due to space constraints; however, proofs are given in full in the accompanying technical report?.
+%%Note that we never insert an internal check where the type of the string implies
+%%that a check must succeed. Furthermore, expensive calculations (such as language
+%%inclusion or ${\sf rreplace}$) all occur at compile time.
+%%Since sanitation problems are generally expressible with smalle, simple expressions,
+%%we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
+%%support this assertion.
 
 % Begin Grammar 
 % Removes the < > from grammar productions.
@@ -855,28 +866,29 @@ For all strings $s$ and expressions $r$, either $s \in \lang{r}$ or $s \not \in 
 \end{lem}
 
 \begin{defn}[$\tt{lsubst}$]
-The function $\lsubst{r}{s_1}{s_2}$ produces a string in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
+The replation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
 \end{defn}
 
 \begin{defn}[$\tt{lreplace}$]
-The function $\lreplace{r}{r_1}{r_2}$ produces a regular expression in which any sublanguage $\lang{r_1'}$ of $\lang{r_1}$ satisfying the condition $\lang{r_1'} \subseteq{\lang{r}}$ is replaced with $\lang{r_2}$.
+  The relation $\lreplace{r}{r_1}{r_2} = r'$ relates $r, r_1,$ and $r_2$ to
+  a language $r'$ containing all strings of $r_1$ except that any substring $s_{pre} s s_{post} \in \lang{r_1}$ where $s \in \lang{r}$
+  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty).
 \end{defn}
 
-\begin{lem}{Closure and Totality of Replacement.} \label{thm:total}
-If $r, r_1$ and $r_2$ are regular expressions, then $\lreplace{r}{r_1}{r_2}$ is also a regular expression.
+\begin{lem}{Closure.} \label{thm:total}
+  If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular expressions, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
 \end{lem}
 \begin{proof}
-By induction on $r$ and closure properties of regular expressions.
+The theorem follows from closure under difference, right quotient and reversal.
 \end{proof}
 
 \begin{lem}{Substitution Correspondence.} \label{thm:substcorrespondence}
-If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$.
+  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
 \end{lem}
 \begin{proof}
-The proof proceeds by structural induction on $r$.
-The base case ($r=\alpha, \alpha \in \Sigma$) is trivial.
-The choice and sequential cases require lemma 1, and prove a more general property that $\lsubst{r}{s_1}{s_2} \in \lang{r'}$ for some $r'$ equivalent to $\lreplace{r}{r_1}{r_2}$.
-The closure case follows from the induction hypothesis applied to any $n$-unwinding.
+The theorem follows from the refinitions of lsubst and lreplace; note that language substitutions over-approximate string substititons.
+\end{proof}
+
 
 %\begin{description}
 %\item[case $r=\alpha$.]
@@ -900,7 +912,6 @@ The closure case follows from the induction hypothesis applied to any $n$-unwind
 %\item[case $r = a*$].
 %By considering the once unwinding of $a*$, noting that $s_1$ and $s_2$ are finite.
 %\end{description}
-\end{proof}
 
 
 % NRF The coercion lemma is no longer necessary, because it is a property of
@@ -947,70 +958,26 @@ If $\tctx \vdash P : \regex$ then $P \treduces \rx{r}$ such that $r$ is a well-f
 
 We now prove safety for the string fragment of the source and target languages.
 
-\begin{thm}{Safety for the String Fragment of P.}
+\begin{thm}{Safety and Sanitation Correctness for the String Fragment of P.} \label{thm:scorrect}
   Let $S$ be a term in the source language. If $\sctx \vdash S : \stringin{r}$ 
-  then $S \sreduces \rstr{s}$ and $\rstr{s} : \stringin{r}$, or else $S \err$.
+  then $S \sreduces \rstr{s}$, $\sctx \rstr{s} : \stringin{r}$, and $s \in \lang{r}$; or else $S \err$.
 \end{thm}
 \begin{proof}
-By induction on the derivation of $\sctx \vdash S : \psi$. The interesting case
-is S-T-Replace, which requires lemma \ref{thm:substcorrespondence}. The 
-Coercion lemma additionally requires the second property of lemma \ref{thm:regexprops}.
-
-%\begin{description}
-%\item[S-T-Stringin-I:]
-%If $S = \rsconcat{S_1}{S_2} : \stringin{r}$ then
-%$S \sreduces S$ by S-E-RStr, and $\sctx \vdash S : \psi$ by assumption.
-%
-%\item[S-T-Concat:] 
-%Suppose $S = \rsconcat{S_1}{S_2} : \stringin{r_1 r_2}$.
-%By inversion, $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_1 : \stringin{r_2}$.
-%It follows by induction that either $S_1 \err$, $S_2 \err$, 
-%or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ for some $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
-%In the latter case $S \reduces \rstr{s_1s_2}$ by S-E-Concat and $\sctx \vdash \rstr{s_1s_2} : \tstr{r_1r_2}$ by \ref{thm:regexprops}.
-%In the former cases, $S \err$.
-%
-%\item[S-T-Replace:a]
-%Suppose $S = \rreplace{r}{S_1}{S_2}$ and $\sctx \vdash S : \stringin{r'}$.
-%By inversion $\sctx \vdash S_1 : \stringin{r_1}$ and $\sctx \vdash S_2 : \stringin{r_2}$ such that $\lsubst{r}{r_1}{r_2} = r'$.
-%By induction, $S_1 \err$, $S_2 \err$ 
-%or $S_1 \sreduces \rstr{s_1}$ and $S_2 \sreduces \rstr{s_2}$ such that 
-%In the latter case, we know $\lreplace{r}{s_1}{s_2} \in
-%\lang{\lsubst{r}{r_1}{r_2}}$ by lemma \ref{thm:substcorrespondence};
-%therefore by S-E-Replace, $S \sreduces \rstr{s}$ such that  
-%
-%$s \in \lang{\lsubst{r}{r_1}{r_2}} = \lang{r'}$.
-%So by S-T-String-I, $\rstr{s} : \stringin{r'}$.
-%In the former cases, $S \err$.
-%
-%\item[S-T-Coerce:]
-%Suppose $S = \coerce{r}{S_1}$ and $S : \stringin{r}$.
-%By inversion, $\sctx \vdash S_1 : \stringin{r'}$.
-%By induction, $S_1 \err$ or $S_1 \sreduces \rstr{s}$.
-%In the former case $S \err$ by propagation rules.
-%In the latter case we have by property 2 of \ref{thm:regexprops} that $s \in \lang{r}$ or else
-%$s \not \in \lang{r}$.
-%If $s \in \lang{r}$ then $\rstr{s} : \stringin{r}$.
-%If $s \not \in \lang{r}$ then $S \err$. 
-%\end{description}
+By induction on the typing relation, where (a) case holds by lemma \ref{thm:regexprops} in the S-T-Concat case and lemma \ref{thm:substcorrespondence} in the S-T-Replace case..
+The (b) cases hold by unstated, but standard, error propagation rules.
 \end{proof}
 
 In addition to safety, we proof a correctness result for $\lambdas$ which will
 be preserved under translation.
 
-\begin{thm}{Input Sanitation Correctness of $\lambdas$.}\label{thm:scorrect}
-  If $\sctx \vdash S : \stringin{r}$ then either (a) $S \sreduces \rstr{s}$ for $s \in \lang{r}$
-  or (b) $S \err$.
-\end{thm}
-\begin{proof}
-  We may actually want to present this proof.
-\end{proof}
+%\begin{thm}{Correctness of Input Sanitation (CIS) for $\lambdas$.}\label{thm:scorrect}
+%  If $\sctx \vdash S : \stringin{r}$ then either (a) $S \sreduces \rstr{s}$ for $s \in \lang{r}$
+%  or (b) $S \err$.
+%\end{thm}
 
-Finally, $\lambdap$ is also type-safe. We omit the proof due to space constraints,
-and because the proof is trivial.
-
-\begin{thm}
+\begin{thm} 
   Let $P$ be a term in the target language. If $\tctx \vdash P : \theta$ 
-  then $P \sreduces P'$ and $\tctx \vdash P' : \theta$.
+  then $P \sreduces P'$ and $\tctx \vdash P' : \theta$, or else $P \err$.
 \end{thm}
 
 \subsection{Translation Correctness}
@@ -1041,7 +1008,7 @@ If If $\sctx \vdash S : \stringin{r}$ and $\trden{S} = P$ then either:
 
 Finally, our main theorem establishes that input sanitation correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
 
-\begin{thm}{Input Sanitation Correctness for Translated Terms}
+\begin{thm}{Correctness of Input Sanitation for Translated Terms.}
   If $\trden{S} = P$ and $\sctx \vdash S : \stringin{r}$ then either $P \err$ or $P \sreduces \tstr{s}$
   for $s \in \lang{r}$.
 \end{thm}
