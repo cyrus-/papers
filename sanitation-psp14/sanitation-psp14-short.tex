@@ -383,7 +383,7 @@ We take the position that to be practical, such a type system cannot require tha
 %\keywords
 %type-level computation, typed compilation
 \section{Introduction}\label{intro}
-Improper input sanitation is a leading cause of security vulnerabilities in web applications [OWASP]. Command injection attacks exploit improper input sanitation by inserting malicious code into an otherwise benign command. Modern web frameworks, libraries, and database abstraction layers attempt to ensure proper sanitation of user input. When these methods are unavailable or insufficient, developers implement custom sanitation techniques. In both cases, sanitation algorithms are implemented using the language's regular expression capabilities and usually \emph{replace} potentially unsafe strings with equivalent escaped strings.
+Improper input sanitation is a leading cause of security vulnerabilities in web applications \cite{OWASP}. Command injection attacks exploit improper input sanitation by inserting malicious code into an otherwise benign command. Modern web frameworks, libraries, and database abstraction layers attempt to ensure proper sanitation of user input. When these methods are unavailable or insufficient, developers implement custom sanitation techniques. In both cases, sanitation algorithms are implemented using the language's regular expression capabilities and usually \emph{replace} potentially unsafe strings with equivalent escaped strings.
 
 In this paper, we present a type system for implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
@@ -416,7 +416,7 @@ The input sanitation problem is well-understood. There exist a large number of t
 
 Unlike \emph{frameworks and libraries} provided by languages such as Haskell and Ruby, our type system provides a \emph{static} guarantee that input is always properly sanitized before use. Doing so requires reasoning about the operations on regular languages corresponding to standard operations on strings; we are unaware of any production system which contains this form of reasoning. Therefore, even where frameworks and libraries provide a viable interface or wrapper around input sanitation, our approach is complementary because it ensurees the correctness of the framework or library itself. Furthermore, our approach is more general than database abstraction layers because our mechanism is applicable to all forms of command injection (e.g. shell injection or remote file inclusion).
 
-A number of research languages provide static guarantees that a program is free of input sanitation vulnerabilities [Jif][Ur/Web]. 
+A number of research languages provide static guarantees that a program is free of input sanitation vulnerabilities \cite{UrFlowOSDI10}. 
 Unlike this work, our solution to the input sanitation problem has a very low barrier to adoption; for instance, our implementation conservatively extends Python -- a popular language among web developers.
 We also believe our general approach is better-positioned for security, where continuously evolving threats might require frequent addition of new analyses; in these cases, the composability and generality of our approach is a substantial advantage.
 
@@ -426,9 +426,11 @@ We also believe our general approach is better-positioned for security, where co
 %  \item Our implementation of the translation is implemented in Python and shares its grammar. Since Python is a popular programming language among web developers, the barrier between our research and adopted technologies is lower than for greenfield security-oriented languages.
 %\end{itemize}
 
-We are also unaware of any extensible programming languages which emphasize applications to security concerns (TRUE?).
+We are also unaware of any extensible programming languages which emphasize applications to security concerns.
 
-Incorporating regular expressions into the type system is not novel. The XDuce system \cite{pierce} typechecks XML schemas using regular expressions. We differ from this and related work in at least two ways. First, our system  is defined within an extensible type system; second, and more importantly, we have demonstrated that regular expression types are applicable to the web security domain.
+Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP,HosoyaPierce2002} checks XML documents against schemas using regular expressions. 
+Similarly, XHaskell \cite{xhaskell} focuses on XML documents.
+We differ from this and related work in at least two ways. First, our system  is defined within an extensible type system; second, and more importantly, we have demonstrated that regular expression types are applicable to the web security domain.
 
 In conclusion, our system is novel in at least two ways:
 \begin{itemize}
@@ -453,16 +455,36 @@ idiomatic code.
 
 \section{A Type System for String Sanitation}
 
-In this section we define a language for statically checked string sanitation ($\lambdas$)
-and prove that its correctness property is preserved under translation to a language
-with regular expression matching capabilities ($\lambdap$). A brief outline of this section
-follows:
+In this section we define a language for statically checked string sanitation ($\lambdas$).
+The system has regular expression types $\stringin{r}$ whre $r$ is a regular expression. 
+Expressions of this type evaluate to string literals in the language described by $r$.
+Operations on expressions of type $\stringin{r}$ preserve this property; for instance,
+the result of string concatenation is 
+
+The premier operation for manipulating strings in $\lambdas$ is string substitution, 
+which is a familiar operation to any programmer who has used regular expressions.
+The replacement operation replaces all instances of a pattern in one string with
+another string; for instance, $\lsubst(a|b, ``a", ``"c") = c$.
+In order to computer the type resulting from aubstitution, we also need to compute
+the result of replacing on language with another inside a given language.
+Finally, just for convienance, we provide a coerce operation. The introduction of
+coercion requires handling of runtime errors.
+
+The underlying language $\lambdap$ has only one type for strings. We prove that whenever
+a term is translated from $\lambdas$ to $\lambdap$, correctness is preserved.
+The only exception is in the case of unsafe casts in $\lambdas$, which are unnecessary but
+are included to demonstrate that the regex library of $\lambdap$ may be used to insert
+dynamic checks whenever even when developers are not careful about using statically checked
+operations.
+
+A brief outline of this section follows:
 \begin{itemize}
   \item Page 3 contains a definition of $\lambdas, \lambdap$ and the translation from $\lambdas$ to $\lambdap$.
   \item In \S 2.1 we state some properties about regular expressions which are needed in our correctness proofs.
-  \item In \S 2.2 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
+   \item In \S 2.2 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
   \item In \S 2.3 we prove that translation preserves the correctness reesult about $\lambdas$.
 \end{itemize}
+
 
 %The $\lambdas$ language is characterized by a type of strings indexed by regular
 %expressions, together with operations on such strings which correspond to common
@@ -855,15 +877,18 @@ string substitution and language substitution given in lemma \ref{thm:substcorre
 We also rely upon several other properties of regular languages.
 Throughout this section, we fix an alphabet $\Sigma$ over which strings $s$ and
 regular expressions $r$ are defined. throughout the paper, $\lang{r}$ refers to the
-language recognized by the expression $r$. This distinction between the expression
+language recognized by the regular expression $r$. This distinction between the regular expression
 and its language -- typically elided in the literature -- makes our definition and
 proofs about systems S and P more readable.
 
 \begin{lem}{Properties of Regular Languages and Expressions.} \label{thm:regexprops}
 The following are properties of regular expressions which are necessary for our proofs:
 If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
-For all strings $s$ and expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+Regular languages are closed under difference, right quotient, reversal, and string homomorphism.
 \end{lem}
+
+If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
 
 \begin{defn}[$\tt{lsubst}$]
 The replation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
@@ -879,14 +904,14 @@ The replation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all subs
   If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular expressions, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
 \end{lem}
 \begin{proof}
-The theorem follows from closure under difference, right quotient and reversal.
+The theorem follows from closure under difference, right quotient, reversal and string homomorphism.
 \end{proof}
 
 \begin{lem}{Substitution Correspondence.} \label{thm:substcorrespondence}
   If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
 \end{lem}
 \begin{proof}
-The theorem follows from the refinitions of lsubst and lreplace; note that language substitutions over-approximate string substititons.
+The theorem follows from the definitions of lsubst and lreplace; note that language substitutions over-approximate string substititons.
 \end{proof}
 
 
@@ -967,10 +992,9 @@ By induction on the typing relation, where (a) case holds by lemma \ref{thm:rege
 The (b) cases hold by unstated, but standard, error propagation rules.
 \end{proof}
 
-In addition to safety, we proof a correctness result for $\lambdas$ which will
-be preserved under translation.
+In addition to safety, we proof a correctness result for $\lambdas$ which ensures that well-typed terms of regular string type are in the language associated with their type.
 
-\begin{thm}{Correctness of Input SAnitation for $\lambdas$.}\label{thm:scorrect}
+\begin{thm}{Correctness of Input Sanitation for $\lambdas$.}\label{thm:scorrect}
   If  $\sctx \vdash S : \stringin{r}$ and $S \sreduces \rstr{s}$ then $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
@@ -1082,25 +1106,18 @@ Finally, our main theorem establishes that input sanitation correctness of $\lam
 % Replace the pattern ^% with an emptty string in the selection starting at
 % the first empty line of section 2 and ending just before \end{document}. 
 
+\section{Implementation}
+
+An implementation of a similar system as a type system extension in the programming language Ace is discussed in \cite{fulton12} and \cite{fulton13}.
+The implementation only supports a special case of replacement where unsafe substrings are simply stripped.
+In practice, most libraries and frameworks escape command sequences instead of stripping characters; therefore, we plan to extend our implementation with
+support for the replace operation as described in this paper..
+
 \section{Conclusion}
 
 Composable analyses which complement existing approaches constitute a promising approach toward the integration of security concerns into programming languages.
 In this paper, we presented a system with both of these properties and defined a security-preserving transformation.
 Unlike other approaches, our solution complements existing, familiar solutions while providing a strong guarantee that traditional library and framework-based approaches are implemented and utilized correctly.
-
-
-Papers that needs to be cited in this section:
-\begin{itemize}
-  \item Ur/Web OSDI paper
-  \item Jif?
-  \item OWASP
-  \item XDuce and related papers. 
-  \item src?
-  \item Ace or Wyvern paper?
-  \item hotsos?
-  \item Haskell extension paper
-  \item Maybe some popular FOSS libraries/frameworks that do input sanitation?
-\end{itemize}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1345,14 +1362,21 @@ Papers that needs to be cited in this section:
 %\section{Discussion}
 %
 %
-%\bibliographystyle{abbrv}
-%
-%% The bibliography should be embedded for final submission.
-%
-%\bibliography{../research}
-%%\softraggedright
-%%P. Q. Smith, and X. Y. Jones. ...reference text...
-%
-%
+\bibliographystyle{abbrv}
 
+\bibliography{research}
+
+% The bibliography should be embedded for final submission.
+
+
+%\begin{thebibliography}
+%
+%\bibitem{lamport94}
+%Leslie Lamport,
+%\emph{\LaTeX: a document preparation system}.
+%Addison Wesley, Massachusetts,
+%2nd edition,
+%1994.
+%
+%\end{thebibliography}
 \end{document}
