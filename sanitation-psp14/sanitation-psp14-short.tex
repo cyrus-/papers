@@ -89,6 +89,8 @@
             }% \only
         }
 
+
+        
 % Patch line number key to call line background macro
         \lst@Key{numbers}{none}{%
             \def\lst@PlaceNumber{\lst@linebgrd}%
@@ -282,6 +284,9 @@
 \newcommand{\rcoerce}[2]{{\sf rcoerce}[#1](#2)}
 \newcommand{\sistr}[1]{{\sf rstr}[#1]}   \newcommand{\rstr}[1]{{\sf rstr}[#1]} % Lots of legacy naming around these parts...
 
+\newcommand{\val}{{\sf val}}
+
+
 \newcommand{\strin}[1]{\sistr{#1}}
 \newcommand{\rsconcat}[2]{{\sf rconcat}(#1,#2)} \newcommand{\rconcat}[2]{{\sf rconcat}(#1,#2)} % lots of legact naming around these parts..
 
@@ -474,10 +479,12 @@ Unfortunately, we are unable to present full proofs in this paper due to space c
 \begin{figure}[h]
 \begin{grammar}
 
-<$\psi$> ::=	...			\hfill	source types					\alt
+<$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
 $\stringin{r}$				 
 
-<S> ::= ... \hfill source terms \alt
+<S> ::= 
+      $\lambda x . e$ \hfill source terms \alt
+      $e e$ \alt
       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
       $\rsconcat{S}{S}$ \alt
       $\sisubst{r}{S}{S}$ \alt
@@ -489,11 +496,12 @@ $\stringin{r}$
 \begin{figure}[h]
 \begin{grammar}
 
-<$\theta$> ::= ... \hfill target types \alt
+<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
 $\str$ \alt $\regex$
 
 
-<P> ::= ... \hfill target terms \alt
+<P> ::= $\lambda x . e$ \hfill target terms \alt
+  $e e$ \alt
   $\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{P}{P}$ \alt
@@ -503,6 +511,7 @@ $\str$ \alt $\regex$
 \caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
 \label{fig:lcsSyntax}
 \end{figure}
+
 
 
 %The $\lcs$ language gives static semantics for common regular expression library
@@ -589,6 +598,8 @@ $\str$ \alt $\regex$
 % instead I am placing them at the top. Since the figures are out of order,
 % it's even more important that we get the number gith. therefore, the counter
 % is modified before and after this figure.
+
+
 \addtocounter{figure}{4}
 \begin{figure*}\label{fig:trans}
 
@@ -623,6 +634,7 @@ The translation is type-directed in the Tr-Coerce cases.}
 
 
 
+
 %
 % Begin typing/translation relation
 %
@@ -638,6 +650,14 @@ The translation is type-directed in the Tr-Coerce cases.}
 $\fbox{\inferrule{}{\sctx \vdash S : \psi}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \psi$
 \begin{mathpar}
+%\inferrule[S-T-Abs]
+%{\sctx, x : T_1 \vdash e : T_2}
+%{\sctx \vdash \lambda x.e : T_1 \rightarrow T_2}
+%
+%\inferrule[S-T-App]
+%{\sctx \vdash e_1 : T' \\ \sctx \vdash e_2 : T' \rightarrow T}
+%{\sctx \vdash e_1 e_2 : T}
+%  
 \inferrule[S-T-Stringin-I]
 {s \in \lang{r}}
 {\sctx \vdash \strin{s} : \stringin{r}}
@@ -668,6 +688,15 @@ The typing context $\sctx$ is standard.}
 $\fbox{\inferrule{}{S \sreduces S}}$
 $\fbox{\inferrule{}{S \err}}$
 \begin{mathpar}
+%
+%\inferrule[S-E-Abs]                                                             
+%{ \ }                                                                           
+%{\lambda x.e \sreduces \lambda x.e}                                             
+%
+%\inferrule[S-E-App]
+%{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
+%{ e_1 e_2 \sreduces e_1' e_2'}
+%
 \inferrule[S-E-RStr]
 { \ }
 {\strin{s} \sreduces \strin{s}}
@@ -696,12 +725,22 @@ Error propagation rules are omitted.}
 
 \newpage
 
+
+
 \begin{figure}[t]\label{fig:lambdap}
 \small
 $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \theta$
 
 \begin{mathpar}
+%\inferrule[P-T-Abs]
+%{\tctx, x : T_1 \vdash e : T_2}
+%{\tctx \vdash \lambda x.e : T_1 \rightarrow T_2}
+%
+%\inferrule[P-T-App]
+%{\tctx \vdash e_1 : T \\ \tctx \vdash e_2 : T' \rightarrow T}
+%{\tctx \vdash e_1 e_2 : T}
+%
 \inferrule[P-T-String]
 { \ }
 {\tctx \vdash \tstr{s} : \str}
@@ -733,7 +772,16 @@ $\fbox{\inferrule{}{P \treduces P}}$
 $\fbox{\inferrule{}{P \err}}$
 
 \begin{mathpar}
-\inferrule[P-E-Str]
+
+%\inferrule[P-E-Abs]
+%{ \ }
+%{\lambda x.e \sreduces \lambda x.e}
+%
+%\inferrule[P-E-App]
+%{ e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
+%{ e_1 e_2 \sreduces e_1' e_2'}
+%
+  \inferrule[P-E-Str]
 { \ }
 {\tstr{s} \treduces \tstr{s}}
 
@@ -763,11 +811,16 @@ Error propagation rules are omitted.}
 \end{figure}
 
 
+
+
 \newpage
 \ 
 \newpage
 \ 
 \newpage
+
+
+
 
 \subsection{Properties of Regular Languages}
 
