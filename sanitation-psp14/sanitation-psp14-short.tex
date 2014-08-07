@@ -365,11 +365,11 @@
 \maketitle
 \begin{abstract}
 %Evidence suggests that programmers are reluctant to adopt new languages to
-Web applications must ultimately generate strings that contain commands to be consumed by systems like web browsers and database engines. If these strings are constructed from user input that has not been properly sanitized, this can expose costly injection vulnerabilities. %Structured frameworks for constructing commands centralizes control over string sanitization, but verifying that the framework itself sanitizes user input correctly can still be tricky.
+Web applications must ultimately generate strings containing commands that are   executed by external systems like web browsers and database engines. If these strings are constructed from user input that has not been properly sanitized, this can lead to a variety of command injection vulnerabilities. %Structured frameworks for constructing commands centralizes control over string sanitization, but verifying that the framework itself sanitizes user input correctly can still be tricky.
 
-In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language. The language of a string is tracked by the type system through operations like concatenation, substitution and coercion, so regular string types can be used to implement, in essentially a conventional manner, the parts of a web application or application framework that constructs  commands. Simple type annotations at key points can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks.
+In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language and support operations like concatenation, substitution and coercion. Regular string types can be used to implement, in essentially a conventional manner, the parts of a web application or application framework that construct such command strings. Straightforward type annotations at key interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system as a minimal typed lambda calculus, $\lambda_{RS}$.
 
-We take the position that to be practical, such a type system cannot require that programmers adopt a new programming language. Ideally, such a ``special-purpose'' type system would be distributed as a library that could safely be used together with other such type systems. We support this by specifying a sound translation to a simple language containing only strings and regular expressions, then discuss implementing the type system together with this translation as a library in \texttt{atlang}, an extensible static type system for Python (being developed by the authors).% represents the most sophisticated application of this library to date.
+To be practical, adopting a type system like this should not require adopting a new programming language. Instead, we favor extensible type systems: new static type systems like this should be distributed as libraries atop a mechanism that guarantees that they can be safely composed.  We support this by 1) specifying a  translation from $\lambda_{RS}$ to a language containing only strings and regular expressions, then, taking Python as such a language, 2) implement the type system together with the translation as a library using \texttt{atlang}, an extensible static type system for Python (being developed by the authors).% represents the most sophisticated application of this library to date.
 % Security-oriented programming languages do not enjoy wide adoption. Conversely, library and framework-based approaches to security are pervasive. Unfortunately, libraries and frameworks are only effective solutions if they are implemented and used properly. In this paper, we propose that extensible programming languages provide a promising mechanism for increasing the amount of trust that can be place in libraries and frameworks. To demonstrate this approach, we present a conservative extension to the simply-typed lambda calculus for checking the correctness of input sanitation algorithms. We also demonstrate how this language's security guarantees are preserved under translation into an underlying language containing a regular expression library. We believe this approach -- complementing existing techniques with light-weight, composable type-based analyses -- constitutes a promising compromise between usability, potential for industry adoption, and theoretically grounded safety guarantees.
 \end{abstract}
 
@@ -479,7 +479,7 @@ Unfortunately, we are unable to present full proofs here due to space constraint
 % Removes the < > from grammar productions.
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
-\begin{figure}[h]
+\begin{figure}[t]
 \begin{grammar}
 <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
@@ -1032,6 +1032,116 @@ are necessary.
 % NRF commented out section 2 in order to determine the length of section 1.
 % Replace the pattern ^% with an emptty string in the selection starting at
 % the first empty line of section 2 and ending just before \end{document}. 
+
+\section{Implementation in {Atlang}}
+\begin{figure}
+\begin{lstlisting}
+@fn
+def sanitize(s : string_in[r'.*']):
+  return (s.replace(r'"', '&quot;') # TODO: is this right?
+           .replace(r'<', '&lt;')
+           .replace(r'>', '&gt;'))
+
+@fn
+def results_query(s : string_in[r'[^"]*']):
+  return 'SELECT * FROM users WHERE name="' + s + '"'
+
+@fn
+def results_div(s : string_in[r'[^<>]*']):
+  return '<div>Results for ' + s + '</div>'
+
+def main(db):
+  input = sanitize(user_input())
+  results = db.execute(results_query(input))
+  return results_div(input) + format(results)
+\end{lstlisting}
+\vspace{-10px}
+\caption{Regular string types in atlang, a library that enables static type checking for Python. }
+\end{figure}
+\begin{figure}
+\begin{lstlisting}
+class string_in(atlang.Type):
+  def __init__(self, rx):
+    rx = rx_normalize(rx)
+    atlang.Type.__init__(idx=rx)
+
+  def ana_Str(self, ctx, node):
+    if not in_lang(node.s, self.idx):
+      raise atlang.TypeError("...", node)
+
+  def trans_Str(self, ctx, node):
+    return astx.copy(node)
+
+  def syn_BinOp_Add(self, ctx, node):
+    left_t = ctx.syn(node.left)
+    right_t = ctx.syn(node.right)
+    if isinstance(left_t, string_in):
+      left_rx = left_t.idx
+      if isinstance(right_t, string_in):
+        right_rx = right_t.idx
+        return string_in[lconcat(left_rx, right_rx)]
+    raise atlang.TypeError("...", node)
+
+  def trans_BinOp_Add(self, ctx, node):
+    return astx.copy(node)
+
+  def syn_Method_replace(self, ctx, node):
+    [rx, exp] = node.args
+    if not isinstance(rx, ast.Str):
+      raise atlang.TypeError("...", node)
+    rx = rx.s
+    exp_t = ctx.syn(exp)
+    if not isinstance(exp_t, string_in):
+      raise atlang.TypeError("...", node)
+    exp_rx = exp_t.idx
+    return string_in[lreplace(self.idx, rx, exp_rx)]
+
+  def trans_Method_replace(self, ctx, node):
+    return astx.quote(
+      """__import__(re); re.sub(%0, %1, %2)""",
+      astx.Str(s=node.args[0]),
+      astx.copy(node.func.value),
+      astx.copy(node.args[1]))
+
+  def syn_Method_check(self, ctx, node):
+    [rx] = node.args
+    if not isinstance(rx, ast.Str):
+      raise atlang.TypeError("...", node)
+    return string_in[rx.s]
+
+  def trans_Method_check(self, ctx, node):
+    return astx.quote(
+      """__import__(string_in_helper);
+      string_in_helper.coerce(%0, %1)""",
+      astx.Str(s=other_t.idx),
+      astx.copy(node))
+
+  def check_Coerce(self, ctx, node, other_t):
+    # coercions can only be defined between 
+    # types with the same type constructor, 
+    if rx_sublang(other_t.idx, self.idx):
+      return other_t
+    else: raise atlang.TypeError("...", node)
+\end{lstlisting}
+\vspace{-10px}
+\caption{Implementation of the \texttt{string\_in} type constructor in atlang.}
+\end{figure}
+
+\begin{figure}
+\begin{lstlisting}
+output of successful compilation
+\end{lstlisting}
+\caption{Output of successful compilation.}
+\end{figure}
+
+\begin{figure}
+\begin{lstlisting}
+output of failed compilation
+\end{lstlisting}
+\caption{Output of failed compilation.}
+\end{figure}
+wwwww
+Here, we use the argument annotation syntax introduced in Python 3 (a similar syntax is available for Python 2.6+, not shown).
 
 \section{Conclusion}
 
