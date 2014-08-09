@@ -389,7 +389,9 @@ Command injection vulnerabilities are among the most common and severe in modern
 \end{lstlisting}
 If a malicious user enters the name \lstinline{'"; DROP TABLE users --'}, the entire database could be erased. 
 
-To avoid this problem, the program must \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that prepends double quotes and existing backslashes  with a backslash, which SQL treats safely. Note that this function is not idempotent, so it should only be called once. Guaranteeing that user input has already been sanitized before it is used to construct a command is challenging. 
+To avoid this problem, the program must \emph{sanitize} user input. 
+For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes any double quotes, which are necessary in order to force uesr input to be interpreted as anything other than a string literal.
+%prepends double quotes and existing backslashes  with a backslash, which SQL treats safely. Note that this function is not idempotent, so it should only be called once. Guaranteeing that user input has already been sanitized before it is used to construct a command is challenging. 
 
 We observe that most such sanitization techniques can be understood in terms of \emph{regular languages}. For example, \verb|name| should be a string in the language described by the regular expression \verb!([^"\]|(\")|(\\))*! -- a sequence consisting of characters other than quotation marks or backslashes, or escaped quotation marks or escaped backslashes. Concrete syntax like this can be understood to desugar, in a standard way, to the abstract syntax for regular expressions shown in Figure \ref{fig:regex}. We will work with this ``core'' for simplicity, and assume basic familiarity with regular expressions \cite{cinderella}.
 
@@ -1115,9 +1117,11 @@ Finally, our main theorem establishes that input sanitation correctness of $\lam
 \section{Implementation in {Atlang}}
 \begin{figure}
 \begin{lstlisting}
+#todo: why are these r's here?
+#TODO-nrf this is maybe kind-of right bue I think there's a nicer way to do it.
 @fn
 def sanitize(s : string_in[r'.*']):
-  return (s.replace(r'"', '&quot;') # TODO: is this right?
+  return (s.replace(r'"', '&quot;') 
            .replace(r'<', '&lt;')
            .replace(r'>', '&gt;'))
 
