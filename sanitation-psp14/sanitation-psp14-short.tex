@@ -315,7 +315,6 @@
 
 
 % Judgements
-\newcommand{\err}{\ {\sf err}}
 \newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
 
 % Relations
@@ -543,8 +542,7 @@ The typing context $\sctx$ is standard.}
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{S \sreduces S}}$
-$\fbox{\inferrule{}{S \err}}$
+$\fbox{\inferrule{}{e \sreduces e}}$
 \begin{mathpar}
 \inferrule[S-E-Abs]                                                             
 { \ }                                                                           
@@ -552,7 +550,7 @@ $\fbox{\inferrule{}{S \err}}$
 
 \inferrule[S-E-App]
 { e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
-{ e_1 e_2 \sreduces e_1' e_2'}
+{ e_1(e_2) \sreduces e_1'(e_2')}
 
 \inferrule[S-E-RStr]
 { \ }
@@ -586,8 +584,7 @@ $\fbox{\inferrule{}{S \err}}$
 
 
 \end{mathpar}
-\caption{Big step semantics for $\lambdas$.
-Error propagation rules are omitted.}
+\caption{Big step semantics for $\lambdas$}.
 \label{fig:eeval}
 \end{figure}
 
@@ -765,7 +762,7 @@ A brief outline of this section follows:
 \addtocounter{figure}{4}
 \begin{figure*}[t]\label{fig:trans}
 
-$\fbox{\inferrule{}{\trden{S} = P}}$
+$\fbox{\inferrule{}{\sctx \vdash \trden{S} = P}}$
 \begin{mathpar}
 
 \inferrule[Tr-Abs?]
@@ -774,14 +771,14 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 
 \inferrule[Tr-App]
 {\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{\sctx \vdash \trden{e_1e_2} = \iota_1\iota_2}
+{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
 
 \inferrule[Tr-string]
 { \ }
 { \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
 
 \inferrule[Tr-Concat]
-{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash htrden{e_2} = \iota_2}
+{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
 { \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
 
 \inferrule[Tr-Subst]
@@ -789,23 +786,23 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 { \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
 
 \inferrule[Tr-SafeCoerce]
-{ \ }
-{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \trden{e} }
+{ \sctx \vdash \trden{e} = \iota }
+{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
 
 \inferrule[Tr-Check-Ok]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \subseteq \lang{r'} } 
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \trden{[e/x]e_1} }
+{ \sctx \vdash e : \stringin{r} \\ \lang{r} \subseteq \lang{r'} \\ \trden{[e/x]e_1} = \iota } 
+{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota }
 
 \inferrule[Tr-Check-NotOk]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \not \subseteq \lang{r'}}
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \trden{\tcheck{r'}{e_2}} }
+{ \sctx \vdash e : \stringin{r} \\ \lang{r} \not \subseteq \lang{r'} \\ \trden{\tcheck{r'}{e_2}} = \iota}
+{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota}
 
 
 
 
 \end{mathpar}
 \caption{Translation from source terms ($e$) to target terms ($\iota$).
-The translation is type-directed in the Tr-SafeCoerce case.}
+The translation is type-directed.}
 \end{figure*}
 \addtocounter{figure}{-5}
 
@@ -863,8 +860,7 @@ The typing context $\tctx$ is standard.}
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{P \treduces P}}$
-$\fbox{\inferrule{}{P \err}}$
+$\fbox{\inferrule{}{\iota \treduces \iota}}$
 
 \begin{mathpar}
 \inferrule[P-E-Abs]
@@ -873,7 +869,7 @@ $\fbox{\inferrule{}{P \err}}$
 
 \inferrule[P-E-App]
 { e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
-{ e_1 e_2 \sreduces e_1' e_2'}
+{ e_1(e_2) \sreduces e_1'(e_2')}
 
   \inferrule[P-E-Str]
 { \ }
@@ -895,12 +891,8 @@ $\fbox{\inferrule{}{P \err}}$
 {\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \strin{s} \\ s \in \lang{r}}
 {\tcheck{\iota_1}{\iota_2} \treduces \tstr{s}}
 
-\inferrule[P-E-Check-Err]
-{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s} \\ s \not \in \lang{r}}
-{\tcheck{\iota_1}{\iota_2} \err}
 \end{mathpar}
-\caption{Big step semantics for of $\lambdap$.
-Error propagation rules are omitted.}
+\caption{Big step semantics for of $\lambdap$}.
 \label{fig:ieval}
 \end{figure}
 
