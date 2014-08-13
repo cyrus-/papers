@@ -327,7 +327,7 @@
 %%\newcommand{\rulelistwidth}{3in}
 
 % Names of type systems presented in paper
-\newcommand{\lcs}{\lambda_{CS}}
+\newcommand{\lcs}{\lambda_{S}}
 
 \setlength{\grammarindent}{3em}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -371,9 +371,9 @@
 %Evidence suggests that programmers are reluctant to adopt new languages to
 Web applications ultimately generate strings containing commands, which are   executed by systems like web browsers and database engines. Strings constructed from user input that has not been properly sanitized can thus cause command injection vulnerabilities. %Structured frameworks for constructing commands centralizes control over string sanitization, but verifying that the framework itself sanitizes user input correctly can still be tricky.
 
-In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language and support operations like concatenation, substitution and coercion. Regular string types can be used to implement, in essentially a conventional manner, the parts of a web application or application framework that construct such command strings. Straightforward type annotations at key interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system as a minimal typed lambda calculus, $\lambda_{RS}$.
+In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language and support operations like concatenation, substitution and coercion. Regular string types can be used to implement, in essentially a conventional manner, the parts of a web application or application framework that construct such command strings. Straightforward type annotations at key interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system as a minimal typed lambda calculus, $\lambda_{S}$.
 
-To be practical, adopting a type system like this should not require adopting a new programming language. Instead, we favor extensible type systems: new static type systems like this should be distributed as libraries atop a mechanism that guarantees that they can be safely composed.  We support this by 1) specifying a  translation from $\lambda_{RS}$ to a language containing only strings and regular expressions, then, taking Python as such a language, 2) implement the type system together with the translation as a library using \texttt{atlang}, an extensible static type system for Python (being developed by the authors).% represents the most sophisticated application of this library to date.
+To be practical, adopting a type system like this should not require adopting a new programming language. Instead, we favor extensible type systems: new static type systems like this should be distributed as libraries atop a mechanism that guarantees that they can be safely composed.  We support this by 1) specifying a  translation from $\lambda_{S}$ to a language containing only strings and regular expressions, then, taking Python as such a language, 2) implement the type system together with the translation as a library using \texttt{atlang}, an extensible static type system for Python (being developed by the authors).% represents the most sophisticated application of this library to date.
 % Security-oriented programming languages do not enjoy wide adoption. Conversely, library and framework-based approaches to security are pervasive. Unfortunately, libraries and frameworks are only effective solutions if they are implemented and used properly. In this paper, we propose that extensible programming languages provide a promising mechanism for increasing the amount of trust that can be place in libraries and frameworks. To demonstrate this approach, we present a conservative extension to the simply-typed lambda calculus for checking the correctness of input sanitation algorithms. We also demonstrate how this language's security guarantees are preserved under translation into an underlying language containing a regular expression library. We believe this approach -- complementing existing techniques with light-weight, composable type-based analyses -- constitutes a promising compromise between usability, potential for industry adoption, and theoretically grounded safety guarantees.
 \end{abstract}
 
@@ -505,7 +505,7 @@ operations.
 
 A brief outline of this section follows:
 \begin{itemize}
-  \item Page 3 contains a definition of $\lambdas, \lambdap$ and the translation from $\lambdas$ to $\lambdap$.
+  \item Page 3 contains a definition of $\lambdas, \lambdap$ and the translation from $\lambdas$ to $\lambdap$. Grammar follows immediately at the top of page 4.
   \item In \S 2.1 we state some properties about regular expressions which are needed in our correctness proofs.
    \item In \S 2.2 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
   \item In \S 2.3 we prove that translation preserves the correctness reesult about $\lambdas$.
@@ -537,55 +537,6 @@ A brief outline of this section follows:
 %%Since sanitation problems are generally expressible with smalle, simple expressions,
 %%we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
 %%support this assertion.
-
-% Begin Grammar 
-% Removes the < > from grammar productions.
-\renewcommand{\grammarlabel}[2]{#1\hfill#2}
-
-\begin{figure}[t]
-\begin{grammar}
-<r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
-
-\caption{Regular expressions over the alphabet $\Sigma$.}
-\label{fig:regex}
-\end{grammar}
-\end{figure}
-
-\begin{figure}[h]
-\begin{grammar}
-
-<$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
-$\stringin{r}$				 
-
-<S> ::= 
-      $\lambda x . e$ \hfill source terms \alt
-      $e e$ \alt
-      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\rsconcat{S}{S}$ \alt
-      $\sisubst{r}{S}{S}$ \alt
-      $\coerce{r}{S}$
-\caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
-\end{grammar}
-\end{figure}
-
-\begin{figure}[h]
-\begin{grammar}
-
-<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
-$\str$ \alt $\regex$
-
-
-<P> ::= $\lambda x . e$ \hfill target terms \alt
-  $e e$ \alt
-  $\tstr{s}$ \alt
-  $\rx{r}$ \alt
-  $\tconcat{P}{P}$ \alt
-  $\preplace{P}{P}{P}$ \alt
-  $\tcheck{P}{P}$ 
-  \end{grammar}
-\caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
-\label{fig:lcsSyntax}
-\end{figure}
 
 
 
@@ -674,15 +625,11 @@ $\str$ \alt $\regex$
 % it's even more important that we get the number gith. therefore, the counter
 % is modified before and after this figure.
 
-\ 
-\newpage
-\ 
-\newpage
-\ 
+
 
 
 \addtocounter{figure}{4}
-\begin{figure*}\label{fig:trans}
+\begin{figure*}[t]\label{fig:trans}
 
 $\fbox{\inferrule{}{\trden{S} = P}}$
 \begin{mathpar}
@@ -712,9 +659,6 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 The translation is type-directed in the Tr-Coerce cases.}
 \end{figure*}
 \addtocounter{figure}{-5}
-
-
-
 
 %
 % Begin typing/translation relation
@@ -807,7 +751,6 @@ Error propagation rules are omitted.}
 \newpage
 
 
-
 \begin{figure}[t]\label{fig:lambdap}
 \small
 $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
@@ -891,17 +834,104 @@ Error propagation rules are omitted.}
 \label{fig:ieval}
 \end{figure}
 
-
-
-
 \newpage
 \ 
 \newpage
 \ 
 \newpage
+\ 
 
 
 
+
+
+% Begin Grammar 
+% Removes the < > from grammar productions.
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+
+\begin{figure}[t]
+\begin{grammar}
+<r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+
+\caption{Regular expressions over the alphabet $\Sigma$.}
+\label{fig:regex}
+\end{grammar}
+\end{figure}
+
+\begin{figure}[h]
+\begin{grammar}
+
+<$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
+$\stringin{r}$				 
+
+<S> ::= 
+      $\lambda x . e$ \hfill source terms \alt
+      $e e$ \alt
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\rsconcat{S}{S}$ \alt
+      $\sisubst{r}{S}{S}$ \alt
+      $\coerce{r}{S}$
+\caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
+\end{grammar}
+\end{figure}
+
+\begin{figure}[h]
+\begin{grammar}
+
+<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
+$\str$ \alt $\regex$
+
+
+<P> ::= $\lambda x . e$ \hfill target terms \alt
+  $e e$ \alt
+  $\tstr{s}$ \alt
+  $\rx{r}$ \alt
+  $\tconcat{P}{P}$ \alt
+  $\preplace{P}{P}{P}$ \alt
+  $\tcheck{P}{P}$ 
+  \end{grammar}
+\caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
+\label{fig:lcsSyntax}
+\end{figure}
+
+\subsection{Definition of $\lambdas$}
+
+The $\lambdas$ system extends the simply-typed lambda calculus with regular
+expression types; an explanation of significant typing rule follows:
+\begin{itemize}
+  \item Rule S-T-Concat states that the type of concatenated strings is 
+    obtained by concatenating the regular expressions for each string.
+  \item Rule S-T-Replace defines the type of $\textsf{rreplace}$. The expression $\textsf{rreplace}$
+    evaluates to the result of substituting every string matching $r$ in $s_1$
+    with $s_2$. This operation corresponds to the \textsf{str_replace} function of PHP.
+    The type of these expressions is defined in terms of an extra-linguistic \textsf{lreplace}
+    function, which is defined later in this section.
+    The expression $\lreplace{r}{r_1}{r_2}$ is obtained by
+    starting with $r_1$, and replacing any subexpression matching $r$ with $r_2$.
+  \item Rule S-T-Coerce allows coercion; however, note that this coercion cannot
+    invalidate our safety property because we ensure appropraite checks are always
+    inserted wherever coercions are used.
+\end{itemize}
+
+\subsection{Definition of $\lambdap$}
+
+The system $\lambdap$ is a stright-forward extension of a simply typed lambda claculus
+with a string type and a regular epxression tpye. We include two operations which are available in the regular expression
+library of any modern programming language. The check operation ensures that an expression
+recognizes a string, and the replace operation is string replacement.
+
+\subsection{Definition of Translation}
+
+The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
+The coercion cases are most interesting. If the safety of coercion in manifest in the
+types of the expressions, then no runtime check is inserted.
+If the safety of coercion is not manifest in the types, then a check is inserted.
+
+In practice, the type of a replacement rarely matches a specification.
+Therefore, it is convienant in an implementation to always insert the appropriate
+coercion, and then only raise type errors when an automatically inserted coercion
+actually requires the insertion of a runtime check. Alternatively, this policy may 
+be codified in the type system itself using subtyping \cite{fulton12}.
 
 \subsection{Properties of Regular Languages}
 
@@ -1004,6 +1034,15 @@ The theorem follows from the definitions of lsubst and lreplace; note that langu
 
 \subsection{Safety of the Source and Target Languages}
 
+In this section, we establish type safety for the source ($\lambdas$) and
+target ($\lambdap$) languages. In addition to type safety, we also prove
+a stronger correctness property for $\lambdas$.
+
+Our first two theorems establish that our rules preserve the well-formedness of
+regular expressions. The standard lemmas required for safety of the simply
+typed lambda claculus are also required; proofs for these do not differ substntially
+from \cite{pfpl}.
+
 \begin{lem}
   If $\sctx \vdash S : \stringin{r}$ then $r$ is a well-formed regular expression.
 \end{lem}
@@ -1015,8 +1054,21 @@ If $\tctx \vdash P : \regex$ then $P \treduces \rx{r}$ such that $r$ is a well-f
 \end{lem}
 
 We now prove safety for the string fragment of the source and target languages.
+The easiest property is type safety of $\lambdap$, which follows almost directly from
+type safety for the simply typed lambda calculus.
 
-\begin{thm}{Safety and Sanitation Correctness for the String Fragment of P.} \label{thm:scorrect}
+\begin{thm} 
+  Let $P$ be a term in the target language. If $\tctx \vdash P : \theta$ 
+  then $P \sreduces P'$ and $\tctx \vdash P' : \theta$, or else $P \err$.
+\end{thm}
+
+Safety for the string fragment is more involved, because it involves validating that
+the type system's definition is justified by our theorems about regular languages.
+Note that type safety does \emph{not} guarantee that strings of a type are in the
+correct language. We isolate this property so that we may reason about its preservation
+under translation to $\lambdap$, which does not have regular expression types.
+
+\begin{thm}{Type Safety for the String Fragment of $\lambdas$.} \label{thm:scorrect}
   Let $S$ be a term in the source language. If $\sctx \vdash S : \stringin{r}$ 
   then $S \sreduces \rstr{s}$ and $\sctx \vdash \rstr{s} : \stringin{r}$; or else $S \err$.
 \end{thm}
@@ -1025,7 +1077,7 @@ By induction on the typing relation, where (a) case holds by lemma \ref{thm:rege
 The (b) cases hold by unstated, but standard, error propagation rules.
 \end{proof}
 
-In addition to safety, we proof a correctness result for $\lambdas$ which ensures that well-typed terms of regular string type are in the language associated with their type.
+In addition to safety, $\lambdas$ requires a correctness result ensuring that well-typed terms of regular string type are in the language associated with their type.
 
 \begin{thm}{Correctness of Input Sanitation for $\lambdas$.}\label{thm:scorrect}
   If  $\sctx \vdash S : \stringin{r}$ and $S \sreduces \rstr{s}$ then $s \in \lang{r}$.
@@ -1034,19 +1086,14 @@ In addition to safety, we proof a correctness result for $\lambdas$ which ensure
   Follows directly from type safety, canonical forms for $\lambdas$.
 \end{proof}
 
-%\begin{thm}{Correctness of Input Sanitation (CIS) for $\lambdas$.}\label{thm:scorrect}
-%  If $\sctx \vdash S : \stringin{r}$ then either (a) $S \sreduces \rstr{s}$ for $s \in \lang{r}$
-%  or (b) $S \err$.
-%\end{thm}
-
-\begin{thm} 
-  Let $P$ be a term in the target language. If $\tctx \vdash P : \theta$ 
-  then $P \sreduces P'$ and $\tctx \vdash P' : \theta$, or else $P \err$.
-\end{thm}
 
 \subsection{Translation Correctness}
 
-The main theorem of this paper is Theorem \ref{thm:main}. Establishing this result requires an additional theorem (Theorem \ref{tcorrect}), which establishes a relationship between canonical forms for the string fragments of $\lambdas$ and $\lambdap$.
+The main theorem of this paper is Theorem \ref{thm:main},
+which establishes that Theorem \ref{thm:scorrect} is preserved under translation
+into the target language $\lambdap$.
+
+Establishing this result requires an additional theorem establishing a relationship between canonical forms for the string fragments of $\lambdas$ and $\lambdap$.
 
 \begin{thm}{Translation Correctness.} \label{thm:tcorrect}
 If $\sctx \vdash S : \stringin{r}$ then there exists a $P$ such that $\trden{S} = P$ and either: 
@@ -1071,7 +1118,7 @@ Finally, our main theorem establishes that input sanitation correctness of $\lam
 \end{thm}
 \begin{proof}
   By theorem \ref{thm:tcorrect}, $P \sreduces \tstr{s}$ implies that $S \sreduces \strin{s}$.
-  By theorem \ref{thm:scorrect}, this together with the assumption that $S$ is well-typed implies that $s \in \lang{r}$.
+  By theorem \ref{thm:scorrect}, the above property together with the assumption that $S$ is well-typed implies that $s \in \lang{r}$.
 \end{proof}
 % PROOF OF TRANSLATION CORRECTNESS.
 % This proof is slightly out of say. It's SUFFICIENT, but is actually more
@@ -1142,10 +1189,8 @@ Finally, our main theorem establishes that input sanitation correctness of $\lam
 % the first empty line of section 2 and ending just before \end{document}. 
 
 \section{Implementation in {Atlang}}
-\begin{figure}
+\begin{figure}\label{fig:example}
 \begin{lstlisting}
-#todo: why are these r's here?
-#TODO-nrf this is maybe kind-of right bue I think there's a nicer way to do it.
 @fn
 def sanitize(s : string_in[r'.*']):
   return (s.replace(r'"', '&quot;') 
@@ -1167,7 +1212,7 @@ def main(db):
 \end{lstlisting}
 \vspace{-10px}
 \caption{Regular string types in atlang, a library that enables static type checking for Python. }
-\end{figure}
+\end{figure}\label{fig:impl}
 \begin{figure}
 \begin{lstlisting}
 class string_in(atlang.Type):
@@ -1250,30 +1295,14 @@ output of failed compilation
 \end{lstlisting}
 \caption{Output of failed compilation.}
 \end{figure}
-wwwww
-Here, we use the argument annotation syntax introduced in Python 3 (a similar syntax is available for Python 2.6+, not shown).
 
 In this section, we present an example atlang program using our extension together
-with our implementation of the extension in Atlang modulo ${\sf lreplace}$.
+with our implementation of the extension in Atlang (modulo ${\sf lreplace}$).
 Note that in addition to Figure \ref{fig:regex}, regular expressions in atlang
-also support complementation using the carot.
-
-TODO-nrf insert a pargraph or two which explains what's going on... 
-
-\subsection{An Example}
-
-Figure \ref{fig:example} demosntrates the use of string types in atlang.
-The sanitize function takes an arbitrary string and returns a string without
-double quotes and left and right brackets. In this example, we use HTML
-escape sequences; many variants of SQL provide their own syntax
-for this as well.
-
-TODO-nrf line by line of example.
-
-\subsection{Extension Implementation}
-
-TODO-nrf line by line of extension implementation as ewll.
-
+also support complementation using the \^{} symbol. Atlang is implemented in Python,
+and shares the syntax of Python (including the argument annotation syntax introduced in Python 3);
+however, Atlang is statically typed and supported the definition of type system extensions by 
+overriding Python's dynamic dispatch protocol.
 
 An implementation of a similar extension as the one presented here is discussed in \cite{fulton12} and \cite{fulton13}.
 Our prior work only supports a special case of replacement where unsafe substrings are completely removed.
@@ -1281,7 +1310,56 @@ In practice, most libraries and frameworks escape command sequences instead of s
 support for the replace operation as described in this paper.
 
 
+\subsection{An Example}
+
+Figure \ref{fig:example} demosntrates the use of string types in atlang.
+The sanitize function takes an arbitrary string and returns a string without
+double quotes or left and right brackets. In this example, we use HTML
+escape sequences.
+
+The main function receives user input and passes this input to a 
+sanitize function, which replaces all double quotes and brackets with HTML
+escape sequences. 
+
+The result of applying sanitize to input is apped to two functions which
+construct a safe query and safe output.
+The arguments to the result and output construction functions constitute \emph{specifications}.
+In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
+as a string literal by the SQL server.
+In the case of \textsf{results_div}, this specification ensures that user input does 
+not contain any HTML tags, which is a conservative but effective policy for preventing
+XSS attacks.
+
+Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
+The type of ${\sf input}$ is quite large
+and does not actually equal the specified domains of the query or output construction
+methods. This mismatch is common -- in fact, nearly universal. Therefore, 
+our implementation includes a simple subtyping relation between regular expression
+types. 
+This subtyping relation is justified theoretically by the fact that language inclusion is
+decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
+Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
+see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
+
+\subsection{Implementation of the Regular Expression Type}
+
+We implemented a variation on the type system presented in this paper. The only
+significant difference is that we only support replacements where $s_2$ is the empty
+string. Therefore, our implementation respects the system presented in section 2
+only modulo the definition of \textsf{lreplace}.
+
+Atlang translates programs using type definitions, which may extend both the
+static and dynamic semantics of the language. New types are defined as Python
+classes; figure \ref{fig:impl} contains the source code of our implementation.
+
+The \textsf{string_in} type has an indexing regular expression \texttt{idx}.
+Our translation is defined by the \textsf{trans_} methods while the \textsf{syn_}
+methods define our type checker. The atlang type checker or translater defer
+to these methods whenever an expression of type \textsf{string_in} is encountered.
+
+
 \section{Conclusion}
+
 
 Composable analyses which complement existing approaches constitute a promising approach toward the integration of security concerns into programming languages.
 In this paper, we presented a system with both of these properties and defined a security-preserving transformation.
