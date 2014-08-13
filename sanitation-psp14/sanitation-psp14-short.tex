@@ -285,6 +285,8 @@
 
 \newcommand{\val}{{\sf val}}
 
+\newcommand{\rcheck}[4]{ {\sf rcheck}[#1](#2;#3;#4) }
+
 
 \newcommand{\strin}[1]{\sistr{#1}}
 \newcommand{\rsconcat}[2]{{\sf rconcat}(#1;#2)} \newcommand{\rconcat}[2]{{\sf rconcat}(#1;#2)} % lots of legact naming around these parts..
@@ -481,7 +483,7 @@ $\stringin{r}$
       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
       $\rsconcat{e}{e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
-      $\coerce{r}{e}$
+      $\coerce{r}{e}{x.e}{e}$
 \caption{Syntax of $\lambda_{RS}$.}\label{fig:lamrs}
 \end{grammar}
 \end{figure}
@@ -497,14 +499,14 @@ $\stringin{r}$
 $\fbox{\inferrule{}{\sctx \vdash S : \sigma}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
 \begin{mathpar}
-%\inferrule[S-T-Abs]
-%{\sctx, x : T_1 \vdash e : T_2}
-%{\sctx \vdash \lambda x.e : T_1 \rightarrow T_2}
-%
-%\inferrule[S-T-App]
-%{\sctx \vdash e_1 : T' \\ \sctx \vdash e_2 : T' \rightarrow T}
-%{\sctx \vdash e_1 e_2 : T}
-%  
+\inferrule[S-T-Abs]
+{\sctx, x : \sigma_1 \vdash e : \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
+
+\inferrule[S-T-App]
+{\sctx \vdash e_1 : \sigma_1 \\ \sctx \vdash e_2 : \sigma_1 \rightarrow \sigma}
+{\sctx \vdash e_1 e_2 : \sigma}
+  
 \inferrule[S-T-Stringin-I]
 {s \in \lang{r}}
 {\sctx \vdash \strin{s} : \stringin{r}}
@@ -517,13 +519,17 @@ $\fbox{\inferrule{}{\sctx \vdash S : \sigma}}$
 {\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
 {\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
 
-\inferrule[S-T-coerce]
-{\sctx \vdash e : \stringin{r'}}
+\inferrule[S-T-SafeCoerce]
+{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
 {\sctx \vdash \coerce{r}{e} : \stringin{r}}
+
+\inferrule[S-T-Check]
+{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
+{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
 
 \end{mathpar}
 
-\caption{Typing rules for our fragment of $\lambdas$. 
+\caption{Typing rules for $\lambdas$. 
 The typing context $\sctx$ is standard.}
 \label{fig:etyping}
 \end{figure}
@@ -535,15 +541,14 @@ The typing context $\sctx$ is standard.}
 $\fbox{\inferrule{}{S \sreduces S}}$
 $\fbox{\inferrule{}{S \err}}$
 \begin{mathpar}
-%
-%\inferrule[S-E-Abs]                                                             
-%{ \ }                                                                           
-%{\lambda x.e \sreduces \lambda x.e}                                             
-%
-%\inferrule[S-E-App]
-%{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
-%{ e_1 e_2 \sreduces e_1' e_2'}
-%
+\inferrule[S-E-Abs]                                                             
+{ \ }                                                                           
+{\lambda x.e \sreduces \lambda x.e}                                             
+
+\inferrule[S-E-App]
+{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
+{ e_1 e_2 \sreduces e_1' e_2'}
+
 \inferrule[S-E-RStr]
 { \ }
 {\strin{s} \sreduces \strin{s}}
@@ -556,12 +561,27 @@ $\fbox{\inferrule{}{S \err}}$
 {e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
 {\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
 
-\inferrule[S-E-Coerce-OK]
-{S \sreduces \strin{s} \\ s \in \lang{r}}
-{\coerce{r}{S} \sreduces \strin{s}}
+\inferrule[S-E-SafeCoerce]
+{e \sreduces \strin{s}}
+{\coerce{r}{e} \sreduces \strin{s}}
+
+\inferrule[S-E-Check-Ok]
+{e \sreduces \strin{s} \\ s \in \lang{r}}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces [\strin{s} / x]e_1
+}
+
+\inferrule[S-E-Check-NotOk]
+{
+  e \sreduces \strin{s} \\ s \not \in \lang{r}
+}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
+}
+
 
 \end{mathpar}
-\caption{Big step semantics for our fragment of $\lambdas$.
+\caption{Big step semantics for $\lambdas$.
 Error propagation rules are omitted.}
 \label{fig:eeval}
 \end{figure}
@@ -784,14 +804,14 @@ $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \theta$
 
 \begin{mathpar}
-%\inferrule[P-T-Abs]
-%{\tctx, x : T_1 \vdash e : T_2}
-%{\tctx \vdash \lambda x.e : T_1 \rightarrow T_2}
-%
-%\inferrule[P-T-App]
-%{\tctx \vdash e_1 : T \\ \tctx \vdash e_2 : T' \rightarrow T}
-%{\tctx \vdash e_1 e_2 : T}
-%
+\inferrule[P-T-Abs]
+{\tctx, x : \iota_1 \vdash e : \iota_2}
+{\tctx \vdash \lambda x.e : \iota_1 \rightarrow \iota_2}
+
+\inferrule[P-T-App]
+{\tctx \vdash e_1 : \iota_1 \\ \tctx \vdash e_2 : \iota_1 \rightarrow \iota}
+{\tctx \vdash e_1 e_2 : \iota}
+
 \inferrule[P-T-String]
 { \ }
 {\tctx \vdash \tstr{s} : \str}
@@ -812,7 +832,7 @@ $\fbox{\inferrule{}{\tctx \vdash P : \theta}}$
 {\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ }
 {\tctx \vdash \tcheck{\iota_1}{\iota_2} : \str}
 \end{mathpar}
-\caption{Typing rules for our fragment of $\lambdap$.
+\caption{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
 \label{fig:ityping}
 \end{figure}
@@ -823,15 +843,14 @@ $\fbox{\inferrule{}{P \treduces P}}$
 $\fbox{\inferrule{}{P \err}}$
 
 \begin{mathpar}
+\inferrule[P-E-Abs]
+{ \ }
+{\lambda x.e \sreduces \lambda x.e}
 
-%\inferrule[P-E-Abs]
-%{ \ }
-%{\lambda x.e \sreduces \lambda x.e}
-%
-%\inferrule[P-E-App]
-%{ e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
-%{ e_1 e_2 \sreduces e_1' e_2'}
-%
+\inferrule[P-E-App]
+{ e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
+{ e_1 e_2 \sreduces e_1' e_2'}
+
   \inferrule[P-E-Str]
 { \ }
 {\tstr{s} \treduces \tstr{s}}
@@ -856,7 +875,7 @@ $\fbox{\inferrule{}{P \err}}$
 {\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s} \\ s \not \in \lang{r}}
 {\tcheck{\iota_1}{\iota_2} \err}
 \end{mathpar}
-\caption{Big step semantics for our fragment of $\lambdap$.
+\caption{Big step semantics for of $\lambdap$.
 Error propagation rules are omitted.}
 \label{fig:ieval}
 \end{figure}
@@ -935,9 +954,8 @@ expression types; an explanation of significant typing rule follows:
     function, which is defined later in this section.
     The expression $\lreplace{r}{r_1}{r_2}$ is obtained by
     starting with $r_1$, and replacing any subexpression matching $r$ with $r_2$.
-  \item Rule S-T-Coerce allows coercion; however, note that this coercion cannot
-    invalidate our safety property because we ensure appropraite checks are always
-    inserted wherever coercions are used.
+  \item Rule S-T-SafeCoerce allows only safe coercions between string types by
+    expoiting the decidability of language inclusion.
 \end{itemize}
 
 \subsection{Definition of $\lambdap$}
@@ -1089,8 +1107,10 @@ type safety for the simply typed lambda calculus.
   then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
 \end{thm}
 
-Safety for the string fragment is more involved, because it involves validating that
+Safety for the string fragment of $\lambdas$ is more involved because it involves validating that
 the type system's definition is justified by our theorems about regular languages.
+We state the theorem for the string fragment only to demontrate this point;
+full type safety for $\lambdas$ follows easily from safety for the string fagment.
 Note that type safety does \emph{not} guarantee that strings of a type are in the
 correct language. We isolate this property so that we may reason about its preservation
 under translation to $\lambdap$, which does not have regular expression types.
@@ -1125,7 +1145,7 @@ Establishing this result requires an additional theorem establishing a relations
 
 \begin{thm}{Translation Correctness.} \label{thm:tcorrect}
 If $\sctx \vdash e : \stringin{r}$ then there exists a $\iota$ such that $\trden{e} = \iota$, 
-$\iota \treduces \tstr{s}$, and $e \sreduces \strin{s}$, or
+$\iota \treduces \tstr{s}$, and $e \sreduces \strin{s}$.
 \end{thm}
 
 \begin{proof}
