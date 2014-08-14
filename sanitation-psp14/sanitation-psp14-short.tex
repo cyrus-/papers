@@ -396,7 +396,7 @@ We observe that most such sanitization techniques can be understood in terms of 
 
 In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be in the regular language described by the regular expression above. We write this as $\mathcal{L}\{r\}$. We take advantage of closure and decidability properties of regular languages to support a number of useful operations on values of such \emph{regular string types}, including \emph{replacement} of substrings matching a given regular expression. These make it possible to implement sanitation protocols like the one just described in an essentially conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system, where user input has not yet been validated). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
-We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambda_{RC}$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
+We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambdas$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
 
 Waiting for a language designer to build this feature in is unsatisfying. Moreover, we would also face a ``chicken-and-egg problem'': justifying its inclusion into a commonly used language requires empirically demonstrating that it is useful, but this is difficult to do if developers have no way to use it in practice. As such, we take the position that a better path forward for the community is to work within a programming language where such type system fragments can be introduced modularly and orthogonally, as libraries. 
 
@@ -404,63 +404,17 @@ In Sec. \ref{atlang}, we show how to implement the type system fragment we have 
 
 We conclude after discussing related work in Sec. \ref{related}.
 
-% TODO: need to update remainder of intro ... To demonstrate this approach, we present a simply typed lambda calculus with \emph{constrained strings}; that is, a set of string types parameterized by regular expressions. If $s : \stringin{r}$, then $s$ is a string matching the language $r$. Additionally, we include an operation $\rreplace{r}{s_1}{s_2}$ which corresponds to the replace mechanism available in most regular expression libraries; that is, any substring of $s_1$ matching $r$ is replaced with $s_2$. The type of this expression is the computed, and is likely ``smaller" or more constrained than the type of $s_1$. Libraries, frameworks or functions which construct and execute commands containing input can specify a safe subset $\stringin{r_{\sf spec}}$ of strings, and input sanitation algorithms can construct such a string using ${\sf rreplace}$ or, optionally, by coercion (in which case a runtime check is inserted). We also show how this system is translated into a host language containing a regular expression library such that the safety guarantee of the extended language is preserved.
-
-% Summarily, we present a simple type system extension which ensures the absence of input sanitation vulnerabilities by statically checking input sanitation algorithms which use an underlying regular expression library. This approach is \emph{composable} in the sense that it is a conservative extension. This approach is also \emph{complementary} to existing input sanitation techniques which use string replacement for input sanitation.
-% Our type system for regular string types, $\lambdas$, is defined as an exntension to a simply-typed lambda calculus.
-% Operations on strings are given types according to corresponding, type-level
-% computations on regular expressions. A concatenation operation is defined in 
-% order to demonstrate this principle, but the premier operation of our system
-% is \emph{replacement}, which captures a rich set of input sanitation techniques
-% including escaped characters and encodings. In addition to defining this system,
-% we present a correctness-preserving compilation of $\lambdas$ into an underlying
-% language with ordinary strings as a regular expression library.
-
-% In addition to this theoretical contribution, we also explain how our extension
-% may be implemented in the Ace Programming Language, which is itself an extension
-% of Python -- a popular web programming language.
-
-% Summarily, we present a simple type system extension which ensures the absence
-% of input sanitation vulnerabilities by statically checking the correctness and 
-% correct use of input sanitation algorithms. This approach is \emph{composable}
-% in the sense that it is a conservative extension. This approach is \emph{complementary}
-% to existing input sanitation techniques that use regular expressions for input sanitation.
-
-%%
-% This is the paragraph which ties the paper back to the CFP.
-%
-% For refernce, here's a copy of the cfp:
-%The importance of security and privacy in software engineering is now a pressing concern. 
-%Over the last decade, many programmers have recognized the importance of including 
-%security and privacy requirements at project start. This has led to efforts 
-%in secure/security engineering and privacy engineering, which focus on guidelines and 
-%best practices that can be used at the design stage to create safer code. 
-%Unfortunately, these disciplines are not pervasive and still in their infancy.
-%The goal of this workshop is to make security and privacy first class citizens in programming and programming languages. 
-
-%This forum aims to gather research and industry professionals to further the discussion on how to:
-%   codify the principles from secure and privacy engineering into programming language constructs and or tools, 
-%   create programming languages that have security and privacy as foundational tenets, and 
-%   create/codify constructs or tools that enables secure and privacy-preserving (business) operations.
-%   All submissions connected to the goals above, and their associated topics, are encouraged.
-%%
-
-%\subsection{Outline}
-%
-%An outline of this paper follows:
-%
-%\begin{itemize}
-%  \item In \S 2, we define the type system which is embedded in Ace. We include a type safety proof for the string
-%    segment of this language and prove the correctness of a translation to an underlying langguage $P$. In our theory,
-%    $P$ is a simply typed lambda calculus equipped with a minimal regular expression library; in an implementation, $P$
-%    stands in for Python or another underlying general-purpose programming language.
-%  \item In \S 3, we discuss our implemention of this translation as a type system extension  within the Ace programming language.
-%\end{itemize}
-
 \section{Regular String Types, Minimally}\label{calculus}
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
-\begin{figure}[t]
+
+
+\newcommand{\sctx}{\Psi} % Context for external typing
+\newcommand{\tctx}{\Theta} % Context for internal typing
+
+\newcommand{\ereduces}{\Downarrow}
+
+\begin{figure}[h]
 \begin{grammar}
 <$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
@@ -469,7 +423,7 @@ We conclude after discussing related work in Sec. \ref{related}.
 \end{grammar}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[h]
 \begin{grammar}
 
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
@@ -489,104 +443,6 @@ $\stringin{r}$
 \end{figure}
 
 
-\newcommand{\sctx}{\Psi} % Context for external typing
-\newcommand{\tctx}{\Theta} % Context for internal typing
-
-\newcommand{\ereduces}{\Downarrow}
-
-\begin{figure}[t]\label{fig:lambdas}
-\small
-$\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
-~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
-\begin{mathpar}
-\inferrule[S-T-Var]
-{ x:\sigma \in \sctx }
-{ \sctx \vdash x:\sigma}
-
-\inferrule[S-T-Abs]
-{\sctx, x : \sigma_1 \vdash e : \sigma_2}
-{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
-
-\inferrule[S-T-App]
-{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
-{\sctx \vdash e_1(e_2) : \sigma}
-  
-\inferrule[S-T-Stringin-I]
-{s \in \lang{r}}
-{\sctx \vdash \strin{s} : \stringin{r}}
-
-\inferrule[S-T-Concat]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
-{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
-
-\inferrule[S-T-Replace]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
-{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
-
-\inferrule[S-T-SafeCoerce]
-{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
-{\sctx \vdash \coerce{r}{e} : \stringin{r}}
-
-\inferrule[S-T-Check]
-{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
-{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
-
-\end{mathpar}
-
-\caption{Typing rules for $\lambdas$. 
-The typing context $\sctx$ is standard.}
-\label{fig:etyping}
-\end{figure}
-
-
-
-\begin{figure}[t]
-\small
-$\fbox{\inferrule{}{e \sreduces e}}$
-\begin{mathpar}
-\inferrule[S-E-Abs]                                                             
-{ \ }                                                                           
-{\lambda x.e \sreduces \lambda x.e}                                             
-
-\inferrule[S-E-App]
-{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
-{ e_1(e_2) \sreduces e_1'(e_2')}
-
-\inferrule[S-E-RStr]
-{ \ }
-{\strin{s} \sreduces \strin{s}}
-
-\inferrule[S-E-Concat]
-{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
-{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
-
-\inferrule[S-E-Replace]
-{e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
-{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
-
-\inferrule[S-E-SafeCoerce]
-{e \sreduces \strin{s}}
-{\coerce{r}{e} \sreduces \strin{s}}
-
-\inferrule[S-E-Check-Ok]
-{e \sreduces \strin{s} \\ s \in \lang{r}}
-{
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces [\strin{s} / x]e_1
-}
-
-\inferrule[S-E-Check-NotOk]
-{
-  e \sreduces \strin{s} \\ s \not \in \lang{r}
-}
-{
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
-}
-
-
-\end{mathpar}
-\caption{Big step semantics for $\lambdas$}.
-\label{fig:eeval}
-\end{figure}
 
 In this section, we define a minimal typed lambda calculus with regular string types called $\lambda_{RS}$. This will serve as the source language for our translation to a calculus with only standard strings and regular expressions, defined in Sec. \ref{translation}. 
 
@@ -614,191 +470,11 @@ operations.
 
 A brief outline of this section follows:
 \begin{itemize}
-  \item Page 3 contains a definition of $\lambdas, \lambdap$ and the translation from $\lambdas$ to $\lambdap$. Grammar follows immediately at the top of page 4.
-  \item In \S 2.1 we state some properties about regular expressions which are needed in our correctness proofs.
-   \item In \S 2.2 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
-  \item In \S 2.3 we prove that translation preserves the correctness result about $\lambdas$.
+  \item In \S 2.1-2.3, we define $\lambdas$, $\lambdap$ and the translation from one to the other.
+  \item In \S 2.4 we state some properties about regular expressions which are needed in our correctness proofs.
+   \item In \S 2.5 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
+  \item In \S 2.6 we prove that translation preserves the correctness result about $\lambdas$.
 \end{itemize}
-
-
-%The $\lambdas$ language is characterized by a type of strings indexed by regular
-%expressions, together with operations on such strings which correspond to common
-%input sanitation patterns.
-%This section presents the grammar, typing rules and operational semantics for
-%$\lambdas$ as well as an underlying language $\lambdap$.
-%
-%The system $\lambdas$ is the simply typed lambda calculus extended with \emph{regular expression types}, which are string
-%types ensuring a string belongs to a specified language. For instance, 
-%$S : \stringin{r}$ reads ``$s$ is a string matching $r$".
-%the system includes an operation for replacing all instances of a pattern $r$ in a string $s_1$ with another string $s_2$. 
-%Input sanitation algorithms -- as implemented by developers or within popular libraries and frameworks -- are often implemented in terms of this replace operation.
-%
-%The language $\lambdap$ is a simple functional language extended with a minimal regular expression library.
-%Any general purpose programming language could stand in for $\lambdap$; for instance, SML or Python.
-%In an implementation, our correctness results are modulo the underlying language's correct implementation of regular expression matching (see P-E-Replace).
-%
-%Finally, we define a translation from our type system $\lambdas$ into $\lambdap$ which preserves the safety guarnatee codified in the string types of $\lambdas$. Because our extension is conservative and its guarnatees are preserved under translation to an underlying language, it is highly composable with other analyses.
-%
-%Unfortunately, we are unable to present full proofs in this paper due to space constraints; however, proofs are given in full in the accompanying technical report?.
-%%Note that we never insert an internal check where the type of the string implies
-%%that a check must succeed. Furthermore, expensive calculations (such as language
-%%inclusion or ${\sf rreplace}$) all occur at compile time.
-%%Since sanitation problems are generally expressible with smalle, simple expressions,
-%%we believe that the compile-time overhead is not significant enough to prohibiour target usecase. Informal experimentation with our implementation seems to
-%%support this assertion.
-
-% Begin Grammar 
-% Removes the < > from grammar productions.
-
-% \begin{figure}[h]
-% \begin{grammar}
-
-% <$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
-% $\str$ \alt $\regex$
-
-
-% <P> ::= $\lambda x . e$ \hfill target terms \alt
-%   $e e$ \alt
-%   $\tstr{s}$ \alt
-%   $\rx{r}$ \alt
-%   $\tconcat{P}{P}$ \alt
-%   $\preplace{P}{P}{P}$ \alt
-%   $\tcheck{P}{P}$ 
-%   \end{grammar}
-% \caption{Syntax for the fragment of our target language, $\lambdap$, containing strings and statically constructed regular expressions.}
-% \label{fig:lcsSyntax}
-% \end{figure}
-
-
-
-%The $\lcs$ language gives static semantics for common regular expression library
-%functions. In this treatment, we include concatenation and filtering.
-%The ${\tt filter}$ function removes all instances of a regular expression in a string,
-%while concatenation ($+$) concatenates two strings.
-%
-%\subsection{Typing}
-%
-%The $\strin[r]$ type is parameterized by regular expressions; if $e:\strin[r]$,
-%then $e \in r$. Mapping from an arbitrary $\str$ to a $\strin[r]$ requires
-%defining an algorithm -- in terms of filter -- for converting a $\strin[.*]$
-%into a $\strin[r]$. The static semantics of the language defines the types of
-%operations on regular expressions in terms of well-understood properties about
-%regular lanugages; we recall these properties in section 3.
-%
-%\subsection{Dynamics}
-%
-%There are two evaluation judgements: $e:T \reduces e'$ and $e:T \treduces i$.
-%The $\reduces$ relation is between $\lcs$ expressions, while the $\treduces$
-%relation is a mapping from $\lcs$ expressions into internal language expressions
-%$i$ such that $i \ival$.
-%
-%Safety of the evaluation relation depends upon an injective mapping from $\lcs$ types info
-%internal language types. This relation, $h$, is defined below.
-%
-%\subsection{Type Safety}
-%
-%The type safety proof relies upon some assumptions about the type system and
-%dynamics of the internal language, as well as some properties of regular
-%languages.
-%
-%There must exist a translation from $\lcs$ types to the types of the internal
-%language. For the remainder of this paper, we call the type translation function
-%$h$.
-%
-%\begin{defn}[Type Translation Function $h$]
-%  The type translation function $h : Type \rightarrow IType$ is defined as follows:
-%  \begin{itemize}
-%    \item $\forall r. h(\strin[r]) = istr$
-%    \item $h(\str) = istr$
-%  \end{itemize}
-%\end{defn}
-%
-%Additionally, we assume that the internal language contains an implementation of strings,
-%together with operations for concatenation and filtering by regular expression.
-%
-%\begin{defn}[Types of internal values]
-%  Let $\tstrf{s}$ range over string literals and $r$ over regular expressions.
-%  Internal values are typed as follows:
-%\begin{itemize}
-%  \item If $e=\tstrf{s}$ then $e:istr$.
-%  \item If $e=\ifilter{r}{\tstrf{s}}$ then $e:istr$.
-%  \item If $e=\tstrf{s_1}+\tstrf{s_2}$ then $e:istr$.
-%\end{itemize}
-%\end{defn}
-%
-%For simplicity, we assume a fixed translation from
-%$\lcs$ regular expressions to regular expressions recognizable by the internal
-%language's regex library (in practice, a fixed translation is acceptable.)
-%To summarize, we assume an internal language containing 
-%a string type together with operations for string concatentation and filtering. We
-%expect closure over strings for both operations.
-%Finally, recall that ${\tt ifilter}$ is only needed for dynamic casts, which may be removed without
-%descreasing the expressivity or even usability of the language.
-%Finally, the semantics of the filter function are defined in terms of ${\tt rl\_filter}$,
-%which is a static version of ${\tt ifilter}$.
-%
-
-
-% I can't achieve the correct latout here. We should have something like:
-%       Lam_S Synax         Lam_P Syntax
-%       Lam_S Sematics      LAm_P Semantics
-%                Translation rules
-% Or, alternatively, we can flip reflect things so that the entire page
-% reads top-down (Lam_S syntax Lam_S smantics horizontally aligned w/ one
-% another).
-
-% Unfortunately, I can't get that to work. So, we're settling for something
-% slightly ugly, where the fitures appear in the incorrect order and the 
-% translation rules are on top.
-
-% The translations rules *just won't* go to the bottom of the page, so 
-% instead I am placing them at the top. Since the figures are out of order,
-% it's even more important that we get the number gith. therefore, the counter
-% is modified before and after this figure.
-
-
-
-
-\begin{figure*}[t]\label{fig:trans}
-
-$\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
-\begin{mathpar}
-
-\inferrule[Tr-Abs?]
-{ \sctx \vdash \trden{e} = \iota }
-{\sctx \vdash \trden{ \lambda x.e } = \lambda x . \iota}
-
-\inferrule[Tr-App]
-{\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
-
-\inferrule[Tr-string]
-{ \ }
-{ \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
-
-\inferrule[Tr-Concat]
-{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{ \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
-
-\inferrule[Tr-Subst]
-{ \sctx \vdash  \trden{e_1} = \iota_1 \\ \sctx \vdash  \trden{e_2} = \iota_2 }
-{ \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
-
-\inferrule[Tr-SafeCoerce]
-{ \sctx \vdash \trden{e} = \iota }
-{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
-
-\inferrule[Tr-Check]
-{ \sctx \vdash \trden{e} = \iota_1 \\ \sctx \vdash \trden{e_1} = \iota_1?? \\ \sctx \vdash \trden{e_2} = \iota_2} 
-{ \sctx \vdash \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
-
-
-
-
-\end{mathpar}
-\caption{Translation from source terms ($e$) to target terms ($\iota$).
-The translation is type-directed.}
-\end{figure*}
 
 %
 % Begin typing/translation relation
@@ -806,7 +482,59 @@ The translation is type-directed.}
 
 
 
+
+% Begin Grammar 
+% Removes the < > from grammar productions.
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+
+% \begin{figure}[t]
+% \begin{grammar}
+% <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+
+% \caption{Regular expressions over the alphabet $\Sigma$.}
+% \label{fig:regex}
+% \end{grammar}
+% \end{figure}
+
+% \begin{figure}[h]
+% \begin{grammar}
+
+% <$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
+% $\stringin{r}$				 
+
+% <S> ::= 
+%       $\lambda x . e$ \hfill source terms \alt
+%       $e e$ \alt
+%       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+%       $\rsconcat{S}{S}$ \alt
+%       $\sisubst{r}{S}{S}$ \alt
+%       $\coerce{r}{S}$
+% \caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
+% \end{grammar}
+% \end{figure}
+
+
+\subsection{Definition of $\lambdas$}
+
+The $\lambdas$ system extends the simply-typed lambda calculus with regular
+expression types; an explanation of significant typing rule follows:
+\begin{itemize}
+  \item Rule S-T-Concat states that the type of concatenated strings is 
+    obtained by concatenating the regular expressions for each string.
+  \item Rule S-T-Replace defines the type of $\textsf{rreplace}$. The expression $\textsf{rreplace}$
+    evaluates to the result of substituting every string matching $r$ in $s_1$
+    with $s_2$. This operation corresponds to the \textsf{str_replace} function of PHP.
+    The type of these expressions is defined in terms of an extra-linguistic \textsf{lreplace}
+    function, which is defined later in this section.
+    The expression $\lreplace{r}{r_1}{r_2}$ is obtained by
+    starting with $r_1$, and replacing any subexpression matching $r$ with $r_2$.
+  \item Rule S-T-SafeCoerce allows only safe coercions between string types by
+    expoiting the decidability of language inclusion.
+  \item The check rules allow casts between strings that cannot be guaranteed at compile time, but might pass a runtime check.
+\end{itemize}
+
 \newpage
+
 
 
 \begin{figure}[t]\label{fig:lambdap}
@@ -895,36 +623,111 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 
 
 
+\begin{figure}\label{fig:lambdas}
+\small
+$\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
+~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
+\begin{mathpar}
+\inferrule[S-T-Var]
+{ x:\sigma \in \sctx }
+{ \sctx \vdash x:\sigma}
 
-% Begin Grammar 
-% Removes the < > from grammar productions.
-\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+\inferrule[S-T-Abs]
+{\sctx, x : \sigma_1 \vdash e : \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
 
-% \begin{figure}[t]
-% \begin{grammar}
-% <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+\inferrule[S-T-App]
+{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
+{\sctx \vdash e_1(e_2) : \sigma}
+  
+\inferrule[S-T-Stringin-I]
+{s \in \lang{r}}
+{\sctx \vdash \strin{s} : \stringin{r}}
 
-% \caption{Regular expressions over the alphabet $\Sigma$.}
-% \label{fig:regex}
-% \end{grammar}
-% \end{figure}
+\inferrule[S-T-Concat]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
+{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
 
-% \begin{figure}[h]
-% \begin{grammar}
+\inferrule[S-T-Replace]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
+{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
 
-% <$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
-% $\stringin{r}$				 
+\inferrule[S-T-SafeCoerce]
+{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
+{\sctx \vdash \coerce{r}{e} : \stringin{r}}
 
-% <S> ::= 
-%       $\lambda x . e$ \hfill source terms \alt
-%       $e e$ \alt
-%       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-%       $\rsconcat{S}{S}$ \alt
-%       $\sisubst{r}{S}{S}$ \alt
-%       $\coerce{r}{S}$
-% \caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
-% \end{grammar}
-% \end{figure}
+\inferrule[S-T-Check]
+{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
+{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
+
+\end{mathpar}
+
+\caption{Typing rules for $\lambdas$. 
+The typing context $\sctx$ is standard.}
+\label{fig:etyping}
+\end{figure}
+
+
+\begin{figure}
+\small
+$\fbox{\inferrule{}{e \sreduces e}}$
+\begin{mathpar}
+\inferrule[S-E-Abs]                                                             
+{ \ }                                                                           
+{\lambda x.e \sreduces \lambda x.e}                                             
+
+\inferrule[S-E-App]
+{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
+{ e_1(e_2) \sreduces e_1'(e_2')}
+
+\inferrule[S-E-RStr]
+{ \ }
+{\strin{s} \sreduces \strin{s}}
+
+\inferrule[S-E-Concat]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
+{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
+
+\inferrule[S-E-Replace]
+{e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
+{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
+
+\inferrule[S-E-SafeCoerce]
+{e \sreduces \strin{s}}
+{\coerce{r}{e} \sreduces \strin{s}}
+
+\inferrule[S-E-Check-Ok]
+{e \sreduces \strin{s} \\ s \in \lang{r}}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces [\strin{s} / x]e_1
+}
+
+\inferrule[S-E-Check-NotOk]
+{
+  e \sreduces \strin{s} \\ s \not \in \lang{r}
+}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
+}
+
+
+
+\end{mathpar}
+\caption{Big step semantics for $\lambdas$}.
+\label{fig:eeval}
+\end{figure}
+
+
+
+
+\newpage
+\ 
+\newpage
+\ 
+\newpage
+
+
+\subsection{Definition of $\lambdap$}
 
 \begin{figure}[h]
 \begin{grammar}
@@ -946,32 +749,57 @@ $\str$ \alt $\regex$
 \label{fig:lcsSyntax}
 \end{figure}
 
-\subsection{Definition of $\lambdas$}
 
-The $\lambdas$ system extends the simply-typed lambda calculus with regular
-expression types; an explanation of significant typing rule follows:
-\begin{itemize}
-  \item Rule S-T-Concat states that the type of concatenated strings is 
-    obtained by concatenating the regular expressions for each string.
-  \item Rule S-T-Replace defines the type of $\textsf{rreplace}$. The expression $\textsf{rreplace}$
-    evaluates to the result of substituting every string matching $r$ in $s_1$
-    with $s_2$. This operation corresponds to the \textsf{str_replace} function of PHP.
-    The type of these expressions is defined in terms of an extra-linguistic \textsf{lreplace}
-    function, which is defined later in this section.
-    The expression $\lreplace{r}{r_1}{r_2}$ is obtained by
-    starting with $r_1$, and replacing any subexpression matching $r$ with $r_2$.
-  \item Rule S-T-SafeCoerce allows only safe coercions between string types by
-    expoiting the decidability of language inclusion.
-\end{itemize}
-
-\subsection{Definition of $\lambdap$}
 
 The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
 with a string type and a regular expression tpye. We include two operations which are available in the regular expression
 library of any modern programming language. The check operation ensures that an expression
 recognizes a string, and the replace operation is string replacement.
 
+
+
 \subsection{Definition of Translation}
+
+
+\begin{figure}[h]\label{fig:trans}
+
+$\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
+\begin{mathpar}
+
+\inferrule[Tr-Abs]
+{ \sctx \vdash \trden{e} = \iota }
+{\sctx \vdash \trden{ \lambda x.e } = \lambda x . \iota}
+
+\inferrule[Tr-App]
+{\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
+{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
+
+\inferrule[Tr-string]
+{ \ }
+{ \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
+
+\inferrule[Tr-Concat]
+{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
+{ \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
+
+\inferrule[Tr-Subst]
+{ \sctx \vdash  \trden{e_1} = \iota_1 \\ \sctx \vdash  \trden{e_2} = \iota_2 }
+{ \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
+
+\inferrule[Tr-SafeCoerce]
+{ \sctx \vdash \trden{e} = \iota }
+{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
+
+\inferrule[Tr-Check]
+{ \sctx \vdash \trden{e} = \iota_1 \\ \sctx \vdash \trden{e_1} = \iota_1?? \\ \sctx \vdash \trden{e_2} = \iota_2} 
+{ \sctx \vdash \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
+
+\end{mathpar}
+\caption{Translation from source terms ($e$) to target terms ($\iota$).
+The translation is type-directed.}
+\end{figure}
+
+
 
 The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
 The coercion cases are most interesting. If the safety of coercion in manifest in the
@@ -1233,14 +1061,25 @@ Finally, our main theorem establishes that input sanitation correctness of $\lam
 %Finally, if (b) holds then $S \err$ and $P \err$ by propagation.
 %
 %\end{description}
-
-% NRF commented out section 2 in order to determine the length of section 1.
-% Replace the pattern ^% with an emptty string in the selection starting at
-% the first empty line of section 2 and ending just before \end{document}. 
-
 \section{Implementation in {Atlang}}\label{atlang}
-\begin{figure}\label{fig:example}
-\begin{lstlisting}
+%\begin{figure}
+%\begin{lstlisting}
+%output of successful compilation
+%\end{lstlisting}
+%\caption{Output of successful compilation.}
+%\end{figure}
+%
+%\begin{figure}
+%\begin{lstlisting}
+%output of failed compilation
+%\end{lstlisting}
+%\caption{Output of failed compilation.}
+%\end{figure}
+%
+
+\subsection{An Example}\label{whatev}
+
+\begin{figure}[h]\begin{lstlisting}
 @fn
 def sanitize(s : string_in[r'.*']):
   return (s.replace(r'"', '&quot;') 
@@ -1261,8 +1100,44 @@ def main(db):
   return results_div(input) + format(results)
 \end{lstlisting}
 \vspace{-10px}
-\caption{Regular string types in atlang, a library that enables static type checking for Python. }
-\end{figure}\label{fig:impl}
+\caption{Regular string types in atlang, a library that enables static type checking for Python. }   \label{examplefig}
+
+\end{figure}
+
+Figure \ref{examplefig} demonstrates the use of string types in atlang.
+The sanitize function takes an arbitrary string and returns a string without
+double quotes or left and right brackets. In this example, we use HTML
+escape sequences.
+
+The main function receives user input and passes this input to a 
+sanitize function, which replaces all double quotes and brackets with HTML
+escape sequences. 
+
+The result of applying sanitize to input is appended to two functions which
+construct a safe query and safe output.
+The arguments to the result and output construction functions constitute \emph{specifications}.
+In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
+as a string literal by the SQL server.
+In the case of \textsf{results_div}, this specification ensures that user input does 
+not contain any HTML tags, which is a conservative but effective policy for preventing
+XSS attacks.
+
+Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
+The type of ${\sf input}$ is quite large
+and does not actually equal the specified domains of the query or output construction
+methods. This mismatch is common -- in fact, nearly universal. Therefore, 
+our implementation includes a simple subtyping relation between regular expression
+types. 
+This subtyping relation is justified theoretically by the fact that language inclusion is
+decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
+Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
+see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
+
+\subsection{Implementation of the Regular Expression Type}
+
+
+
+\label{fig:impl}
 \begin{figure}
 \begin{lstlisting}
 class string_in(atlang.Type):
@@ -1332,53 +1207,7 @@ class string_in(atlang.Type):
 \caption{Implementation of the \texttt{string\_in} type constructor in atlang.}
 \end{figure}
 
-\begin{figure}
-\begin{lstlisting}
-output of successful compilation
-\end{lstlisting}
-\caption{Output of successful compilation.}
-\end{figure}
 
-\begin{figure}
-\begin{lstlisting}
-output of failed compilation
-\end{lstlisting}
-\caption{Output of failed compilation.}
-\end{figure}
-
-
-\subsection{An Example}
-
-Figure \ref{fig:example} demosntrates the use of string types in atlang.
-The sanitize function takes an arbitrary string and returns a string without
-double quotes or left and right brackets. In this example, we use HTML
-escape sequences.
-
-The main function receives user input and passes this input to a 
-sanitize function, which replaces all double quotes and brackets with HTML
-escape sequences. 
-
-The result of applying sanitize to input is appended to two functions which
-construct a safe query and safe output.
-The arguments to the result and output construction functions constitute \emph{specifications}.
-In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
-as a string literal by the SQL server.
-In the case of \textsf{results_div}, this specification ensures that user input does 
-not contain any HTML tags, which is a conservative but effective policy for preventing
-XSS attacks.
-
-Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
-The type of ${\sf input}$ is quite large
-and does not actually equal the specified domains of the query or output construction
-methods. This mismatch is common -- in fact, nearly universal. Therefore, 
-our implementation includes a simple subtyping relation between regular expression
-types. 
-This subtyping relation is justified theoretically by the fact that language inclusion is
-decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
-Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
-see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
-
-\subsection{Implementation of the Regular Expression Type}
 
 We implemented a variation on the type system presented in this paper. The only
 significant difference is that we only support replacements where $s_2$ is the empty
