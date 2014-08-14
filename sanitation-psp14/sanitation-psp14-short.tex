@@ -297,7 +297,7 @@
 % target language terms.
 \newcommand{\tsubst}[3]{{\sf replace}(#1;#2;#3)} \newcommand{\metareplace}[3]{{\sf replace}(#1;#2;#3)} % TODO-nrf rename the commands. Lots of legacy naming around these parts...
 
-\newcommand{\tcheck}[2]{{\sf check}(#1; #2)}
+\newcommand{\tcheck}[4]{{\sf check}(#1; #2; #3; #4)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
 \newcommand{\preplace}[3]{{\sf preplace}(#1;#2;#3)}
 \newcommand{\tconcat}[2]{{\sf concat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
@@ -310,7 +310,7 @@
 \newcommand{\regex}{{\sf regex}}
 
 % Meta-theoretic functions
-\newcommand{\lsubst}[3]{{\tt lsubst}(#1;#2;#3)} % This used to render lreplace(...) so there're probably mistkes wherever this command was used now.
+\newcommand{\lsubst}[3]{{\tt subst}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
 \newcommand{\lreplace}[3]{{\tt lreplace}(#1; #2; #3)}
 
 
@@ -761,7 +761,7 @@ A brief outline of this section follows:
 
 \begin{figure*}[t]\label{fig:trans}
 
-$\fbox{\inferrule{}{\sctx \vdash \trden{S} = P}}$
+$\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
 \begin{mathpar}
 
 \inferrule[Tr-Abs?]
@@ -788,13 +788,9 @@ $\fbox{\inferrule{}{\sctx \vdash \trden{S} = P}}$
 { \sctx \vdash \trden{e} = \iota }
 { \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
 
-\inferrule[Tr-Check-Ok]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \subseteq \lang{r'} \\ \trden{[e/x]e_1} = \iota } 
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota }
-
-\inferrule[Tr-Check-NotOk]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \not \subseteq \lang{r'} \\ \trden{\tcheck{r'}{e_2}} = \iota}
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota}
+\inferrule[Tr-Check]
+{ \sctx \vdash \trden{e} = \iota_1 \\ \sctx \vdash \trden{e_1} = \iota_1?? \\ \sctx \vdash \trden{e_2} = \iota_2} 
+{ \sctx \vdash \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
 
 
 
@@ -848,8 +844,8 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ }
-{\tctx \vdash \tcheck{\iota_1}{\iota_2} : \str}
+{\tctx \vdash \iota_1 : \regex \\ \tctx, x:\str \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
+{\tctx \vdash \tcheck{\iota_1}{x.\iota_2}{\iota_3} : \sigma}
 \end{mathpar}
 \caption{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
@@ -866,8 +862,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\lambda x.e \sreduces \lambda x.e}
 
 \inferrule[P-E-App]
-{ e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
-{ e_1(e_2) \sreduces e_1'(e_2')}
+{ \iota_1 \sreduces \iota_1' \\  \iota_2 \sreduces \iota_2' }
+{ \iota_1(\iota_2) \sreduces \iota_1'(\iota_2')}
 
   \inferrule[P-E-Str]
 { \ }
@@ -886,6 +882,15 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
+{i \treduces \str{s} \\ s \in \lang{r}}
+{\tcheck{r}{i}{x.i_1}{i_2} \treduces [\str{s}/x]i_1}
+
+\inferrule[P-E-Check-NotOK]
+{i \treduces \str{s} \\ s \not \in \lang{r}}
+{\tcheck{r}{i}{x.i_1}{i_2} \treduces i_2}
+
+
+
 {\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \strin{s} \\ s \in \lang{r}}
 {\tcheck{\iota_1}{\iota_2} \treduces \tstr{s}}
 
@@ -893,14 +898,6 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \caption{Big step semantics for of $\lambdap$}.
 \label{fig:ieval}
 \end{figure}
-
-\newpage
-\ 
-\newpage
-\ 
-\newpage
-\ 
-
 
 
 
@@ -942,13 +939,14 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 $\str$ \alt $\regex$
 
 
-<P> ::= $\lambda x . \iota$ \hfill target terms \alt
-  $\iota \iota$ \alt
+<P> ::= $x$  \hfill target terms \alt
+   $\lambda x . \iota$ \alt
+   $\iota \iota$ \alt
   $\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{\iota}{\iota}$ \alt
   $\preplace{\iota}{\iota}{\iota}$ \alt
-  $\tcheck{\iota}{\iota}$ 
+  $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
   \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
 \label{fig:lcsSyntax}
@@ -1012,7 +1010,7 @@ Regular languages are closed under difference, right quotient, reversal, and str
 
 If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
 
-\begin{defn}[$\tt{lsubst}$]
+\begin{defn}[$\tt{subst}$]
 The relation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
 \end{defn}
 
@@ -1033,7 +1031,7 @@ The theorem follows from closure under difference, right quotient, reversal and 
   If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
 \end{lem}
 \begin{proof}
-The theorem follows from the definitions of lsubst and lreplace; note that language substitutions over-approximate string substitutions.
+The theorem follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
 \end{proof}
 
 
