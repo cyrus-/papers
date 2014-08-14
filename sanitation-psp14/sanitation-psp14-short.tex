@@ -183,8 +183,10 @@
 
 \usepackage{url}
 
-\usepackage{todonotes}
-
+%\usepackage{todo}
+%\usepackage[subject={Todo},author={Josef}]{pdfcomment}
+%\usepackage{cooltooltips}
+\newcommand{\todo}[1]{{\color{red} #1}}
 \usepackage{placeins}
 
 \usepackage{textpos}
@@ -315,7 +317,6 @@
 
 
 % Judgements
-\newcommand{\err}{\ {\sf err}}
 \newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
 
 % Relations
@@ -502,11 +503,11 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 \begin{mathpar}
 \inferrule[S-T-Var]
 { x:\sigma \in \sctx }
-{ \sctx \vdash s:\sigma}
+{ \sctx \vdash x:\sigma}
 
 \inferrule[S-T-Abs]
 {\sctx, x : \sigma_1 \vdash e : \sigma_2}
-{\sctx \vdash \lambda x:\sigma_1.e : \sigma_1 \rightarrow \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
 
 \inferrule[S-T-App]
 {\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
@@ -543,8 +544,7 @@ The typing context $\sctx$ is standard.}
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{S \sreduces S}}$
-$\fbox{\inferrule{}{S \err}}$
+$\fbox{\inferrule{}{e \sreduces e}}$
 \begin{mathpar}
 \inferrule[S-E-Abs]                                                             
 { \ }                                                                           
@@ -552,7 +552,7 @@ $\fbox{\inferrule{}{S \err}}$
 
 \inferrule[S-E-App]
 { e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
-{ e_1 e_2 \sreduces e_1' e_2'}
+{ e_1(e_2) \sreduces e_1'(e_2')}
 
 \inferrule[S-E-RStr]
 { \ }
@@ -586,8 +586,7 @@ $\fbox{\inferrule{}{S \err}}$
 
 
 \end{mathpar}
-\caption{Big step semantics for $\lambdas$.
-Error propagation rules are omitted.}
+\caption{Big step semantics for $\lambdas$}.
 \label{fig:eeval}
 \end{figure}
 
@@ -762,10 +761,9 @@ A brief outline of this section follows:
 
 
 
-\addtocounter{figure}{4}
 \begin{figure*}[t]\label{fig:trans}
 
-$\fbox{\inferrule{}{\trden{S} = P}}$
+$\fbox{\inferrule{}{\sctx \vdash \trden{S} = P}}$
 \begin{mathpar}
 
 \inferrule[Tr-Abs?]
@@ -774,14 +772,14 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 
 \inferrule[Tr-App]
 {\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{\sctx \vdash \trden{e_1e_2} = \iota_1\iota_2}
+{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
 
 \inferrule[Tr-string]
 { \ }
 { \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
 
 \inferrule[Tr-Concat]
-{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash htrden{e_2} = \iota_2}
+{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
 { \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
 
 \inferrule[Tr-Subst]
@@ -789,25 +787,24 @@ $\fbox{\inferrule{}{\trden{S} = P}}$
 { \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
 
 \inferrule[Tr-SafeCoerce]
-{ \ }
-{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \trden{e} }
+{ \sctx \vdash \trden{e} = \iota }
+{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
 
 \inferrule[Tr-Check-Ok]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \subseteq \lang{r'} } 
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \trden{[e/x]e_1} }
+{ \sctx \vdash e : \stringin{r} \\ \lang{r} \subseteq \lang{r'} \\ \trden{[e/x]e_1} = \iota } 
+{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota }
 
 \inferrule[Tr-Check-NotOk]
-{ \sctx \vdash e : \stringin{r} \\ \lang{r} \not \subseteq \lang{r'}}
-{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \trden{\tcheck{r'}{e_2}} }
+{ \sctx \vdash e : \stringin{r} \\ \lang{r} \not \subseteq \lang{r'} \\ \trden{\tcheck{r'}{e_2}} = \iota}
+{ \sctx \vdash  \trden{ \rcheck{r'}{e}{x.e_1}{e_2} } = \iota}
 
 
 
 
 \end{mathpar}
 \caption{Translation from source terms ($e$) to target terms ($\iota$).
-The translation is type-directed in the Tr-SafeCoerce case.}
+The translation is type-directed.}
 \end{figure*}
-\addtocounter{figure}{-5}
 
 %
 % Begin typing/translation relation
@@ -829,12 +826,12 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 { \tctx \vdash x:\tau }
 
 \inferrule[P-T-Abs]
-{\tctx, x : \iota_1 \vdash e : \iota_2}
-{\tctx \vdash \lambda x:\iota_1.e : \iota_1 \rightarrow \iota_2}
+{\tctx, x : \tau_1 \vdash \iota_2 : \tau_2}
+{\tctx \vdash \lambda x.\iota_2 : \tau_1 \rightarrow \tau_2}
 
 \inferrule[P-T-App]
-{\tctx \vdash e_1 : \iota_2 \rightarrow \iota \\ \tctx \vdash e_2 : \iota_2}
-{\tctx \vdash e_1(e_2) : \iota}
+{\tctx \vdash \iota_1 : \tau_2 \rightarrow \tau \\ \tctx \vdash \iota_2 : \tau_2}
+{\tctx \vdash \iota_1(\iota_2) : \iota}
 
 \inferrule[P-T-String]
 { \ }
@@ -863,8 +860,7 @@ The typing context $\tctx$ is standard.}
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{P \treduces P}}$
-$\fbox{\inferrule{}{P \err}}$
+$\fbox{\inferrule{}{\iota \treduces \iota}}$
 
 \begin{mathpar}
 \inferrule[P-E-Abs]
@@ -873,7 +869,7 @@ $\fbox{\inferrule{}{P \err}}$
 
 \inferrule[P-E-App]
 { e_1 \sreduces e_1' \\  e_2 \sreduces e_2' }
-{ e_1 e_2 \sreduces e_1' e_2'}
+{ e_1(e_2) \sreduces e_1'(e_2')}
 
   \inferrule[P-E-Str]
 { \ }
@@ -895,12 +891,8 @@ $\fbox{\inferrule{}{P \err}}$
 {\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \strin{s} \\ s \in \lang{r}}
 {\tcheck{\iota_1}{\iota_2} \treduces \tstr{s}}
 
-\inferrule[P-E-Check-Err]
-{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s} \\ s \not \in \lang{r}}
-{\tcheck{\iota_1}{\iota_2} \err}
 \end{mathpar}
-\caption{Big step semantics for of $\lambdap$.
-Error propagation rules are omitted.}
+\caption{Big step semantics for of $\lambdap$}.
 \label{fig:ieval}
 \end{figure}
 
@@ -1277,6 +1269,7 @@ def results_query(s : string_in[r'[^"]*']):
 def results_div(s : string_in[r'[^<>]*']):
   return '<div>Results for ' + s + '</div>'
 
+@fn
 def main(db):
   input = sanitize(user_input())
   results = db.execute(results_query(input))
@@ -1369,9 +1362,10 @@ output of failed compilation
 \end{figure}
 
 
-\subsection{An Example}
+\subsection{Example Usage}
 
-Figure \ref{fig:atexample} demosntrates the use of string types in atlang.
+Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|string_in|, both of which we have included in \verb|atlib|, the standard library for \verb|atlang|. The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|atlang|. The function \verb|sanitize| on lines 3-7 specifies one argument, \verb|s|, of type \lstinline{string_in[r'.*']}.\todo{fix sizes}
+
 The sanitize function takes an arbitrary string and returns a string without
 double quotes or left and right brackets. In this example, we use HTML
 escape sequences.
