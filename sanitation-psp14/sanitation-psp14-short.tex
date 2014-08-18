@@ -546,8 +546,8 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 {\lambda x.e \sreduces \lambda x.e}                                             
 
 \inferrule[S-E-App]
-{ e_1 \sreduces e_1' \\ e_2 \sreduces e_2' }
-{ e_1(e_2) \sreduces e_1'(e_2')}
+{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces e_2' \\ [ e_2' / x ] e_3 \sreduces v }
+{ e_1(e_2) \sreduces v }
 
 \inferrule[S-E-RStr]
 { \ }
@@ -566,9 +566,9 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 {\coerce{r}{e} \sreduces \strin{s}}
 
 \inferrule[S-E-Check-Ok]
-{e \sreduces \strin{s} \\ s \in \lang{r}}
+{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces v}
 {
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces [\strin{s} / x]e_1
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
 }
 
 \inferrule[S-E-Check-NotOk]
@@ -686,10 +686,10 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\lambda x.e \sreduces \lambda x.e}
 
 \inferrule[P-E-App]
-{ \iota_1 \sreduces \iota_1' \\  \iota_2 \sreduces \iota_2' }
-{ \iota_1(\iota_2) \sreduces \iota_1'(\iota_2')}
+{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \iota_2' \\ [\iota_3 / x] \iota_2' \sreduces v}
+{ \iota_1(\iota_2) \sreduces v}
 
-  \inferrule[P-E-Str]
+\inferrule[P-E-Str]
 { \ }
 {\tstr{s} \treduces \tstr{s}}
 
@@ -706,8 +706,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{\iota \treduces \tstr{s} \\ s \in \lang{r}}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces [\tstr{s}/x]\iota_1}
+{\iota \treduces \tstr{s} \\ s \in \lang{r} \\ [\tstr{s} / x] \iota_1 \sreduces \iota_3}
+{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_3}
 
 \inferrule[P-E-Check-NotOK]
 {\iota \treduces \tstr{s} \\ s \not \in \lang{r}}
@@ -828,7 +828,7 @@ language recognized by the regular expression $r$. This distinction between the 
 and its language -- typically elided in the literature -- makes our definition and
 proofs about systems S and P more readable.
 
-\begin{lem}{Properties of Regular Languages and Expressions.} \label{thm:regexprops}
+\begin{lem}[Properties of Regular Languages and Expressions.] \label{thm:regexprops}
 The following are properties of regular expressions which are necessary for our proofs:
 If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
 For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
@@ -847,16 +847,16 @@ The relation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all subst
   is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty).
 \end{defn}
 
-\begin{lem}{Closure.} \label{thm:total}
+\begin{prop}[Closure.] \label{thm:total}
   If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular expressions, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
-\end{lem}
+\end{prop}
 \begin{proof}
 The theorem follows from closure under difference, right quotient, reversal and string homomorphism.
 \end{proof}
 
-\begin{lem}{Substitution Correspondence.} \label{thm:substcorrespondence}
+\begin{prop}[Substitution Correspondence.] \label{thm:substcorrespondence}
   If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
-\end{lem}
+\end{prop}
 \begin{proof}
 The theorem follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
 \end{proof}
@@ -954,8 +954,8 @@ Note that type safety does \emph{not} guarantee that strings of a type are in th
 correct language. We isolate this property so that we may reason about its preservation
 under translation to $\lambdap$, which does not have regular expression types.
 
-\begin{thm}{Type Safety for the String Fragment of $\lambdas$.} \label{thm:scorrect}
-  Let $S$ be a term in the source language. If $\sctx \vdash e : \stringin{r}$ 
+\begin{thm}[Type Safety for the String Fragment of $\lambdas$.] \label{thm:scorrect}
+  If $\sctx \vdash e : \stringin{r}$ 
   then $e \sreduces \rstr{s}$ and $\sctx \vdash \rstr{s} : \stringin{r}$.
 \end{thm}
 \begin{proof}
@@ -966,7 +966,7 @@ and the S-T-Replace case appeals to Lemma \ref{thm:substcorrespondence}.
 
 In addition to safety, $\lambdas$ requires a correctness result ensuring that well-typed terms of regular string type are in the language associated with their type.
 
-\begin{thm}{Correctness of Input Sanitation for $\lambdas$.}\label{thm:scorrect}
+\begin{thm}[Correctness of Input Sanitation for $\lambdas$.]\label{thm:scorrect}
   If  $\sctx \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
@@ -982,7 +982,7 @@ into the target language $\lambdap$.
 
 Establishing this result requires an additional theorem establishing a relationship between canonical forms for the string fragments of $\lambdas$ and $\lambdap$.
 
-\begin{thm}{Translation Correctness.} \label{thm:tcorrect}
+\begin{thm}[Translation Correctness.] \label{thm:tcorrect}
 If $\sctx \vdash e : \stringin{r}$ then there exists a $\iota$ such that $\trden{e} = \iota$, 
 $\iota \treduces \tstr{s}$, and $e \sreduces \strin{s}$.
 \end{thm}
@@ -995,7 +995,7 @@ proceeds by our type safety theorems as well as an appeal to the induction hypot
 
 Finally, our main theorem establishes that input sanitation correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
 
-\begin{thm}{Correctness of Input Sanitation for Translated Terms.}\label{thm:main}
+\begin{thm}[Correctness of Input Sanitation for Translated Terms.]\label{thm:main}
   If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
   for $s \in \lang{r}$.
 \end{thm}
