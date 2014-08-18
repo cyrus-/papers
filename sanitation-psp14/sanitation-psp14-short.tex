@@ -242,6 +242,7 @@
 \newtheorem{exam}[thm]{Example}                                                 
 \newtheorem{rem}[thm]{Remark} 
 
+
 %
 % For type setting inference rules with labels.
 %
@@ -312,8 +313,14 @@
 \newcommand{\regex}{{\sf regex}}
 
 % Meta-theoretic functions
-\newcommand{\lsubst}[3]{{\tt subst}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
-\newcommand{\lreplace}[3]{{\tt lreplace}(#1; #2; #3)}
+\newcommand{\lsubst}[3]{{\sf subst}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
+\newcommand{\lreplace}[3]{{\sf lreplace}(#1; #2; #3)}
+
+\newcommand{\strcase}[3]{ {\sf strcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
+
+\newcommand{\lhead}[1]{ {\sf lhead}(#1) }
+\newcommand{\ltail}[1]{ {\sf ltail}(#1) }
 
 
 % Judgements
@@ -467,6 +474,24 @@ An explanation of significant typing rules follows:
   \item \todo{strcase}
 \end{itemize}
 
+\begin{defn}[Definition of \lhead{r}]
+The function $\lhead{r}$ is defined in terms of the structure of $r$:
+\begin{itemize}
+\item $\lhead{a r'} = a$ where $a \in \Sigma$
+\item $\lhead{r_1 \cup  r_2}  = \lhead{r_1} \cup \lhead{r_2}$
+\item $\lhead{r*} = \lhead{r}$
+\item $\lhead{.} = a_1 \cup a_2 \cup ... \cup a_n$ for all $a_i \in \Sigma$ where $|\Sigma| = n$
+\item $\lhead{\epsilon} = \epsilon$.
+\end{itemize}
+\end{defn}
+
+\begin{defn}[Definition of \ltail{r}]
+The function \ltail{r} is defined in terms of $\lhead{r}$.
+Note that $\lhead{r} = a_1 \cup a_2 \cup ... \cup a_i$.
+We define $\ltail{r} = \delta_{a_1}(r) \cup \delta_{a_2}(r) \cup ... \cup \delta_{a_i}(r)$
+where $\delta_s(r)$ is the Brzozowski derivative of $r$ with respect to $s$ \cite{bowzer}.
+\end{defn}
+
 The premier operation for manipulating strings in $\lambdas$ is string substitution, 
 which is a familiar operation to any programmer who has used regular expressions.
 The replacement operation replaces all instances of a pattern in one string with
@@ -517,6 +542,15 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 {\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
 {\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
 
+\inferrule[S-T-Case]
+{ \sctx \vdash e_1 : \stringin{r} \\
+  \sctx \vdash e_2 : \sigma \\
+  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
+}
+{
+  \sctx \vdash \strcase{e_1}{e_2}{x.y.e_3} : \sigma
+}
+
 \inferrule[S-T-Replace]
 {\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
 {\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
@@ -556,6 +590,25 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 \inferrule[S-E-Concat]
 {e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
 {\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
+
+\inferrule[S-E-Case-$\epsilon$]
+{
+  e_1 \sreduces \strin{\epsilon} \\
+  e_2 \sreduces v_2
+}
+{
+  \strcase{e_1}{e_2}{e_3} \sreduces v_2
+}
+
+\inferrule[S-E-Case-Concat]
+{
+  e_1 \sreduces \strin{p s} \\
+  e_3 \sreduces x.y.e_4 \\
+  [p/x][s/y]e_4 \sreduces v
+}
+{
+  \strcase{e_1}{e_2}{e_3} \sreduces v
+}
 
 \inferrule[S-E-Replace]
 {e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
@@ -663,6 +716,10 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \str}
 {\tctx \vdash \tconcat{\iota_1}{\iota_2} : \str}
 
+\inferrule[P-T-Case]
+{\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx, x:\str, y:\str \vdash \iota_3:\tau}
+{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{\iota_3} : \tau}
+
 \inferrule[P-T-Replace]
 {\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \str }
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
@@ -700,6 +757,26 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \inferrule[P-E-Concat]
 {\iota_1 \treduces \tstr{s_1} \\ \iota_2 \treduces \tstr{s_2}} 
 {\tconcat{\iota_1}{\iota_2} \treduces \tstr{s_1 s_2}} % ???
+
+\inferrule[P-E-Case-$\epsilon$]
+{
+  \iota_1 \treduces \tstr{\ } \\
+  \iota2 \treduces \iota_2
+}
+{
+  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v_2
+}
+
+
+\inferrule[P-E-Case-Concat]
+{
+  \iota_1 \treduces \tstr{ps} \\
+  x.y.\iota_3 \treduces \iota_4 \\
+  [p/x][s/y]\iota_4 \treduces v
+}
+{
+  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v
+}
 
 \inferrule[P-E-Replace]
 {\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s_2} \\ \iota_3 \treduces \tstr{s_3} \\ \lsubst{r}{s_2}{s_3} = s} 
@@ -778,6 +855,13 @@ $\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
 \inferrule[Tr-App]
 {\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
 {\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
+
+\inferrule[Tr-Case]
+{\sctx \vdash \trden{e_1} = \iota_1 \\
+  \sctx \vdash \trden{e_2} = \iota_2 \\
+  \sctx \vdash \trden{e_3} = \iota_3
+}
+{\sctx \vdash \trden{ \strcase{e_1}{e_2}{e_3} } = \pstrcase{\iota_1}{\iota_2}{\iota_3} }
 
 \inferrule[Tr-string]
 { \ }
