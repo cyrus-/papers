@@ -432,14 +432,17 @@ There are two type constructors in $\lambdas$, $\rightarrow$ and $\textsf{string
 An outline for this section follows:
 \begin{itemize}
 \item In section \ref{sec:rs}, we describe $\lambdas$. We also prove provide proof outlines for type soundness and a correctness theorem.
-\item In section \ref{sec:p}, we present a simple target language with a minimal regular expression library.
+\item In section \ref{sec:p}, we present a simple target language, $\lambdap$, with a minimal regular expression library.
 \item Section \ref{sec:tr} describes the translation from $\lambdas$ to $\lambdap$ and ensures the correcness result for \ref{sec:rs} is preserved under translation. 
 \end{itemize}
 
 \subsection{The Language of Constrained Strings}\label{sec:rs}
 
 
-The system $\lambdas$ provides many familiar operations on strings. However, unlike most languages, the type system of $\lambdas$ tracks the effect of these operations by relating computations on strings to corresponding computations on regular languages. This section describes our approach, culminating in a Security Theorem. The main technical result of this paper will show that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
+The system $\lambdas$ provides four familiar operations on strings. However, unlike most languages, the type system of $\lambdas$ tracks the effect of these operations by relating computations on strings to corresponding computations on regular languages. 
+Since these computations terminate, we can use the regular expressions as a basis for static analysis of sanitation protocols.
+
+This section describes our approach, culminating in a Security Theorem. The main technical result of this paper shows that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
 \todo{remove tranditional, most and improve description}
 
 In this section, we define $\lambdas$, describe each operation, and finally prove both type safety and a correctness result for the language.
@@ -608,9 +611,10 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 
 The \textsc{S-T-Concat} rule is the simplest example of our approach. The rule is sound because the result of concatenating two strings will always be in the sequential composition two regular expressions matching the respective strings. The rule therefore relates string concatenation to sequential composition of regular expressions.
 
-Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings from smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. In terms of strings, this is essentially the ubiquitious substring operation.
+Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. In terms of strings, this is essentially the ubiquitious substring operation.
 
 The definition of \textsc{S-T-Case} is subtle because even simple string operations sometimes require complicated operations on regular expressions. Peeling off the first character of a string is deterministic -- the first character is always one, concrete value. However, a regular expression describing the first character of any matching string might recognize multiple concrete values. For instance, the first character of ``CMU" is always ``C"; however, if the expression associated with this string is CMU$\cup$KIT, then the expression describing the first character is C$\cup$K.
+Therefore, an operation on languages corresponding to case analysis on strings must consider one-character prefixes (a head) and their corresponding suffixes (a tail).
 
 Fortunately, regular expression derivatives \cite{bowzer} convienantly capture this intuition.
 The regular expression recognizing any one-character prefix of the strings in $\lang{r}$ is easily defined.
@@ -678,7 +682,7 @@ The relation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all subst
 \end{defn}
 
 A proper definition of ${\sf lreplace}$ would give an rewrite system with correctness and termination proofs, which is beyond the scope of this paper
-on escurity-montivated type system exntesions. Instead, we provide an abstract definition of the relation and state necessary propositions.
+on security-motivated type system extensions. Instead, we provide an abstract definition of the relation and state necessary propositions.
 
 \begin{defn}[$\tt{lreplace}$]
   The relation $\lreplace{r}{r_1}{r_2} = r'$ relates $r, r_1,$ and $r_2$ to
@@ -697,10 +701,12 @@ Then $r'$ is $x_{pre}r_2x_{post}$.
 \end{proof}
 
 \begin{prop}[Substitution Correspondence.] \label{thm:substcorrespondence}
-  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
+  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then
+
+  $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
 \end{prop}
 \begin{proof}
-The theorem follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
+The proposition follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
 \end{proof}
 
 \subsubsection{Safety}
@@ -708,7 +714,7 @@ The theorem follows from the definitions of subst and lreplace; note that langua
 In this section, we establish type soundness for $\lambdas$.
 The theorem relies upon the lemmas and propositions established above.
 We also rely on additional lemmas which establish the preservation of well-formedness
-of regular epxressions.
+of regular expressions.
 
 \begin{lem}
   If $\sctx \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
@@ -753,14 +759,14 @@ is preserved under translation into $\lambdap$.
   If  $\sctx \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
-  Follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
+  The theorem follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
 \end{proof}
 
 \subsection{A Target Language with a Regular Expression Library}\label{sec:p}
 
 The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
 with a $\str$ type and a regular expression type, as well as 
-some operations found in any standard library such as string concatenation and replacement.
+some operations -- such as concatenation and replacement -- found in many the standard libraries of many programming languages.
 The operations of $\lambdap $ correspond precisely to the operations of $\lambdas$ in a way made precise by the translation rules described in the next section.
 Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
 The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
@@ -911,7 +917,7 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 Type safety for $\lambdap$ is straight-forward, but is necessary in order to establish the 
 correctness of our translation.
 Again, we elide a more careful treatment by treating a special case where our language terminates but
-note the multiple approaches to proving soundness for non-terminating language swith natural semantics \cite{coinductionoo, stepindexing, coinduction}.
+note the multiple approaches to proving soundness for non-terminating languages with natural semantics \cite{coinductionoo, stepindexing, coinduction}.
 
 
 
@@ -993,7 +999,7 @@ The translation is type-directed.}
   and $e \treduces \rstr{s}$.
 \end{thm}
 \begin{proof}
-The proof proceeds by induction on the typing relation for $e$ and an appropraite choich of $\iota$; in each case,
+The proof proceeds by induction on the typing relation for $e$ and an appropriate choich of $\iota$; in each case,
 the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf preplace} when considering {\sf sreplace}).
 After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
 \end{proof}
@@ -1073,13 +1079,12 @@ sanitize function, which replaces all double quotes and brackets with HTML
 escape sequences. 
 
 The result of applying sanitize to input is appended in two functions which
-construct a safe query (avoiding command injection) and safe HTML output (avoiding XSS-style attacks).
+construct a safe query (avoiding command injection) and safe HTML output (avoiding Cross-Site Scripting (XSS) attacks).
 The arguments to the result and output construction functions constitute \emph{specifications}.
 In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
 as a string literal by the SQL server.
 In the case of \textsf{results_div}, this specification ensures that user input does 
-not contain any HTML tags, which is a conservative but effective policy for preventing
-Cross-Site Scripting (XSS) attacks.
+not contain any HTML tags, which is a conservative but effective policy for preventing XSS attacks.
 
 Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
 The type of ${\sf input}$ is quite large
@@ -1166,10 +1171,11 @@ class string_in(atlang.Type):
 
 \label{fig:atimpl}\end{figure}
 
-We implemented a variation on the type system presented in this paper. The only
-significant difference is that we only support replacements where $s_2$ is the empty
+We implemented a variation on the type system presented in this paper with two
+significant differences. first, we only support replacements where $s_2$ is the empty
 string. Therefore, our implementation respects the system presented in section 2
-only modulo the definition of \textsf{lreplace}.
+only modulo the definition of \textsf{lreplace}. Seocnd, we use subtyping instead of
+\textsc{S-*-SafeCoerce}, which decreases inessential verbosity of the language.
 
 Atlang translates programs using type definitions, which may extend both the
 static and dynamic semantics of the language. New types are defined as Python
@@ -1219,7 +1225,7 @@ In conclusion, our contribution is a type system, implemented within an extensib
 
 We believe that this type system extension serves as a useful basis for web-oriented static analysis.
 The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
-regular expressions are used for input sanitation, annotations at these use sites could be sufficient input.
+regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
 
 We also believe that extensible programming languages are a promising approach toward incorporating security
 and privacy into programming languages. The Software Industry moves quickly, and developing new languages for 
