@@ -1020,6 +1020,8 @@ Finally, our main result establishes that correctness of $\lambdas$ is preserved
 \section{Implementation in {Atlang}}\label{atlang}
 In the previous section, we specified a type system and a translation semantics to a language containing only strings and regular expressions. In this section, we take Python to be such a target language. Python does not have a static type system, however, so to implement these semantics, we will leverage \verb|atlang|, an extensible type system for Python (being developed by the authors). By using \verb|atlang|, which builds on Python's quotations and reflection facilities, we can implement these semantics as a library, rather than as a new dialect of Python. 
 
+\subsection{Example Usage}
+
 \begin{figure}[h]\begin{lstlisting}
 from atlib import fn, string_in
 
@@ -1047,7 +1049,10 @@ def main(db):
 \caption{Regular string types in atlang, a library that enables static type checking for Python. }\label{fig:atexample}
 \end{figure}
 
-Figure \ref{examplefig} demonstrates the use of string types in atlang.
+
+
+Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|string_in|, both of which we have included in \verb|atlib|, the standard library for \verb|atlang|. The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|atlang|. The function \verb|sanitize| on lines 3-7 specifies one argument, \verb|s|, of type \lstinline{string_in[r'.*']}.\todo{fix sizes}
+
 The sanitize function takes an arbitrary string and returns a string without
 double quotes or left and right brackets. In this example, we use HTML
 escape sequences.
@@ -1056,14 +1061,14 @@ The main function receives user input and passes this input to a
 sanitize function, which replaces all double quotes and brackets with HTML
 escape sequences. 
 
-The result of applying sanitize to input is appended to two functions which
-construct a safe query and safe output.
+The result of applying sanitize to input is appended in two functions which
+construct a safe query (avoiding command injection) and safe HTML output (avoiding XSS-style attacks).
 The arguments to the result and output construction functions constitute \emph{specifications}.
 In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
 as a string literal by the SQL server.
 In the case of \textsf{results_div}, this specification ensures that user input does 
 not contain any HTML tags, which is a conservative but effective policy for preventing
-XSS attacks.
+Cross-Site Scripting (XSS) attacks.
 
 Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
 The type of ${\sf input}$ is quite large
@@ -1071,14 +1076,13 @@ and does not actually equal the specified domains of the query or output constru
 methods. This mismatch is common -- in fact, nearly universal. Therefore, 
 our implementation includes a simple subtyping relation between regular expression
 types. 
+
 This subtyping relation is justified theoretically by the fact that language inclusion is
 decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
 Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
 see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
 
 \subsection{Implementation of the Regular Expression Type}
-
-
 
 \begin{figure}
 \begin{lstlisting}
@@ -1151,41 +1155,6 @@ class string_in(atlang.Type):
 
 \label{fig:atimpl}\end{figure}
 
-
-\subsection{Example Usage}
-
-Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|string_in|, both of which we have included in \verb|atlib|, the standard library for \verb|atlang|. The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|atlang|. The function \verb|sanitize| on lines 3-7 specifies one argument, \verb|s|, of type \lstinline{string_in[r'.*']}.\todo{fix sizes}
-
-The sanitize function takes an arbitrary string and returns a string without
-double quotes or left and right brackets. In this example, we use HTML
-escape sequences.
-
-The main function receives user input and passes this input to a 
-sanitize function, which replaces all double quotes and brackets with HTML
-escape sequences. 
-
-The result of applying sanitize to input is appended to two functions which
-construct a safe query and safe output.
-The arguments to the result and output construction functions constitute \emph{specifications}.
-In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
-as a string literal by the SQL server.
-In the case of \textsf{results_div}, this specification ensures that user input does 
-not contain any HTML tags, which is a conservative but effective policy for preventing
-XSS attacks.
-
-Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
-The type of ${\sf input}$ is quite large
-and does not actually equal the specified domains of the query or output construction
-methods. This mismatch is common -- in fact, nearly universal. Therefore, 
-our implementation includes a simple subtyping relation between regular expression
-types. 
-This subtyping relation is justified theoretically by the fact that language inclusion is
-decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
-Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
-see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
-
-\subsection{Implementation of the Regular Expression Type}
-
 We implemented a variation on the type system presented in this paper. The only
 significant difference is that we only support replacements where $s_2$ is the empty
 string. Therefore, our implementation respects the system presented in section 2
@@ -1202,6 +1171,8 @@ to these methods whenever an expression of type \textsf{string_in} is encountere
 
 
 \section{Related Work and Alternative Approaches}\label{related}
+
+
 
 The input sanitation problem is well-understood. There exist a large number of techniques and technologies, proposed by both practitioners and researchers, for preventing injection-style attacks. In this section, we explain how our approach to the input sanitation problem differs from each of these approaches. More important than these differences, however, is our more general assertion that language extensibility is a promising approach toward consideration of security goals in programming language design.
 
