@@ -316,6 +316,11 @@
 \newcommand{\lsubst}[3]{{\sf subst}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
 \newcommand{\lreplace}[3]{{\sf lreplace}(#1; #2; #3)}
 
+\newcommand{\sctx}{\Psi} % Context for external typing
+\newcommand{\tctx}{\Theta} % Context for internal typing
+\newcommand{\ereduces}{\Downarrow}
+
+
 \newcommand{\strcase}[3]{ {\sf strcase}(#1; #2; #3)}
 \newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
 
@@ -414,42 +419,6 @@ In Sec. \ref{atlang}, we show how to implement the type system fragment we have 
 We conclude after discussing related work in Sec. \ref{related}.
 
 \section{Regular String Types, Minimally}\label{calculus}
-\renewcommand{\grammarlabel}[2]{#1\hfill#2}
-
-
-
-\newcommand{\sctx}{\Psi} % Context for external typing
-\newcommand{\tctx}{\Theta} % Context for internal typing
-
-\newcommand{\ereduces}{\Downarrow}
-
-\begin{figure}[t]
-\begin{grammar}
-<$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
-
-\caption{Regular expressions over the alphabet $\Sigma$.}
-\label{fig:regex}
-\end{grammar}
-\end{figure}
-
-\begin{figure}[t]
-\begin{grammar}
-
-<$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
-$\stringin{r}$         
-
-<$e$> ::= 
-      $x$ \hfill source terms \alt 
-      $\lambda x . e$ \alt
-      $e(e)$ \alt
-      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\rsconcat{e}{e}$ \alt
-      $\sisubst{r}{e}{e}$ \alt
-      $\rcoerce{r}{e}$ \alt
-      $\rcheck{r}{e}{x.e}{e}$
-\caption{Syntax of $\lambda_{RS}$.}\label{fig:lamrs}
-\end{grammar}
-\end{figure}
 
 
 
@@ -469,8 +438,171 @@ An outline for this section follows:
 
 \subsection{The Language of Constrained Strings}\label{sec:rs}
 
+
 The system $\lambdas$ provides many familiar operations on strings. However, unlike most languages, the type system of $\lambdas$ tracks the effect of these operations by relating computations on strings to corresponding computations on regular languages. This section describes our approach, culminating in a Security Theorem. The main technical result of this paper will show that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
 \todo{remove tranditional, most and improve description}
+
+In this section, we define $\lambdas$, describe each operation, and finally prove both type safety and a correctness result for the language.
+The grammar for $\lambdas$ is defined in Figure \ref{fig:glambdas}. Typing rules \textsc{S-T-} are defined in Figure \ref{fig:slambdas} and a big-step semantics
+is defined in Figure \ref{fig:dlambdas}
+\footnote{For the reader's convienance, a single sheet containing figures \ref{fig:glambdas}-\ref{fig:tr} is available at http://nfulton.org/strings/printout.pdf \todo{post this}}.
+
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+\begin{figure}[h]
+\begin{grammar}
+<$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+
+\caption{Regular expressions over the alphabet $\Sigma$.}
+\label{fig:regex}
+\end{grammar}
+\end{figure}
+
+\begin{figure}[h]
+\begin{grammar}
+
+<$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
+$\stringin{r}$         
+
+<$e$> ::= 
+      $x$ \hfill source terms \alt 
+      $\lambda x . e$ \alt
+      $e(e)$ \alt
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\rsconcat{e}{e}$ \alt
+      $\sisubst{r}{e}{e}$ \alt
+      $\rcoerce{r}{e}$ \alt
+      $\rcheck{r}{e}{x.e}{e}$
+\caption{Syntax of $\lambda_{RS}$.}
+\label{fig:glambdas}
+\end{grammar}
+\end{figure}
+
+
+\begin{figure}[h]
+\small
+$\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
+~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
+\begin{mathpar}
+\inferrule[S-T-Var]
+{ x:\sigma \in \sctx }
+{ \sctx \vdash x:\sigma}
+
+\inferrule[S-T-Abs]
+{\sctx, x : \sigma_1 \vdash e : \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
+
+\inferrule[S-T-App]
+{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
+{\sctx \vdash e_1(e_2) : \sigma}
+  
+\inferrule[S-T-Stringin-I]
+{s \in \lang{r}}
+{\sctx \vdash \strin{s} : \stringin{r}}
+
+\inferrule[S-T-Concat]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
+{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
+
+\inferrule[S-T-Case]
+{ \sctx \vdash e_1 : \stringin{r} \\
+  \sctx \vdash e_2 : \sigma \\
+  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
+}
+{
+  \sctx \vdash \strcase{e_1}{e_2}{x.y.e_3} : \sigma
+}
+
+\inferrule[S-T-Replace]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
+{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
+
+\inferrule[S-T-SafeCoerce]
+{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
+{\sctx \vdash \coerce{r}{e} : \stringin{r}}
+
+\inferrule[S-T-Check]
+{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
+{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
+
+\end{mathpar}
+
+\caption{Typing rules for $\lambdas$. 
+The typing context $\sctx$ is standard.}
+\label{fig:slambdas}
+\end{figure}
+
+
+\begin{figure}
+  \small
+$\fbox{\inferrule{}{e \sreduces e}}$
+\begin{mathpar}
+\inferrule[S-E-Abs]                                                             
+{ \ }                                                                           
+{\lambda x.e \sreduces \lambda x.e}                                             
+
+\inferrule[S-E-App]
+{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces e_2' \\ [ e_2' / x ] e_3 \sreduces v }
+{ e_1(e_2) \sreduces v }
+
+\inferrule[S-E-RStr]
+{ \ }
+{\strin{s} \sreduces \strin{s}}
+
+\inferrule[S-E-Concat]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
+{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
+
+\inferrule[S-E-Case-$\epsilon$]
+{
+  e_1 \sreduces \strin{\epsilon} \\
+  e_2 \sreduces v_2
+}
+{
+  \strcase{e_1}{e_2}{e_3} \sreduces v_2
+}
+
+\inferrule[S-E-Case-Concat]
+{
+  e_1 \sreduces \strin{p s} \\
+  e_3 \sreduces x.y.e_4 \\
+  [p/x][s/y]e_4 \sreduces v
+}
+{
+  \strcase{e_1}{e_2}{e_3} \sreduces v
+}
+
+\inferrule[S-E-Replace]
+{e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
+{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
+
+\inferrule[S-E-SafeCoerce]
+{e \sreduces \strin{s}}
+{\coerce{r}{e} \sreduces \strin{s}}
+
+\inferrule[S-E-Check-Ok]
+{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces v}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
+}
+
+\inferrule[S-E-Check-NotOk]
+{
+  e \sreduces \strin{s} \\ s \not \in \lang{r}
+}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
+}
+
+
+
+\end{mathpar}
+\caption{Big step semantics for $\lambdas$}.
+\label{fig:dlambdas}
+\end{figure}
+
+
+
+
 
 \subsubsection{Concatenation and String Decomposition}
 
@@ -627,224 +759,35 @@ Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string op
 The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
 such as \textbf{P}ython or \textbf{P}HP.
 
-Type safety for $\lambdap$ is straight-forward, but is necessary in order to establish the 
-correctness of our translation.
+The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
+The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
+and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}.
 
-\begin{thm} 
-  Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
-  then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
-\end{thm}
-
-\subsection{Translation from $\lambdas$ to $\lambdap$}\label{sec:tr}
-
-
-The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
-The coercion cases are most interesting. If the safety of coercion in manifest in the
-types of the expressions, then no runtime check is inserted.
-If the safety of coercion is not manifest in the types, then a check is inserted.
-
-In practice, the type of a replacement rarely matches a specification.
-Therefore, it is convienant in an implementation to always insert the appropriate
-safe coercion. This way, violations of the sanitation protocol manifest as type errors,
-but the definition of an adequate replacement is not arduous.
-Alternatively, this policy may 
-be codified in the type system itself using subtyping \cite{fulton12}.
-
-This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
-
-\begin{thm}[Translation Correctness]\label{thm:trcorrect}
-  If $\tctx \vdash e : \stringin{r}$ then there exists an $\iota$ such that $\trden{e} = \iota$, $\iota \sreduces \tstr{s}$,
-  and $e \treduces \rstr{s}$.
-\end{thm}
-\begin{proof}
-The proof proceeds by induction on the typing relation for $e$ and an appropraite choich of $\iota$; in each case,
-the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf preplace} when considering {\sf sreplace}).
-After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
-\end{proof}
-
-Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
-
-\begin{thm}[Correctness of Input Sanitation for Translated Terms.]\label{thm:main}
-  If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
-  for $s \in \lang{r}$.
-\end{thm}
-\begin{proof}
-  By theorem \ref{thm:tcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
-  By theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
-\end{proof}
-
-
-
-
-
-
-
-
-
-
-
-\begin{figure}\label{fig:lambdas}
-\small
-$\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
-~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
-\begin{mathpar}
-\inferrule[S-T-Var]
-{ x:\sigma \in \sctx }
-{ \sctx \vdash x:\sigma}
-
-\inferrule[S-T-Abs]
-{\sctx, x : \sigma_1 \vdash e : \sigma_2}
-{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
-
-\inferrule[S-T-App]
-{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
-{\sctx \vdash e_1(e_2) : \sigma}
-  
-\inferrule[S-T-Stringin-I]
-{s \in \lang{r}}
-{\sctx \vdash \strin{s} : \stringin{r}}
-
-\inferrule[S-T-Concat]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
-{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
-
-\inferrule[S-T-Case]
-{ \sctx \vdash e_1 : \stringin{r} \\
-  \sctx \vdash e_2 : \sigma \\
-  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
-}
-{
-  \sctx \vdash \strcase{e_1}{e_2}{x.y.e_3} : \sigma
-}
-
-\inferrule[S-T-Replace]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
-{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
-
-\inferrule[S-T-SafeCoerce]
-{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
-{\sctx \vdash \coerce{r}{e} : \stringin{r}}
-
-\inferrule[S-T-Check]
-{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
-{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
-
-\end{mathpar}
-
-\caption{Typing rules for $\lambdas$. 
-The typing context $\sctx$ is standard.}
-\label{fig:etyping}
-\end{figure}
-
-
-\begin{figure}
-\small
-$\fbox{\inferrule{}{e \sreduces e}}$
-\begin{mathpar}
-\inferrule[S-E-Abs]                                                             
-{ \ }                                                                           
-{\lambda x.e \sreduces \lambda x.e}                                             
-
-\inferrule[S-E-App]
-{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces e_2' \\ [ e_2' / x ] e_3 \sreduces v }
-{ e_1(e_2) \sreduces v }
-
-\inferrule[S-E-RStr]
-{ \ }
-{\strin{s} \sreduces \strin{s}}
-
-\inferrule[S-E-Concat]
-{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
-{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
-
-\inferrule[S-E-Case-$\epsilon$]
-{
-  e_1 \sreduces \strin{\epsilon} \\
-  e_2 \sreduces v_2
-}
-{
-  \strcase{e_1}{e_2}{e_3} \sreduces v_2
-}
-
-\inferrule[S-E-Case-Concat]
-{
-  e_1 \sreduces \strin{p s} \\
-  e_3 \sreduces x.y.e_4 \\
-  [p/x][s/y]e_4 \sreduces v
-}
-{
-  \strcase{e_1}{e_2}{e_3} \sreduces v
-}
-
-\inferrule[S-E-Replace]
-{e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
-{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
-
-\inferrule[S-E-SafeCoerce]
-{e \sreduces \strin{s}}
-{\coerce{r}{e} \sreduces \strin{s}}
-
-\inferrule[S-E-Check-Ok]
-{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces v}
-{
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
-}
-
-\inferrule[S-E-Check-NotOk]
-{
-  e \sreduces \strin{s} \\ s \not \in \lang{r}
-}
-{
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
-}
-
-
-
-\end{mathpar}
-\caption{Big step semantics for $\lambdas$}.
-\label{fig:eeval}
-\end{figure}
-
-%
-% Begin typing/translation relation
-%
-
-
-
-
-% Begin Grammar 
-% Removes the < > from grammar productions.
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
-% \begin{figure}[t]
-% \begin{grammar}
-% <r> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+\begin{figure}[h]
+\begin{grammar}
 
-% \caption{Regular expressions over the alphabet $\Sigma$.}
-% \label{fig:regex}
-% \end{grammar}
-% \end{figure}
+<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
+$\str$ \alt $\regex$
 
-% \begin{figure}[h]
-% \begin{grammar}
 
-% <$\psi$> ::=	$\psi \rightarrow \psi$			\hfill	source types					\alt
-% $\stringin{r}$				 
-
-% <S> ::= 
-%       $\lambda x . e$ \hfill source terms \alt
-%       $e e$ \alt
-%       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-%       $\rsconcat{S}{S}$ \alt
-%       $\sisubst{r}{S}{S}$ \alt
-%       $\coerce{r}{S}$
-% \caption{Syntax for the string sanitation fragment of our source language, $\lambdas$.}
-% \end{grammar}
-% \end{figure}
+<P> ::= $x$  \hfill target terms \alt
+   $\lambda x . \iota$ \alt
+   $\iota \iota$ \alt
+  $\tstr{s}$ \alt
+  $\rx{r}$ \alt
+  $\tconcat{\iota}{\iota}$ \alt
+  $\preplace{\iota}{\iota}{\iota}$ \alt
+  $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
+  \end{grammar}
+\caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
+\label{fig:lcsSyntax}
+\end{figure}
 
 
 
-\begin{figure}[t]\label{fig:lambdap}
+\begin{figure}[h]\label{fig:lambdap}
 \small
 $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \tau$
@@ -888,7 +831,7 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 \end{mathpar}
 \caption{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
-\label{fig:ityping}
+\label{fig:slambdap}
 \end{figure}
 
 \begin{figure}[t]
@@ -949,44 +892,43 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_2}
 \end{mathpar}
 \caption{Big step semantics for of $\lambdap$}.
-\label{fig:ieval}
+\label{fig:dlambdap}
 \end{figure}
 
 
 
 
 
+\subsubsection{Safety}
 
-\newpage
-\ 
-\newpage
-\ 
-\newpage
+Type safety for $\lambdap$ is straight-forward, but is necessary in order to establish the 
+correctness of our translation.
+
+\begin{thm} 
+  Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
+  then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
+\end{thm}
+
+\subsection{Translation from $\lambdas$ to $\lambdap$}\label{sec:tr}
+
+
+The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
+The coercion cases are most interesting. If the safety of coercion in manifest in the
+types of the expressions, then no runtime check is inserted.
+If the safety of coercion is not manifest in the types, then a check is inserted.
+
+In practice, the type of a replacement rarely matches a specification.
+Therefore, it is convienant in an implementation to always insert the appropriate
+safe coercion. This way, violations of the sanitation protocol manifest as type errors,
+but the definition of an adequate replacement is not arduous.
+Alternatively, this policy may 
+be codified in the type system itself using subtyping \cite{fulton12}.
+
+The translation is defined by the rules \textsc{Tr-} in Figure~\ref{fig:tr}.
+This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
 
 
 \begin{figure}[h]
-\begin{grammar}
-
-<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
-$\str$ \alt $\regex$
-
-
-<P> ::= $x$  \hfill target terms \alt
-   $\lambda x . \iota$ \alt
-   $\iota \iota$ \alt
-  $\tstr{s}$ \alt
-  $\rx{r}$ \alt
-  $\tconcat{\iota}{\iota}$ \alt
-  $\preplace{\iota}{\iota}{\iota}$ \alt
-  $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
-  \end{grammar}
-\caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
-\label{fig:lcsSyntax}
-\end{figure}
-
-
-
-\begin{figure}[h]\label{fig:trans}
 
 $\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
 \begin{mathpar}
@@ -1032,8 +974,31 @@ $\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
 \end{mathpar}
 \caption{Translation from source terms ($e$) to target terms ($\iota$).
 The translation is type-directed.}
+\label{fig:tr}
 \end{figure}
 
+\begin{thm}[Translation Correctness]\label{thm:trcorrect}
+  If $\tctx \vdash e : \stringin{r}$ then there exists an $\iota$ such that $\trden{e} = \iota$, $\iota \sreduces \tstr{s}$,
+  and $e \treduces \rstr{s}$.
+\end{thm}
+\begin{proof}
+The proof proceeds by induction on the typing relation for $e$ and an appropraite choich of $\iota$; in each case,
+the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf preplace} when considering {\sf sreplace}).
+After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
+\end{proof}
+
+\subsubsection{Preservation of Security}
+
+Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
+
+\begin{thm}[Correctness of Input Sanitation for Translated Terms.]\label{thm:main}
+  If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
+  for $s \in \lang{r}$.
+\end{thm}
+\begin{proof}
+  By theorem \ref{thm:tcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
+  By theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
+\end{proof}
 
 %\begin{figure}
 %\begin{lstlisting}
@@ -1050,7 +1015,7 @@ The translation is type-directed.}
 %\end{figure}
 %
 
-\subsection{An Example}\label{whatev}
+%\subsection{An Example}\label{whatev}
 
 \section{Implementation in {Atlang}}\label{atlang}
 In the previous section, we specified a type system and a translation semantics to a language containing only strings and regular expressions. In this section, we take Python to be such a target language. Python does not have a static type system, however, so to implement these semantics, we will leverage \verb|atlang|, an extensible type system for Python (being developed by the authors). By using \verb|atlang|, which builds on Python's quotations and reflection facilities, we can implement these semantics as a library, rather than as a new dialect of Python. 
@@ -1115,7 +1080,6 @@ see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there a
 
 
 
-\label{fig:impl}
 \begin{figure}
 \begin{lstlisting}
 class string_in(atlang.Type):
@@ -1183,6 +1147,8 @@ class string_in(atlang.Type):
 \end{lstlisting}
 \vspace{-10px}
 \caption{Implementation of the \texttt{string\_in} type constructor in atlang.}
+\label{fig:impl}
+
 \label{fig:atimpl}\end{figure}
 
 
