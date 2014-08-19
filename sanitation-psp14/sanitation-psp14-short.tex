@@ -453,60 +453,37 @@ $\stringin{r}$
 
 
 
+
+
+
 In this section, we define a minimal typed lambda calculus with regular string types called $\lambda_{RS}$. The syntax of $\lambda_{RS}$ is specified in Figure \ref{fig:lamrs}, its static semantics in Figure \ref{fig:etyping} and its evaluation semantics in Figure \ref{fig:eeval}. This will serve as the source language for our translation to a calculus with only standard strings and regular expressions, defined in Sec. \ref{translation}. 
 
 There are two type constructors in $\lambdas$, $\rightarrow$ and $\textsf{stringin}$. Arrow types classify functions, which are introduced via lambda abstraction, $\lambda x.e$, and can be applied, written $e(e)$, in the usual way \cite{pfpl}. Regular string types are of the form $\stringin{r}$, where $r$ is a regular expression. Values of such regular string types take the form $\strin{s}$, where $s$ is a string (i.e. $s \in \Sigma^\star$, defined in the usual way). The rule \textsc{S-T-Stringin-I} ensures that $s \in \lang{r}$. The remaining operations on terms of type $\stringin{r}$ preserve this property. %The remaining operators operate on regular strings.
 
-\todo{outline of \S 2 goes here}
+An outline for this section follows:
+\begin{itemize}
+\item In section \ref{sec:rs}, we describe $\lambdas$. We also prove provide proof outlines for type soundness and a correctness theorem.
+\item In section \ref{sec:p}, we present a simple target language with a minimal regular expression library.
+\item Section \ref{sec:tr} describes the translation from $\lambdas$ to $\lambdap$ and ensures the correcness result for \ref{sec:rs} is preserved under translation. 
+\end{itemize}
 
-\subsection{The Language of Constrained Strings: $\lambdas$}
+\subsection{The Language of Constrained Strings}\label{sec:rs}
 
-\todo{overview}
+The system $\lambdas$ provides many familiar operations on strings. However, unlike most languages, the type system of $\lambdas$ tracks the effect of these operations by relating computations on strings to corresponding computations on regular languages. This section describes our approach, culminating in a Security Theorem. The main technical result of this paper will show that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
+\todo{remove tranditional, most and improve description}
 
 \subsubsection{Concatenation and String Decomposition}
 
-\subsubsection{Coercion}
+The \textsc{S-T-Concat} rule is the simplest example of our approach. The rule is sound because the result of concatenating two strings will always be in the sequential composition two regular expressions matching the respective strings. The rule therefore relates string concatenation to sequential composition of regular expressions.
 
-\subsubsection{Replacement}
+Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings from smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. In terms of strings, this is essentially the ubiquitious substring operation.
 
-\todo{PHP}
+The definition of \textsc{S-T-Case} is subtle because even simple string operations sometimes require complicated operations on regular expressions. Peeling off the first character of a string is deterministic -- the first character is always one, concrete value. However, a regular expression describing the first character of any matching string might recognize multiple concrete values. For instance, the first character of ``CMU" is always ``C"; however, if the expression associated with this string is CMU$\cup$KIT, then the expression describing the first character is C$\cup$K.
 
-\todo{premier}
-
-\subsubsection{Definition of Substitution and Replacement for Regular Languages}
-
-\subsubsection{Safety}
-
-\subsubsection{The Security Theorem}
-
-\subsection{A Target Language with a Regular Expression Library: $\lambdap$}
-
-\subsubsection{Safety}
-
-\subsection{Translation from $\lambdas$ to $\lambdap$}
-
-\subsubsection{Correctness of Translation}
-
-\subsubsection{Preservation of Security}
-
-
-
-
-\begin{itemize}
-  \item \textsc{S-T-Concat}: the type of concatenated regular strings is  
-    obtained by concatenating the regular expressions.
-  \item \textsc{S-T-Replace}: \todo{fix this description}the term $\textsf{rreplace}$
-    evaluates to the result of substituting every string matching $r$ in $s_1$
-    with $s_2$. This operation corresponds to the \textsf{str_replace} function of PHP.
-    The type of these expressions is defined in terms of an extra-linguistic \textsf{lreplace}
-    function, which is defined later in this section.
-    The expression $\lreplace{r}{r_1}{r_2}$ is obtained by
-    starting with $r_1$, and replacing any subexpression matching $r$ with $r_2$.
-  \item \textsc{S-T-SafeCoerce}: \todo{fix this description} allows only safe coercions between string types by
-    expoiting the decidability of language inclusion.
-  \item \textsc{S-T-Check}: \todo{fix this description}The check rules allow casts between strings that cannot be guaranteed at compile time, but might pass a runtime check.
-  \item \todo{strcase}
-\end{itemize}
+Fortunately, regular expression derivatives \cite{bowzer} convienantly capture this intuition.
+The regular expression recognizing any one-character prefix of the strings in $\lang{r}$ is easily defined.
+The one-character prefix definition combined with derivatives gives a concise definition of the
+remaining string.
 
 \begin{defn}[Definition of \lhead{r}]
 The function $\lhead{r}$ is defined in terms of the structure of $r$:
@@ -519,6 +496,8 @@ The function $\lhead{r}$ is defined in terms of the structure of $r$:
 \end{itemize}
 \end{defn}
 
+Given this definition of $\lhead{r}$, regular expression derivatives provide a useful tool for defining $\ltail{r}$.
+
 \begin{defn}[Definition of \ltail{r}]
 The function \ltail{r} is defined in terms of $\lhead{r}$.
 Note that $\lhead{r} = a_1 \cup a_2 \cup ... \cup a_i$.
@@ -526,29 +505,182 @@ We define $\ltail{r} = \delta_{a_1}(r) \cup \delta_{a_2}(r) \cup ... \cup \delta
 where $\delta_s(r)$ is the Brzozowski derivative of $r$ with respect to $s$ \cite{bowzer}.
 \end{defn}
 
-The premier operation for manipulating strings in $\lambdas$ is string substitution, 
-which is a familiar operation to any programmer who has used regular expressions.
-The replacement operation replaces all instances of a pattern in one string with
-another string; for instance, $\lsubst{a|b}{a}{c} = c$.
-In order to compute the type resulting from substitution, we also need to compute
-the result of replacing one language with another inside a given language.
-Finally, just for convenience, we provide a coerce operation. The introduction of
-coercion requires handling of runtime errors.
+The \textsc{S-T-Concat} rule, which is defined in terms of these operations, relates the result of ``peeling off" the first character of a string to regular expression derivatives.
 
-The underlying language $\lambdap$ has only one type for strings. We prove that whenever
-a term is translated from $\lambdas$ to $\lambdap$, correctness is preserved.
-The only exception is in the case of unsafe casts in $\lambdas$, which are unnecessary but
-are included to demonstrate that the regex library of $\lambdap$ may be used to insert
-dynamic checks whenever even when developers are not careful about using statically checked
-operations.
+\subsubsection{Coercion}
 
-A brief outline of this section follows:
-\begin{itemize}
-  \item In \S 2.1-2.3, we define $\lambdas$, $\lambdap$ and the translation from one to the other.
-  \item In \S 2.4 we state some properties about regular expressions which are needed in our correctness proofs.
-   \item In \S 2.5 we prove type safety for $\lambdap$ as well as both type safety and correctness for $\lambdas$.
-  \item In \S 2.6 we prove that translation preserves the correctness result about $\lambdas$.
-\end{itemize}
+ \textsc{S-T-SafeCoerce}: \todo{fix this description} allows only safe coercions between string types by
+    expoiting the decidability of language inclusion.
+
+\textsc{S-T-Check}: \todo{fix this description}The check rules allow casts between strings that cannot be guaranteed at compile time, but might pass a runtime check.
+
+\subsubsection{Replacement}
+
+The premier operation for manipulating strings in $\lambdas$ is string substitution.
+On strings, the string substitution operator is familiar, and roughly analogous to \lstinline{str_replace} in PHP and \lstinline{String.replace} in Java.
+The definition of \textsc{S-T-Case} requires a definition of replacement for regular expressions (or languages) corresponding to string replacement.
+In this section, we define this operation. 
+
+Both string and language replacement are defined extra-linguistically.
+The system $\lambdas$ is defined in terms of these functions.
+The function $\lsubst{r}{s_1}{s_2}$ replaces every substring of $s_1$ matching $r$ with $s_2$.
+In an analogous manner, the function $\lreplace{r}{r_1}{r_2}$ replaces every sublanguages of $r_1$ matching $r$ with $r_2$.
+If an intuiition for this operation is not clear, it may be helpful to think in terms replacing sub-automata.
+
+
+Throughout this section, we fix an alphabet $\Sigma$ over which strings $s$ and
+regular expressions $r$ are defined. We use $\lang{r}$ to refer to the
+language recognized by the regular expression $r$. 
+
+\begin{lem}[Properties of Regular Languages and Expressions.] \label{thm:regexprops}
+The following are properties of regular expressions which are necessary for our proofs:
+If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
+For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+Regular languages are closed under difference, right quotient, reversal, and string homomorphism.
+\end{lem}
+
+If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
+
+\begin{defn}[$\tt{subst}$]
+The relation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
+\end{defn}
+
+\begin{defn}[$\tt{lreplace}$]
+  The relation $\lreplace{r}{r_1}{r_2} = r'$ relates $r, r_1,$ and $r_2$ to
+  a language $r'$ containing all strings of $r_1$ except that any substring $s_{pre} s s_{post} \in \lang{r_1}$ where $s \in \lang{r}$
+  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty).
+\end{defn}
+
+\begin{prop}[Closure.] \label{thm:total}
+  If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular expressions, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
+\end{prop}
+\begin{proof}
+The theorem follows from closure under difference, right quotient, reversal and string homomorphism.
+\end{proof}
+
+\begin{prop}[Substitution Correspondence.] \label{thm:substcorrespondence}
+  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
+\end{prop}
+\begin{proof}
+The theorem follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
+\end{proof}
+
+\subsubsection{Safety}
+
+
+Type soundness for $\lambdas$ follows from the lemmas and propositions established in the previous subsection.
+
+In this section, we establish type soundness for $\lambdas$.
+The theorem relies upon the lemmas and propositions established above.
+We also rely on additional lemmas which establish the preservation of well-formedness
+of regular epxressions.
+
+\begin{lem}
+  If $\sctx \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
+\end{lem}
+\begin{proof}
+  The only non-trivial case is S-T-Replace, which follows from lemma \ref{thm:total}. 
+\end{proof}
+\begin{lem}
+If $\tctx \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\end{lem}
+
+Safety for the string fragment of $\lambdas$ requires validating that the type system's definition is justified
+by our theorems about regular languages.
+
+\begin{thm}[Canonical Forms for String Fragment of $\lambdas$.]\label{thm:cfs}
+  If $\sctx \vdash e : \stringin{r}$ 
+  then $e \sreduces \rstr{s}$ 
+\end{thm}
+
+\begin{thm}[Type Safety.] \label{thm:scorrect}
+  If $\sctx \vdash e : \sigma$ 
+  then $e \sreduces e'$ and $\sctx \vdash e' : \stringin{r}$.
+\end{thm}
+\begin{proof}
+By induction on the typing relation.
+The S-T-Concat case requires Lemma \ref{thm:regexprops} 
+and the S-T-Replace case appeals to Lemma \ref{thm:substcorrespondence}.
+\end{proof}
+
+\subsubsection{The Security Theorem}\label{sec:securitythm}
+
+The chief benefit of $\lambdas$ is its safety theorem, which states that any value of
+a regular expression type is recognized by the regular expression corresponding to its type.
+Our main technical result, stated later in this section, establishes that this property
+is preserved under translation into $\lambdap$.
+
+\begin{thm}[Correctness of Input Sanitation for $\lambdas$.]\label{thm:scorrect}
+  If  $\sctx \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
+\end{thm}
+\begin{proof}
+  Follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
+\end{proof}
+
+\subsection{A Target Language with a Regular Expression Library}\label{sec:p}
+
+The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
+with a $\str$ type and a regular expression type, as well as 
+some operations found in any standard library such as string concatenation and replacement.
+The operations of $\lambdap $ correspond precisely to the operations of $\lambdas$ in a way made precise by the translation rules described in the next section.
+Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
+The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
+such as \textbf{P}ython or \textbf{P}HP.
+
+Type safety for $\lambdap$ is straight-forward, but is necessary in order to establish the 
+correctness of our translation.
+
+\begin{thm} 
+  Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
+  then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
+\end{thm}
+
+\subsection{Translation from $\lambdas$ to $\lambdap$}\label{sec:tr}
+
+
+The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
+The coercion cases are most interesting. If the safety of coercion in manifest in the
+types of the expressions, then no runtime check is inserted.
+If the safety of coercion is not manifest in the types, then a check is inserted.
+
+In practice, the type of a replacement rarely matches a specification.
+Therefore, it is convienant in an implementation to always insert the appropriate
+safe coercion. This way, violations of the sanitation protocol manifest as type errors,
+but the definition of an adequate replacement is not arduous.
+Alternatively, this policy may 
+be codified in the type system itself using subtyping \cite{fulton12}.
+
+This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
+
+\begin{thm}[Translation Correctness]\label{thm:trcorrect}
+  If $\tctx \vdash e : \stringin{r}$ then there exists an $\iota$ such that $\trden{e} = \iota$, $\iota \sreduces \tstr{s}$,
+  and $e \treduces \rstr{s}$.
+\end{thm}
+\begin{proof}
+The proof proceeds by induction on the typing relation for $e$ and an appropraite choich of $\iota$; in each case,
+the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf preplace} when considering {\sf sreplace}).
+After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
+\end{proof}
+
+Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
+
+\begin{thm}[Correctness of Input Sanitation for Translated Terms.]\label{thm:main}
+  If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
+  for $s \in \lang{r}$.
+\end{thm}
+\begin{proof}
+  By theorem \ref{thm:tcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
+  By theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
+\end{proof}
+
+
+
+
+
+
+
+
+
 
 
 \begin{figure}\label{fig:lambdas}
@@ -711,14 +843,6 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 % \end{figure}
 
 
-\subsection{Definition of $\lambdas$}
-
-The $\lambdas$ system extends the simply-typed lambda calculus with regular
-expression types
-
-%\newpage
-
-
 
 \begin{figure}[t]\label{fig:lambdap}
 \small
@@ -840,8 +964,6 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \newpage
 
 
-\subsection{Definition of $\lambdap$}
-
 \begin{figure}[h]
 \begin{grammar}
 
@@ -862,16 +984,6 @@ $\str$ \alt $\regex$
 \label{fig:lcsSyntax}
 \end{figure}
 
-
-
-The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
-with a string type and a regular expression tpye. We include two operations which are available in the regular expression
-library of any modern programming language. The check operation ensures that an expression
-recognizes a string, and the replace operation is string replacement.
-
-
-
-\subsection{Definition of Translation}
 
 
 \begin{figure}[h]\label{fig:trans}
@@ -923,274 +1035,6 @@ The translation is type-directed.}
 \end{figure}
 
 
-
-The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
-The coercion cases are most interesting. If the safety of coercion in manifest in the
-types of the expressions, then no runtime check is inserted.
-If the safety of coercion is not manifest in the types, then a check is inserted.
-
-In practice, the type of a replacement rarely matches a specification.
-Therefore, it is convienant in an implementation to always insert the appropriate
-coercion, and then only raise type errors when an automatically inserted coercion
-actually requires the insertion of a runtime check. Alternatively, this policy may 
-be codified in the type system itself using subtyping \cite{fulton12}.
-
-\subsection{Properties of Regular Languages}
-
-Our type safety proof for language S replies on a relationship between
-string substitution and language substitution given in lemma \ref{thm:substcorrespondence}.
-We also rely upon several other properties of regular languages.
-Throughout this section, we fix an alphabet $\Sigma$ over which strings $s$ and
-regular expressions $r$ are defined. throughout the paper, $\lang{r}$ refers to the
-language recognized by the regular expression $r$. This distinction between the regular expression
-and its language -- typically elided in the literature -- makes our definition and
-proofs about systems S and P more readable.
-
-\begin{lem}[Properties of Regular Languages and Expressions.] \label{thm:regexprops}
-The following are properties of regular expressions which are necessary for our proofs:
-If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
-For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
-Regular languages are closed under difference, right quotient, reversal, and string homomorphism.
-\end{lem}
-
-If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
-
-\begin{defn}[$\tt{subst}$]
-The relation $\lsubst{r}{s_1}{s_2} = s$ produces a string $s$ in which all substrings of $s_1$ matching $r$ are replaced with $s_2$.
-\end{defn}
-
-\begin{defn}[$\tt{lreplace}$]
-  The relation $\lreplace{r}{r_1}{r_2} = r'$ relates $r, r_1,$ and $r_2$ to
-  a language $r'$ containing all strings of $r_1$ except that any substring $s_{pre} s s_{post} \in \lang{r_1}$ where $s \in \lang{r}$
-  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty).
-\end{defn}
-
-\begin{prop}[Closure.] \label{thm:total}
-  If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular expressions, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
-\end{prop}
-\begin{proof}
-The theorem follows from closure under difference, right quotient, reversal and string homomorphism.
-\end{proof}
-
-\begin{prop}[Substitution Correspondence.] \label{thm:substcorrespondence}
-  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{s_1}{s_2}}$.
-\end{prop}
-\begin{proof}
-The theorem follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
-\end{proof}
-
-
-%\begin{description}
-%\item[case $r=\alpha$.]
-%If $s_1 = \alpha$ then $\alpha \in \lang{r_1}$ by assumption.
-%Therefore, $\lsubst{r}{s_1}{s_2} = \lsubst{\alpha}{\alpha}{s_2} = s_2$ and
-%$\lreplace{r}{r_1}{r_2} = \lreplace{\alpha}{r_1}{r_2}$. 
-%Since $s_1 = \alpha$ and $\alpha \in \lang{r_1}$, $r_1 \iso \alpha | r_1'$ for some $r_1'$.
-%Therefore, $\lreplace{\alpha}{r_1}{r_2} \iso \lreplace{\alpha}{\alpha|r_1'}{r_2}$ by Lemma X(1).
-%Finally, $s_2 \in \lang{r_2}$ which implies $s_1 \in \lang{r_2|r'}$.
-%If $s_1 \not = \alpha$ the $\lsubst{r}{s_1}{s_2} = s_1$ and $\lreplace{\alpha}{r_1}{r_2} = r_1$.
-%
-%\item[case $r = a|b$].
-%Note that $\subst{a|b}{s_1}{s_2} = \lsubst{a}{\lsubst{b}{s_1}{s_2}}{s_2}$
-%and $\lsubst{b}{s_1}{s_2} \in \lreplace{b}{r_1}{r_2}$ by induction.
-%Therefore, $\lsubst{a|b}{s_1}{s_2} \in \lreplace{a}{\lreplace{b}{r_1}{r_2}}{r_2}$ by induction and the definition of lreplace.
-%Finally, applying definitions once more, $\lsubst{a|b}{s_1}{s_2} \in \lreplace{a|b}{r_1}{r_2}$.
-%
-%\item[case $r = ab$].
-%By a similar argument to the disjunctive case.
-%
-%\item[case $r = a*$].
-%By considering the once unwinding of $a*$, noting that $s_1$ and $s_2$ are finite.
-%\end{description}
-
-
-% NRF The coercion lemma is no longer necessary, because it is a property of
-% "strip"-style sanitation rather than the more general case of replacement 
-% treated in this paper. However, we should mention this difference between my
-% undergraduate thesis and this paper in the related work section if we are
-% going tin clude a discussio of unpublished or quasi-published (e.g. src)
-% results.
-%\begin{lem}{Coercion Lemma.} \label{thm:coercionalemma}
-%Suppose that $R$ and $L$ are regular expressions, and that $s \in R$ is a finite string.  
-%Let $s' = \coerce(R,L,s)$ with all maximal substrings recognized by $L$ replaced with $\epsilon$.  Then $s'$ is recognized by $(R \backslash L) + \emptyset$ and the construction of $R \backslash L$ is decidable.
-%\end{lem}
-%\begin{proof}
-%Let $F,G$ be FAs corresponding to $R$ and $L$, and let $G'$ be $G$ with its final states inverted (so that $G'$ is the complement of $L$).  Define an FA $H$ as a DFA corresponding to the NFA found by combining $F$ and $G'$ such that $H$ accepts only if $R$ and $L'$ accept or if $s$ is empty (this construction may result in an exponential blowup in state size.)  Clearly, $H$ corresponds to $R \backslash L + \emptyset$.  Thus, the construction of $R \backslash L + \emptyset$ is decidable.
-%
-%If $R \subset L$, $s' = \emptyset$.  If $L \subset R$, either $s' = \emptyset$, or $s' \in R$ and $s' \not \in L$. If $R$ and $L$ are not subsets of one another, then it may be the case that $L$ recognizes part of $R$.  Consider $L$ as the union of two languages, one which is a subset of $R$ and one which is disjoint.  The subset language is considered above and the disjoint language is inconsequential.
-%\end{proof}
-
-% Why is this necessary?
-%\begin{lem}
-%  For all $r$, if $s_1 \in r_1$ and $s_2 \in r_2$ then $\subst{r}{s_1}{s_2} \subseteq \lsubst{r}{r_1}{r_2}$.
-%\end{lem}
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% BEGIN PROOFS ABOUT S AND P
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\subsection{Safety of the Source and Target Languages}
-
-In this section, we establish type safety for the source ($\lambdas$) and
-target ($\lambdap$) languages. In addition to type safety, we also prove
-a stronger correctness property for $\lambdas$.
-
-Our first two theorems establish that our rules preserve the well-formedness of
-regular expressions. The standard lemmas required for safety of the simply
-typed lambda claculus are also required; proofs for these do not differ substntially
-from \cite{pfpl}.
-
-\begin{lem}
-  If $\sctx \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
-\end{lem}
-\begin{proof}
-  The only non-trivial case is S-T-Replace, which follows from lemma \ref{thm:total}. 
-\end{proof}
-\begin{lem}
-If $\tctx \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
-\end{lem}
-
-We now prove safety for the string fragment of the source and target languages.
-The easiest property is type safety of $\lambdap$, which follows almost directly from
-type safety for the simply typed lambda calculus.
-
-\begin{thm} 
-  Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
-  then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
-\end{thm}
-
-Safety for the string fragment of $\lambdas$ is more involved because it involves validating that
-the type system's definition is justified by our theorems about regular languages.
-We state the theorem for the string fragment only to demontrate this point;
-full type safety for $\lambdas$ follows easily from safety for the string fagment.
-Note that type safety does \emph{not} guarantee that strings of a type are in the
-correct language. We isolate this property so that we may reason about its preservation
-under translation to $\lambdap$, which does not have regular expression types.
-
-\begin{thm}[Type Safety for the String Fragment of $\lambdas$.] \label{thm:scorrect}
-  If $\sctx \vdash e : \sigma$ 
-  then $e \sreduces e'$ and $\sctx \vdash e' : \stringin{r}$.
-\end{thm}
-\begin{proof}
-By induction on the typing relation.
-The S-T-Concat case requires Lemma \ref{thm:regexprops} 
-and the S-T-Replace case appeals to Lemma \ref{thm:substcorrespondence}.
-\end{proof}
-
-\begin{thm}[Canonical Forms for String Fragment of $\lambdas$.]\label{thm:cfs}
-  If $\sctx \vdash e : \stringin{r}$ 
-  then $e \sreduces \rstr{s}$ 
-\end{thm}
-
-
-In addition to safety, $\lambdas$ requires a correctness result ensuring that well-typed terms of regular string type are in the language associated with their type.
-
-\begin{thm}[Correctness of Input Sanitation for $\lambdas$.]\label{thm:scorrect}
-  If  $\sctx \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
-\end{thm}
-\begin{proof}
-  Follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
-\end{proof}
-
-
-\subsection{Translation Correctness}
-
-The main theorem of this paper is Theorem \ref{thm:main},
-which establishes that Theorem \ref{thm:scorrect} is preserved under translation
-into the target language $\lambdap$.
-
-Establishing this result requires an additional theorem establishing a relationship between canonical forms for the string fragments of $\lambdas$ and $\lambdap$.
-
-\begin{thm}[Translation Correctness.] \label{thm:tcorrect}
-If $\sctx \vdash e : \stringin{r}$ then there exists an $\iota$ such that $\trden{e} = \iota$, 
-$\iota \treduces \tstr{s}$, and $e \sreduces \strin{s}$.
-\end{thm}
-
-\begin{proof}
-The proof proceeds by induction on the typing relation for $e$ and an appropriate
-choice of $\iota$; in each case, the choice is obvious and the rest of the proof
-proceeds by our type safety theorems as well as an appeal to the induction hypothesis.
-\end{proof}
-
-Finally, our main theorem establishes that input sanitation correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
-
-\begin{thm}[Correctness of Input Sanitation for Translated Terms.]\label{thm:main}
-  If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
-  for $s \in \lang{r}$.
-\end{thm}
-\begin{proof}
-  By theorem \ref{thm:tcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
-  By theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
-\end{proof}
-% PROOF OF TRANSLATION CORRECTNESS.
-% This proof is slightly out of say. It's SUFFICIENT, but is actually more
-% than sufficient because we prove \ref{scorrect} along with translation
-% correctness....
-%\begin{description}
-%\item[S-T-String-I:] 
-%Let $S = \rstr{s}$ and suppose $\sctx \vdash \rstr{s} : \stringin{r}$.
-%Choose $T = \str{s}$ and note that $\trden{S} = P$ by Tr-String.
-%By P-E-String, $P \treduces \str{s}$ and by S-E-String $S \treduces \rstr{s}$.
-%Finally, by inversion of S-T-Stringin-I, $s \in \lang{r}$.
-%
-%\item[S-T-Concat:]
-%Let $S = \rconcat{S_1}{S_2}$ and suppose $\sctx \vdash S : \stringin{r_1 r_2}$.
-%By inversion, $\sctx \vdash S_1 : \stringin{r_1}$.
-%It follows by induction that there exists a $P_1$ such that $\trden{S_1} = P_1$.
-%By a similar argument for $S_2$ and $r_2$, there exists a $P_2$ such that $\trden{S_2} = P_2$.
-%Choose $P = \concat{P_1}{P_2}$.
-%
-%We first prove property (a).
-%Note that $S_1$ and $P_1$ do not result in errors and that $S_1$ is well typed.
-%Therefore, $S_1 \sreduces \rstr{s_1}$ and $P_1 \treduces \str{s_1}$ for some $s_1 \in \lang{r_1}$ by theorems 8 and 9 respectively. % TODO-nrf make sure this numbering is correct
-%Similarly, $S_2 \sreduces \rstr{s_2}$ and $P_2 \treduces \str{s_2}$ for some $s_2 \in \lang{r_2}$.
-%Therefore, $S \sreduces \rstr{s_1 s_2}$ by S-E-Concat and $\concat{P_1}{P_2} \treduces \str{s_1 s_2}$ by P-E-Concat.
-%Finally, $s_1s_2 \in \lang{r_1}{r_2}$ by \ref{thm:regexprops}.
-%
-%Consider property (b).
-%If $S_1 \err$ then $P_1 \err$ by induction, and it follows that $S \err$ and $P \err$ by respective error propagation rules.
-%Similarly, if $S_2 \err$ then $P_2 \err$ and it follow that $S \err$ and $P \err$ by induction and propagation.
-%
-%\item[S-T-Replace:]
-%Let $S = \rreplace{r}{S_1}{S_2}$ and suppose $\sctx \vdash S : \stringin{r'}$ for some $s$.
-%By inversion of S-T-Replace, , $\sctx S_1 : \stringin{r_1}$ and $\sctx : \stringin{r_2}$ 
-%such that $\lsubst{r}{r_1}{r_2} = r'$.
-%By induction, there exists some $P_1, P_2$ such that $\trden{S_1} = P_1$, $\trden{S_2} = P_2$
-%and either (a) or (b) holds.
-%
-%If (a) holds then $S_1 \sreduces \rstr{s_1}$ and $P_1 \treduces \str{s_1}$ for some $s_1 \in \lang{r_1}$,
-%and similarly for $S_2, P_2$ and some $s_2 \in \lang{r_2}$.
-%Therefore, by S-E-Replace, $S \sreduces \rstr{s}$ for some $s = \lreplace{r}{s_1}{s_2}$.
-%Choose $P = \preplace{r}{s_1}{s_2}$.
-%By a similar argument and P-E-Replace, $P \treduces \str{s}$ for some $s = \lreplace{r}{s_1}{s_2}$.
-%What remains to be shown is $\lreplace{r}{s_1}{s_2} \in \lang{\lsubst{r}{r_1}{r_2}}$,
-%which follows from Leamm D since $s_1 \in r_1$ and $s_2 \in r_2$.
-%
-%If (b) holds for $S_1$ and $P_1$, then $S \err$ and $P \err$ by propagation rules.
-%Similarly, if (b) hols for $S_2$ and $P_2$ then $S \err$ and $P \err$ by propagation rules.
-%
-%\item[S-T-Coerce:]
-%Let $S = \rcoerce{r}{S'}$ and suppose $\sctx \vdash \rcoerce{r}{S} : \stringin{r}$.
-%By inverstion $\Psi \vdash S' : \stringin{r'}$ for an arbitrary $r'$.
-%By induction there exists a $P'$ such that $\trden{S'} = P'$ and either (a) or (b)
-%holds for $S'$ and $P'$.
-%
-%If (a) holds then $S' \sreduces \rstr{s'}$ and $P' \treduces \str{s'}$ for some $s' \in \lang{r'}$.
-%Note that either $s' \in \lang{r}$ or $s' \not \in \lang{r}$ by property 2 of \ref{thm:regexprops}.
-%Suppose $s' \in \lang{r}$. Then $\rcoerce{r}{S} \sreduces \rstr{S'}$ by S-E-Coerce.
-%Choose $P = \check{\rx{r}}{P'}$ and note that $P \treduces \str{s'}$ by P-E-Coerce.
-%Now suppose $s' \not \in \lang{r}$. Then $S \err$ and $P \err$ by P-E-Check-Err
-%and S-E-Coerce-Err.
-%
-%Finally, if (b) holds then $S \err$ and $P \err$ by propagation.
-%
-%\end{description}
-\section{Implementation in {Atlang}}\label{atlang}
 %\begin{figure}
 %\begin{lstlisting}
 %output of successful compilation
