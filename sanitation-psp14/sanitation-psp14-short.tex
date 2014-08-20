@@ -398,23 +398,23 @@ To be practical, adopting a specialized type system like this should not require
 %\keywords
 %type-level computation, typed compilation
 \section{Introduction}\label{intro}
-Command injection vulnerabilities are among the most common and severe security vulnerabilities in modern web applications \cite{OWASP}. They arise because web applications, at their boundaries, control external systems using commands represented as  strings. For example, web browsers are controlled using HTML and Javascript sent from a server as a string, and database engines execute SQL queries also sent as strings. When these commands include data derived from user input, care must be taken to ensure that the user cannot  subverts the intended command by carefully crafting the data they send. For example, a  SQL query constructed using string concatenation exposes a SQL injection vulnerability: 
+Command injection vulnerabilities are among the most common and severe security vulnerabilities in modern web applications \cite{OWASP}. They arise because web applications, at their boundaries, control external systems using commands represented as  strings. For example, web browsers are controlled using HTML and Javascript sent from a server as a string, and database engines execute SQL queries also sent as strings. When these commands include data derived from user input, care must be taken to ensure that the user cannot  subvert the intended command by carefully crafting the data they send. For example, a  SQL query constructed using string concatenation exposes a SQL injection vulnerability: 
 \begin{lstlisting}[numbers=none]
 'SELECT * FROM users WHERE name="' + name + '"'
 \end{lstlisting}
 If a malicious user enters the name \lstinline{'"; DROP TABLE users --'}, the entire database could be erased. 
 
-To avoid this problem, the program must \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes double quotes and existing backslashes   with a backslash, which SQL treats safely. Guaranteeing that user input has already been sanitized like this before it is used to construct a command is challenging. Note that this function is not idempotent, so it should only be called once.
+To avoid this problem, the program must \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes double quotes and existing backslashes   with a backslash, which SQL treats safely. Alternatively, it might HTML-encode special characters, which would head off both SQL injection attacks and cross-site scripting attacks. Guaranteeing that user input has already been sanitized  before it is used to construct a command is challenging, because  sanitation is often performed in a different part of the code than the place where commands are ultimately constructed.% Note, for example, that \verb|sanitize| is not idempotent, so it should only be called once.
 
 We observe that many such sanitization techniques can be understood using \emph{regular languages} \cite{cinderella}. For example, \verb|name| must be a string in the language described by the regular expression \verb!([^"\]|(\")|(\\))*! -- a sequence of characters other than quotation marks and backslashes; these can only appear escaped. This concrete syntax for regular expression patterns can be understood to desugar, in a standard way, to the syntax for regular expressions shown in Figure \ref{fig:regex}, where $r \cdot r$ is sequencing and $r + r$ is  disjunction. We will work with this ``core'' for simplicity.
 
-In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we describe such a regular language, following convention, as $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the language of a string is tracked through uses of a number of operations, including \emph{replacement} of substrings matching a given regular expression. This makes it simple to implement sanitation procedures like the one just described in an essentially conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system, where user input has not yet been validated). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
+In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we identify regular languages by the notation $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the type system tracks the language of a string through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitation functions like the one just described in an essentially conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
 We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambdas$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
 
 Waiting for a language designer to build this feature in is unsatisfying in practice. Moreover, we also face a ``chicken-and-egg problem'': justifying its inclusion into a commonly used language benefits from empirical demonstrations that it is useful, but this is difficult to do if developers have no way to use it in practice. As such, we take the position that a better path forward for the community is to work within a programming language where such type system fragments can be introduced modularly and orthogonally, as libraries. 
 
-In Sec. \ref{atlang}, we show how to implement the type system fragment we have specified  using \texttt{atlang}, an extensible static type system implemented as a library inside Python. \texttt{atlang} leverages local type inference to control the semantics of literal forms, so reguar string types can be introduced using string literals without any run-time overhead. Coercions that are known to be  safe due to a sublanguage relationship are performed implicitly, also without run-time overhead. This results in a \emph{usably secure} system: working with regular strings differs little from working with standard strings.
+In Sec. \ref{atlang}, we show how to implement the type system fragment we have specified  using \texttt{atlang}, an extensible static type system implemented as a library inside Python. \texttt{atlang} leverages local type inference to control the semantics of literal forms, so reguar string types can be introduced using string literals without any run-time overhead. Coercions that are known to be  safe due to a sublanguage relationship are performed implicitly, also without run-time overhead. This results in a \emph{usably secure} system: working with regular strings differs little from working with standard strings in a language that web developers have already widely adopted.
 
 We conclude after discussing related work in Sec. \ref{related}.
 
@@ -435,8 +435,8 @@ There are two type constructors in $\lambdas$, $\rightarrow$ and $\textsf{string
  %The remaining operations on terms of type $\stringin{r}$ preserve this property. %The remaining operators operate on regular strings.
 
 
-$\lambdas$ provides several familiar operations on strings. The type system  handles these operations by relating operations over strings to corresponding operations over the  regular languages they belong to. 
-Since these operations over regular languages are known to be closed and decidable, we can use the corresponding operations over regular strings as a basis for static analysis of sanitation protocols.
+$\lambdas$ provides several familiar operations on strings. The type system  relates these operations over strings to corresponding operations over the  regular languages they belong to. 
+Since these operations over regular languages are known to be closed and decidable, we can use these operations as a basis for static analysis of sanitation protocols (we will see a concrete example in Section \ref{atlang}).
 
 %This section describes our approach, culminating in a Security Theorem. The main technical result of this paper shows that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
 %\todo{remove tranditional, most and improve description}
@@ -462,13 +462,14 @@ Since these operations over regular languages are known to be closed and decidab
 
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
 $\stringin{r}$         
+
 <$e$> ::= 
       $x$ \hfill source terms \alt 
       $\lambda x . e$ \alt
       $e(e)$ \alt
-      $\strin{s}$ \hfill $s \in \Sigma^{*}$
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
       $\rsconcat{e}{e}$ \alt
-      $\strcase{e}{e}{x.y.e}$ \alt
+      $\strcase{e}{e}{x,y.e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
       $\rcoerce{r}{e}$ \alt
       $\rcheck{r}{e}{x.e}{e}$
