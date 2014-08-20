@@ -302,7 +302,7 @@
 
 \newcommand{\tcheck}[4]{{\sf check}(#1; #2; #3; #4)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
-\newcommand{\preplace}[3]{{\sf preplace}(#1;#2;#3)}
+\newcommand{\preplace}[3]{{\sf replace}(#1;#2;#3)}
 \newcommand{\tconcat}[2]{{\sf concat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
 
 \newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
@@ -570,10 +570,10 @@ $\fbox{\inferrule{}{e \sreduces v}}$
 \inferrule[S-E-Case-Concat]
 {
   e_1 \sreduces \strin{a s} \\
-  [\rstr{a},\rstr{s} / x,y] \sreduces v
+  [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
 }
 {
-  \strcase{e_1}{x.y.e_2}{e_3} \sreduces v
+  \strcase{e_1}{e_2}{x.y.e_3} \sreduces v_3
 }
 
 \inferrule[S-E-Replace]
@@ -843,7 +843,7 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 
 \inferrule[P-T-Case]
 {\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx, x:\str, y:\str \vdash \iota_3:\tau}
-{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{\iota_3} : \tau}
+{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{x.y.\iota_3} : \tau}
 
 \inferrule[P-T-Replace]
 {\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \str }
@@ -860,7 +860,7 @@ The typing context $\tctx$ is standard.}
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{\iota \treduces \iota}}$
+$\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 
 \begin{mathpar}
 \inferrule[P-E-Abs]
@@ -868,8 +868,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\lambda x.e \sreduces \lambda x.e}
 
 \inferrule[P-E-App]
-{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces v \\ [v / x] \iota_3 \sreduces \iota'}
-{ \iota_1(\iota_2) \sreduces \iota'}
+{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \dot{v}_2 \\ [\dot{v}_2 / x] \iota_3 \sreduces \dot{v}_3}
+{ \iota_1(\iota_2) \sreduces \dot{v}_3}
 
 \inferrule[P-E-Str]
 { \ }
@@ -886,21 +886,20 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \inferrule[P-E-Case-$\epsilon$]
 {
   \iota_1 \treduces \tstr{\ } \\
-  \iota_2 \treduces \iota_2' \\
+  \iota_2 \treduces \dot{v_2} \\
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \iota_1'
+  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \dot{v_2}
 }
 
 
 \inferrule[P-E-Case-Concat]
 {
-  \iota_1 \treduces \tstr{ps} \\
-  x.y.\iota_3 \treduces \iota_4 \\
-  [p/x][s/y]\iota_4 \treduces \iota'
+  \iota_1 \treduces \tstr{as} \\
+  [a,s/x,y] \iota_3 \treduces \dot{v} 
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \iota'
+  \pstrcase{\iota_1}{\iota_2}{x.y.\iota_3} \treduces \dot{v}
 }
 
 \inferrule[P-E-Replace]
@@ -910,15 +909,15 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \inferrule[P-E-Check-OK]
 {\iota \treduces \tstr{s} \\ 
 s \in \lang{r} \\ 
-\iota_1 \sreduces \iota_1'
+\iota_1 \sreduces \dot{v_1}
 }
 {
-  \tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \iota_1'
+  \tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
 }
 
 \inferrule[P-E-Check-NotOK]
-{\iota \treduces \tstr{s} \\ s \not \in \lang{r}}
-{\tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \iota_2}
+{\iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
+{\tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
 \caption{Big step semantics for of $\lambdap$}.
 \label{fig:dlambdap}
@@ -1021,7 +1020,7 @@ The translation is type-directed.}
 \end{thm}
 \begin{proof}
 The proof proceeds by induction on the typing relation for $e$ and an appropriate choich of $\iota$; in each case,
-the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf preplace} when considering {\sf sreplace}).
+the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf replace} when considering {\sf sreplace}).
 After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
 \end{proof}
 
