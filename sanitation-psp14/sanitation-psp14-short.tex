@@ -321,7 +321,7 @@
 \newcommand{\ereduces}{\Downarrow}
 
 
-\newcommand{\strcase}[3]{ {\sf strcase}(#1; #2; #3)}
+\newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
 \newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
 
 \newcommand{\lhead}[1]{ {\sf lhead}(#1) }
@@ -472,6 +472,7 @@ $\stringin{r}$
       $e(e)$ \alt
       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
       $\rsconcat{e}{e}$ \alt
+      $\strcase{e}{e}{x.y.e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
       $\rcoerce{r}{e}$ \alt
       $\rcheck{r}{e}{x.e}{e}$
@@ -790,12 +791,13 @@ and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fi
 $\str$ \alt $\regex$
 
 
-<P> ::= $x$  \hfill target terms \alt
+<$\iota$> ::= $x$  \hfill target terms \alt
    $\lambda x . \iota$ \alt
    $\iota \iota$ \alt
   $\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{\iota}{\iota}$ \alt
+  $\pstrcase{\iota}{\iota}{x.y.\iota}$ \alt
   $\preplace{\iota}{\iota}{\iota}$ \alt
   $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
   \end{grammar}
@@ -952,46 +954,46 @@ This section ultimately establishes that the security theorem for $\lambdas$ is 
 
 \begin{figure}[h]
 
-$\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
+$\fbox{\inferrule{}{ \trden{e} = \iota}}$
 \begin{mathpar}
 \inferrule[Tr-Var]
 { }
-{\sctx \vdash \trden{x} = x}
+{ \trden{x} = x}
 
 \inferrule[Tr-Abs]
-{ \sctx \vdash \trden{e} = \iota }
-{\sctx \vdash \trden{ \lambda x.e } = \lambda x . \iota}
+{  \trden{e} = \iota }
+{ \trden{ \lambda x.e } = \lambda x . \iota}
 
 \inferrule[Tr-App]
-{\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
+{ \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{ \trden{e_1(e_2)} = \iota_1(\iota_2)}
 
 \inferrule[Tr-Case]
-{\sctx \vdash \trden{e_1} = \iota_1 \\
-  \sctx \vdash \trden{e_2} = \iota_2 \\
-  \sctx \vdash \trden{e_3} = \iota_3
+{ \trden{e_1} = \iota_1 \\
+   \trden{e_2} = \iota_2 \\
+   \trden{e_3} = \iota_3
 }
-{\sctx \vdash \trden{ \strcase{e_1}{e_2}{e_3} } = \pstrcase{\iota_1}{\iota_2}{\iota_3} }
+{ \trden{ \strcase{e_1}{e_2}{e_3} } = \pstrcase{\iota_1}{\iota_2}{\iota_3} }
 
 \inferrule[Tr-string]
 { \ }
-{ \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
+{   \trden{\strin{s}} = \tstr{s}}
 
 \inferrule[Tr-Concat]
-{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{ \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
+{  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{  \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
 
 \inferrule[Tr-Subst]
-{ \sctx \vdash  \trden{e_1} = \iota_1 \\ \sctx \vdash  \trden{e_2} = \iota_2 }
-{ \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
+{   \trden{e_1} = \iota_1 \\   \trden{e_2} = \iota_2 }
+{   \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
 
 \inferrule[Tr-SafeCoerce]
-{ \sctx \vdash \trden{e} = \iota }
-{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
+{  \trden{e} = \iota }
+{   \trden{ \coerce{r'}{e} } = \iota }
 
 \inferrule[Tr-Check]
-{ \sctx \vdash \trden{e} = \iota_1 \\ \sctx \vdash \trden{e_1} = \iota_1?? \\ \sctx \vdash \trden{e_2} = \iota_2} 
-{ \sctx \vdash \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
+{  \trden{e} = \iota_1 \\  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2} 
+{  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
 
 \end{mathpar}
 \caption{Translation from source terms ($e$) to target terms ($\iota$).
