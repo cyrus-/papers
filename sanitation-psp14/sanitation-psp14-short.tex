@@ -462,17 +462,22 @@ Since these operations over regular languages are known to be closed and decidab
 
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
 $\stringin{r}$         
-
 <$e$> ::= 
       $x$ \hfill source terms \alt 
       $\lambda x . e$ \alt
       $e(e)$ \alt
-      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$
       $\rsconcat{e}{e}$ \alt
       $\strcase{e}{e}{x,y.e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
       $\rcoerce{r}{e}$ \alt
       $\rcheck{r}{e}{x.e}{e}$
+
+<$v$> ::= $\lambda x . e$ \hfill source values \alt
+          $\strin{s}$ \hfill $s \in \Sigma^{*}$
+
+
+      
 \caption{Syntax of $\lambda_{RS}$.}
 \label{fig:glambdas}
 \end{grammar}
@@ -542,8 +547,8 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 {\lambda x.e \sreduces \lambda x.e}                                             
 
 \inferrule[S-E-App]
-{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces e_2' \\ [ e_2' / x ] e_3 \sreduces v }
-{ e_1(e_2) \sreduces v }
+{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces v_2 \\ [ v_2 / x ] e_3 \sreduces e' }
+{ e_1(e_2) \sreduces e' }
 
 \inferrule[S-E-RStr]
 { \ }
@@ -566,10 +571,10 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 {
   e_1 \sreduces \strin{p s} \\
   e_3 \sreduces x.y.e_4 \\
-  [p/x][s/y]e_4 \sreduces v
+  [p/x][s/y]e_4 \sreduces e'
 }
 {
-  \strcase{e_1}{e_2}{e_3} \sreduces v
+  \strcase{e_1}{e_2}{e_3} \sreduces e'
 }
 
 \inferrule[S-E-Replace]
@@ -581,9 +586,9 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 {\coerce{r}{e} \sreduces \strin{s}}
 
 \inferrule[S-E-Check-Ok]
-{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces v}
+{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces e'}
 {
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e'
 }
 
 \inferrule[S-E-Check-NotOk]
@@ -623,10 +628,10 @@ remaining string.
 The function $\lhead{r}$ is defined in terms of the structure of $r$:
 \begin{itemize}
 \item $\lhead{a r'} = a$ where $a \in \Sigma$
+\item $\lhead{\epsilon} = \epsilon$
 \item $\lhead{r_1 +  r_2}  = \lhead{r_1} + \lhead{r_2}$
 \item $\lhead{r*} = \lhead{r}$
-\item $\lhead{.} = a_1 + a_2 + ... + a_n$ for all $a_i \in \Sigma$ where $|\Sigma| = n$
-\item $\lhead{\epsilon} = \epsilon$.
+\item $\lhead{.} = a_1 + a_2 + ... + a_n$ for all $a_i \in \Sigma$ where $|\Sigma| = n$.
 \end{itemize}
 \end{defn}
 
@@ -787,17 +792,21 @@ and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fi
 <$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
 $\str$ \alt $\regex$
 
-
 <$\iota$> ::= $x$  \hfill target terms \alt
-   $\lambda x . \iota$ \alt
-   $\iota \iota$ \alt
-  $\tstr{s}$ \alt
+             $\lambda x . \iota$ \alt
+                    $\iota(\iota)$ \alt
+$\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{\iota}{\iota}$ \alt
   $\pstrcase{\iota}{\iota}{x.y.\iota}$ \alt
   $\preplace{\iota}{\iota}{\iota}$ \alt
   $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
-  \end{grammar}
+
+
+<$\dot{v}$> ::= $\lambda x . \iota$ \hfill target values \alt
+                $\tstr{s}$
+
+\end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
 \label{fig:lcsSyntax}
 \end{figure}
@@ -861,8 +870,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\lambda x.e \sreduces \lambda x.e}
 
 \inferrule[P-E-App]
-{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \iota_2' \\ [\iota_3 / x] \iota_2' \sreduces v}
-{ \iota_1(\iota_2) \sreduces v}
+{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces v \\ [v / x] \iota_3 \sreduces \iota'}
+{ \iota_1(\iota_2) \sreduces \iota'}
 
 \inferrule[P-E-Str]
 { \ }
@@ -879,10 +888,10 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 \inferrule[P-E-Case-$\epsilon$]
 {
   \iota_1 \treduces \tstr{\ } \\
-  \iota2 \treduces \iota_2
+  \iota_2 \treduces \iota_2' \\
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v_2
+  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \iota_1'
 }
 
 
@@ -890,10 +899,10 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {
   \iota_1 \treduces \tstr{ps} \\
   x.y.\iota_3 \treduces \iota_4 \\
-  [p/x][s/y]\iota_4 \treduces v
+  [p/x][s/y]\iota_4 \treduces \iota'
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v
+  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \iota'
 }
 
 \inferrule[P-E-Replace]
@@ -901,8 +910,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{\iota \treduces \tstr{s} \\ s \in \lang{r} \\ [\tstr{s} / x] \iota_1 \sreduces \iota_3}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_3}
+{\iota \treduces \tstr{s} \\ s \in \lang{r} \\ [\tstr{s} / x] \iota_1 \sreduces \iota'}
+{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota'}
 
 \inferrule[P-E-Check-NotOK]
 {\iota \treduces \tstr{s} \\ s \not \in \lang{r}}
