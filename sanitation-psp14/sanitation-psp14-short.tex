@@ -516,7 +516,7 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
   \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
 }
 {
-  \sctx \vdash \strcase{e_1}{e_2}{x.y.e_3} : \sigma
+  \sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma
 }
 
 \inferrule[S-T-Replace]
@@ -573,7 +573,7 @@ $\fbox{\inferrule{}{e \sreduces v}}$
   [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
 }
 {
-  \strcase{e_1}{e_2}{x.y.e_3} \sreduces v_3
+  \strcase{e_1}{e_2}{,.y.e_3} \sreduces v_3
 }
 
 \inferrule[S-E-Replace]
@@ -795,7 +795,7 @@ $\str$ \alt $\regex$
 $\tstr{s}$ \alt
   $\rx{r}$ \alt
   $\tconcat{\iota}{\iota}$ \alt
-  $\pstrcase{\iota}{\iota}{x.y.\iota}$ \alt
+  $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
   $\preplace{\iota}{\iota}{\iota}$ \alt
   $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
@@ -843,7 +843,7 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 
 \inferrule[P-T-Case]
 {\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx, x:\str, y:\str \vdash \iota_3:\tau}
-{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{x.y.\iota_3} : \tau}
+{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau}
 
 \inferrule[P-T-Replace]
 {\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \str }
@@ -885,21 +885,21 @@ $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 
 \inferrule[P-E-Case-$\epsilon$]
 {
-  \iota_1 \treduces \tstr{\ } \\
+  \iota_1 \treduces \tstr{ \epsilon } \\
   \iota_2 \treduces \dot{v_2} \\
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces \dot{v_2}
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v_2}
 }
 
 
 \inferrule[P-E-Case-Concat]
 {
   \iota_1 \treduces \tstr{as} \\
-  [a,s/x,y] \iota_3 \treduces \dot{v} 
+  [\tstr{a},\tstr{s}/x,y] \iota_3 \treduces \dot{v} 
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{x.y.\iota_3} \treduces \dot{v}
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v}
 }
 
 \inferrule[P-E-Replace]
@@ -907,17 +907,19 @@ $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{\iota \treduces \tstr{s} \\ 
+{
+  \iota_r \treduces \rx{r} \\
+  \iota \treduces \tstr{s} \\ 
 s \in \lang{r} \\ 
-\iota_1 \sreduces \dot{v_1}
+\iota_1 \treduces \dot{v_1} 
 }
 {
-  \tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
+  \tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
 }
 
 \inferrule[P-E-Check-NotOK]
-{\iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
-{\tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
+{\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
+{\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
 \caption{Big step semantics for of $\lambdap$}.
 \label{fig:dlambdap}
