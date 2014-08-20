@@ -322,7 +322,7 @@
 
 
 \newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
-\newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf strcase}(#1; #2; #3)}
 
 \newcommand{\lhead}[1]{ {\sf lhead}(#1) }
 \newcommand{\ltail}[1]{ {\sf ltail}(#1) }
@@ -797,11 +797,12 @@ $\tstr{s}$ \alt
   $\tconcat{\iota}{\iota}$ \alt
   $\pstrcase{\iota}{\iota}{x.y.\iota}$ \alt
   $\preplace{\iota}{\iota}{\iota}$ \alt
-  $\tcheck{\rx{r}}{\iota}{\iota}{\iota}$ 
+  $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
 
 <$\dot{v}$> ::= $\lambda x . \iota$ \hfill target values \alt
-                $\tstr{s}$
+                $\tstr{s}$ \alt
+                $\rx{r}$
 
 \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
@@ -849,8 +850,8 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx, x:\str \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
-{\tctx \vdash \tcheck{\iota_r}{\iota_1}{x . \iota_2}{\iota_3} : \sigma}
+{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
+{\tctx \vdash \tcheck{\iota_r}{\iota_1}{\iota_2}{\iota_3} : \sigma}
 \end{mathpar}
 \caption{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
@@ -907,12 +908,17 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{\iota \treduces \tstr{s} \\ s \in \lang{r} \\ [\tstr{s} / x] \iota_1 \sreduces \iota'}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota'}
+{\iota \treduces \tstr{s} \\ 
+s \in \lang{r} \\ 
+\iota_1 \sreduces \iota_1'
+}
+{
+  \tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \iota_1'
+}
 
 \inferrule[P-E-Check-NotOK]
 {\iota \treduces \tstr{s} \\ s \not \in \lang{r}}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_2}
+{\tcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \treduces \iota_2}
 \end{mathpar}
 \caption{Big step semantics for of $\lambdap$}.
 \label{fig:dlambdap}
@@ -995,8 +1001,14 @@ $\fbox{\inferrule{}{ \trden{e} = \iota}}$
 {   \trden{ \coerce{r'}{e} } = \iota }
 
 \inferrule[Tr-Check]
-{  \trden{e} = \iota_1 \\  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2} 
-{  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
+{  
+  \trden{e} = \iota \\  
+   \trden{e_1} = \iota_1 \\  
+   \trden{e_2} = \iota_2
+} 
+{ 
+  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
+} 
 \end{mathpar}
 \caption{Translation from source terms ($e$) to target terms ($\iota$).
 The translation is type-directed.}
