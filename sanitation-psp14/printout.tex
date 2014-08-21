@@ -12,6 +12,9 @@
 \usepackage{amsmath}
 \usepackage{amssymb} 
 
+
+\usepackage[labelformat=empty]{caption}
+
 % Hack. Something's wrong with PLAS paper when using the ACM Proc docclass
 \let\proof\relax
 \let\endproof\relax
@@ -352,13 +355,30 @@
 
 \begin{document}
 
+%dep_docclass\conferenceinfo{-}{-} 
+%dep_docclass\copyrightyear{-} 
+%dep_docclass\copyrightdata{[to be supplied]} 
+
+
 \newcommand{\Ace}{\textsf{Ace}}
 
-\begin{figure}[h]
+\begin{figure}[H]
 \tiny
 $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
 \begin{mathpar}
+\inferrule[S-T-Var]
+{ x:\sigma \in \sctx }
+{ \sctx \vdash x:\sigma}
+
+\inferrule[S-T-Abs]
+{\sctx, x : \sigma_1 \vdash e : \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
+
+\inferrule[S-T-App]
+{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
+{\sctx \vdash e_1(e_2) : \sigma}
+  
 \inferrule[S-T-Stringin-I]
 {s \in \lang{r}}
 {\sctx \vdash \strin{s} : \stringin{r}}
@@ -389,14 +409,6 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 {\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
 \end{mathpar}
 
-\caption{Typing rules for $\lambdas$. 
-The typing context $\sctx$ is standard.}
-\label{fig:slambdas}
-\end{figure}
-
-
-\begin{figure}
-  \tiny
 $\fbox{\inferrule{}{e \sreduces v}}$
 \begin{mathpar}
 \inferrule[S-E-Abs]                                                             
@@ -456,9 +468,10 @@ $\fbox{\inferrule{}{e \sreduces v}}$
   \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
 }
 \end{mathpar}
-\caption{Big step semantics for $\lambdas$}.
+\caption{Figures 3 and 4: Typing Rules and Big step semantics for $\lambdas$}.
 \label{fig:dlambdas}
 \end{figure}
+
 
 
 
@@ -469,6 +482,18 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \tau$
 
 \begin{mathpar}
+\inferrule[P-T-Var]
+{ x:\tau \in \tctx }
+{ \tctx \vdash x:\tau }
+
+\inferrule[P-T-Abs]
+{\tctx, x : \tau_1 \vdash \iota_2 : \tau_2}
+{\tctx \vdash \lambda x.\iota_2 : \tau_1 \rightarrow \tau_2}
+
+\inferrule[P-T-App]
+{\tctx \vdash \iota_1 : \tau_2 \rightarrow \tau \\ \tctx \vdash \iota_2 : \tau_2}
+{\tctx \vdash \iota_1(\iota_2) : \iota}
+
 \inferrule[P-T-String]
 { \ }
 {\tctx \vdash \tstr{s} : \str}
@@ -493,13 +518,7 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
 {\tctx \vdash \tcheck{\iota_r}{\iota_1}{\iota_2}{\iota_3} : \sigma}
 \end{mathpar}
-\caption{Typing rules for $\lambdap$.
-The typing context $\tctx$ is standard.}
-\label{fig:slambdap}
-\end{figure}
 
-\begin{figure}[t]
-\tiny
 $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 
 \begin{mathpar}
@@ -560,14 +579,13 @@ s \in \lang{r} \\
 {\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
 {\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
-\caption{Big step semantics for $\lambdap$}.
+\caption{Figures 6 and 7: Typing rules and big step semantics for $\lambdap$}.
 \label{fig:dlambdap}
 \end{figure}
 
 
 
-
-\begin{figure}[hbt]
+\begin{figure}[H]
 \tiny
   $\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
 \begin{mathpar}
@@ -590,6 +608,18 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
 \end{mathpar}
   $\fbox{\inferrule{}{ \trden{e} = \iota }}$
 \begin{mathpar}
+\inferrule[Tr-Var]
+{ }
+{ \trden{x} = x}
+
+\inferrule[Tr-Abs]
+{  \trden{e} = \iota }
+{ \trden{ \lambda x.e } = \lambda x . \iota}
+
+\inferrule[Tr-App]
+{ \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{ \trden{e_1(e_2)} = \iota_1(\iota_2)}
+
 \inferrule[Tr-Case]
 { \trden{e_1} = \iota_1 \\
    \trden{e_2} = \iota_2 \\
@@ -623,9 +653,10 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
   \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
 } 
 \end{mathpar}
-\caption{Translation from source terms ($e$) to target terms ($\iota$).}
+\caption{Figure 8: Translation from source terms ($e$) to target terms ($\iota$).}
 \label{fig:tr}
 \end{figure}
+
 
 
 \end{document}
