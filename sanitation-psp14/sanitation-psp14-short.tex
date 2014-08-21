@@ -449,7 +449,8 @@ Since these operations over regular languages are known to be closed and decidab
 
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 \begin{figure}[h]
-\begin{grammar}
+\small
+  \begin{grammar}
 <$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
 \caption{Regular expressions over the alphabet $\Sigma$.}
@@ -458,7 +459,8 @@ Since these operations over regular languages are known to be closed and decidab
 \end{figure}
 
 \begin{figure}[h]
-\begin{grammar}
+\small
+  \begin{grammar}
 
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
 $\stringin{r}$         
@@ -468,17 +470,11 @@ $\stringin{r}$
       $\lambda x . e$ \alt
       $e(e)$ \alt
       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\rsconcat{e}{e}$ \alt
-      $\strcase{e}{e}{x,y.e}$ \alt
+      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
-      $\rcoerce{r}{e}$ \alt
-      $\rcheck{r}{e}{x.e}{e}$
+      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
-<$v$> ::= $\lambda x . e$ \hfill source values \alt
-          $\strin{s}$ \hfill $s \in \Sigma^{*}$
-
-
-      
+      <$v$> ::= $\lambda x . e$ | $\strin{e}$ | $s$ \hfill source values 
 \caption{Syntax of $\lambda_{RS}$.}
 \label{fig:glambdas}
 \end{grammar}
@@ -611,7 +607,9 @@ $\fbox{\inferrule{}{e \sreduces v}}$
 
 The \textsc{S-T-Concat} rule is the simplest example of our approach. The rule is sound because the result of concatenating two strings will always be in the sequential composition two regular expressions matching the respective strings. The rule therefore relates string concatenation to sequential composition of regular expressions.
 
-Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. In terms of strings, this is essentially the ubiquitious substring operation.
+Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. 
+
+In terms of strings, \textsc{S-T-Case} is essentially the ubiquitious substring operation.
 
 The definition of \textsc{S-T-Case} is subtle because even simple string operations sometimes require complicated operations on regular expressions. Peeling off the first character of a string is deterministic -- the first character is always one, concrete value. However, a regular expression describing the first character of any matching string might recognize multiple concrete values. For instance, the first character of ``CMU" is always ``C"; however, if the expression associated with this string is CMU$+$KIT, then the expression describing the first character is C$+$K.
 Therefore, an operation on languages corresponding to case analysis on strings must consider one-character prefixes (a head) and their corresponding suffixes (a tail).
@@ -623,7 +621,7 @@ remaining string.
 
 \begin{defn}[Definition of \lhead{r}]
 The function $\lhead{r}$ is defined in terms of the structure of $r$:
-\begin{itemize}
+\begin{itemize}[noitemsep]
 \item $\lhead{a r'} = a$ where $a \in \Sigma$
 \item $\lhead{\epsilon} = \epsilon$
 \item $\lhead{r_1 +  r_2}  = \lhead{r_1} + \lhead{r_2}$
@@ -663,7 +661,9 @@ Summarily,
     expoiting the decidability of language inclusion, while
 \textsc{S-T-Check} allows casts between strings that cannot be guaranteed at compile time, but inserts a runtime check.
 
-An alternative to coercion is subtyping for constrained string types. For simplicity, we do not include this relation; however, subtyping for constrained strings is present in \cite{fulton13} and that treatment extends to this system.
+An alternative to coercion is subtyping for constrained string types, which applies coercion implicitly. 
+In practice, subtyping is crucial to the usability of our system due to the nature of the replacement operator.
+For simplicity, we do not include this relation; however, subtyping for constrained strings is present in \cite{fulton12,fulton13} and that treatment extends to this system. The implementation discussed in Section \ref{atlang} provides subtyping between constrained string types.
 
 \subsubsection{Replacement}\label{sec:replace}
 
@@ -776,7 +776,8 @@ is preserved under translation into $\lambdap$.
 
 \subsection{Target Language}\label{sec:p}
 \begin{figure}[t]
-\begin{grammar}
+\small
+  \begin{grammar}
 
 <$\tau$> ::= $\tau \rightarrow \tau$ \hfill target types \alt
 $\str$ \alt $\regex$
@@ -786,15 +787,11 @@ $\str$ \alt $\regex$
                     $\iota(\iota)$ \alt
 $\tstr{s}$ \alt
   $\rx{r}$ \alt
-  $\tconcat{\iota}{\iota}$ \alt
-  $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
-  $\preplace{\iota}{\iota}{\iota}$ \alt
-  $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
+  $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
+  $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
 
-<$\dot{v}$> ::= $\lambda x . \iota$ \hfill target values \alt
-                $\tstr{s}$ \alt
-                $\rx{r}$
+  <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
 
 \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
@@ -959,19 +956,13 @@ The coercion cases are most interesting. If the safety of coercion in manifest i
 types of the expressions, then no runtime check is inserted.
 If the safety of coercion is not manifest in the types, then a check is inserted.
 
-In practice, the type of a replacement rarely matches a specification.
-Therefore, it is convienant in an implementation to always insert the appropriate
-safe coercion. This way, violations of the sanitation protocol manifest as type errors,
-but the definition of an adequate replacement is not arduous.
-Alternatively, this policy may 
-be codified in the type system itself using subtyping \cite{fulton12}.
-
 The translation is defined by the rules \textsc{Tr-} in Figure~\ref{fig:tr}.
 This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
 
 
 \begin{figure}[h]
-$\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
+\small
+  $\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
 \begin{mathpar}
 \inferrule[Tr-T-String]
 { }
@@ -1294,7 +1285,8 @@ Our work identifies one particular extension, and is therefore complementary to 
 work on extensible programming languages.
 We are also unaware of any extensible programming languages which emphasize applications to security concerns.
 
-Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP,HosoyaPierce2002} checks XML documents against schema using regular expressions. 
+% HosoyaPierce2002? 
+Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP} checks XML documents against schema using regular expressions. 
 Similarly, XHaskell \cite{xhaskell} focuses on XML documents.
 We differ from this and related work in at least three ways:
 \begin{itemize}
@@ -1307,17 +1299,17 @@ In conclusion, our contribution is a type system, implemented within an extensib
 
 \section{Future Work}
 
-We believe that this type system extension serves as a useful basis for web-oriented static analysis.
-The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
-regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
-
-We also believe that extensible programming languages are a promising approach toward incorporating security
-and privacy into programming languages. The Software Industry moves quickly, and developing new languages for 
-the particular security and privacy concerns of each new domain is likely a losing strategy. Conversely, extensible
-languages might provide developers with a way to incorporate domain-specific security and privacy analyses into their
-daily development activities. In future work, we hope to bolster this hypothesis by extending our approach in this paper
-to more realistic settings and by developing new type extensions addressing security and privacy concerns.
-
+We believe that this type system extension serves as a useful basis for web-oriented static analysis;
+frameworks and regular expression libraries could be annotated, along with use-sites.
+%The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
+%regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
+%
+We also believe that extensible programming languages are a promising approach toward incorporating other security
+and privacy analyses into programming languages.
+%languages might provide developers with a way to incorporate domain-specific security and privacy analyses into their
+%daily development activities. In future work, we hope to bolster this hypothesis by extending our approach in this paper
+%to more realistic settings and by developing new type extensions addressing security and privacy concerns.
+%
 \section{Conclusion}
 
 
