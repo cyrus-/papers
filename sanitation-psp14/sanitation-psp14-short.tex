@@ -653,7 +653,7 @@ The \textsc{S-T-Concat} rule, which is defined in terms of these operations, rel
 
 \subsubsection{Coercion}
 
-The $\lambdas$ language supports two forms of coercion. Safe coercion only allows coercsion between 
+The $\lambdas$ language supports two forms of coercion. Safe coercion only allows coercion between 
 strings types which are guaranteed to be safe. This form of coercion is useful because the replacement operation (introduced below in Section~\ref{sec:replace}) is often more conservative than absolutely necessary.
 Conversely, unsafe coercion -- which we refer to as a checked coercion -- 
 allows for potential unsafe type casts. Our semantics for check ensures that only safe values are used. Whenever a value is determined to be unsafe at runtime, a default value $e_2$ is used instead.
@@ -661,20 +661,22 @@ allows for potential unsafe type casts. Our semantics for check ensures that onl
 Summarily, 
  \textsc{S-T-SafeCoerce} allows only safe coercions between string types by
     expoiting the decidability of language inclusion, while
-\textsc{S-T-Check} allows casts between strings that cannot be guaranteed at compile time, but inserts a runtime check a runtime check.
+\textsc{S-T-Check} allows casts between strings that cannot be guaranteed at compile time, but inserts a runtime check.
+
+An alternative to coercion is subtyping for constrained string types. For simplicity, we do not include this relation; however, subtyping for constrained strings is present in \cite{fulton13} and that treatment extends to this system.
 
 \subsubsection{Replacement}\label{sec:replace}
 
 The premier operation for manipulating strings in $\lambdas$ is string substitution.
 On strings, the string substitution operator is familiar, and roughly analogous to \lstinline{str_replace} in PHP and \lstinline{String.replace} in Java.
-The definition of \textsc{S-T-Case} requires a definition of replacement for regular expressions (or languages) corresponding to string replacement.
+The definition of \textsc{S-T-Replace} requires a definition of replacement for regular expressions (or languages) corresponding to string replacement.
 In this section, we define this operation. 
 
 Both string and language replacement are defined extra-linguistically.
 The system $\lambdas$ is defined in terms of these functions.
 The function $\lsubst{r}{s_1}{s_2}$ replaces every substring of $s_1$ matching $r$ with $s_2$.
-In an analogous manner, the function $\lreplace{r}{r_1}{r_2}$ replaces every sublanguages of $r_1$ matching $r$ with $r_2$.
-If an intuiition for this operation is not clear, it may be helpful to think in terms replacing sub-automata.
+In an analogous manner, the function $\lreplace{r}{r_1}{r_2}$ replaces every sublanguage of $r_1$ matching $r$ with $r_2$.
+If the intuition for this operation is not clear, it may be helpful to think in terms of replacing sub-automata.
 
 
 Throughout this section, we fix an alphabet $\Sigma$ over which strings $s$ and
@@ -700,7 +702,7 @@ on security-motivated type system extensions. Instead, we provide an abstract de
 \begin{defn}[$\tt{lreplace}$]
   The relation $\lreplace{r}{r_1}{r_2} = r'$ relates $r, r_1,$ and $r_2$ to
   a language $r'$ containing all strings of $r_1$ except that any substring $s_{pre} s s_{post} \in \lang{r_1}$ where $s \in \lang{r}$
-  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty).
+  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty). This procedure saturates the string.
 \end{defn}
 
 \begin{prop}[Closure.] \label{thm:total}
@@ -735,9 +737,6 @@ of regular expressions.
 \begin{proof}
   The only non-trivial case is S-T-Replace, which follows from lemma \ref{thm:total}. 
 \end{proof}
-\begin{lem}
-If $\tctx \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
-\end{lem}
 
 Safety for the string fragment of $\lambdas$ requires validating that the type system's definition is justified
 by our theorems about regular languages.
@@ -753,7 +752,7 @@ However, a more careful treatment or treatment for a language with non-terminati
 
 \begin{thm}[Type Safety.] \label{thm:scorrect}
   If $\sctx \vdash e : \sigma$ 
-  then $e \sreduces e'$ and $\sctx \vdash e' : \stringin{r}$.
+  then $e \sreduces v$ and $\sctx \vdash v : \sigma$.
 \end{thm}
 \begin{proof}
 By induction on the typing relation.
@@ -943,7 +942,9 @@ correctness of our translation.
 Again, we elide a more careful treatment by treating a special case where our language terminates but
 note the multiple approaches to proving soundness for non-terminating languages with natural semantics \cite{coinductionoo, stepindexing, coinduction}.
 
-
+\begin{lem}
+If $\tctx \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\end{lem}
 
 \begin{thm} 
   Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
