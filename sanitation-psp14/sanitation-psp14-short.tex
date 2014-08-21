@@ -436,7 +436,7 @@ There are two type constructors in $\lambdas$, $\rightarrow$ and $\textsf{string
 
 
 $\lambdas$ provides several familiar operations on strings. The type system  relates these operations over strings to corresponding operations over the  regular languages they belong to. 
-Since these operations over regular languages are known to be closed and decidable, we can use these operations as a basis for static analysis of sanitation protocols (we will see a concrete example in Section \ref{atlang}).
+Since these operations over regular languages are known to be closed and decidable, we can use these operations as a basis for static analysis of sanitation protocols (we will see a complete example in Section \ref{atlang}).
 
 %This section describes our approach, culminating in a Security Theorem. The main technical result of this paper shows that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
 %\todo{remove tranditional, most and improve description}
@@ -775,7 +775,7 @@ is preserved under translation into $\lambdap$.
   The theorem follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
 \end{proof}
 
-\subsection{A Target Language with a Regular Expression Library}\label{sec:p}
+\subsection{Target Language}\label{sec:p}
 \begin{figure}[t]
 \begin{grammar}
 
@@ -928,7 +928,7 @@ s \in \lang{r} \\
 {\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
 {\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
-\caption{Big step semantics for of $\lambdap$}.
+\caption{Big step semantics for $\lambdap$}.
 \label{fig:dlambdap}
 \end{figure}
 
@@ -1085,76 +1085,105 @@ Finally, our main result establishes that correctness of $\lambdas$ is preserved
 %\subsection{An Example}\label{whatev}
 
 \section{Implementation in {Atlang}}\label{atlang}
-In the previous section, we specified a type system and a translation semantics to a language containing only strings and regular expressions. In this section, we take Python to be such a target language. Python does not have a static type system, however, so to implement these semantics, we will leverage \verb|atlang|, an extensible type system for Python (being developed by the authors). By using \verb|atlang|, which builds on Python's quotations and reflection facilities, we can implement these semantics as a library, rather than as a new dialect of Python. 
+In the previous section, we specified a type system and a translation semantics to a language containing only strings and regular expressions. In this section, we take Python to be such a target language. Python does not have a static type system, however, so to implement these semantics, we will use \verb|atlang|, an extensible type system for Python (being developed by the authors). By using \verb|atlang|, which leverages Python's quotations and reflection facilities, we can implement these semantics as a library, rather than as a new dialect of the language. 
 
 \subsection{Example Usage}
 
 \begin{figure}[h]\begin{lstlisting}
-from atlib import fn, string_in
+from atlib import fn, stringin
 
 @fn
-def sanitize(s : string_in[r'.*']):
+def sanitize(s : stringin[r'.*']):
   return (s.replace(r'"', '&quot;') 
            .replace(r'<', '&lt;')
            .replace(r'>', '&gt;'))
 
 @fn
-def results_query(s : string_in[r'[^"]*']):
+def results_query(s : stringin[r'[^"]*']):
   return 'SELECT * FROM users WHERE name="' + s + '"'
 
 @fn
-def results_div(s : string_in[r'[^<>]*']):
+def results_div(s : stringin[r'[^<>]*']):
   return '<div>Results for ' + s + '</div>'
 
 @fn
-def main(db):
+def main():
   input = sanitize(user_input())
-  results = db.execute(results_query(input))
+  results = db_execute(results_query(input))
   return results_div(input) + format(results)
 \end{lstlisting}
 \vspace{-10px}
 \caption{Regular string types in atlang, a library that enables static type checking for Python. }\label{fig:atexample}
 \end{figure}
 
+\begin{figure}
+\begin{lstlisting}
+import re
 
+def sanitize(s):
+   return re.sub(r'"', re.sub(r'<', re.sub(r'>', 
+     s, '&gt;'), '&lt;'), '&quot;')
 
-Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|string_in|, both of which we have included in \verb|atlib|, the standard library for \verb|atlang|. The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|atlang|. The function \verb|sanitize| on lines 3-7 specifies one argument, \verb|s|, of type \lstinline{string_in[r'.*']}.\todo{fix sizes}
+def results_query(s): 
+  return 'SELECT * FROM users WHERE name="' + s + '"'
 
-The sanitize function takes an arbitrary string and returns a string without
-double quotes or left and right brackets. In this example, we use HTML
-escape sequences.
+def results_div(s):
+  return '<div>Results for ' + s + '</div>'
 
-The main function receives user input and passes this input to a 
-sanitize function, which replaces all double quotes and brackets with HTML
-escape sequences. 
+def main():
+  input = sanitize(user_input())
+  results = db_execute(results_query(input))
+  return results_div(input) + format(results)
+\end{lstlisting}
+\vspace{-10px}
+\caption{The output of compilation of Figure \ref{fig:atexample} (at the terminal, \texttt{atc figure9.py}, or just-in-time).}
+\label{fig:atexample-out}
+\end{figure} 
 
-The result of applying sanitize to input is appended in two functions which
-construct a safe query (avoiding command injection) and safe HTML output (avoiding Cross-Site Scripting (XSS) attacks).
-The arguments to the result and output construction functions constitute \emph{specifications}.
-In the case of \textsf{results_query}, this specification ensures that user input is always interpreted
-as a string literal by the SQL server.
+\newcommand{\lstinlinep}[1]{\lstinline[language=Python,basicstyle=\ttfamily\small]{#1}}
+
+Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|stringin|, corresponding to the two type constructors of $\lambda_{RS}$. We show these as being imported from \verb|atlib|, the standard library for \verb|atlang| (it benefits from no special support from the language itself). 
+
+The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|atlang|.\footnote{Here, we use argument annotation syntax only available in versions 3.0+ of Python. Alternative syntax supporting Python 2.7+ can also be used, but we omit it here.} The function \verb|sanitize| on lines 3-7, for example,  specifies one argument, \verb|s|, of type \lstinlinep{stringin[r'.*']}. Here, the index is a regular expression, written using Python's \emph{raw string notation} as is conventional (in this particular instance, the \verb|r| is not strictly necessary). The sanitize function takes an arbitrary string and returns a string without
+double quotes or left and right brackets. Note that the return type need not be specified: \verb|atlang| uses a form of \emph{local type inference} \cite{Pierce:2000:LTI:345099.345100}. 
+
+In this example, we use an HTML encoding so that the same sanitization function can be used to generate both SQL commands and HTML securely. The sanitized string is generated by invoking the \verb|replace| operator, which has the same semantics as $\textsf{rreplace}$ in $\lambda_{RS}$. Unlike in the core calculus, it is invoked like a method on \verb|s|. The regular expression determining the substrings to be replaced is given as the first argument (as in $\lambda_{RS}$, the only restriction here is that the regular expression must be specified statically.)
+
+The functions \verb|results_query| and \verb|results_div| construct a SQL query and an HTML snippet, respectively, by regular string concatenation. The argument type annotations serve as a check that sanitation was properly performed. In the case of \textsf{results_query}, this specification ensures that user input cannot prematurely be terminated. 
 In the case of \textsf{results_div}, this specification ensures that user input does 
-not contain any HTML tags, which is a conservative but effective policy for preventing XSS attacks.
+not contain any HTML tags, which is a conservative but effective policy for preventing XSS attacks. Note that the type of the surrounding string literals are determined by the type constructor of the function they appear in, \verb|fn| in both cases, which we assume simply chooses \lstinlinep{stringin[r'.*']} (an alternative strategy would be to use the most specific type for the literal, rather than the most general, but this choice is immaterial for this example). The addition operator here corresponds to the $\textsf{rconcat}$ operator in $\lambda_{RS}$.
 
-Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
-The type of ${\sf input}$ is quite large
-and does not actually equal the specified domains of the query or output construction
-methods. This mismatch is common -- in fact, nearly universal. Therefore, 
-our implementation includes a simple subtyping relation between regular expression
-types. 
 
-This subtyping relation is justified theoretically by the fact that language inclusion is
-decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
-Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
-see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
 
-\subsection{Implementation of the Regular Expression Type}
+The \verb|main| function invokes the functions just described. It begins by passing  user input to \verb|sanitize|, then executing a database query and returning HTML based on this sanitized input. The helper functions \verb|user_input| and \verb|db_execute| are not shown but can be assumed standard. Importantly, had we mistakenly forgotten to call \verb|sanitize|, the function would not type check (in this case, it is obvious that we did, but lines 19 and 20 would in practice be separated more drastically in the code). Moreover, had \verb|sanitize| itself not been implemented correctly (e.g. we forgot to strip out quotation marks), then \verb|main| would also not typecheck either.
+
+One somewhat subtle issue here is that the return type of \verb|sanitize| is equivalent to \lstinlinep{stringin[r'[^"<>]*']}, which is a distinct type from the argument types to \verb|results_query| and \verb|results_div|. More specifically, however, it is a ``smaller'' type, in that it could be coerced to these argument types using an operator like $\textsf{rcoerce}$ in $\lambda_{RS}$. In our implementation, safe coercions are performed implicitly rather than explicitly. Because all regular strings are implemented as strings, this coercion induces no run-time change in representation. 
+
+%The result of applying sanitize to input is appended in two functions which
+%construct a safe query (avoiding command injection) and safe HTML output (avoiding Cross-Site Scripting (XSS) attacks).
+%The arguments to the result and output construction functions constitute \emph{specifications}.
+
+
+%Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
+%The type of ${\sf input}$ is quite large
+%and does not actually equal the specified domains of the query or output construction
+%methods. This mismatch is common -- in fact, nearly universal. Therefore, 
+%our implementation includes a simple subtyping relation between regular expression
+%types. 
+
+%This subtyping relation is justified theoretically by the fact that language inclusion is
+%decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
+%Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
+%see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
+Figure \ref{fig:atexample-out} shows the output of typechecking and translating this code (this can occur either in batch mode at the terminal, generating a new file, or ``just-in-time'' at the first callsite of each function in the dynamically typed portion of the program, not shown). 
+
+\subsection{Implementation}
+
 
 \begin{figure}
 \begin{lstlisting}
-class string_in(atlang.Type):
+class stringin(atlang.Type):
   def __init__(self, rx):
-    rx = rx_normalize(rx)
     atlang.Type.__init__(idx=rx)
 
   def ana_Str(self, ctx, node):
@@ -1167,11 +1196,11 @@ class string_in(atlang.Type):
   def syn_BinOp_Add(self, ctx, node):
     left_t = ctx.syn(node.left)
     right_t = ctx.syn(node.right)
-    if isinstance(left_t, string_in):
+    if isinstance(left_t, stringin):
       left_rx = left_t.idx
-      if isinstance(right_t, string_in):
+      if isinstance(right_t, stringin):
         right_rx = right_t.idx
-        return string_in[lconcat(left_rx, right_rx)]
+        return stringin[lconcat(left_rx, right_rx)]
     raise atlang.TypeError("...", node)
 
   def trans_BinOp_Add(self, ctx, node):
@@ -1183,10 +1212,10 @@ class string_in(atlang.Type):
       raise atlang.TypeError("...", node)
     rx = rx.s
     exp_t = ctx.syn(exp)
-    if not isinstance(exp_t, string_in):
+    if not isinstance(exp_t, stringin):
       raise atlang.TypeError("...", node)
     exp_rx = exp_t.idx
-    return string_in[lreplace(self.idx, rx, exp_rx)]
+    return stringin[lreplace(self.idx, rx, exp_rx)]
 
   def trans_Method_replace(self, ctx, node):
     return astx.quote(
@@ -1194,19 +1223,8 @@ class string_in(atlang.Type):
       astx.Str(s=node.args[0]),
       astx.copy(node.func.value),
       astx.copy(node.args[1]))
-
-  def syn_Method_check(self, ctx, node):
-    [rx] = node.args
-    if not isinstance(rx, ast.Str):
-      raise atlang.TypeError("...", node)
-    return string_in[rx.s]
-
-  def trans_Method_check(self, ctx, node):
-    return astx.quote(
-      """__import__(string_in_helper);
-      string_in_helper.coerce(%0, %1)""",
-      astx.Str(s=other_t.idx),
-      astx.copy(node))
+  
+  # check and strcase omitted
 
   def check_Coerce(self, ctx, node, other_t):
     # coercions can only be defined between 
@@ -1216,28 +1234,43 @@ class string_in(atlang.Type):
     else: raise atlang.TypeError("...", node)
 \end{lstlisting}
 \vspace{-10px}
-\caption{Implementation of the \texttt{string\_in} type constructor in atlang.}
+\caption{Implementation of the \texttt{stringin} type constructor in atlang.}
 \label{fig:impl}
 
 \label{fig:atimpl}\end{figure}
+The primary unit of extension in \verb|atlang| is the \emph{active type constructor}, rather than the abstract syntax as in other work on language extensibility. This allows us to implement the entire system as a library in Python and avoid needing to develop new tooling, and also makes it more difficult to create ambiguities between extensions. Active type constructors are subclasses of \verb|atlang.Type|, and types are instances of these classes. The methods of active type constructors control how typechecking and translation proceed for associated operations. 
+In Figure \ref{fig:impl}, we show key portions of the implementation of the \verb|stringin| type used in the example above. Although a detailed description of the extension mechanism is beyond the scope of this work, we describe the intuitions behind the various methods below.
 
-We implemented a variation on the type system presented in this paper with two
-significant differences. first, we only support replacements where $s_2$ is the empty
-string. Therefore, our implementation respects the system presented in section 2
-only modulo the definition of \textsf{lreplace}. Seocnd, we use subtyping instead of
-\textsc{S-*-SafeCoerce}, which decreases inessential verbosity of the language.
+The constructor, \verb|__init__| in Python, is called when a type is constructed. It simply stores the provided regular expression as the type index by calling the superclass.
 
-Atlang translates programs using type definitions, which may extend both the
-static and dynamic semantics of the language. New types are defined as Python
-classes; figure \ref{fig:impl} contains the source code of our implementation.
+The method \verb|ana_Str| is called when a string literal is being checked against a regular string type, \lstinlinec{self}. It checks that the string is in the language of the regular expression provided as the type index, corresponding to rule \textsc{S-T-Stringin-I} in Section 2. The method \verb|trans_Str| is called after typechecking to produce a translation. Here, we just copy the original string literal -- regular strings are implemented as strings.
 
-The \textsf{string_in} type has an indexing regular expression \texttt{idx}.
-Our translation is defined by the \textsf{trans_} methods while the \textsf{syn_}
-methods define our type checker. Atlang defers type checking and translation
-to these methods whenever an expression of type \textsf{string_in} is encountered.
+The method \verb|syn_BinOp_Add| synthesizes a type for the string concatenation operation if both arguments are regular strings, consistent with rule \textsc{S-T-Concat}. The corresponding method \verb|trans_BinOp_Add| again simply translates the operation directly to string concatenation, consistent with our translation semantics.
+
+The method \verb|syn_Method_replace| synthesizes a type for the ``method-like'' operator \verb|replace|, seen used in our example. It ensures that the first argument is a statically known string, using Python's built-in \verb|ast| module, and leverages an implementation of \verb|lreplace|, which computes the appropriate regular expression for the string following replacement, again consistent with our description in Section 2. Translation proceeds by using the \verb|re| library built into Python, as can be seen in Figure \ref{fig:atexample-out}. 
+
+Code for checked conversions and string decomposition is omitted, but is again consistent with our specification in the previous section. Safe coercions are controlled by the \verb|check_Coerce| function, which checks for a sublanguage relationship. Here, as in the other methods, failure is indicated by raising an \verb|atlang.TypeError| with an appropriate error message and location.
+
+Taken together, we see that the mechanics of extending \verb|atlang| with a new type constructor are fairly straightforward: we determine which syntactic forms the operators we specified in our core calculus should correspond to, then directly implement a decision procedure for type synthesis (or, in the case of literal forms, type analysis) in Python. The \verb|atlang| compiler invokes this logic when working with regular strings. The result is a library-based embedding of our semantics into Python. 
 
 
-\section{Related Work and Alternative Approaches}\label{related}
+% We implemented a variation on the type system presented in this paper with two
+% significant differences. first, we only support replacements where $s_2$ is the empty
+% string. Therefore, our implementation respects the system presented in section 2
+% only modulo the definition of \textsf{lreplace}. Seocnd, we use subtyping instead of
+% \textsc{S-*-SafeCoerce}, which decreases inessential verbosity of the language.
+
+% Atlang translates programs using type definitions, which may extend both the
+% static and dynamic semantics of the language. New types are defined as Python
+% classes; figure \ref{fig:impl} contains the source code of our implementation.
+
+% The \textsf{stringin} type has an indexing regular expression \texttt{idx}.
+% Our translation is defined by the \textsf{trans_} methods while the \textsf{syn_}
+% methods define our type checker. Atlang defers type checking and translation
+% to these methods whenever an expression of type \textsf{stringin} is encountered.
+
+
+\section{Related Work}\label{related}
 
 
 
@@ -1323,7 +1356,7 @@ Unlike other approaches, our solution complements existing, familiar solutions w
 %\\
 %$\sigma$ & $\xlA{\sigma}$ & \xA{\sigma}\\
 %\hline
-%${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|string_in[|\xA{r}\verb|]|\\
+%${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|stringin[|\xA{r}\verb|]|\\
 %\\
 %  $S$ & $\xlA{S}$ & \xA{S} \\
 %  \hline
