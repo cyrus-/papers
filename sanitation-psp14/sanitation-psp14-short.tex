@@ -564,7 +564,7 @@ $\fbox{\inferrule{}{e \sreduces v}}$
   e_2 \sreduces v_2
 }
 {
-  \strcase{e_1}{e_2}{e_3} \sreduces v_2
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_2
 }
 
 \inferrule[S-E-Case-Concat]
@@ -573,7 +573,7 @@ $\fbox{\inferrule{}{e \sreduces v}}$
   [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
 }
 {
-  \strcase{e_1}{e_2}{,.y.e_3} \sreduces v_3
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_3
 }
 
 \inferrule[S-E-Replace]
@@ -633,12 +633,20 @@ The function $\lhead{r}$ is defined in terms of the structure of $r$:
 \end{defn}
 
 Given this definition of $\lhead{r}$, regular expression derivatives provide a useful tool for defining $\ltail{r}$.
+\begin{defn}[Brzozowski's Derivative]\label{def:derivative}
+  The \emph{derivative of $r$ with respect to $s$} is denoted by $\delta_s(r)$
+  and is $\delta_s(r) = \{t | st \in \lang{r}\}$.
+\end{defn}
+
+Definition~\ref{def:derivative} is equivalent to the definition given in \cite{bowzer},
+although we refer the unfamiliar reader to \cite{owens}.
+Definition~\ref{def:derivative} is equivalent to Definition 3.1 in both papers.
+We now define $\ltail{r}$ using derivatives with respect to $\lhead{r}$.
 
 \begin{defn}[Definition of \ltail{r}]
 The function \ltail{r} is defined in terms of $\lhead{r}$.
 Note that $\lhead{r} = a_1 + a_2 + ... + a_i$.
-We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)$
-where $\delta_s(r)$ is the Brzozowski derivative of $r$ with respect to $s$ \cite{bowzer}.
+We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)$.
 \end{defn}
 
 The \textsc{S-T-Concat} rule, which is defined in terms of these operations, relates the result of ``peeling off" the first character of a string to regular expression derivatives.
@@ -768,25 +776,10 @@ is preserved under translation into $\lambdap$.
 \end{proof}
 
 \subsection{A Target Language with a Regular Expression Library}\label{sec:p}
-
-The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
-with a $\str$ type and a regular expression type, as well as 
-some operations -- such as concatenation and replacement -- found in many the standard libraries of many programming languages.
-The operations of $\lambdap $ correspond precisely to the operations of $\lambdas$ in a way made precise by the translation rules described in the next section.
-Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
-The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
-such as \textbf{P}ython or \textbf{P}HP.
-
-The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
-The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
-and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}.
-
-\renewcommand{\grammarlabel}[2]{#1\hfill#2}
-
-\begin{figure}[h]
+\begin{figure}[t]
 \begin{grammar}
 
-<$\theta$> ::= $\theta \rightarrow \theta$ \hfill target types \alt
+<$\tau$> ::= $\tau \rightarrow \tau$ \hfill target types \alt
 $\str$ \alt $\regex$
 
 <$\iota$> ::= $x$  \hfill target terms \alt
@@ -809,9 +802,24 @@ $\tstr{s}$ \alt
 \label{fig:lcsSyntax}
 \end{figure}
 
+The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
+with a $\str$ type and a regular expression type, as well as 
+some operations -- such as concatenation and replacement -- found in many the standard libraries of many programming languages.
+The operations of $\lambdap $ correspond precisely to the operations of $\lambdas$ in a way made precise by the translation rules described in the next section.
+Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
+The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
+such as \textbf{P}ython or \textbf{P}HP.
+
+The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
+The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
+and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}.
+
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
 
-\begin{figure}[h]\label{fig:lambdap}
+
+
+\begin{figure}[t]\label{fig:lambdap}
 \small
 $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \tau$
@@ -892,7 +900,6 @@ $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
   \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v_2}
 }
 
-
 \inferrule[P-E-Case-Concat]
 {
   \iota_1 \treduces \tstr{as} \\
@@ -963,8 +970,26 @@ This section ultimately establishes that the security theorem for $\lambdas$ is 
 
 
 \begin{figure}[h]
+$\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
+\begin{mathpar}
+\inferrule[Tr-T-String]
+{ }
+{ \trden{\stringin{r}} = \str }
 
-$\fbox{\inferrule{}{ \trden{e} = \iota}}$
+\inferrule[Tr-T-Arrow]
+{ \trden{\sigma_1} = \tau_1 \\ \trden{\sigma_2} = \tau_2 }
+{ \trden{\sigma_1 \rightarrow \sigma_2} = \tau_1 \rightarrow \tau_2 }
+\end{mathpar}
+$\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
+\begin{mathpar}
+\inferrule[Tr-T-Context-Emp]
+{ }{\trden{\emptyset} = \emptyset}
+
+\inferrule[Tr-T-Context-Ext]
+{\trden{\Psi}=\Theta\\ \trden{\sigma} = \tau}
+{\trden{\Psi, x : \sigma} = \Theta, x : \tau}
+\end{mathpar}
+  $\fbox{\inferrule{}{ \trden{e} = \iota }}$
 \begin{mathpar}
 \inferrule[Tr-Var]
 { }
@@ -983,7 +1008,7 @@ $\fbox{\inferrule{}{ \trden{e} = \iota}}$
    \trden{e_2} = \iota_2 \\
    \trden{e_3} = \iota_3
 }
-{ \trden{ \strcase{e_1}{e_2}{e_3} } = \pstrcase{\iota_1}{\iota_2}{\iota_3} }
+{ \trden{ \strcase{e_1}{e_2}{x,y.e_3} } = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} }
 
 \inferrule[Tr-string]
 { \ }
@@ -1011,14 +1036,17 @@ $\fbox{\inferrule{}{ \trden{e} = \iota}}$
   \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
 } 
 \end{mathpar}
-\caption{Translation from source terms ($e$) to target terms ($\iota$).
-The translation is type-directed.}
+\caption{Translation from source terms ($e$) to target terms ($\iota$).}
 \label{fig:tr}
 \end{figure}
 
 \begin{thm}[Translation Correctness]\label{thm:trcorrect}
-  If $\tctx \vdash e : \stringin{r}$ then there exists an $\iota$ such that $\trden{e} = \iota$, $\iota \sreduces \tstr{s}$,
-  and $e \treduces \rstr{s}$.
+  If $\tctx \vdash e : \sigma$ then 
+  there exists an $\iota$ such that $\trden{e} = \iota$
+  and $\trden{\tctx} \vdash \iota : \trden{\sigma}$.
+  Furthermore, $e \sreduces v$ and
+  $\iota \treduces \dot{v}$ such that
+  $\trden{v} = \dot{v}$.
 \end{thm}
 \begin{proof}
 The proof proceeds by induction on the typing relation for $e$ and an appropriate choich of $\iota$; in each case,
