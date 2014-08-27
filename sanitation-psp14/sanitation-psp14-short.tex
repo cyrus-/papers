@@ -383,13 +383,11 @@
 
 \maketitle
 \begin{abstract}
-%Evidence suggests that programmers are reluctant to adopt new languages to
-Web applications must ultimately command systems like web browsers and database engines using strings. Strings derived from improperly sanitized user input  can thus be a vector for command injection attacks. %Structured frameworks for constructing commands centralizes control over string sanitization, but verifying that the framework itself sanitizes user input correctly can still be tricky.
+Web applications must ultimately command systems like web browsers and database engines using strings. Strings derived from improperly sanitized user input  can thus be a vector for command injection attacks. 
 In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language. These types come equipped with common operations like concatenation, substitution and coercion, so they  can be used to implement, in a conventional manner, the portions of a web application or application framework that must directly construct command strings. Simple type annotations at key interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system in a minimal typed lambda calculus, $\lambda_{RS}$.
 
-To be practical, adopting a specialized type system like this should not require the adoption of a new programming language. Instead, we advocate for extensible type systems: new type system fragments like this should be implemented as libraries atop a mechanism that guarantees that they can be safely composed.  We support this by 1) specifying a translation from $\lambda_{RS}$ to a language fragment containing only standard strings and regular expressions, then, taking Python as a language with these constructs, 2) implementing the type system together with the translation as a library using \texttt{atlang}, an extensible static type system for Python being developed by the authors.% represents the most sophisticated application of this library to date.
-
-% Security-oriented programming languages do not enjoy wide adoption. Conversely, library and framework-based approaches to security are pervasive. Unfortunately, libraries and frameworks are only effective solutions if they are implemented and used properly. In this paper, we propose that extensible programming languages provide a promising mechanism for increasing the amount of trust that can be place in libraries and frameworks. To demonstrate this approach, we present a conservative extension to the simply-typed lambda calculus for checking the correctness of input sanitation algorithms. We also demonstrate how this language's security guarantees are preserved under translation into an underlying language containing a regular expression library. We believe this approach -- complementing existing techniques with light-weight, composable type-based analyses -- constitutes a promising compromise between usability, potential for industry adoption, and theoretically grounded safety guarantees.
+To be practical, adopting a specialized type system like this should not require the adoption of a new programming language. Instead, we advocate for extensible type systems: new type system fragments like this should be implemented as libraries atop a mechanism that guarantees that they can be safely composed.  
+We support this with two contributions. First, we specify a translation from $\lambda_{RS}$ to a language fragment containing only standard strings and regular expressions. Second, taking Python as a language with these constructs, we implement the type system together with the translation as a library using \texttt{atlang}, an extensible static type system for Python being developed by the authors.
 \end{abstract}
 
 %\category{D.3.2}{Programming Languages}{Language Classifications}[Extensible Languages]
@@ -408,7 +406,7 @@ To avoid this problem, the program must \emph{sanitize} user input. For example,
 
 We observe that many such sanitization techniques can be understood using \emph{regular languages} \cite{cinderella}. For example, \verb|name| must be a string in the language described by the regular expression \verb!([^"\]|(\")|(\\))*! -- a sequence of characters other than quotation marks and backslashes; these can only appear escaped. This concrete syntax for regular expression patterns can be understood to desugar, in a standard way, to the syntax for regular expressions shown in Figure \ref{fig:regex}, where $r \cdot r$ is sequencing and $r + r$ is  disjunction. We will work with this ``core'' for simplicity.
 
-In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we identify regular languages by the notation $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the type system tracks the language of a string through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitation functions like the one just described in a conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
+In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we identify regular languages by the notation $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the type system tracks the language of a string through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitation functions -- like the one just described -- in a conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
 We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambdas$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
 
@@ -449,7 +447,8 @@ Since these operations over regular languages are known to be closed and decidab
 
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 \begin{figure}[h]
-\begin{grammar}
+\small
+  \begin{grammar}
 <$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
 \caption{Regular expressions over the alphabet $\Sigma$.}
@@ -458,7 +457,8 @@ Since these operations over regular languages are known to be closed and decidab
 \end{figure}
 
 \begin{figure}[h]
-\begin{grammar}
+\small
+  \begin{grammar}
 
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
 $\stringin{r}$         
@@ -468,17 +468,11 @@ $\stringin{r}$
       $\lambda x . e$ e\alt
       $e(e)$ \alt
       $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\rsconcat{e}{e}$ \alt
-      $\strcase{e}{e}{x,y.e}$ \alt
+      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \alt
       $\sisubst{r}{e}{e}$ \alt
-      $\rcoerce{r}{e}$ \alt
-      $\rcheck{r}{e}{x.e}{e}$
+      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
-<$v$> ::= $\lambda x . e$ \hfill source values \alt
-          $\strin{s}$ \hfill $s \in \Sigma^{*}$
-
-
-      
+      <$v$> ::= $\lambda x . e$ | $\strin{e}$ | $s$ \hfill source values 
 \caption{Syntax of $\lambda_{RS}$.}
 \label{fig:glambdas}
 \end{grammar}
@@ -611,7 +605,9 @@ $\fbox{\inferrule{}{e \sreduces v}}$
 
 The \textsc{S-T-Concat} rule is the simplest example of our approach. The rule is sound because the result of concatenating two strings will always be in the sequential composition two regular expressions matching the respective strings. The rule therefore relates string concatenation to sequential composition of regular expressions.
 
-Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. In terms of strings, this is essentially the ubiquitious substring operation.
+Whereas concatenation allows the construction of large strings from smaller strings, \textsc{S-T-Case} allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this rule ``peels off" the first character, and then performs a specified operation on the first character and the remaining string. 
+
+In terms of strings, \textsc{S-T-Case} is essentially the ubiquitious substring operation.
 
 The definition of \textsc{S-T-Case} is subtle because even simple string operations sometimes require complicated operations on regular expressions. Peeling off the first character of a string is deterministic -- the first character is always one, concrete value. However, a regular expression describing the first character of any matching string might recognize multiple concrete values. For instance, the first character of ``CMU" is always ``C"; however, if the expression associated with this string is CMU$+$KIT, then the expression describing the first character is C$+$K.
 Therefore, an operation on languages corresponding to case analysis on strings must consider one-character prefixes (a head) and their corresponding suffixes (a tail).
@@ -623,7 +619,7 @@ remaining string.
 
 \begin{defn}[Definition of \lhead{r}]
 The function $\lhead{r}$ is defined in terms of the structure of $r$:
-\begin{itemize}
+\begin{itemize}[noitemsep]
 \item $\lhead{a r'} = a$ where $a \in \Sigma$
 \item $\lhead{\epsilon} = \epsilon$
 \item $\lhead{r_1 +  r_2}  = \lhead{r_1} + \lhead{r_2}$
@@ -649,7 +645,7 @@ Note that $\lhead{r} = a_1 + a_2 + ... + a_i$.
 We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)$.
 \end{defn}
 
-The \textsc{S-T-Concat} rule, which is defined in terms of these operations, relates the result of ``peeling off" the first character of a string to regular expression derivatives.
+The \textsc{S-T-Case-Concat} rule, which is defined in terms of these operations, relates the result of ``peeling off" the first character of a string to regular expression derivatives.
 
 \subsubsection{Coercion}
 
@@ -663,7 +659,9 @@ Summarily,
     expoiting the decidability of language inclusion, while
 \textsc{S-T-Check} allows casts between strings that cannot be guaranteed at compile time, but inserts a runtime check.
 
-An alternative to coercion is subtyping for constrained string types. For simplicity, we do not include this relation; however, subtyping for constrained strings is present in \cite{fulton13} and that treatment extends to this system.
+An alternative to coercion is subtyping for constrained string types, which applies coercion implicitly. 
+In practice, subtyping is crucial to the usability of our system due to the nature of the replacement operator.
+For simplicity, we do not include this relation; however, subtyping for constrained strings is present in \cite{fulton12,fulton13} and that treatment extends to this system. The implementation discussed in Section \ref{atlang} provides subtyping between constrained string types.
 
 \subsubsection{Replacement}\label{sec:replace}
 
@@ -776,7 +774,8 @@ is preserved under translation into $\lambdap$.
 
 \subsection{Target Language}\label{sec:p}
 \begin{figure}[t]
-\begin{grammar}
+\small
+  \begin{grammar}
 
 <$\tau$> ::= $\tau \rightarrow \tau$ \hfill target types \alt
 $\str$ \alt $\regex$
@@ -786,15 +785,11 @@ $\str$ \alt $\regex$
                     $\iota(\iota)$ \alt
 $\tstr{s}$ \alt
   $\rx{r}$ \alt
-  $\tconcat{\iota}{\iota}$ \alt
-  $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
-  $\preplace{\iota}{\iota}{\iota}$ \alt
-  $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
+  $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
+  $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
 
-<$\dot{v}$> ::= $\lambda x . \iota$ \hfill target values \alt
-                $\tstr{s}$ \alt
-                $\rx{r}$
+  <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
 
 \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
@@ -959,13 +954,6 @@ The coercion cases are most interesting. If the safety of coercion in manifest i
 types of the expressions, then no runtime check is inserted.
 If the safety of coercion is not manifest in the types, then a check is inserted.
 
-In practice, the type of a replacement rarely matches a specification.
-Therefore, it is convienant in an implementation to always insert the appropriate
-safe coercion. This way, violations of the sanitation protocol manifest as type errors,
-but the definition of an adequate replacement is not arduous.
-Alternatively, this policy may 
-be codified in the type system itself using subtyping \cite{fulton12}.
-
 The translation is defined by the rules \textsc{Tr-} in Figure~\ref{fig:tr}.
 This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
 
@@ -1051,7 +1039,7 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
   $\trden{v} = \dot{v}$.
 \end{thm}
 \begin{proof}
-The proof proceeds by induction on the typing relation for $e$ and an appropriate choich of $\iota$; in each case,
+The proof proceeds by induction on the typing relation for $e$ and an appropriate choice of $\iota$; in each case,
 the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf replace} when considering {\sf sreplace}).
 After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
 \end{proof}
@@ -1295,7 +1283,8 @@ Our work identifies one particular extension, and is therefore complementary to 
 work on extensible programming languages.
 We are also unaware of any extensible programming languages which emphasize applications to security concerns.
 
-Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP,HosoyaPierce2002} checks XML documents against schema using regular expressions. 
+% HosoyaPierce2002? 
+Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP} checks XML documents against schema using regular expressions. 
 Similarly, XHaskell \cite{xhaskell} focuses on XML documents.
 We differ from this and related work in at least three ways:
 \begin{itemize}
@@ -1308,17 +1297,17 @@ In conclusion, our contribution is a type system, implemented within an extensib
 
 \section{Future Work}
 
-We believe that this type system extension serves as a useful basis for web-oriented static analysis.
-The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
-regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
-
-We also believe that extensible programming languages are a promising approach toward incorporating security
-and privacy into programming languages. The Software Industry moves quickly, and developing new languages for 
-the particular security and privacy concerns of each new domain is likely a losing strategy. Conversely, extensible
-languages might provide developers with a way to incorporate domain-specific security and privacy analyses into their
-daily development activities. In future work, we hope to bolster this hypothesis by extending our approach in this paper
-to more realistic settings and by developing new type extensions addressing security and privacy concerns.
-
+We believe that this type system extension serves as a useful basis for web-oriented static analysis;
+frameworks and regular expression libraries could be annotated, along with use-sites.
+%The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
+%regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
+%
+We also believe that extensible programming languages are a promising approach toward incorporating other security
+and privacy analyses into programming languages.
+%languages might provide developers with a way to incorporate domain-specific security and privacy analyses into their
+%daily development activities. In future work, we hope to bolster this hypothesis by extending our approach in this paper
+%to more realistic settings and by developing new type extensions addressing security and privacy concerns.
+%
 \section{Conclusion}
 
 

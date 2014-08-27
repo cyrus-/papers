@@ -1,4 +1,4 @@
-\documentclass[8pt]{sig-alternate}
+\documentclass[9pt]{sig-alternate}
 \newcommand{\lamAce}{\lambda_{\text{Ace}}}
 % The following \documentclass options may be useful:
 %
@@ -11,6 +11,9 @@
 \usepackage{mathpartir}
 \usepackage{amsmath}
 \usepackage{amssymb} 
+
+
+\usepackage[labelformat=empty]{caption}
 
 % Hack. Something's wrong with PLAS paper when using the ACM Proc docclass
 \let\proof\relax
@@ -241,7 +244,7 @@
 \newtheorem{defn}[thm]{Definition}                                              
 \newtheorem{exam}[thm]{Example}                                                 
 \newtheorem{rem}[thm]{Remark} 
-
+\renewcommand*{\proofname}{Proof Sketch}
 
 %
 % For type setting inference rules with labels.
@@ -302,7 +305,7 @@
 
 \newcommand{\tcheck}[4]{{\sf check}(#1; #2; #3; #4)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
-\newcommand{\preplace}[3]{{\sf preplace}(#1;#2;#3)}
+\newcommand{\preplace}[3]{{\sf replace}(#1;#2;#3)}
 \newcommand{\tconcat}[2]{{\sf concat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
 
 \newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
@@ -321,10 +324,10 @@
 \newcommand{\ereduces}{\Downarrow}
 
 
-\newcommand{\strcase}[3]{ {\sf strcase}(#1; #2; #3)}
-\newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
+\newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf strcase}(#1; #2; #3)}
 
-\newcommand{\lhead}[1]{ {\sf lhead}(#1) }
+\newcommand{\lheadfn}[1]{ {\sf lhead}(#1) }
 \newcommand{\ltail}[1]{ {\sf ltail}(#1) }
 
 
@@ -349,40 +352,26 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\usepackage{fancyhdr}
+ 
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{
+    Statically Typed String Sanitation Inside a Python \\ 
+    Nathan Fulton, Cyrus Omar, Jonathan Aldrich
+}
 
 \begin{document}
 
+%dep_docclass\conferenceinfo{-}{-} 
+%dep_docclass\copyrightyear{-} 
+%dep_docclass\copyrightdata{[to be supplied]} 
 
 
+\newcommand{\Ace}{\textsf{Ace}}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\begin{figure}
-\small
+\begin{figure}[H]
+\tiny
 $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
 \begin{mathpar}
@@ -397,7 +386,7 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 \inferrule[S-T-App]
 {\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
 {\sctx \vdash e_1(e_2) : \sigma}
-
+  
 \inferrule[S-T-Stringin-I]
 {s \in \lang{r}}
 {\sctx \vdash \strin{s} : \stringin{r}}
@@ -409,10 +398,10 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 \inferrule[S-T-Case]
 { \sctx \vdash e_1 : \stringin{r} \\
   \sctx \vdash e_2 : \sigma \\
-  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
+  \sctx, x : \stringin{\lheadfn{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
 }
 {
-  \sctx \vdash \strcase{e_1}{e_2}{x.y.e_3} : \sigma
+  \sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma
 }
 
 \inferrule[S-T-Replace]
@@ -426,50 +415,18 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 \inferrule[S-T-Check]
 {\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
 {\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
-
 \end{mathpar}
 
-\caption{Typing rules for $\lambdas$. 
-The typing context $\sctx$ is standard.}
-\label{fig:slambdas}
-\end{figure}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\begin{figure}
-  \small
-$\fbox{\inferrule{}{e \sreduces e}}$
+$\fbox{\inferrule{}{e \sreduces v}}$
 \begin{mathpar}
+\inferrule[S-E-Abs]                                                             
+{ \ }                                                                           
+{\lambda x.e \sreduces \lambda x.e}                                             
+
+\inferrule[S-E-App]
+{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces v_2 \\ [ v_2 / x ] e_3 \sreduces v }
+{ e_1(e_2) \sreduces v }
+
 \inferrule[S-E-RStr]
 { \ }
 {\strin{s} \sreduces \strin{s}}
@@ -484,21 +441,20 @@ $\fbox{\inferrule{}{e \sreduces e}}$
   e_2 \sreduces v_2
 }
 {
-  \strcase{e_1}{e_2}{e_3} \sreduces v_2
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_2
 }
 
 \inferrule[S-E-Case-Concat]
 {
-  e_1 \sreduces \strin{p s} \\
-  e_3 \sreduces x.y.e_4 \\
-  [p/x][s/y]e_4 \sreduces v
+  e_1 \sreduces \strin{a s} \\
+  [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
 }
 {
-  \strcase{e_1}{e_2}{e_3} \sreduces v
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_3
 }
 
 \inferrule[S-E-Replace]
-{e_1 \sreduces \strin{e_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
 {\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
 
 \inferrule[S-E-SafeCoerce]
@@ -513,55 +469,55 @@ $\fbox{\inferrule{}{e \sreduces e}}$
 
 \inferrule[S-E-Check-NotOk]
 {
-  e \sreduces \strin{s} \\ s \not \in \lang{r}
+  e \sreduces \strin{s} \\ s \not \in \lang{r} \\
+  e_2 \sreduces v
 }
 {
-  \rcheck{r}{e}{x.e_1}{e_2} \sreduces e_2
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
 }
-
-
-
 \end{mathpar}
-\caption{Big step semantics for $\lambdas$.}
+\caption{Figures 3 and 4: Typing Rules and Big step semantics for $\lambdas$}.
 \label{fig:dlambdas}
 \end{figure}
 
 
+\begin{figure}[h]
+\tiny
+  \begin{grammar}
+
+<$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
+$\stringin{r}$         
+
+<$e$> ::= 
+      $x$ \hfill source terms \alt 
+      $\lambda x . e$ \alt
+      $e(e)$ \alt
+      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \alt
+      $\sisubst{r}{e}{e}$ \alt
+      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
+
+      <$v$> ::= $\lambda x . e$ | $\strin{e}$ | $s$ \hfill source values 
+
+<$\tau$> ::= $\tau \rightarrow \tau$ \hfill target types \alt
+$\str$ \alt $\regex$
+
+<$\iota$> ::= $x$  \hfill target terms \alt
+             $\lambda x . \iota$ \alt
+                    $\iota(\iota)$ \alt
+$\tstr{s}$ \alt
+  $\rx{r}$ | $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ |  $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
 
+  <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
 
+\caption{Figures 2 and 5: Syntax of $\lambda_{RS}$ and $\lambda_{P}$.}
+\label{fig:glambdas}
+\end{grammar}
+\end{figure}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\begin{figure}
-\small
+\begin{figure}[t]\label{fig:lambdap}
+\tiny
 $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 ~~~~$\tctx ::= \emptyset \pipe \tctx, x : \tau$
 
@@ -592,49 +548,20 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 
 \inferrule[P-T-Case]
 {\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx, x:\str, y:\str \vdash \iota_3:\tau}
-{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{\iota_3} : \tau}
+{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau}
 
 \inferrule[P-T-Replace]
 {\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \str }
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx, x:\str \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
-{\tctx \vdash \tcheck{\iota_r}{\iota_1}{x . \iota_2}{\iota_3} : \sigma}
+{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
+{\tctx \vdash \tcheck{\iota_r}{\iota_1}{\iota_2}{\iota_3} : \sigma}
 \end{mathpar}
-\caption{Typing rules for $\lambdap$.
-The typing context $\tctx$ is standard.}
-\label{fig:slambdap}
-\end{figure}
 
+\ \newline \ \newline \ \newline \ \newline \ \newline \ \newline \ \newline
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\begin{figure}
-\small
-$\fbox{\inferrule{}{\iota \treduces \iota}}$
+$\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 
 \begin{mathpar}
 \inferrule[P-E-Abs]
@@ -642,8 +569,8 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\lambda x.e \sreduces \lambda x.e}
 
 \inferrule[P-E-App]
-{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \iota_2' \\ [\iota_3 / x] \iota_2' \sreduces v}
-{ \iota_1(\iota_2) \sreduces v}
+{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \dot{v}_2 \\ [\dot{v}_2 / x] \iota_3 \sreduces \dot{v}_3}
+{ \iota_1(\iota_2) \sreduces \dot{v}_3}
 
 \inferrule[P-E-Str]
 { \ }
@@ -659,22 +586,20 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 
 \inferrule[P-E-Case-$\epsilon$]
 {
-  \iota_1 \treduces \tstr{\ } \\
-  \iota2 \treduces \iota_2
+  \iota_1 \treduces \tstr{ \epsilon } \\
+  \iota_2 \treduces \dot{v_2} \\
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v_2
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v_2}
 }
-
 
 \inferrule[P-E-Case-Concat]
 {
-  \iota_1 \treduces \tstr{ps} \\
-  x.y.\iota_3 \treduces \iota_4 \\
-  [p/x][s/y]\iota_4 \treduces v
+  \iota_1 \treduces \tstr{as} \\
+  [\tstr{a},\tstr{s}/x,y] \iota_3 \treduces \dot{v} 
 }
 {
-  \pstrcase{\iota_1}{\iota_2}{\iota_3} \treduces v
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v}
 }
 
 \inferrule[P-E-Replace]
@@ -682,79 +607,97 @@ $\fbox{\inferrule{}{\iota \treduces \iota}}$
 {\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
 \inferrule[P-E-Check-OK]
-{\iota \treduces \tstr{s} \\ s \in \lang{r} \\ [\tstr{s} / x] \iota_1 \sreduces \iota_3}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_3}
+{
+  \iota_r \treduces \rx{r} \\
+  \iota \treduces \tstr{s} \\ 
+s \in \lang{r} \\ 
+\iota_1 \treduces \dot{v_1} 
+}
+{
+  \tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
+}
 
 \inferrule[P-E-Check-NotOK]
-{\iota \treduces \tstr{s} \\ s \not \in \lang{r}}
-{\tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} \treduces \iota_2}
+{\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
+{\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
-\caption{Big step semantics for of $\lambdap$}.
+\caption{Figures 6 and 7: Typing rules and big step semantics for $\lambdap$}.
 \label{fig:dlambdap}
 \end{figure}
 
 
 
+\begin{figure}[H]
+\tiny
+  $\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
+\begin{mathpar}
+\inferrule[Tr-T-String]
+{ }
+{ \trden{\stringin{r}} = \str }
 
+\inferrule[Tr-T-Arrow]
+{ \trden{\sigma_1} = \tau_1 \\ \trden{\sigma_2} = \tau_2 }
+{ \trden{\sigma_1 \rightarrow \sigma_2} = \tau_1 \rightarrow \tau_2 }
+\end{mathpar}
+$\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
+\begin{mathpar}
+\inferrule[Tr-T-Context-Emp]
+{ }{\trden{\emptyset} = \emptyset}
 
-\clearpage
-
-
-
-\begin{figure*}
-
-$\fbox{\inferrule{}{\sctx \vdash \trden{e} = \iota}}$
+\inferrule[Tr-T-Context-Ext]
+{\trden{\Psi}=\Theta\\ \trden{\sigma} = \tau}
+{\trden{\Psi, x : \sigma} = \Theta, x : \tau}
+\end{mathpar}
+  $\fbox{\inferrule{}{ \trden{e} = \iota }}$
 \begin{mathpar}
 \inferrule[Tr-Var]
 { }
-{\sctx \vdash \trden{x} = x}
+{ \trden{x} = x}
 
 \inferrule[Tr-Abs]
-{ \sctx \vdash \trden{e} = \iota }
-{\sctx \vdash \trden{ \lambda x.e } = \lambda x . \iota}
+{  \trden{e} = \iota }
+{ \trden{ \lambda x.e } = \lambda x . \iota}
 
 \inferrule[Tr-App]
-{\sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{\sctx \vdash \trden{e_1(e_2)} = \iota_1(\iota_2)}
+{ \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{ \trden{e_1(e_2)} = \iota_1(\iota_2)}
 
 \inferrule[Tr-Case]
-{\sctx \vdash \trden{e_1} = \iota_1 \\
-  \sctx \vdash \trden{e_2} = \iota_2 \\
-  \sctx \vdash \trden{e_3} = \iota_3
+{ \trden{e_1} = \iota_1 \\
+   \trden{e_2} = \iota_2 \\
+   \trden{e_3} = \iota_3
 }
-{\sctx \vdash \trden{ \strcase{e_1}{e_2}{e_3} } = \pstrcase{\iota_1}{\iota_2}{\iota_3} }
+{ \trden{ \strcase{e_1}{e_2}{x,y.e_3} } = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} }
 
 \inferrule[Tr-string]
 { \ }
-{ \sctx \vdash  \trden{\strin{s}} = \tstr{s}}
+{   \trden{\strin{s}} = \tstr{s}}
 
 \inferrule[Tr-Concat]
-{ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2}
-{ \sctx \vdash \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
+{  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{  \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
 
 \inferrule[Tr-Subst]
-{ \sctx \vdash  \trden{e_1} = \iota_1 \\ \sctx \vdash  \trden{e_2} = \iota_2 }
-{ \sctx \vdash  \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
+{   \trden{e_1} = \iota_1 \\   \trden{e_2} = \iota_2 }
+{   \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
 
 \inferrule[Tr-SafeCoerce]
-{ \sctx \vdash \trden{e} = \iota }
-{ \sctx \vdash  \trden{ \coerce{r'}{e} } = \iota }
+{  \trden{e} = \iota }
+{   \trden{ \coerce{r'}{e} } = \iota }
 
 \inferrule[Tr-Check]
-{ \sctx \vdash \trden{e} = \iota_1 \\ \sctx \vdash \trden{e_1} = \iota_1 \\ \sctx \vdash \trden{e_2} = \iota_2} 
-{ \sctx \vdash \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{x.\iota_1}{\iota_2} } 
-
+{  
+  \trden{e} = \iota \\  
+   \trden{e_1} = \iota_1 \\  
+   \trden{e_2} = \iota_2
+} 
+{ 
+  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
+} 
 \end{mathpar}
-\caption{Translation from source terms ($e$) to target terms ($\iota$).
-The translation is type-directed.}
+\caption{Figure 8: Translation from source terms ($e$) to target terms ($\iota$).}
 \label{fig:tr}
-\end{figure*}
-
-\clearpage
-
-
-
-Note that \textsc{S-E-Abs} and \textsc{S-E-App} are excluded from Figure~\ref{fig:slambdas} due to space constraints. However, they resemble the corresponding rules for $\lambdap$; see the paper for a full definition.
+\end{figure}
 
 
 
