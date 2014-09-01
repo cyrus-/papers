@@ -11,23 +11,43 @@ basicstyle=\ttfamily\footnotesize,
 morekeywords={newcon,extends,tycon,opcon,err,schema,fix,is},
 }
 
-\section{Active Typechecking and Translation}
+\section{Active Typechecking and Translation}\label{theory}
 In this and the following two sections, we will turn our focus to language-integrated, type-oriented mechanisms for implementing extensions to the static semantics of a simply-typed programming language, to allow providers to express finer distinctions than allowed by the general-purpose constructs (like the recursive labeled sums and products that we included in Wyvern) by introducing new type constructors and, unlike systems that permit only \emph{refinements} of existing types, new operator constructors. In the course of doing so, we will return to a  fixed (but flexible) syntax, emphasizing that the contributions in the previous section are orthogonal (combining them directly is left as future work). %We consider a type-directed mechanism for supporting common elimination forms as well.% The techniques in the previous section are orthogonal to those we now introduce, but combining them is left as future work. %We will also consider aspects of syntax other than literal forms, in various ways. % We will, however,  introduce a flexible dispatch mechanism for common elimination forms.
 
 \subsection{Background}
-Typed programming languages are often described in \emph{fragments}, each defining separate contributions to a language's concrete syntax, abstract syntax, static semantics and dynamic semantics. 
+Typed programming languages are often described in \emph{fragments}, each defining separate contributions to a language's concrete and abstract syntax, static semantics and dynamic semantics. 
 In his textbook, Harper organizes fragments around type constructors, each introduced in a different chapter \cite{pfpl}. A language is then identified by a set of type constructors, e.g. $\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\keyw{1}}\,{\times}\,{+}\}$ is the language that builds in partial function types,  polymorphic types, recursive types, nullary and binary product types and binary sum types (its syntax is shown in Figure \ref{syntax-IL}, discussed further below).
 It is left implied that the metatheory developed separately is conserved when fragments like these are composed.  
 
 \begin{figure}[h]
 \small
-\hspace{-5px}\input{../att-popl15/syntax-table-IL}
+\hspace{-5px}$\begin{array}{rcl}%\\
+\multicolumn{3}{>{$}l<{$}}{\mvlbl{internal types}}\\
+\ity & ::= & \iparr{\ity}{\ity} ~|~ \alpha ~|~ \iforall{\alpha}{\ity} ~|~ t ~|~ \imu{t}{\ity} ~|~ \iunit ~|~ \iprod{\ity}{\ity} ~|~ \isum{\ity}{\ity} \\
+\multicolumn{3}{>{$}l<{$}}{\mvlbl{internal terms}}\\
+\itm & ::= & x ~|~ \ifix{\ity}{x}{\itm} ~|~ \ilam{\ity}{x}{\itm} ~|~ \iap{\itm}{\itm} ~|~ \iLam{\alpha}{\itm} ~|~ \iAp{\ity}{\itm} \\
+&~|~& \ifold{t}{\ity}{\itm} ~|~ \iunfold{\itm} ~|~ \itriv ~|~ \ipair{\itm}{\itm} ~|~ \iletpair{\itm}{x}{y}{\itm}\\
+& ~|~ & \iinl{\ity}{\itm} ~|~ \iinr{\ity}{\itm} ~|~ \icase{\itm}{x}{\itm}{x}{\itm}\\
+\multicolumn{3}{>{$}l<{$}}{%\\
+\hspace{-6px}%\\
+\begin{tabular}{>{$}l<{$}>{$}l<{$}}%\\
+\mvlbl{internal typing contexts} ~~~~~~ & \mvlbl{internal type variable contexts}\\
+\iGamma ::= \emptyset ~|~ \iGamma, x : \tau &%\\
+\iDelta ::= \emptyset ~|~ \iDelta, \alpha~~~~%\\
+\iTheta ::= \emptyset ~|~ \iTheta, t\\
+\mvlbl{term substitutions} & \mvlbl{type substitutions}\\
+\gamma ::= \emptyset ~|~ \gamma, \iota/x & %\\
+\delta ::= \emptyset ~|~ \delta, \tau/\alpha\\
+\end{tabular}%\\
+}\\
+\end{array}%\\
+$
 \caption{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL). We write internal types and terms in blue when they may contain the indicated ``unquote'' forms, discussed later.}
 \label{syntax-IL}
 %\vspace{-10px}
 \end{figure}
 
-Luckily, fragment composition is not an everyday task because fragments like these are ``general purpose'' -- they make it possible to construct \emph{isomorphic embeddings} of many other fragments as ``libraries''. For example, lists are isomorphic to  the polymorphic recursive sum of products $\iforall{\alpha}{\imu{t}{\iunit + (\alpha \times t))}}$. Languages providing datatypes in the style of ML  are perhaps most directly oriented around embeddings like this (preserving type disequality requires adding some form of generativity, as ML datatypes also expose). % Leaving the core language simple makes it easier to establish its metatheory and verify that tools, like compilers, are implemented correctly.% They also have encouraging connections to logic. %For example, we do not need to define the type constructor $\fvar{list}$ (indexed by a type) as a fragment (though it is possible to do so) because there is a user-defined datatype constructor, $\texttt{list}$, parameterized by a type, that is isomorphic. If we added the $\fvar{list}$ fragment to the language, it would be entirely redundant semantically: every well-typed term of a type constructed by $\fvar{list}$ corresponds to a well-typed term and a polymorphic recursive sum type such th%Although strings and numbers can be embedded as recursive sum types, it is recognized that this is impractical, so these are also usually included as primitives.
+Luckily, fragment composition is not an everyday task because fragments like these are ``general purpose'' -- they make it possible to construct \emph{isomorphic embeddings} of many other fragments as ``libraries''. For example, lists are isomorphic to  the polymorphic recursive sum of products $\iforall{\alpha}{\imu{t}{\iunit + (\alpha \times t))}}$, so a type constructor $\keyw{list}$ need not be built in. Languages providing datatypes in the style of ML  are perhaps most directly oriented around embeddings like this (preserving type disequality requires adding some form of generativity, as ML datatypes also expose). % Leaving the core language simple makes it easier to establish its metatheory and verify that tools, like compilers, are implemented correctly.% They also have encouraging connections to logic. %For example, we do not need to define the type constructor $\fvar{list}$ (indexed by a type) as a fragment (though it is possible to do so) because there is a user-defined datatype constructor, $\texttt{list}$, parameterized by a type, that is isomorphic. If we added the $\fvar{list}$ fragment to the language, it would be entirely redundant semantically: every well-typed term of a type constructed by $\fvar{list}$ corresponds to a well-typed term and a polymorphic recursive sum type such th%Although strings and numbers can be embedded as recursive sum types, it is recognized that this is impractical, so these are also usually included as primitives.
 %Establishing an isomorphic embedding of a desirable fragment in terms of general-purpose fragments is not always possible, nor are such embeddings always practical. 
 
 Unfortunately, situations do sometimes arise when using these fragments to establish an isomorphic embedding that preserves a desirable fragment's  static and dynamic semantics (including bounds specified by its cost semantics) is not possible. 
@@ -84,13 +104,13 @@ In this portion of our work, we take substantial steps towards this goal by  con
 Both are structured as an \emph{external language} (EL) governed by a {typed translation semantics} targeting a fixed \emph{internal language} (IL). 
 Rather than building in a monolithic set of external type and operator constructors, however, the typechecking judgement is indexed by a \emph{tycon context}. Each tycon defines the semantics of its associated operators via functions written in a \emph{static language} (SL). Types are values in the SL.%, which provides a form of type-level computation. %The authors demonstrate the expressive power of this technique primarily with an implementation and a number of examples of fragments as libraries, and their core calculus .% (unlike systems that treat the type system as a ``bag of rules'', where non-determinism can arise). 
 
-We introduce @$\lambda$ by example in Sec. \ref{overview}, demonstrating its surprising expressive power and outlining its semantics and key metatheoretic properties, including \emph{type safety}, \emph{unicity of typing},  \emph{decidability of typechecking} and properties that relate to composition of tycon definitions: \emph{hygiene}, \emph{stability of typing} and a key modularity result, which we refer to as  \emph{conservativity}: any invariants that can be established about all values of a type under \emph{some} tycon context (i.e. in some  ``closed world'') are conserved in any further extended tycon context (i.e. in the ``open world''). The calculus combines several interesting type theoretic techniques, applying them to novel ends: 1)  a bidirectional type system permits flexible reuse of a fixed syntax, in a manner similar to the work described in the previous section on TSLs; 2) the SL serves both as an extension language and as the type-level language; we give it its own statics (i.e. a \emph{kind system}); 3) we use a typed intermediate language and leverage corresponding \emph{typed compilation} techniques, here lifted into the semantics of the EL; 4) we leverage internal type abstraction implicitly as an effect during normalization of the SL to enforce abstraction barriers between type constructors. 
+We introduce @$\lambda$ by example in Sec. \ref{atlam}, demonstrating its surprising expressive power and outlining its semantics and key metatheoretic properties, including \emph{type safety}, \emph{unicity of typing},  \emph{decidability of typechecking} and properties that relate to composition of tycon definitions: \emph{hygiene}, \emph{stability of typing} and a key modularity result, which we refer to as  \emph{conservativity}: any invariants that can be established about all values of a type under \emph{some} tycon context (i.e. in some  ``closed world'') are conserved in any further extended tycon context (i.e. in the ``open world''). The calculus combines several interesting type theoretic techniques, applying them to novel ends: 1)  a bidirectional type system permits flexible reuse of a fixed syntax, in a manner similar to the work described in the previous section on TSLs; 2) the SL serves both as an extension language and as the type-level language; we give it its own statics (i.e. a \emph{kind system}); 3) we use a typed intermediate language and leverage corresponding \emph{typed compilation} techniques, here lifted into the semantics of the EL; 4) we leverage internal type abstraction implicitly as an effect during normalization of the SL to enforce abstraction barriers between type constructors. 
 As a result, conservativity follows from the same elegant parametricity results that underly  abstraction theorems for module systems. 
 Like modules, reasoning about these \emph{modular type constructors} does not require  mechanized specifications or proofs: correctness issues in the type constructor logic necessarily causes typechecking to fail, so even extensions that are not proven correct can be distributed and ``tested'' in the wild.
 
-We then continue to @\texttt{lang} in Sec. \ref{ace}. In @\texttt{lang}, the static language is Python and type constructors, which in the calculus were  tracked by a context and operated as a distinguished ``open'' datatype, can be implemented as subclasses of a built-in class, \verb|atlang.Type|, leveraging a simple form of inheritance for the same purpose. We support Python's syntax in a natural manner and have implemented a number of full-scale examples of statically-typed language extensions, extending the initially impoverished type system of Python substantially.% which we will briefly introduce here.
+We then continue to @\texttt{lang} in Sec. \ref{ace}. In @\texttt{lang}, the static language is Python and type constructors, which in the calculus were  tracked by a context and operated as a distinguished ``open'' datatype, can be implemented as subclasses of a built-in class, \verb|atlang.Type|. We support Python's syntax in a natural manner and have implemented a number of full-scale examples of statically-typed language extensions, extending the initially impoverished type system of Python substantially.% which we will briefly introduce here.
 
-\section{@$\lambda$}\label{theory}
+\section{@$\lambda$}\label{atlam}
 \subsection{Overview}
 Programs in @$\lambda$ are written as \emph{external terms}, $e$. The concrete syntax of external terms is essentially conventional, as suggested by the left side of the example in Figure \ref{example}. It desugars (purely syntactically) to a subtantially more uniform abstract syntax, shown on the right of Figure \ref{example} and specified in Figure \ref{syntax-EL}.% We review recent techniques that permit modularly introducing new desugarings like these in Sec. \ref{desugaring}. 
 
@@ -732,7 +752,7 @@ We will not describe each opcon in Figures \ref{tc-rstr} and \ref{tc-lprod} in d
 \end{itemize}
 
 \subsection{Remaining Tasks and Timeline}
-In our paper draft, which is currently in submission to POPL 2015 (footnote 5 above), we give  additional details on the metatheory, showing more precisely how to reason modularly about these type construction definitions. The major remaining tasks are to complete our analysis of the metatheory by more rigorously proving these theorems (and related lemmas) in the form of a longer technical report. To do so, we must reformulate the normalization rules as a small-step semantics. This is the most time-consuming task remaining; I plan to do this over the Fall semester, in the course of revising or resubmitting the paper (to ESOP in mid-October if not accepted to POPL).
+In our paper draft, which is currently in submission to POPL 2015 (footnote 5 above), we give  additional details on the metatheory, showing more precisely how to reason modularly about these type construction definitions. The major remaining tasks are to complete our analysis of the metatheory by more rigorously proving these theorems (and related lemmas) in the form of a longer technical report. To do so, we must reformulate the normalization rules as a small-step semantics. I believe that I can also do away with the effect system in the SL by pushing the generation of the abstracted IL term to a new phase immediately following normalization of the SL. This is the most time-consuming task remaining; I plan to do this over the Fall semester, in the course of revising or resubmitting the paper (to ESOP in mid-October if not accepted to POPL).
 
 \begin{figure*}[p!]
 \small
@@ -1021,8 +1041,7 @@ Listing \ref{example} shows an example of a well-typed @\texttt{lang} program fo
 \paragraph{Types}
 \begin{codelisting}[t]
 \begin{lstlisting}[language=Python]
-^\label{imports-start}^from atlib import record, decimal, dyn, string, 
-  string_in, proto, fn, printf^\label{imports-end}^
+^\label{imports-start}^from atlib import record, decimal, dyn, string, string_in, proto, fn, printf^\label{imports-end}^
 
 ^\label{hello-ct}^print "Hello, compile-time world!"
 
