@@ -371,8 +371,8 @@
   \alignauthor
   Jonathan Aldrich
   \and
-  \affaddr{Carnegie Mellon University}\\
-  \affaddr{Pittsburgh, PA}\\
+  \affaddr{Carnegie Mellon University, Pittsburgh, PA}\\
+  %\affaddr{Pittsburgh, PA}\\
   \email{\{nathanfu, comar, aldrich\}@cs.cmu.edu}
 }
 %\authorinfo{~}{~}{~}
@@ -402,11 +402,11 @@ Command injection vulnerabilities are among the most common and severe security 
 \end{lstlisting}
 If a malicious user enters the name \lstinline{'"; DROP TABLE users --'}, the entire database could be erased. 
 
-To avoid this problem, the program must \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes double quotes and existing backslashes   with a backslash, which SQL treats safely. Alternatively, it might HTML-encode special characters, which would head off both SQL injection attacks and cross-site scripting attacks. Guaranteeing that user input has already been sanitized  before it is used to construct a command is challenging, because  sanitization is often performed in a different part of a program than where commands are ultimately constructed.% Note, for example, that \verb|sanitize| is not idempotent, so it should only be called once.
+To avoid this problem, the program must \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes double quotes and existing backslashes   with a backslash, which SQL treats safely. Alternatively, it might HTML-encode special characters, which would head off both SQL injection attacks and cross-site scripting attacks. Guaranteeing that user input has already been sanitized  before it is used to construct a command is challenging, especially because  sanitization and command construction may occur in separately developed and maintained components. %is often performed in a different component of a program than where commands are ultimately constructed.% Note, for example, that \verb|sanitize| is not idempotent, so it should only be called once.
 
 We observe that many such sanitization techniques can be understood using \emph{regular languages} \cite{cinderella}. For example, \verb|name| must be a string in the language described by the regular expression \verb!([^"\]|(\")|(\\))*! -- a sequence of characters other than quotation marks and backslashes; these can only appear escaped. This concrete syntax for regular expression patterns can be understood to desugar, in a standard way, to the syntax for regular expressions shown in Figure \ref{fig:regex}, where $r \cdot r$ is sequencing and $r + r$ is  disjunction. We will work with this ``core'' for simplicity.
 
-In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we identify regular languages by the notation $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the type system tracks the language of a string through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitation functions -- like the one just described -- in a conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. at the edges of the system). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
+In this paper, we present a static type system that tracks the regular language a string belongs to. For example, the output of \verb|sanitize| will be a string in the regular language described by the regular expression above (we identify regular languages by the notation $\mathcal{L}\{r\}$). By leveraging closure and decidability properties of regular languages, the type system tracks the language of a string through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitation functions -- like the one just described -- in a conventional manner. The result is a system where the fact that a string has been {correctly} sanitized is manifest in its type. Missing calls to sanitization functions are detected statically, and, importantly, so are \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types (e.g. along the interfaces with external systems or components that are not under the control of this type system). %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
 
 We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambdas$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
 
@@ -446,7 +446,7 @@ Since these operations over regular languages are known to be closed and decidab
 
 
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
-\begin{figure}[h]
+\begin{figure}[t]
 \small
   \begin{grammar}
 <$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
@@ -455,31 +455,24 @@ Since these operations over regular languages are known to be closed and decidab
 \label{fig:regex}
 \end{grammar}
 \end{figure}
-
-\begin{figure}[h]
+\begin{figure}[t]
 \small
   \begin{grammar}
-
-<$\sigma$> ::=  $\sigma \rightarrow \sigma$     \hfill  source types          \alt
-$\stringin{r}$         
+<$\sigma$> ::=  $\sigma \rightarrow \sigma$ | $\stringin{r}$    \hfill  source types
 
 <$e$> ::= 
-      $x$ \hfill source terms \alt 
-      $\lambda x . e$ e\alt
-      $e(e)$ \alt
-      $\strin{s}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \alt
-      $\sisubst{r}{e}{e}$ \alt
-      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
+      $x$ | $\lambda x . e$ | $e(e) $\hfill source terms \alt 
+      $\strin{s}$ | $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \hfill $s \in \Sigma^{*}$ \alt
+      $\sisubst{r}{e}{e}$ | $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
-      <$v$> ::= $\lambda x . e$ | $\strin{e}$ | $s$ \hfill source values 
+<$v$> ::= $\lambda x . e$ | $\strin{s}$ \hfill source values 
 \caption{Syntax of $\lambda_{RS}$.}
 \label{fig:glambdas}
 \end{grammar}
 \end{figure}
 
 
-\begin{figure}[h]
+\begin{figure}[t]
 \small
 $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 ~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
@@ -777,17 +770,11 @@ is preserved under translation into $\lambdap$.
 \small
   \begin{grammar}
 
-<$\tau$> ::= $\tau \rightarrow \tau$ \hfill target types \alt
-$\str$ \alt $\regex$
+<$\tau$> ::= $\tau \rightarrow \tau$ | $\str$ | $\regex$ \hfill target types
 
-<$\iota$> ::= $x$  \hfill target terms \alt
-             $\lambda x . \iota$ \alt
-                    $\iota(\iota)$ \alt
-$\tstr{s}$ \alt
-  $\rx{r}$ \alt
-  $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
-  $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
-
+<$\iota$> ::= $x$ | $\lambda x . \iota$ | $\iota(\iota)$ \hfill target terms \alt
+$\tstr{s}$ | $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
+  $\rx{r}$ | $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
   <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
 
@@ -1315,6 +1302,8 @@ Composable analyses which complement existing approaches constitute a promising 
 In this paper, we presented a system with both of these properties and defined a security-preserving transformation.
 Unlike other approaches, our solution complements existing, familiar solutions while providing a strong guarantee that traditional library and framework-based approaches are implemented and utilized correctly.
 
+\section{Acknowledgements}
+\todo{funding sources}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % END SECTION TWO -- THIS IS THE CONFLICT LINE
