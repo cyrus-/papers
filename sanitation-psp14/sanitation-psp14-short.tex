@@ -29,7 +29,7 @@
 \usepackage{listings}
 \usepackage{wasysym}
     \makeatletter
-\usepackage{enumitem}
+%\usepackage{enumitem}
 \usepackage{enumerate}
 
 % \btIfInRange{number}{range list}{TRUE}{FALSE}
@@ -697,9 +697,12 @@ The theorem relies upon the definitions and propositions given above and some ba
 \begin{lem}[Properties of Regular Languages.] \label{thm:regexprops}
 ~
 \begin{enumerate}
-\item If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1\cdot r_2}$.
-\item For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
-\item Regular languages are closed under reversal.
+\item 
+If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1\cdot r_2}$.
+\item 
+For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+\item 
+Regular languages are closed under reversal.
 \end{enumerate}
 \end{lem}
 
@@ -721,7 +724,7 @@ The simply typed lambda calculus terminates, and our conservative extension clea
 terminates because new binding structures are not introduced and termination (i.e. decidability) of ${\sf subst}$ and ${\sf lreplace}$ is known. Even in a non-terminating calculus, type safety holds.
 However, a more careful treatment or treatment for a language with non-termination would need to proceed by either a coinductive argument \cite{coinductionoo} or  with a small-step semantics.
 
-\begin{thm}[Type Safety.] \label{thm:scorrect}
+\begin{thm}[Type Safety.] \label{thm:typesafety}
   If $\emptyset \vdash e : \sigma$ 
   then $e \sreduces v$ and $\emptyset \vdash v : \sigma$.
 \end{thm}
@@ -925,8 +928,10 @@ We can also define canonical forms for regular expressions and strings in the us
 \begin{lem}[Canonical Forms for Target Language]
 ~
 \begin{enumerate}
-\item If $\emptyset \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
-\item If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
+\item 
+If $\emptyset \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\item 
+If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
 \end{enumerate}
 \end{lem}
 
@@ -936,13 +941,11 @@ We can also define canonical forms for regular expressions and strings in the us
 The translation from $\lambdas$ to $\lambdap$ is defined in Figure \ref{fig:tr}.
 The coercion cases are most interesting. If the safety of coercion in manifest in the
 types of the expressions, then no runtime check is inserted.
-If the safety of coercion is not manifest in the types, then a check is inserted.
+If the safety of coercion is not manifest in the types, then a check is inserted. Note that regular strings translate to strings directly; there is no space overhead.
 
-The translation is defined by the rules \textsc{Tr-} in Figure~\ref{fig:tr}.
-This section ultimately establishes that the security theorem for $\lambdas$ is preserved under compilation.
+The translation correctness theorem guarantees that the translation is type preserving and that semantics of the original code and translation coincide, following the treatment of compilation pioneered by the TIL compiler for SML \cite{tarditi+:til-OLD}. We apply the translation inline in judgements for concision when convenient. 
 
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \small
 $\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
 \begin{mathpar}
@@ -977,13 +980,6 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
 { \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
 { \trden{e_1(e_2)} = \iota_1(\iota_2)}
 
-\inferrule[Tr-Case]
-{ \trden{e_1} = \iota_1 \\
-   \trden{e_2} = \iota_2 \\
-   \trden{e_3} = \iota_3
-}
-{ \trden{ \strcase{e_1}{e_2}{x,y.e_3} } = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} }
-
 \inferrule[Tr-string]
 { \ }
 {   \trden{\strin{s}} = \tstr{s}}
@@ -991,6 +987,13 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
 \inferrule[Tr-Concat]
 {  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
 {  \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
+
+\inferrule[Tr-Case]
+{ \trden{e_1} = \iota_1 \\
+   \trden{e_2} = \iota_2 \\
+   \trden{e_3} = \iota_3
+}
+{ \trden{ \strcase{e_1}{e_2}{x,y.e_3} } = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} }
 
 \inferrule[Tr-Subst]
 {   \trden{e_1} = \iota_1 \\   \trden{e_2} = \iota_2 }
@@ -1023,22 +1026,21 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
   $\trden{v} = \dot{v}$.
 \end{thm}
 \begin{proof}
-The proof proceeds by induction on the typing relation for $e$ and an appropriate choice of $\iota$; in each case,
-the choice is the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. choose {\sf replace} when considering {\sf sreplace}).
-After the correct choice, the proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
+The proof proceeds by induction on the typing relation for $e$. We choose an $\iota$ based on the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. we  choose {\sf replace} when considering {\sf sreplace}).
+The proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
 \end{proof}
 
 \subsubsection{Preservation of Security}
 
-Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$.
+Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$. \renewcommand*{\proofname}{Proof}
 
 \begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
-  If $\trden{e} = \iota$ and $\sctx \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
+  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
   for $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
-  By theorem \ref{thm:trcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
-  By theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
+  By Theorem \ref{thm:trcorrect}, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
+  By Theorem \ref{thm:scorrect}, the above property together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
 \end{proof}
 
 %\begin{figure}
@@ -1063,7 +1065,7 @@ In the previous section, we specified a type system and a translation semantics 
 
 \subsection{Example Usage}
 
-\begin{figure}[h]\small\begin{lstlisting}
+\begin{figure}[ht]\small\begin{lstlisting}
 from atlib import fn, stringin
 
 @fn
