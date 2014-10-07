@@ -463,7 +463,7 @@ Since these operations over regular languages are known to be closed and decidab
 <$e$> ::= 
       $x$ | $\lambda x . e$ | $e(e) $\hfill source terms \alt 
       $\strin{s}$ | $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \hfill $s \in \Sigma^{*}$ \alt
-      $\sisubst{r}{e}{e}$ | $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
+      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$ | $\sisubst{r}{e}{e}$ 
 
 <$v$> ::= $\lambda x . e$ | $\strin{s}$ \hfill source values 
 \caption{Syntax of $\lambda_{RS}$.}
@@ -506,10 +506,6 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
   \sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma
 }
 
-\inferrule[S-T-Replace]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
-{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
-
 \inferrule[S-T-SafeCoerce]
 {\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
 {\sctx \vdash \coerce{r}{e} : \stringin{r}}
@@ -517,6 +513,10 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 \inferrule[S-T-Check]
 {\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
 {\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
+
+\inferrule[S-T-Replace]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
+{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
 \end{mathpar}
 
 \caption{Typing rules for $\lambdas$. 
@@ -563,10 +563,6 @@ $\fbox{\inferrule{}{e \sreduces v}}$
   \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_3
 }
 
-\inferrule[S-E-Replace]
-{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
-{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
-
 \inferrule[S-E-SafeCoerce]
 {e \sreduces \strin{s}}
 {\coerce{r}{e} \sreduces \strin{s}}
@@ -585,6 +581,10 @@ $\fbox{\inferrule{}{e \sreduces v}}$
 {
   \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
 }
+
+\inferrule[S-E-Replace]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2} \\ \lsubst{r}{s_1}{s_2} = s} 
+{\sisubst{r}{e_1}{e_2} \sreduces \sistr{s}}
 \end{mathpar}
 \caption{Big step semantics for $\lambdas$}.
 \label{fig:dlambdas}
@@ -683,72 +683,76 @@ Then $r'$ is $x_{pre}r_2x_{post}$.
 \end{proof}
 
 \begin{prop}[Substitution Correspondence] \label{thm:substcorrespondence}
-  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then
-
-  $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$.
+  If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$.
 \end{prop}
 \begin{proof}
-The proposition follows from the definitions of subst and lreplace; note that language substitutions over-approximate string substitutions.
+The proposition follows from the definitions of $\textsf{subst}$ and $\textsf{lreplace}$; note that language substitutions over-approximate string substitutions.\todo{elaborate on this?}
 \end{proof}
 
 \subsubsection{Safety}
 
 In this section, we establish type soundness for $\lambdas$.
-The theorem relies upon the lemmas and propositions established above.
-We also rely on additional lemmas which establish the preservation of well-formedness
-of regular expressions.
+The theorem relies upon the definitions and propositions given above and some basic properties of regular languages. 
 
-\begin{lem}[Properties of Regular Languages and Expressions.] \label{thm:regexprops}
-The following are properties of regular expressions which are necessary for our proofs:
-If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
-For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
-Regular languages are closed under reversal.
+\begin{lem}[Properties of Regular Languages.] \label{thm:regexprops}
+~
+\begin{enumerate}
+\item If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
+\item For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+\item Regular languages are closed under reversal.
+\end{enumerate}
 \end{lem}
 
 If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
 
+We also need to establish a well-formedness lemma, which simply expresses the totality of the operations over regular expressions used as premises in the rules in Figure \ref{fig:slambdas}. 
 \begin{lem}
   If $\sctx \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
 \end{lem}
 \begin{proof}
-  The only non-trivial case is S-T-Replace, which follows from lemma \ref{thm:total}. 
+  The only non-trivial case is S-T-Replace, which follows from Proposition \ref{thm:total}. \todo{what about lhead/ltail?}
 \end{proof}
 
 Safety for the string fragment of $\lambdas$ requires validating that the type system's definition is justified
 by our theorems about regular languages.
-We avoid the most significant issues inherent to big-step semantics by avoiding non-termination.
-The simply typed lambda calculus terminates, and our conservative, compositional extension clearly
-terminates modulo termination of ${\sf subst}$ and ${\sf lreplace}$ (but even if these were non-terminating, this still does not pose a problem for the big-step semantics itself).
-However, a more careful treatment or treatment for a language with non-termination might proceed by either coinduction \cite{coinductionoo, coinduction} or step-indexing \cite{stepindexing}.
 
-\begin{thm}[Canonical Forms for String Fragment of $\lambdas$]\label{thm:cfs}
-  If $\sctx \vdash e : \stringin{r}$ 
-  then $e \sreduces \rstr{s}$ 
-\end{thm}
+We avoid the most significant issues inherent to proofs related to big-step semantics by avoiding non-termination in our specification.
+The simply typed lambda calculus terminates, and our conservative extension clearly
+terminates because new binding structures are not introduced and termination (i.e. decidability) of ${\sf subst}$ and ${\sf lreplace}$ is known. Even in a non-terminating calculus, type safety holds.
+However, a more careful treatment or treatment for a language with non-termination would need to proceed by either a coinductive argument \cite{coinductionoo} or  with a small-step semantics.
 
 \begin{thm}[Type Safety.] \label{thm:scorrect}
-  If $\sctx \vdash e : \sigma$ 
-  then $e \sreduces v$ and $\sctx \vdash v : \sigma$.
+  If $\emptyset \vdash e : \sigma$ 
+  then $e \sreduces v$ and $\emptyset \vdash v : \sigma$.
 \end{thm}
 \begin{proof}
 By induction on the typing relation.
-The S-T-Concat case requires Lemma \ref{thm:regexprops} 
-and the S-T-Replace case appeals to Lemma \ref{thm:substcorrespondence}.
+The \textsc{S-T-Concat} case requires Lemma \ref{thm:regexprops}.1, the \textsc{S-T-Check} case requires Lemma \ref{thm:regexprops}.2 
+and the S-T-Replace case appeals to Proposition \ref{thm:substcorrespondence}.
 \end{proof}
+
+We can also define a canonical forms lemma for regular strings. 
+
+\begin{lemma}[Canonical Forms for String Fragment of $\lambdas$]\label{thm:cfs}
+  If $\emptyset \vdash e : \stringin{r}$ and $e \sreduces v$ then $v=\rstr{s}$. 
+\end{lemma}
+\begin{proof}
+The proof is again by induction on the typing relation, following straightforwardly.
+\end{proof}
+
+
 
 \subsubsection{The Security Theorem}\label{sec:securitythm}
 
 The chief benefit of $\lambdas$ is its security theorem, which states that any value of
-a regular expression type is recognized by the regular expression corresponding to its type.
-This is beneficial because safe subsets of strings may be characterized by regular expressions.
-Our main technical result, stated later in this section, establishes that the security property
-is preserved under translation into $\lambdap$.
+a regular string type is recognized by the regular language corresponding to the regular expression the type is indexed by.
+This is beneficial because this ensure that membership in a regular language known to be secure becomes manifest in the type of the string, rather than being a property that must be established extralinguistically. 
 
 \begin{thm}[Correctness of Input Sanitation for $\lambdas$]\label{thm:scorrect}
-  If  $\sctx \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
+  If  $\emptyset \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
-  The theorem follows directly from type safety, canonical forms for $\lambdas$, and inversion of the typing relation for $\lambdas$.
+  The theorem follows directly from type safety, canonical forms for $\lambdas$, and inversion of \textsc{S-T-Stringin-I}, the typing rule for terms of the form $\rstr{s}$.
 \end{proof}
 
 \subsection{Target Language}\label{sec:p}
@@ -768,14 +772,16 @@ $\tstr{s}$ | $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \al
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
 \label{fig:lcsSyntax}
 \end{figure}
+Our next major technical result, stated in Sec. \ref{sec:tr}, establishes that the security property
+is preserved under translation into $\lambdap$, which we now define.
 
-The system $\lambdap$ is a straight-forward extension of a simply typed lambda calculus
-with a $\str$ type and a regular expression type, as well as 
-some operations -- such as concatenation and replacement -- found in many the standard libraries of many programming languages.
-The operations of $\lambdap $ correspond precisely to the operations of $\lambdas$ in a way made precise by the translation rules described in the next section.
-Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
+The system $\lambdap$ is another straight-forward extension of a simply typed lambda calculus
+with a $\str$ type and a $\regex$ type, as well as 
+some operations -- such as concatenation and replacement -- found in the standard libraries of many programming languages.
+The operations of $\lambdap $ correspond to ``run-time'' versions of the operations performed statically in $\lambdas$ in a way made precise by the translation rules described in the next section.
+%Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
 The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
-such as \textbf{P}ython or \textbf{P}HP.
+such as \textbf{P}ython or \textbf{P}HP. We will discuss an implementation within the former in the next section.
 
 The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
 The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
