@@ -697,7 +697,7 @@ The theorem relies upon the definitions and propositions given above and some ba
 \begin{lem}[Properties of Regular Languages.] \label{thm:regexprops}
 ~
 \begin{enumerate}
-\item If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1r_2}$.
+\item If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1\cdot r_2}$.
 \item For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
 \item Regular languages are closed under reversal.
 \end{enumerate}
@@ -733,9 +733,9 @@ and the S-T-Replace case appeals to Proposition \ref{thm:substcorrespondence}.
 
 We can also define a canonical forms lemma for regular strings. 
 
-\begin{lemma}[Canonical Forms for String Fragment of $\lambdas$]\label{thm:cfs}
+\begin{lem}[Canonical Forms for String Fragment of $\lambdas$]\label{thm:cfs}
   If $\emptyset \vdash e : \stringin{r}$ and $e \sreduces v$ then $v=\rstr{s}$. 
-\end{lemma}
+\end{lem}
 \begin{proof}
 The proof is again by induction on the typing relation, following straightforwardly.
 \end{proof}
@@ -764,9 +764,9 @@ This is beneficial because this ensure that membership in a regular language kno
 
 <$\iota$> ::= $x$ | $\lambda x . \iota$ | $\iota(\iota)$ \hfill target terms \alt
 $\tstr{s}$ | $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
-  $\rx{r}$ | $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
+  $\rx{r}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ | $\preplace{\iota}{\iota}{\iota}$
 
-  <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
+  <$\dot{v}$> ::= $\lambda x . \iota$ | $\tstr{s}$ | $\rx{r}$ \hfill target values
 
 \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
@@ -778,14 +778,14 @@ is preserved under translation into $\lambdap$, which we now define.
 The system $\lambdap$ is another straight-forward extension of a simply typed lambda calculus
 with a $\str$ type and a $\regex$ type, as well as 
 some operations -- such as concatenation and replacement -- found in the standard libraries of many programming languages.
-The operations of $\lambdap $ correspond to ``run-time'' versions of the operations performed statically in $\lambdas$ in a way made precise by the translation rules described in the next section.
+The operations of $\lambdap $ correspond to ``run-time'' versions of the operations performed statically in $\lambdas$ in a way made precise by the translation rules described in the next section. 
 %Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
 The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
-such as \textbf{P}ython or \textbf{P}HP. We will discuss an implementation within the former in the next section.
+such as \textbf{P}ython or \textbf{P}HP, albeit statically typed. We will discuss an implementation within the former in the next section.
 
 The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
 The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
-and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}.
+and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}. The semantics are straightforward given the discussion of the corresponding operations in the previous section.
 
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 
@@ -913,22 +913,27 @@ s \in \lang{r} \\
 
 Type safety for $\lambdap$ is straight-forward, but is necessary in order to establish the 
 correctness of our translation.
-Again, we elide a more careful treatment by treating a special case where our language terminates but
-note the multiple approaches to proving soundness for non-terminating languages with natural semantics \cite{coinductionoo, stepindexing, coinduction}.
+Again, we elide a more careful treatment by treating a special case where our language terminates per the discussion above.
 
-\begin{lem}[Well-formedness of regular expressions]
-If $\tctx \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
-\end{lem}
-
-\begin{thm}[Safety for $\lambdap$]
-  Let $\iota$ be a term in the target language. If $\tctx \vdash \iota : \tau$ 
-  then $\iota \sreduces \iota'$ and $\tctx \vdash \iota' : \tau$.
+\begin{thm}[Safety for $\lambdap$] If $\emptyset \vdash \iota : \tau$ 
+  then $\iota \sreduces \dot v$ and $\tctx \vdash \dot v : \tau$.
 \end{thm}
+
+We can also define canonical forms for regular expressions and strings in the usual way:
+
+
+\begin{lem}[Canonical Forms for Target Language]
+~
+\begin{enumerate}
+\item If $\emptyset \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\item If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
+\end{enumerate}
+\end{lem}
 
 \subsection{Translation from $\lambdas$ to $\lambdap$}\label{sec:tr}
 
 
-The translation from $\lambdas$ to $\lambdap$ is defined in figure 5.
+The translation from $\lambdas$ to $\lambdap$ is defined in Figure \ref{fig:tr}.
 The coercion cases are most interesting. If the safety of coercion in manifest in the
 types of the expressions, then no runtime check is inserted.
 If the safety of coercion is not manifest in the types, then a check is inserted.
