@@ -48,8 +48,8 @@
   tabsize=4,
   commentstyle=\itshape\color{light-gray},
   basicstyle=\ttfamily\scriptsize,
-  morekeywords={lambda, self, assert, cls, @classmethod, with},
-  deletekeywords={min,max},
+  morekeywords={lambda, self, assert, cls, @classmethod, with,as},
+  deletendkeywords={tuple,id,buffer,map},
   numbers=left,
   numberstyle=\scriptsize\color{light-gray}\textsf,
   numbersep=0.5em,
@@ -70,7 +70,7 @@
   morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
 }
 
-\newcommand{\lstinlinep}[1]{\lstinline[language=Python,basicstyle=\ttfamily\small]{#1}}
+\newcommand{\lstinlinep}[1]{\lstinline[language=Python,basicstyle=\ttfamily\small,deletendkeywords={tuple,buffer,map}]{#1}}
 
 \usepackage{float}
 \floatstyle{ruled}
@@ -160,9 +160,9 @@
 %constraints, active types in @\texttt{lang} can express the static and dynamic semantics
 %of a range of functional, object-oriented, parallel and domain-specific
 %abstractions, all within libraries.
-Programmers prefer using abstractions available as libraries for the language they already use over those requiring a switch to a new language. But library providers cannot typically extend the type systems of these languages directly, so powerful statically typed abstractions  remain obscure. This suggests that a language is needed that is {backwards compatible} with the libraries and tools of a widely adopted language, but that has an  {internally extensible type system}, organized around a mechanism that guarantees that any combination of extensions can be imported safely. 
+Programmers prefer using abstractions available as libraries for the language they already use over those requiring a switch to a new language. But library providers cannot typically extend the static type systems of these languages directly, so powerful statically typed abstractions  remain obscure. This suggests the need for a mechanism that allows abstraction providers to extend the type system of a widely adopted language from within, in a way that guarantees that any combination of extensions can be used together without worrying about conflicts. 
 
-Our aim in this paper is to 1) introduce such a mechanism; and 2) show how it can be implemented as a library for an existing widely used language, here Python. We describe two artifacts: @\texttt{lang}, an  extensible statically typed language implemented as a library inside Python, and @$\lambda$, a minimal core calculus. Both @\texttt{lang} and @$\lambda$ have a fixed syntax but  determine the semantics of each term by delegating control, according to a simple but powerful bidirectionally typed elaboration semantics, to methods associated with a relevant \emph{active type constructor}, defined in a library. This process is stable even when additional extensions are imported, so we avoid ambiguity by construction. We describe several examples of interesting type system fragments as libraries, including functional constructs, a type system for secure string sanitation and a foreign function interface to OpenCL.% By flexibly  repurposing a fixed syntax in this type-directed manner, we avoid ambiguities by construction. %In @\texttt{lang}, types and functions are defined using Python's syntax, distributed using Python's package system and can call into Python libraries, so @\texttt{lang} is uniquely backwards compatible. We show that active type constructors as implemented in @\texttt{lang} permit practical library implementations of a variety of type system fragments that would normally need to be built into a language. %We also show how to construct safe, natural and extensible foreign function interfaces using a novel form of ``staged'' type propagation from Python into @\texttt{lang} and then through to OpenCL. % can be used to enable type system extensions and demonstrates how type safety can be maintained by lifting a technique from the typed compilation literature into the language.%To show that the method scales, we give a full implementation of the OpenCL programming language as a library. %We briefly examine the type theoretic foundations of this approach and give modular criteria that guarantee that an extension is safe and modular. %@\texttt{lang} can be used from the shell or interactively from within Python\todo{take this sentence out?}.
+Our aim in this paper is to 1) introduce such a mechanism; and 2) show how it can be implemented as a library for an existing widely used language, here Python. We describe two artifacts: @\texttt{lang}, an  extensible statically typed language implemented as a library within Python, and @$\lambda$, a minimal core calculus. Both @\texttt{lang} and @$\lambda$ have a fixed syntax. They determine the semantics of each term by delegating control, according to a simple but powerful bidirectionally typed elaboration semantics, to methods associated with a relevant \emph{active type constructor}, defined in a library. This process is stable even when additional extensions are imported, so we avoid syntactic and semantic ambiguity by construction. We validate our approach with several examples of interesting type system fragments that are built into other languages but can be implemented as libraries using our approach, including functional constructs, a type system for secure string sanitation and a typed foreign function interface to OpenCL.% By flexibly  repurposing a fixed syntax in this type-directed manner, we avoid ambiguities by construction. %In @\texttt{lang}, types and functions are defined using Python's syntax, distributed using Python's package system and can call into Python libraries, so @\texttt{lang} is uniquely backwards compatible. We show that active type constructors as implemented in @\texttt{lang} permit practical library implementations of a variety of type system fragments that would normally need to be built into a language. %We also show how to construct safe, natural and extensible foreign function interfaces using a novel form of ``staged'' type propagation from Python into @\texttt{lang} and then through to OpenCL. % can be used to enable type system extensions and demonstrates how type safety can be maintained by lifting a technique from the typed compilation literature into the language.%To show that the method scales, we give a full implementation of the OpenCL programming language as a library. %We briefly examine the type theoretic foundations of this approach and give modular criteria that guarantee that an extension is safe and modular. %@\texttt{lang} can be used from the shell or interactively from within Python\todo{take this sentence out?}.
 %Researchers developing languages and abstractions for high-performance computing must consider a number of design criteria, including performance, verifiability, portability and ease-of-use. Despite the deficiencies of legacy tools and the availability of seemingly superior options, end-users have been reluctant to adopt new language-based abstractions. We argue that this can be largely attributed to a failure to consider three additional criteria: continuity, extensibility\- and interoperability. This paper introduces @\texttt{lang}, a language that aims to satisfy this more comprehensive set of design criteria. To do so, @\texttt{lang} introduces several novel compile-time mechanisms, makes principled design choices, and builds upon existing standards in HPC, particularly Python and OpenCL. OpenCL support, rather than being built into the language, is implemented atop an extensibility mechanism that also admits abstractions drawn from other seemingly disparate paradigms. The core innovation underlying this and other features of @\texttt{lang} is a novel reification of types as first-class objects at compile-time, representing a refinement to the concept of active libraries that we call \emph{active types}. We validate our overall design by considering a case study of a simulation framework enabling the modular specification and efficient execution of ensembles of neural simulations across a cluster of GPUs.
 \end{abstract}
 
@@ -174,9 +174,9 @@ Our aim in this paper is to 1) introduce such a mechanism; and 2) show how it ca
 \section{Introduction}\label{intro}
 Asking programmers to import a library is easier than asking them to adopt a new programming language. Indeed, recent empirical studies underscore the difficulties of driving new languages into adoption, finding that extrinsic factors like compatibility with large existing code bases, library availability, familiarity and tool support are at least as important as intrinsic features of the language \cite{Meyerovich:2013:EAP:2509136.2509515,chen05}. 
 
-Unfortunately, researchers and domain experts designing new abstractions sometimes find it difficult to soundly, completely and naturally implement them as libraries, particularly those that rely on specialized support from a static type system. In these situations, abstraction providers generally develop a new language dialect, increasingly with the aid of tools like language workbenches \cite{erdweg2013state}. Unfortunately, this \emph{language-oriented approach} \cite{journals/stp/Ward94} is problematic at language boundaries: working with components written in several foreign languages often requires programming against a low-level internal implementation, rather than its semantics, via a foreign-function interface (FFI). This is brittle, unnatural and unsafe and can cause performance issues due to necessary checks and conversions at language boundaries. As more languages are used together,  more FFIs must be developed and traversed.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
+Unfortunately, researchers and domain experts designing new abstractions sometimes find it difficult to soundly, completely and naturally implement them as libraries, particularly those that rely on specialized support from a static type system. In these situations, abstraction providers generally develop a new language dialect, increasingly with the aid of tools like language workbenches \cite{erdweg2013state}. Unfortunately, this \emph{language-oriented approach} \cite{journals/stp/Ward94} is problematic at language boundaries: working with components written in several distinct languages often requires programming against their low-level implementation details, rather than their semantics, via a foreign-function interface (FFI) to a common implementation language (e.g. C or the JVM). This is brittle, unnatural and unsafe and can cause performance issues due to necessary checks and conversions at language boundaries. As more languages are used together, more FFIs need to be constructed and traversed.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
 
-These issues can prevent even dialects introducing only a few new constructs from being adopted. A study comparing a Java dialect, Habanero-Java (HJ), with a comparable library, \lstinlinep{java.util.concurrent}, for example, found that the language-based abstractions in HJ were easier to use and provided useful static guarantees \cite{cave2010comparing}. Nevertheless, it concluded that the library-based abstractions remained more practical outside the classroom because using HJ, as a distinct dialect of Java with its own type system, would be problematic in settings where some developers had not adopted it, but needed to interface with code that had. It would also be difficult to use it in combination with other abstractions also implemented as dialects of Java. Moreover, its tool support is more limited. 
+These issues prevent even those dialects that introduce only a few new constructs from being adopted. A study comparing a Java dialect, Habanero-Java (HJ), with a comparable library, \lstinlinep{java.util.concurrent}, for example, found that the language-based abstractions in HJ were easier to use and provided useful static guarantees \cite{cave2010comparing}. Nevertheless, it concluded that the library-based abstractions remained more practical outside the classroom because using HJ, as a distinct dialect of Java with its own type system, would be problematic in settings where some developers had not adopted it, but needed to interface with code that had. It would also be difficult to use it in combination with other abstractions also implemented as dialects of Java. Moreover, its tool support is more limited. 
 This appears to be a widespread problem: programmers and development teams often cannot use  the typed abstractions they prefer because they are only available bundled with specialized languages they cannot  adopt \cite{Meyerovich:2012:SDR:2414721.2414724,Meyerovich:2013:EAP:2509136.2509515}. %These languages become, in essence, merely vehicles for communicating ideas, rather than useful tools.
 
  %This issue was perhaps most succinctly expressed by a participant in a recent study by Basili et al. \cite{basili2008understanding} who stated ``I hate MPI, I hate C++. [But] if I had to choose again, I would probably choose the same.''
@@ -184,7 +184,7 @@ This appears to be a widespread problem: programmers and development teams often
 %Using a foreign construct can be  unnatural and, if the languages have  different type systems, can also cause safety problems. 
 
 
-Extensible languages have promised to reduce the problems associated with distinct dialects by giving abstraction providers more direct control over a language's syntax and semantics and supporting the composition of these language fragments within or alongside libraries. %In   an internally extensible language, programmers  can \emph{granularly} import the primitive constructs best suited to each component of their application or library. Providers can thus more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
+Extensible languages have promised to reduce the problems associated with distinct dialects by giving abstraction providers more direct and granular control over a language's syntax and semantics from within, or alongside, libraries. %In   an internally extensible language, programmers  can \emph{granularly} import the primitive constructs best suited to each component of their application or library. Providers can thus more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
 %Indeed, abstractions could compete on their individual merit, rather than  by the serious adoption barriers mentioned above.
 Unfortunately, the mechanisms available today have several problems. First, they are themselves often available only within a dialect of an existing language and so face the classic ``chicken-and-egg'' problem: a language like SugarJ \cite{erdweg2011sugarj} or Wyvern \cite{TSLs} (which permit only syntax extensions over a fixed semantics) must overcome the same extrinsic barriers as a language like HJ. Second, giving abstraction providers too much control over the language can permit the definition of conflicting  extensions, a problem that is detected ``too late'': when extensions are combined by abstraction clients, who are not necessarily  capable of understanding and fixing the conflict.% Too many constraints can leave it difficult to express real-world abstractions.%It is difficult to guarantee that extensions are sound in isolation and more so to guarantee that they can be {safely} combined. %This requires further research before it would be appropriate to widely rely on them (which we will discuss as we go on).
 
@@ -196,13 +196,17 @@ Unfortunately, the mechanisms available today have several problems. First, they
 
 %   Each fragment also defines rules that contribute to the \emph{static semantics} (specifying how types are assigned to expressions at ``compile-time'') and the \emph{dynamic semantics} (specifying the behavior of well-typed expressions at ``run-time'') \cite{pfpl}. The dynamic semantics of full-scale languages are generally implemented (or even directly specified, as in the Harper-Stone semantics for Standard ML \cite{Harper00atype-theoretic}) by elaboration to a simpler \emph{internal language}.% In some languages, static terms themselves may have their own static and dynamic semantics (the \emph{static statics} and the \emph{static dynamics}).  
 
-Our focus in this paper is to enable the introduction of new static type system fragments as safely composable libraries for an existing, widely-used language. The most immediately difficult problems related to composing type system fragments arise when attempting to enable the decentralized introduction of new concrete syntax or corresponding term constructors to support the operations of this new type system. Syntactic ambiguities are difficult to modularly preclude (though some techniques exist). Moreover, many tools operate by exhaustive case analysis over the concrete or abstract syntax of the terms of the language they work with (e.g. syntax highlighters, editor modes, pretty-printers, style checkers, documentation generators). Indeed, enabling the decentralized introduction of new term constructors is the standard example used when describing the more general problem of enabling the extension of a sum type with new cases as well as new  functions over its cases  \cite{Reynolds75}, prompting Wadler to dub it the \emph{expression problem} \cite{wadler1998expression}. 
+Our focus in this paper is to enable the introduction of new static type system fragments as safely composable libraries for an existing and widely-used language, leaving its concrete and abstract syntax fixed. This choice is freeing: questions of syntactic ambiguity no longer need to be addressed. Moreover, many tools operate by exhaustive case analysis over the concrete or abstract syntax of the terms of the language they work with (e.g. syntax highlighters, editor modes, pretty-printers, style checkers, documentation generators). These tools will continue to work. %Indeed, enabling the decentralized introduction of new term constructors is the standard example used when describing the more general problem of enabling the extension of a sum type with new cases as well as new  functions over its cases  \cite{Reynolds75}, prompting Wadler to dub it the \emph{expression problem} \cite{wadler1998expression}. 
 
-\paragraph{Approach} Fewer tools operate by exhaustive case analysis over type constructors. In a conventionally formulated programming language, however, it is difficult to introduce a new type system fragment without adding new concrete syntax or term constructors to accompany the new type constructors. In this paper, we aim to show that this need not be the case. We introduce a method that allows library providers to introduce new type system fragments by defining only new type constructors, in libraries, while leaving the concrete syntax, the term constructors and the target language of compilation fixed. The key idea is that we determine the semantics of each term not based directly on the identity of its term constructor (the usual ``syntax-directed'' approach), but rather by delegating to a statically evaluated function associated with a relevant type constructor. The term constructor's identity only serves to determine how the delegate is assigned. We call user-defined type constructors equipped with static functions and distributed in libraries \emph{active type constructors}.
+\paragraph{Approach} Our key insight is that few tools operate by exhaustive case analysis over type constructors. We introduce a mechanism that allows library providers to introduce new type system fragments by defining only new type constructors, in libraries, while leaving the concrete and abstract syntax, and the base semantics of the language, fixed. 
 
-As a simple example, consider the concrete term \lstinlinep{e.r} (where \lstinlinep{e} is an expression and \lstinlinep{r} is a static label). A fragment defining statically typed pairs might want this to refer to projection of the right component of the pair, while a fragment defining functional record types might want it project out the field labeled \verb|r| and an object system might introduce a more complex semantics involving dynamic dispatch. Were we to naively ``open up'' the syntax and semantics of the language, these fragments would conflict. 
+To support new operations, the semantics of terms are no longer determined directly based on the identity of their term constructors (the usual ``syntax-directed'' approach). Instead, we delegate to a statically defined function associated with a relevant type constructor. The term constructor's identity only serves to determine how the delegate is assigned. We call user-defined type constructors equipped with these static functions and distributed in libraries \emph{active type constructors}.
 
-Instead, we assume that the syntax is fixed and includes this commonly used form, mapping it to abstract term  $\FF{attr}[\text{``r''}](e)$ (i.e. the term constructor $\FF{attr}$, \emph{indexed} by a static representation of the label and taking one \emph{argument}, $e$). Our semantics delegate responsibility for this term to a static function associated with the type constructor of the type recursively synthesized by the ``target'' of the operation, $e$. Tuples, records, objects and variants thereof can all be supported over a common syntax. As we will detail, terms for which there is no clear ``target'' from which to determine a delegate (e.g. number or list literals) instead either use the type they are being analyzed against (consistent with how extensible parsing is done in Wyvern \cite{TSLs}) or, if not available, a ``default'' delegate determined by the type constructor governing the function in which they appear. Symmetric binary terms (e.g. addition) use a third protocol, which we will discuss. There is always exactly one active type constructor delegated  responsibility over a term and this delegate is stable with respect to additional extension imports, so semantic ambiguities cannot arise by construction. %This is a generalization of a previous mechanism that we have developed, which deals only with extending the elaboration, but not the typechecking, of the bodies of delimited literals \cite{omar-ecoop14}.
+As a simple example, consider the concrete term \lstinlinep{e.r} (where \lstinlinep{e} is an expression and \lstinlinep{r} is a static label), which maps to the abstract term $\FF{attr}[\text{``r''}](e)$ (i.e. the term constructor $\FF{attr}$, \emph{indexed} by a static representation of the label and taking one \emph{argument}, $e$). A fragment defining statically typed pairs might see this term as referring to projection of the right component of the pair $e$, while a fragment defining functional record types might want it project out a field labeled \verb|r| from $e$, and an object system might introduce a more complex semantics involving dynamic dispatch. The type of dynamically classified Python values would follow Python's own complex field lookup protocol. Were we to naively ``open up'' the syntax and semantics, these fragments would conflict. 
+
+Instead, our semantics will delegate responsibility for assigning a type and a translation to this term to a static function associated with the type constructor of the type recursively synthesized by $e$, the \emph{target} of the operation. Thus, tuples, records, objects, dynamic values and variants thereof can  share this syntax. 
+
+As we will detail, terms for which there is no clear ``target'' from which to determine a delegate (e.g. number or list literals) instead either use the type they are being analyzed against (following the approach for composable syntax extensions as supported in Wyvern \cite{TSLs}) or, if not available, a ``default'' delegate determined by the type constructor governing the function in which they appear. Symmetric binary terms (e.g. addition) use a third protocol, which we will discuss. There is always exactly one active type constructor delegated  responsibility over a term and this delegate is stable with respect to additional extension imports, so semantic ambiguities cannot arise by construction (unlike systems that treat the type system as a ``bag of rules''). %This is a generalization of a previous mechanism that we have developed, which deals only with extending the elaboration, but not the typechecking, of the bodies of delimited literals \cite{omar-ecoop14}.
 
 %The approach we describe here is general with respect to the fixed syntax of the language it is introduced within. To implement it, we must only 1) define the delegation protocol that determines how a type constructor is delegated responsibility over each form, basing it on a bidirectional type system that distinguishes locations where an expression must \emph{synthesize} a type (e.g. to the right of bindings) from those where it can be \emph{analyzed} against a known type (this has also been called ``local type inference'' \cite{Pierce:2000:LTI:345099.345100}); 2) expose a fixed static language, which is used to implement active type constructors, construct types by applying type constructors to static indices and  import libraries; and 3) expose a fixed internal target language to the static language (fragment providers  implement the dynamic semantics of their fragments by translation to this language).
 
@@ -258,7 +262,7 @@ print "Goodbye, compile-time world!"
 \end{codelisting}
 
 %
-Listing \ref{example} shows an example of a well-typed @\texttt{lang} program for which strong correctness guarantees have been statically maintained using several type constructors defined in libraries. As suggested by line \ref{hello-ct}, the top level of every @\texttt{lang} file can be seen as a \emph{compilation script} written directly in Python. @\texttt{lang} requires no modifications to the language (version 2.6+ or 3.0+) or features specific to the primary implementation, CPython (so @\texttt{lang} supports alternative implementations like Jython and PyPy). This choice pays off immediately on the first line: @\texttt{lang}'s import mechanism is Python's import mechanism, so Python's build tools (e.g. \lstinlinep{pip}) and package repostories (e.g. \lstinlinep{PyPI}) are directly available for distributing @\texttt{lang} libraries, including those defining type constructors. Here, \lstinlinep{atlib} is the ``standard library'' but does not benefit from special support in \lstinlinep{atlang} itself.% Nothing in \lstinlinep{atlib} benefits from special support from \lstinlinep{atlang}, the core language package. We will see \lstinlinep{atlang} being used directly below. %@\texttt{lang} can be installed with a single command: \emph{omitted for review}. %@\texttt{lang} is agnostic about the particular design choices that we made in our examples.
+Listing \ref{example} shows an example of a well-typed @\texttt{lang} program for which stronger correctness guarantees than Python can statically provide have been established using several type system fragments defined in libraries. As suggested by line \ref{hello-ct}, the top level of every @\texttt{lang} file can be seen as a \emph{compilation script} written directly in Python. @\texttt{lang} requires no modifications to the language (version 2.6+ or 3.0+) or features specific to its main implementation, CPython (so @\texttt{lang} supports alternative implementations like Jython and PyPy). This choice pays off immediately on the first line: @\texttt{lang}'s import mechanism is Python's import mechanism, so Python's build tools (e.g. \lstinlinep{pip}) and package repostories (e.g. \lstinlinep{PyPI}) are directly available for distributing @\texttt{lang} libraries defining type system fragments. Here, \lstinlinep{atlib} is the ``standard library'' but does not benefit from special support in \lstinlinep{atlang} itself.% Nothing in \lstinlinep{atlib} benefits from special support from \lstinlinep{atlang}, the core language package. We will see \lstinlinep{atlang} being used directly below. %@\texttt{lang} can be installed with a single command: \emph{omitted for review}. %@\texttt{lang} is agnostic about the particular design choices that we made in our examples.
 
 %The top-level statements in an @\texttt{lang} file, like the \lstinlinep{print} statement on line 10, are executed to control the compile-time behavior, rather than the run-time behavior, of the program. %That is, Python serves as the \emph{compile-time metalanguage} (and, as we will see shortly, the \emph{type-level language}) of @\texttt{lang}. %For readers familiar with C/C++, Python can be thought of as serving a role similar to (but more general than) its preprocessor and template system (as we will see).
 %\subsection{Active Typechecking} 
@@ -266,13 +270,13 @@ Listing \ref{example} shows an example of a well-typed @\texttt{lang} program fo
 The language that the compilation script is written in, Python, is dynamically typed, but functions governed by \verb|atlang| (those annotated with \lstinlinep{@fn} in this example) will be statically typed (Section \ref{s:atc}) and then translated to dynamically typed Python code (Section \ref{s:atr}), both under the control of the type constructors of the types used within them. These steps can occur either during a standalone compilation phase (Section \ref{compilation}) or just-in-time upon their first invocation (Section \ref{interactive}).
 
 \paragraph{Types}
-Types are constructed programmatically in the compilation script by applying a type constructor to an index:  \lstinlinep{tycon[idx]}. This is in contrast to many statically-typed languages where types (e.g. datatypes, classes) are not constructed programmatically, but can only be declared ``literally''. %Put another way, 
+Types are constructed programmatically in the compilation script, always taking the form of a type constructor applied to a type index:  \lstinlinep{tycon[idx]}. Unlike many statically-typed languages, types are constructed programmatically, rather than  declared ``literally'' (e.g. classes in Java, datatypes in ML). %Put another way, 
 %@\texttt{lang} supports \emph{static computation at the level of types} and Python is its type-level language. The static language subsumes th%The compilation script can assign shorter names to types for convenience (removing the need for  facilities like \lstinlinep{typedef} in C or \lstinlinep{type} in Haskell). 
 In this example, we see several useful types being constructed:
 \begin{enumerate}
-\item On line \ref{decl-Details}, we construct a functional record type with two (immutable) fields, assigning it to the static identifier \lstinlinep{Details}. The field \lstinlinep{amount} has type \lstinlinep{decimal[2]}, which classifies decimal numbers having two decimal places, and \lstinlinep{memo} has type \lstinlinep{dyn}, classifying dynamic Python values.  %Here, \lstinlinep{record} and \lstinlinep{decimal} are {indexed type constructors}. 
-Syntactically, the index for \lstinlinep{record} is provided using borrowed Python  syntax for array slices (e.g. \lstinlinep{a[start:end]}) to approximate conventional notation for type annotations. The field names are simply static strings (and could be computed rather than written literally, e.g. \lstinline{'a' + 'mount'}, to support features like \emph{type providers} \cite{Syme:2013:TIF:2429376.2429378}). 
-\item On line \ref{decl-Account-start}, we construct another record type. The field \lstinlinep{name} has type \lstinlinep{string} and the field \lstinlinep{account_num} has a type classifying strings guaranteed statically to be in the regular language specified  by the  regular expression pattern provided as the index (written here as a \emph{raw string literal} \cite{python}). This  fragment, based on recent work, statically tracks the language an immutable string is in, providing operations like concatenation, demonstrating the expressive power of our approach \cite{sanitation-psp14}.%To our knowledge, this type system is not  expressible in other simply typed languages (we do not consider dependently-typed logics without a distinct phase separation).
+\item On line \ref{decl-Details}, we construct a functional record type with two (immutable) fields, naming it (by assigning it to a static identifier) \lstinlinep{Details}. The field \lstinlinep{amount} has type \lstinlinep{decimal[2]}, which classifies decimal numbers having two decimal places, and \lstinlinep{memo} has type \lstinlinep{dyn}, which comes already constructed, classifying dynamic Python values.  %Here, \lstinlinep{record} and \lstinlinep{decimal} are {indexed type constructors}. 
+For convenience, the index for a \lstinlinep{record} type can be provided using borrowed Python  syntax for array slices (e.g. \lstinlinep{a[start:end]}) to approximate conventional notation for type annotations. The field names are simply static strings (and could be computed rather than written literally, e.g. \lstinline{'a' + 'mount'}, to support features like \emph{type providers} \cite{Syme:2013:TIF:2429376.2429378}). 
+\item On line \ref{decl-Account-start}, we construct another record type. The field \lstinlinep{name} has type \lstinlinep{string} and the field \lstinlinep{account_num} has a type classifying strings guaranteed statically to be in the regular language specified  by the  regular expression pattern provided as the index (written here as a \emph{raw string literal} \cite{python}). This  fragment, based on recent work, statically tracks the regular language an immutable string is a member of through operations like concatenation and substitution, which is useful for ensuring well-formedness and preventing injection attacks \cite{sanitation-psp14}.%To our knowledge, this type system is not  expressible in other simply typed languages (we do not consider dependently-typed logics without a distinct phase separation).
 \item 
 %Prototypic inheritance  is a feature of some dynamically-typed languages (most notably, Self \cite{Ungar:Smith:oopsla:1987} and Javascript). 
 On line \ref{decl-Transfer}, we construct a simple \emph{prototypic object type} \cite{Lie86}, \lstinlinep{Transfer}, classifying values consisting of a \emph{fore} of type \lstinlinep{Details} and a \emph{prototype} of type \lstinlinep{Account}. %\footnote{We encourage the convention of naming types that are semantic in camelcase and types and type constructors that are structural in nature, like \texttt{dyn} or \texttt{record}, in lowercase.} 
@@ -280,11 +284,11 @@ On line \ref{decl-Transfer}, we construct a simple \emph{prototypic object type}
 \end{enumerate}
 
 
-\paragraph{Active Type Constructors} Type constructors are implemented in @\texttt{lang} libraries as Python classes inheriting from \lstinlinep{atlang.Type} (classes here serving as Python's form of open sums). We show portions of \lstinlinep{atlib.fn} in Listings \ref{fn-top} and \ref{fn-stmts}, \lstinlinep{atlib.record} in Listing \ref{record} and \lstinlinep{atlib.string_in} in Listing \ref{string_in}, which we will discuss as we go on. The types in our example are instances of these classes.
+\paragraph{Active Type Constructors} Type constructors are Python classes inheriting from \lstinlinep{atlang.Type} (classes here serving as Python's form of open sums). We show portions of \lstinlinep{atlib.fn} in Listings \ref{fn-top} and \ref{fn-stmts}, \lstinlinep{atlib.record} in Listing \ref{record} and \lstinlinep{atlib.string_in} in Listing \ref{string_in}, which we will discuss as we go on. The types in our example are instances of these classes.
 
-\paragraph{Incomplete Types} Incomplete types arise from the application of a type constructor to an index containing an ellipsis (a valid array slice form in Python). The static terms \lstinlinep{fn[Transfer, ...]} and \lstinlinep{fn[...]} seen on lines \ref{log-transfer-start} and \ref{main-start} are incomplete types. We will discuss how the elided portions of an index (e.g. the return types, which need not be provided) are inferred below.
+\paragraph{Incomplete Types} Incomplete types arise from the application of a type constructor to an index containing an ellipsis (a valid array slice form in Python). The static terms \lstinlinep{fn[Transfer, ...]} and \lstinlinep{fn[...]} seen on lines \ref{log-transfer-start} and \ref{main-start} are incomplete types. We will discuss how the elided portions of an index (e.g. the return types, which need not be provided) will be inferred below.
 
-Incomplete types are not instances of \verb|atlang.Type| but rather instances of \lstinlinep{atlang.IncompleteType}. An incomplete type is defined by a type constructor (here \lstinlinep{fn}) and an incomplete index (here, \lstinlinep{(Transfer, Ellipsis)}).  The language controls instantiation by overloading the subscript operator on the \lstinlinep{atlang.Type} class object (using Python's \emph{metaclass} mechanism \cite{python}).
+Incomplete types are not instances of \lstinlinep{atlang.Type} but rather instances of \lstinlinep{atlang.IncompleteType}. An incomplete type is defined by a type constructor (here \lstinlinep{fn}) and an incomplete index (here, \lstinlinep{(Transfer, Ellipsis)}).  The language controls whether the form \lstinlinep{tycon[idx]} results in a complte or incomplete type by overloading the subscript operator on the \lstinlinep{atlang.Type} class object (using Python's \emph{metaclass} mechanism \cite{python}).
 
 \paragraph{Function Definitions}
 \begin{codelisting}[t]
@@ -306,7 +310,7 @@ class fn(atlang.Type):
     if isinstance(last_stmt, ast.Expr): 
       rty = last_stmt.value.ty
     else: rty = unit
-    return (arg_types, rty) # fully specified index
+    return (arg_types, rty) # complete index
 
   ^\label{ana_FunctionDef}^def ana_FunctionDef(self, ctx, node):
     if not hasattr(ctx, 'assn_ctx'): 
@@ -327,23 +331,23 @@ class fn(atlang.Type):
 \end{codelisting}
  To be typechecked by @\texttt{lang} and define run-time behavior, function definitions must have an \emph{ascription}, provided by \emph{decorating} them with either a type or, here, an incomplete type, e.g. on lines 14 and 20 (see \cite{python} for a discussion of Python decorators; we again use Python's metaclasses and operator overloading to support the use of a class as a decorator). 
 
- Ascribed function definitions do not share Python's semantics and indeed the underlying Python function is discarded immediately after its abstract syntax and static environment (its closure and the global dictionary of the Python module it was defined in) have been extracted by the compiler using Python's built-in reflection capabilities and \lstinlinep{inspect} and \lstinlinep{ast} packages \cite{python}. The \lstinlinep{ast} package defines Python's term constructors. 
+ Ascribed function definitions do not share Python's semantics and indeed the underlying Python function is discarded immediately after its abstract syntax and static environment (its closure and the global dictionary of the Python module it was defined in) have been extracted by the compiler using Python's built-in reflection capabilities and \lstinlinep{inspect} and \lstinlinep{ast} packages \cite{python}. The \lstinlinep{ast} package defines Python's term constructors and we will refer to these throughout the paper.
 
 \subsection{Active Typechecking}\label{s:atc}
-We will now trace through how the function \lstinlinep{log_transfer} in Listing 1 is typechecked by \verb|atlang|, via delegation to the type constructors \verb|fn| and \verb|record|, both library constructs.
+We will now trace through how the functions \lstinlinep{log_transfer} and \lstinlinep{__main__} in Listing 1 are typechecked by \verb|atlang|, via delegation to the type constructors just mentioned.
 
 \paragraph{Functions}
-The @$\texttt{lang}$ compiler begins by delegating to the type constructor of the ascription on the function in one of two ways, depending on whether the ascription is a complete type.
+The @$\texttt{lang}$ compiler begins by delegating to the type constructor of the ascription on the function in one of two ways, depending on whether the ascription is complete.
 
-If the ascription is an incomplete type, as in our example, the compiler invokes the class method \lstinlinep{syn_idx_FunctionDef}, seen on line \ref{syn_idx_FunctionDef}, with the \emph{compiler context} (an object that provides hooks into the compiler and a storage location for accumulating information during typechecking), the incomplete index and the syntax tree of the function definition. Here, this method \begin{enumerate}
-\item Checks and normalizes the  incomplete function type index (here, \lstinlinep{_check_and_norm_inc} checks that the argument types are indeed types and turns empty and single arguments into a 0- or 1-tuples for uniformity; not shown)
+If the ascription is an incomplete type, as in our example, the compiler invokes the class method \lstinlinep{syn_idx_FunctionDef}, seen on line \ref{syn_idx_FunctionDef}, passing it the \emph{compiler context} (an object that provides hooks into the compiler and a storage location for accumulating information during typechecking), the incomplete type index and the syntax tree of the function definition. Here, this method: \begin{enumerate}
+\item Checks and normalizes the  incomplete function type index. \lstinlinep{_check_and_norm_inc} (not shown) checks that the argument types are indeed types and turns empty and single arguments into a 0- or 1-tuples for uniformity.
 \item Adds the argument names and types to a field of the context that tracks the types of local assignments (initializing it first if it is a top-level function, as in our example).
 \item Asks the compiler, via the method \lstinlinep{ctx.check}, to typecheck each statement in the body (discussed below)
-\item If the term constructor of the last statement is \lstinlinep{ast.Expr} (a top-level expression), then the type of this expression is the return type, otherwise it is \lstinlinep{atlib.unit}.
-\item A fully specified index is generated, from which a type will be synthesized for the function as a whole, here \lstinlinep{fn[Transfer, atlib.unit]}. Note that this choice of using the last expression as the implicit return value (and considering any statement-level term constructor other than \lstinlinep{Expr} to have a trivial value) is made by \verb|atlib|, not by the language itself.
+\item If the term constructor of the last statement is \lstinlinep{ast.Expr} (i.e. a top-level expression), then the type of this expression is the return type, otherwise it is \lstinlinep{atlib.unit}. Note that this choice of using the last expression as the implicit return value (and considering any statement-level term constructor other than \lstinlinep{Expr} to have a trivial value) is made by \verb|atlib|, not by the language itself.
+\item A complete index is generated, from which a type will be synthesized for the function, here \lstinlinep{fn[Transfer, atlib.unit]} because uses of the \lstinlinep{printf} operator, also defined in \lstinlinep{atlib}, have type \verb|atlib.unit| (i.e. \lstinlinep{printf} is used only for its effect). 
 \end{enumerate}% A different function type constructor could be written to support \lstinlinep{return} statements (omitted for concision).% The choices is made by clients .
 
-Were the ascription a complete type like \verb|fn[Transfer, dyn]|, the compiler would delegate to \lstinlinep{fn} by calling an instance method on it, \lstinlinep{ana_FunctionDef}, seen on line \ref{ana_FunctionDef}, rather than a class method. This method proceeds similarly, but does not need to perform the first step and last steps (and does not need to be a class method) because the index was already determined when the type was constructed, so it can be accessed via \lstinlinep{self.idx}. If the final statement is an expression, it is analyzed against the provided return type (see below). Otherwise, only \lstinlinep{unit} or \lstinlinep{dyn} are valid return types (again, a choice made by \verb|atlib|).%. If it is, the expression . % Note that in this example, recursive functions are only supported when the ascription is a type, to avoid complications related to synthesizing a type for a recursive function call.
+Were the ascription a complete type like \lstinlinep{fn[Transfer, dyn]}, the compiler would delegate to \lstinlinep{fn} by calling an instance method on it, \lstinlinep{ana_FunctionDef}, seen on line \ref{ana_FunctionDef}, rather than a class method. This method proceeds similarly, but does not need to perform the first step and last steps (and does not need to be a class method) because the index was already determined when the type was constructed, so it can be accessed via \lstinlinep{self.idx}. If the final statement is an expression, it is analyzed against the provided return type (see below), rather than asked to synthesize a type. Functions that don't end in expressions can only have return types \lstinlinep{unit} or \lstinlinep{dyn} (again, a choice made by \verb|atlib|).%. If it is, the expression . % Note that in this example, recursive functions are only supported when the ascription is a type, to avoid complications related to synthesizing a type for a recursive function call.
 %On lines \ref{log-transfer-start}-\ref{log-transfer-end}, we see the function \lstinlinep{log_transfer}. We follow Python conventions by starting with a documentation string  that informally specifies the behavior of the function (so standard documentation generators can be used). Before moving into the body, however, we  also give an \emph{argument signature} (line \ref{arg-sig}) stating that the type of \lstinlinep{t} is \lstinlinep{Transfer}, the prototypic object type defined above.
 
 %This again repurposes Python's array slice syntax to approximate conventional notation for type annotations. % (and following conventions for documentation strings, which also describe ``types'' at the end). % The ``keyword'' \lstinlinep{type} was chosen because it is the name of a built-in function in Python (and thus would not be used in the way shown for any other purpose).
@@ -362,7 +366,7 @@ Were the ascription a complete type like \verb|fn[Transfer, dyn]|, the compiler 
   ^\label{syn_Name}^def syn_Name(cls, ctx, e):
     try: return ctx.assn_ctx[e.id]
     except KeyError:
-      try: return self._syn_lift(ctx.static_env[e.id])
+      try: return ctx.syn_Lift(ctx.static_env[e.id])
       except KeyError: raise atlang.TypeError("...", e)
   
   ^\label{default_asc}^@classmethod
@@ -377,10 +381,12 @@ For example, the class method \lstinlinep{check_Assign_Name}, seen in Listing \r
 
 %Return statements, on the other, require separately defining return type synthesis and analysis logic. The class method \lstinlinep{syn_rty_Return} is called for return statements when a return type is not yet known. It must synthesize a return type based on the value being returned (defaulting to \lstinlinep{unit}). Subsequent return statements are processed by \lstinlinep{ana_rty_Return}, which checks the provided value against the known return type. If no value is provided, then the return type must be \lstinlinep{unit}. Note that this function does not need to return a value; if a \lstinlinep{atlang.TypeError} is not raised, then analysis succeeds.
 
-\paragraph{Bidirectional Typechecking} The methods \lstinlinep{ctx.ana} and \lstinlinep{ctx.syn} are also defined by the compiler and can be called by type constructors to request type analysis (when the expected type is known) and synthesis (when the type is an ``output''), respectively, for an expression. Once again, the compiler delegates to a type constructor by a protocol that depends on the term constructor, invoking methods of the form \lstinlinep{ana_TermCon} or \lstinlinep{syn_TermCon}. This represents a form of bidirectional type system (sometimes also called a \emph{local type inference system}) \cite{Pierce:2000:LTI:345099.345100}, and the standard subsumption principle applies: if analysis is requested and an \lstinlinep{ana_TermCon} method is not defined but a \lstinlinep{syn_TermCon} method is, then synthesis proceeds and then the synthesized type is checked for equality against the type provided for analysis. Type equality is defined by checking that the two type constructors are identical and that their indices are equal. Two types with different type constructors are never equal, to ensure that the burden of ensuring that typing respects type equality is local to a single type constructor.  No form of subtyping or implicit coercion is supported for the purposes of this paper (though we have designed a mechanism that similarly localizes reasoning to a single type constructor, we do not  describe it here.)
+\paragraph{Expressions} The methods \lstinlinep{ctx.ana} and \lstinlinep{ctx.syn} are also defined by the compiler and can be called by type constructors to request type analysis (when the expected type is known) and synthesis (when the type is an ``output''), respectively, for an expression. Once again, the compiler delegates to a type constructor by a protocol that depends on the term constructor, invoking methods of the form \lstinlinep{ana_TermCon} or \lstinlinep{syn_TermCon}. This represents a form of bidirectional type system (sometimes also called a \emph{local type inference system}) \cite{Pierce:2000:LTI:345099.345100}, and the standard subsumption principle applies: if analysis is requested and an \lstinlinep{ana_TermCon} method is not defined but a \lstinlinep{syn_TermCon} method is, then synthesis proceeds and then the synthesized type is checked for equality against the type provided for analysis. Type equality is defined by checking that the two type constructors are identical and that their indices are equal. Two types with different type constructors are never equal, to ensure that the burden of ensuring that typing respects type equality is local to a single type constructor.  No form of subtyping or implicit coercion is supported for the purposes of this paper (though we have designed a mechanism that similarly localizes reasoning to a single type constructor, we do not  describe it here.)
 
-\paragraph{Names} If the term constructor of an expression is \lstinlinep{ast.Name}, as when referring to a bound variable or an assignable location, then the type constructor governing the function the term appears in is delegated to via the class method \lstinlinep{syn_Name} (names, when used as expressions, must synthesize a type). We see the definition of this method for \lstinlinep{fn} starting on line \ref{syn_Name} in Listing \ref{fn-stmts}. A name synthesizes a type if it is either in the assignables context or if it is in the static environment. In the former case, the type that was synthesized when the assignment occurred (by \lstinlinep{syn_Assign_Name}) is returned. In the latter case, we must lift the static value to run-time. For the purposes of this paper, we support only other typed @\texttt{lang} functions, Python functions and classes (which are given type \lstinlinep{dyn}, and can only be called with values of type \lstinlinep{dyn}) and modules (which are given a \emph{singleton type} -- a type indexed by the module reference itself -- from which @\text{lang} functions and Python functions and classes can be accessed as attributes in the usual way, see below).%In the future, we plan to detail how the interface between Python and @\texttt{lang} can be enriched to support moving typed values in and out of untyped Python functions safely (by inserting checks, defined again by a type constructor, at the interface between typed and untyped code), but we do not have enough room to adequately detail this mechanism here (and it is tangential to our specific aims).
-\paragraph{Literal Expressions and Ascriptions}
+\subparagraph{Names} If the term constructor of an expression is \lstinlinep{ast.Name}, as when referring to a bound variable or an assignable location, then the type constructor governing the function the term appears in is delegated to via the class method \lstinlinep{syn_Name} (names, when used as expressions, must synthesize a type). We see the definition of this method for \lstinlinep{fn} starting on line \ref{syn_Name} in Listing \ref{fn-stmts}. A name synthesizes a type if it is either in the assignables context or if it is in the static environment. In the former case, the type that was synthesized when the assignment occurred (by \lstinlinep{syn_Assign_Name}) is returned. 
+
+In the latter case, we must lift the static value to run-time and give it an appropriate type. This cannot always be done automatically (because it is a form of serialization). Instead, any Python value with a \lstinlinep{atlang_syn_Lift} method returning an \lstinlinep{atlang} type can provide explicit support for this operation. A few other constructs also have built in support. For the purposes of this section, this includes other typed @\texttt{lang} functions (which synthesize their own type), untyped Python functions and classes (which synthesize types \lstinlinep{pyfun} and \lstinlinep{pyclass}, and thus can only be called with values of type \lstinlinep{dyn}), modules (which are given a \emph{singleton type} -- a type indexed by the module reference itself -- from which other values that can be lifted can be accessed as attributes, see below), and immutable Python data structures like numbers, strings and tuples. %In the future, we plan to detail how the interface between Python and @\texttt{lang} can be enriched to support moving typed values in and out of untyped Python functions safely (by inserting checks, defined again by a type constructor, at the interface between typed and untyped code), but we do not have enough room to adequately detail this mechanism here (and it is tangential to our specific aims).
+\subparagraph{Literal Expressions and Ascriptions}
 \begin{codelisting}[t]
 \begin{lstlisting}
 class record(atlang.Type):
@@ -424,7 +430,7 @@ class record(atlang.Type):
 \end{codelisting}
 Python designates literal forms for dictionaries, tuples, lists, strings, numbers and lambda functions. In @\texttt{lang}, the type constructor delegated control over terms arising from any of these forms is a function of how the typechecker encounters the term.
 
-If the term appears in an analytic position, the type constructor of the type it is being analyzed against is delegated control. We see this on line \ref{account-start} of Listing \ref{example}: the dictionary literal form appears in an analytic context, here because an explicit type ascription, \lstinlinep{[:Account]}, was provided. Note that the ascription again repurposes Python's array slice syntax (the start is, conveniently,  optional). The compiler invokes the \lstinlinep{ana_Dict} method on the type the literal is being analyzed against, which is defined by its type constructor, here \lstinlinep{atlib.record}, shown on line \ref{ana_Dict} of Listing \ref{record}. This method analyzes each field value in the literal against the type of the field, extracted from the type index (an unordered mapping from field names to their types, so that type equality is up to reordering). The various literal forms inside the outermost form thus do not need an ascription because they appear in positions where the type they will be analyzed against is provided by \lstinlinep{record}. For example, the value of the field \lstinlinep{account_num} delegates to \lstinlinep{string_in} via the \lstinlinep{ana_Str} method (not shown).
+If the term appears in an analytic position, the type constructor of the type it is being analyzed against is delegated control. We see this on line \ref{account-start} of Listing \ref{example}: the dictionary literal form appears in an analytic context, here because an explicit type ascription, \lstinlinep{[:Account]}, was provided. Note that the ascription again repurposes Python's array slice syntax (the start is, conveniently,  optional). The compiler invokes the \lstinlinep{ana_Dict} method on the type the literal is being analyzed against, which is defined by its type constructor, here \lstinlinep{atlib.record}, shown on line \ref{ana_Dict} of Listing \ref{record}. This method analyzes each field value in the literal against the type of the field, extracted from the type index (an unordered mapping from field names to their types, so that type equality is up to reordering). The various literal forms inside the outermost form thus do not need an ascription because they appear in positions where the type they will be analyzed against is provided by \lstinlinep{record}. For example, the value of the field \lstinlinep{account_num} delegates to \lstinlinep{string_in} via the \lstinlinep{ana_Str} method, shown in Listing \ref{string_in}.
 
 An ascription directly on a literal can also be an incomplete type. For example, we can write \lstinline[basicstyle=\ttfamily\small]{[x, y] [:matrix[...]]} or more concisely \lstinline[basicstyle=\ttfamily\small]{[x, y] [:matrix]} instead of \lstinline[basicstyle=\ttfamily\small]{[x, y] [:matrix[i32]]} when we know \lstinline[basicstyle=\ttfamily\small]{x} and \lstinline[basicstyle=\ttfamily\small]{y} synthesize the type \lstinline[basicstyle=\ttfamily\small]{i32}, because the type constructor can use this information to synthesize the appropriate index. The decorator \lstinline[basicstyle=\ttfamily\small]{@fn[Transfer, ...]}, discussed previously, can be seen as a partial type ascription on a statement-level function literal.\footnote{In Python 3.0+, syntax for annotating function definitions directly with type-like annotations was introduced, so the entire index can be synthesized.} Lambda expressions support the same ascriptions:
 \vspace{3px}
@@ -442,7 +448,7 @@ Records support partial type ascription as well, e.g.:
 \noindent
 The compiler delegates to the type constructor by a class method in these cases (just as we saw above with \lstinlinep{fn}). In this case, the class method \lstinlinep{syn_idx_Dict}, shown on line \ref{syn_idx_Dict} of Listing \ref{record}, would be called. Because no record index was provided, an index must be synthesized from the literal itself, and thus the values are not analyzed against a type, but must each synthesize a type.
 
-This brings us to the situation where a literal appears in a synthetic position, as the two string literals above do. In such a situation, the compiler delegates responsibility to the type constructor of the function that the literal appears in, asking it to provide a ``default ascription'' by calling the class method \lstinlinep{syn_default_asc_Str}, shown on line \ref{default_asc} of Listing \ref{fn-stmts}. In this case, we simply return \lstinlinep{dyn}, so the type of the expression above has type \lstinline[basicstyle=\ttfamily\small]{record['name': dyn, 'age' : dyn]}. A different function type constructor might make more precise choices. Indeed, a benefit of using Python as our static language is that it is relatively straightforward to provide a type constructor that allows us to provide different defaults, and control choices like the return semantics, as block-scoped ''pragmas'' in the static language using Python's \lstinlinep{with} statement \cite{python} (details omitted), e.g. 
+This brings us to the situation where a literal appears in a synthetic position, as the two string literals above do. In such a situation, the compiler delegates responsibility to the type constructor of the function that the literal appears in, asking it to provide a ``default ascription'' by calling the class method \lstinlinep{syn_default_asc_Str}, shown on line \ref{default_asc} of Listing \ref{fn-stmts}. In this case, we simply return \lstinlinep{dyn}, so the type of the expression above has type \lstinline[basicstyle=\ttfamily\small]{record['name': dyn, 'age' : dyn]}. A different function type constructor might make more precise choices. Indeed, a benefit of using Python as our static language is that it is relatively straightforward to define a type constructor that allows for different defaults using block-scoped ''pragmas'' in the static language via Python's \lstinlinep{with} statement \cite{python} (details omitted), e.g. 
 \begin{codelisting}[h]
 \begin{lstlisting}[numbers=none]
 with fn.default_asc(Num=i64, Str=string, Dict=record):
@@ -464,13 +470,20 @@ with fn.default_asc(Num=i64, Str=string, Dict=record):
 %\paragraph{Compound Expressions} 
 %For expressions other than names and literals, the type synthesized by one or more subexpressions determines the type constructor delegated responsibility for synthesis and analysis.%The sub-expression that determines this is a function of the term constructor. 
 
-\paragraph{Targeted Expressions} Expression forms having exactly one sub-expression, like \lstinlinep{-e} (term constructor \lstinlinep{UnaryOp_USub}) or \lstinlinep{e.attr} (term constructor \lstinlinep{Attribute}), or where there may be multiple sub-expressions but the left-most one is the only one required, like \lstinlinep{e[slices]} (term constructor  \lstinlinep{Subscript}) or \lstinlinep{e(args)} (term constructor \lstinlinep{Call}), are called \emph{targeted expressions}. For these, the compiler first synthesizes a type for the left-most sub-expression, then calls either the \lstinlinep{ana_TermCon} or \lstinlinep{syn_TermCon} methods on that type. For example, we see type synthesis for the field projection operation on records defined starting on line \ref{syn_Attribute} of Listing \ref{record}.% We omit the implementation for concision, but \lstinlinep{fn} defines \lstinlinep{syn_Call} as one would expect, by simply checking each argument against the corresponding argument in the index. 
+\subparagraph{Targeted Expressions} Expression forms having exactly one sub-expression, like \lstinlinep{-e} (term constructor \lstinlinep{UnaryOp_USub}) or \lstinlinep{e.attr} (term constructor \lstinlinep{Attribute}), or where there may be multiple sub-expressions but the left-most one is the only one required, like \lstinlinep{e[slices]} (term constructor  \lstinlinep{Subscript}) or \lstinlinep{e(args)} (term constructor \lstinlinep{Call}), are called \emph{targeted expressions}. For these, the compiler first synthesizes a type for the left-most sub-expression, then calls either the \lstinlinep{ana_TermCon} or \lstinlinep{syn_TermCon} methods on that type. For example, we see type synthesis for the field projection operation on records defined starting on line \ref{syn_Attribute} of Listing \ref{record}.% We omit the implementation for concision, but \lstinlinep{fn} defines \lstinlinep{syn_Call} as one would expect, by simply checking each argument against the corresponding argument in the index. 
 
-\paragraph{Binary Expressions} \begin{codelisting}[t]
+\subparagraph{Binary Expressions} \begin{codelisting}[t]
 \begin{lstlisting}
 class string_in(atlang.Type):
   def __init__(self, idx):
     atlang.Type.__init__(self, self._rlang_of_rx(idx))
+
+  def ana_Str(self, ctx, e):
+    _check_rx(self.idx, e.s)
+
+  @classmethod
+  def syn_idx_Str(cls, ctx, e):
+    return _rx_of_str(e.s) # most specific rx
 
   # treats string as string_in[".*"]
   ^\label{handles_Add_with}^handles_Add_with = set([string]) 
@@ -497,13 +510,13 @@ def check_tycon(tycon):
 \end{codelisting}
 The major remaining expression forms are the binary operations, e.g. \lstinlinep{e + e} or \lstinlinep{e < e}. These are notionally symmetric, so it would not be appropriate to simply give the left-most one precedence. Instead, we begin by attempting to synthesize a type for both subexpressions. If both synthesize a type with the same type constructor, or only one synthesizes a type, that type constructor is delegated responsibility via a class method, e.g. \lstinlinep{syn_BinOp_Add} on line \ref{syn_BinOp_Add} of Listing \ref{string_in}. 
 
-If both synthesize a type but with different type constructors (e.g. we want to concatenate a \lstinlinep{string} and a \lstinlinep{string_in[r]}), then we consult the \emph{handle sets} associated as a class attribute with each type constructor, e.g. \lstinlinep{handles_Add_with} on line \ref{handles_Add_with} of Listing \ref{string_in}. This is a set of other type constructors that the type constructor defining the handle set may potentially support binary operations with. When a type constructor is defined, the language checks that if \lstinlinep{tycon2} appears in \lstinlinep{tycon1}'s handler set, then \lstinlinep{tycon1} does \emph{not} appear in \lstinlinep{tycon2}'s handler set. This is a very simple modular analysis (rather than one that can only be performed at ``link-time''), shown in Listing \ref{check_tycon}, that ensures that the type constructor delegated control over each binary expression is deterministic and  unambiguous without arbitrarily preferring one subexpression position over another. This check is performed  by using a metaclass hook (technically, this can be disabled; we assume that clients are not importing potentially adversarial extensions in this work, though lifting this assumption raises quite interesting questions that we hope will be addressed by future work).
+If both synthesize a type but with different type constructors (e.g. we want to concatenate a \lstinlinep{string} and a \lstinlinep{string_in[r]}), then we consult the \emph{handle sets} associated as a class attribute with each type constructor, e.g. \lstinlinep{handles_Add_with} on line \ref{handles_Add_with} of Listing \ref{string_in}. This is a set of other type constructors that the type constructor defining the handle set may potentially support binary operations with. When a type constructor is defined, the language checks that if \lstinlinep{tycon2} appears in \lstinlinep{tycon1}'s handler set, then \lstinlinep{tycon1} does \emph{not} appear in \lstinlinep{tycon2}'s handler set. This is a very simple modular analysis (rather than one that can only be performed at ``link-time''), shown in Listing \ref{check_tycon}, that ensures that the type constructor delegated control over each binary expression is deterministic and  unambiguous without arbitrarily preferring one subexpression position over another. This check is performed  by using a metaclass hook.% (technically, this can be disabled; we assume that clients are not importing potentially adversarial extensions in this work, though lifting this assumption raises quite interesting questions that we hope will be addressed by future work).
 
 \subsection{Active Translation}\label{s:atr}
 Once typechecking is complete, the compiler enters the translation phase. %The compiler creates an instance of a class inheriting from \lstinlinep{ace.Target} for use during this phase via the \lstinlinep{init_target} method (line \ref{pybase}.54). This object provides methods for code generation and supports features like fresh variable generation, adding imports and so on. It's interface is not constrained by @\texttt{lang} (we will see what @\texttt{lang} requires of a target below) and the mechanics of code generation are orthogonal to the  focus of this paper, so we will discuss it relatively abstractly. The simplest API would be string-based code generation. For the Python target we use here, we generate ASTs. The API is based directly on the \lstinlinep{ast} library, with a few additional conveniences just mentioned.
 This phase follows the same delegation protocol as the typechecking phase. Each \lstinlinep{check_}/\lstinlinep{syn_}/\lstinlinep{ana_TermCon} method has a corresponding \lstinlinep{trans_TermCon} method. These are all now instance methods, because all indices have been fully determined. 
 
-Examples of translation methods for the \lstinlinep{fn} and \lstinlinep{record} type constructors are shown in Listing \ref{trans}. The output of translation on our example is discussed in the next subsection. Translation methods have access to the context and node, as during typechecking, and must return a translation, which for our purposes, is simply another Python syntax tree (in practice, we offer some additional conveniences beyond \lstinlinep{ast}, such as fresh variable generation and lifting of imports and statements inside expressions to appropriate positions, in the module \lstinlinep{astx} distributed with the language). Translation methods can assume that the term is well-typed and the typechecking phase saves the type that was delegated control, along with the type that was assigned, as attributes of each term processed by the compiler. Note that not all terms need to have been processed by the compiler if they were otherwise reinterpreted by a type constructor given control over a parent term (e.g. the field names in a record literal are never treated as expressions, while they would be for a dictionary literal). %This protocol can be seen on lines \ref{context}.39-\ref{context}.47. 
+Examples of translation methods for the \lstinlinep{fn} and \lstinlinep{record} type constructors are shown in Listing \ref{trans}. The output of translation for our example is discussed in the next subsection. Translation methods have access to the context and node, as during typechecking, and must return a translation, which for our purposes, is simply another Python syntax tree (in practice, we offer some additional conveniences beyond \lstinlinep{ast}, such as fresh variable generation and lifting of imports and statements inside expressions to appropriate positions, in the module \lstinlinep{astx} distributed with the language). Translation methods can assume that the term is well-typed and the typechecking phase saves the type that was delegated control, along with the type that was assigned, as attributes of each term processed by the compiler. Note that not all terms need to have been processed by the compiler if they were otherwise reinterpreted by a type constructor given control over a parent term (e.g. the field names in a record literal are never treated as expressions, while they would be for a dictionary literal). %This protocol can be seen on lines \ref{context}.39-\ref{context}.47. 
 \begin{codelisting}[t]
 \begin{lstlisting}
 #class fn(atlang.Type): (cont'd)
@@ -523,7 +536,7 @@ Examples of translation methods for the \lstinlinep{fn} and \lstinlinep{record} 
     
   def trans_Name(self, ctx, e):
     if e.id in ctx.assn_ctx: return astx.copy(e)
-    else: return self._trans_lift(
+    else: return ctx.trans_Lift(
       ctx.static_env[e.id])
     
 #class record(atlang.Type): (cont'd)
@@ -531,7 +544,7 @@ Examples of translation methods for the \lstinlinep{fn} and \lstinlinep{record} 
     if len(self.idx.fields) == 1: 
       return ctx.trans(e.values[0])
     ast_dict = dict(zip(e.keys, e.values))
-    return target.Tuple(ctx.trans(target, ast_dict[f])
+    return ast.Tuple((f, ctx.trans(ast_dict[f]))
       for f, ty in self.idx)
 
   def trans_Attribute(self, ctx, e):
@@ -597,12 +610,12 @@ In our example, there are no type errors, so the file shown in Listing \ref{exam
 \item \lstinlinep{fn} recognized the function name \lstinlinep{__main__} as special, inserting the standard Python code to invoke it if the file is run directly.
 \item Records translated to tuples (the field names were not needed).
 \item Decimals translated to pairs of integers. String conversion is defined in a ``runtime'' package with a ``fresh'' name.
-\item Terms of type \lstinlinep{string_in[r"..."]} translated to strings. Checks could here be performed  statically.% Note that there are situations (e.g. if a string is read in from the console) that would necessitate an initial run-time check, but no further checks in downstream functions.
+\item Terms of type \lstinlinep{string_in[r"..."]} translated to strings. Checks were all performed  statically in this example.% Note that there are situations (e.g. if a string is read in from the console) that would necessitate an initial run-time check, but no further checks in downstream functions.
 \item Prototypic objects translated to pairs consisting of the fore and the prototype. Dispatch to the appropriate record based on the field name was static (line 5).
 \end{enumerate}
 
 
-\paragraph{Type Errors} Listing \ref{oops} shows an example of code containing several type errors. If analagous code were written in Python itself, these could only be found if the code was executed on the first day of the month (and not all of the issues would  immediately be caught as run-time exceptions). In @\texttt{lang}, these can be found without executing the code (i.e. true static typechecking).
+\paragraph{Type Errors} Listing \ref{oops} shows an example of code containing several type errors. If analagous code were written in Python itself, these could only be found if the code was executed on the first day of the month (and not all of the issues would  immediately be caught as run-time exceptions). In @\texttt{lang}, these can be found without executing the code (i.e. we have true static typechecking).
 
 \begin{codelisting}[t]
 \begin{lstlisting}
@@ -640,7 +653,9 @@ atlang.TypeError:
 
 \subsection{Interactive Invocation}\label{interactive} @\texttt{lang} functions over values of type \lstinlinep{dyn} can be invoked directly from Python. Typechecking and translation occurs upon first invocation (subsequent calls are cached; we assume that the static environment is immutable). We see this occurring when we execute the code in Listing \ref{oops} using the Python interpreter in Listing \ref{oops-exec}. 
 
-In future work, we plan to detail how to insert dynamic checks and wrapper objects, defined by active type constructors in a manner similar to how static checks are defined here, so that values that are not of type \lstinlinep{dyn} can be passed in and out of untyped Python code. Because these can be seen as implicit coercions to and from \lstinlinep{dyn}, and we do not aim to introduce this feature in this paper, we omit discussion of this topic. Explicit coercions can be implemented using the mechanisms described above. For example, \lstinlinep{string_in} provides an introductory form that checks a provided \lstinlinep{string}  or \lstinlinep{dyn} value dynamically, raising an exception in the case of failure: \lstinlinep{[raw_input()] : string_in[r"\\d+"]}.
+If a function captures any static values that do not support lifting, then that function can only be used via interactive invocation (there is no way to separate compile-time from run-time without lifting captured values). Such values when captured in an interactively invoked setting by default synthesize type \lstinlinep{dyn}, though they can provide a \lstinline{atlang_syn_Capture} method that synthesizes a more specific type. We will see an example of this and a related use of phaseless capture in our discussion of \lstinlinep{atlib.opencl} below.
+
+%\todo{move to future work section?}In future work, we plan to detail how to insert dynamic checks and wrapper objects, defined by active type constructors in a manner similar to how static checks are defined here, so that values that are not of type \lstinlinep{dyn} can be passed in and out of untyped Python code. Because these can be seen as implicit coercions to and from \lstinlinep{dyn}, and we do not aim to introduce this feature in this paper, we omit discussion of this topic. Explicit coercions can be implemented using the mechanisms described above. For example, \lstinlinep{string_in} provides an introductory form that checks a provided \lstinlinep{string}  or \lstinlinep{dyn} value dynamically, raising an exception in the case of failure: \lstinlinep{[raw_input()] : string_in[r"\\d+"]}.
 
 %.; for example, the unexpected use of \lstinlinep{None}\footnote{The notation \texttt{+T} constructs a \texttt{None}-able option type; see appendix.}). Static type checking allows us to find these errors during compilation. Listing \ref{oops-compilation} shows the result of attempting to compile this code. The compilation script completes (so that functions can refer to each other mutually recursively), then the typed functions in the top-level environment are typechecked. The typechecker raises an exception statically at the first error, and \lstinlinep{acec} prints it to the console as shown.
 
@@ -661,20 +676,13 @@ In future work, we plan to detail how to insert dynamic checks and wrapper objec
 
 
 \section{More Examples}\label{examples}
-In the previous section, we showed examples of several interesting type system fragments implemented as libraries using \verb|atlang|, including functional record types, a prototypic object system and regular string types. A more detailed description of regular string types and their implementation using \verb|atlang| was recently published \cite{sanitation-psp14}. Here, we showcase two more powerful examples that demonstrate the expressive power of system: functional datatypes with nested pattern matching, and a type safe foreign function interface to the complete OpenCL language for many-core programming on devices like GPUs.
+In the previous section, we showed examples of several interesting type system fragments implemented as libraries using \lstinlinep{atlang}, including functional record types, a prototypic object system and regular string types. A more detailed description of regular string types and their implementation using \lstinlinep{atlang} was recently published at a workshop \cite{sanitation-psp14}. Here, we showcase two more powerful examples that demonstrate the expressive power of the system: functional datatypes with nested pattern matching, and a type safe foreign function interface to the complete OpenCL language for many-core programming on devices like GPUs.
 
 \subsection{Functional Datatypes and Nested Pattern Matching}
-A powerful feature of modern functional languages like ML is support for nested pattern matching over datatypes (i.e. recursive labeled disjoint sums) and tuples. For example, tree structures are well-modeled in this way, as we show in Listing \ref{example-casetypes}. Here, \verb|Tree| is a \emph{case type}, which is what we call functional datatypes in \verb|atlib|. The type constructor \verb|Tree| is declared as a named type using the \verb|@ty| annotation. This is a general mechanism in \verb|atlang| for supporting recursive types that behave generatively, i.e. that are identified by a name, rather than a structure. Functional datatypes have the same character. The \verb|@ty| annotation also supports parameterized types. Here, \verb|a| must be another type. The type index is a series of cases with, optionally, corresponding types. Here, a (binary) tree can either be empty (no associated data), a leaf with an associated value of type \verb|a|, or an internal node, which takes a pair of trees as data. We use the \verb|tuple| type constructor to represent pairs.
-
-The function \verb|treesum| on lines 11-17 takes a tree containing \verb|dyn| values and computes the sum of these values. The case operator is defined by the \verb|casetype| type constructor, leveraging a combination of the \verb|Attribute| and the \verb|Subscript|  term constructors (both are targeted operations, see above). The slice syntax is again re-interpretted, here s a series of rules, each of which starts with a pattern, followed by a colon, then a case. Variables in patterns can be bound in the case. Patterns can consist of case names and tuple patterns at arbitrary depth. More generally, we have done initial designs for an extensible pattern language, again delegating to type constructors to determine whether the pattern is valid and which variables it binds, but here we restrict ourselves to these two type constructors.
-
-By combining the functional behavior of the \verb|fn| type constructor, which dispenses with ``return'' statements, and creatively repurposing existing syntax, we are thus able to implement an essentially idiomatic statically-typed functional language, entirely as a library for Python. The constructs we defined can be composed arbitrarily with, e.g. the record types or regular string types in the previous section, without any concern regarding syntactic or semantic conflict, because \verb|casetype| only controls the semantics of the \verb|case| operation on values that are of such a type.
-
-\subsection{A Low-Level Foreign Function Interface to OpenCL} 
 \begin{codelisting}[t]
 \begin{lstlisting}
 from atlang import ty
-from atlib import casetype, tuple, fn
+from atlib import case, casetype, tuple, fn
 
 @ty
 def Tree(a): casetype[
@@ -683,87 +691,198 @@ def Tree(a): casetype[
   "Node": tuple[Tree(a), Tree(a)]
 ]
 
-@fn
+@fn # using Python 3 type annotation syntax
 def treesum(tree : Tree(dyn)) -> dyn:
-  tree.case[
+  case(tree) [
     Empty: 0,
     Leaf(x): x,
     Node((l, r)): treesum(l) + treesum(r)
   ]
+
+@fn
+def __main__():
+  treesum(Tree.Node(Tree.Leaf(5), Tree.Leaf(5)))
 \end{lstlisting}
 \caption{An example of case types and nested pattern matching.}
 \label{example-casetypes}
 \end{codelisting}
+\begin{codelisting}[t]
+\begin{lstlisting}
+def treesum(tree):
+  return (0 if tree[0] == 0 else 
+    tree[1] if tree[0] == 1 else 
+    treesum(tree[1][0]) + treesum(tree[1][1]))
+
+def __main__():
+  treesum((2, ((1, 5), (1, 5))))
+\end{lstlisting}
+\caption{The translation of Listing \ref{example-casetypes}. Case types are implemented as fast tagged values.}
+\label{example-casetypes-out}
+\end{codelisting}
+\begin{codelisting}[t]
+\begin{lstlisting}
+class _case(object):
+  def syn_Lift(self):
+    return caseop[()]
+case = _case()
+
+class caseop(atlang.Type):
+  def syn_Call(self, ctx, e):
+    ctx.syn(e.args[0])
+    if len(e.args) != 0:
+      raise atlang.TypeError("...", e)
+    return caseop_applied[()]
+
+class caseop_applied(atlang.Type):
+  def syn_Subscript(self, ctx, e):
+    scrutinee = e.value.args[0]
+    rules = _rules_from(e.slices)
+    ty = None
+    for rule in rules:
+      bindings = bindings_from_pat(rule, scrutinee.ty)
+      _push_bindings(ctx, bindings)
+      cur_type = ctx.syn(rule.branch)
+      _pop_bindings(ctx, bindings)
+      if ty is not None and cur_type != ty:
+        raise atlang.TypeError("inconsistent", rule)
+      else: ty = cur_type
+    return ty
+
+  def trans_Subscript(self, ctx, e):
+    scrutinee = e.value.args[0]
+    return scrutinee.ty.trans_pats(
+      _rules_from(e.slices))
+
+class casetype(atlang.Type):
+  # ...
+  def type_pat_Call(self, ctx, p):
+    if p.func in self.idx: 
+      return self.idx[p.func]
+
+  def trans_pats(self, ctx, pats):
+    # ... turns sequence of patterns at same level 
+    # into a conditional expr...
+
+class tuple(atlang.Type):
+  # ...
+  def type_pat_Tuple(self, ctx, p):
+    if len(p.elts) == len(self.idx):
+      return self.idx
+    else raise PatError("invalid pat length") 
+\end{lstlisting}
+\caption{The implementation of the case analysis operator uses intermediate type constructors that contain only typing logic but no translation logic. It also defines its own ``second-order'' extensibility mechanism.}
+\label{example-casetypes-impl}
+\end{codelisting}
+A powerful feature of modern functional languages like ML is support for nested pattern matching over datatypes (i.e. recursive labeled sum types), tuples, records and other types. For example, tree structures are well-modeled using recursive labeled sums, as we show in Listing \ref{example-casetypes}. Here, \lstinlinep{Tree} is a \emph{case type}, which is what we call labeled sums in \lstinlinep{atlib}. \lstinlinep{Tree} is declared as a \emph{named type} using the \lstinlinep{@ty} annotation. This is a general mechanism in \lstinlinep{atlang} for supporting recursive types that behave generatively, i.e. that are identified by a name. Functional datatypes in ML and similar languages are also generative in this way. The \lstinlinep{@ty} mechanism also supports parameterized types: here, \lstinlinep{a} stands in for any other type. The type index to \lstinlinep{casetype} is a series of cases with, optionally, associated types. Here, a (binary) tree can either be empty (no associated data), a leaf with an associated value of type \lstinlinep{a}, or an internal node, which takes a pair of trees as data. We use the \lstinlinep{atlib.tuple} type constructor to represent pairs.
+
+The function \lstinlinep{treesum} on lines 11-17 takes a tree containing \lstinlinep{dyn} values and computes the sum of these values by nested pattern matching. The \lstinlinep{__main__} function constructs a tree and calls \lstinlinep{treesum} on it. The result of compiling Listing \ref{example-casetypes} is shown in Listing \ref{example-casetypes-out}. Case types translate to pairs consisting of a numeric tag and data, and case analysis translates to nested conditionals.
+
+Some relevant portions of the implementation of case analysis are shown in Listing \ref{example-casetypes-impl}. The object \lstinlinep{case} is an instance of the class \lstinlinep{_case}, which defines the method \lstinlinep{syn_Lift}. When the imported name \lstinlinep{case} is encountered in Listing \ref{example-casetypes}, this is called, per the discussion earlier on names in the static environment. The result is that \lstinline{case} synthesizes type \lstinlinep{caseop[()]}.
+
+The only purpose of the type constructor \lstinlinep{caseop} is to define the \lstinlinep{syn_Call} method, which ensures that the case operator is applied to a single well-typed scrutinee. The combined term \lstinlinep{case(tree)} then synthesizes type \lstinlinep{caseop_applied[()]}. Notice that neither method is paired with a \lstinlinep{trans_} method -- these types are merely ``bookkeeping'' for the compound case analysis form. Parts of this form are not meaningful by themselves, so translation would fail if, for example, \lstinlinep{case(tree)} was written by itself without cases.
+
+The \lstinlinep{caseop_applied} tycon defines the \lstinlinep{syn_Subscript} method, which actually processes the list of provided rules. First, the type of the scrutinee is asked to process the bindings from the pattern portion of each rule. This involves calling methods of the form \lstinlinep{type_pat_TermCon}, which must return types for all the sub-patterns. For example, the \lstinline{type_pat_Call} method of \lstinline{casetype} makes sure that the case named is defined, and if so returns the associated type, taken from its type index, as the type of the inner pattern. The process repeats recursively, so that a tuple pattern might then be processed by \lstinlinep{type_pat_Tuple}. Any type constructor can participate in this protocol by defining appropriate methods, so it is extensible. Note, however, that this is a ``second-order'' extensibility mechanism -- nothing in \verb|atlang| itself supports pattern matching. Instead, \lstinlinep{case} itself defined this protocol in a library, demonstrating the power of using a flexible general-purpose language for writing extensions.
+
+The translation phase begins at the \lstinlinep{trans_Subscript} method of \lstinlinep{caseop_applied}. This simply hands responsibility for translating the entire set of rules to the type of the scrutinee. This may then hand control to the types of inner patterns (analagous to the typing phase, not shown). 
+
+By combining the functional behavior of the \lstinlinep{fn} type constructor, which dispenses with ``return'' statements, and creatively repurposing existing syntax, we are thus able to implement an essentially idiomatic statically-typed functional language, entirely as a library for Python. The constructs we defined can be composed arbitrarily with, e.g. the record types, object types or regular string types in the previous section, or the typed OpenCL FFI we will describe next, without any concern regarding syntactic or semantic conflicts. This is enabled entirely by taking a type constructor oriented view toward the extensibility problem. 
+
+\subsection{A Low-Level Foreign Function Interface to OpenCL} 
 
 \begin{codelisting}[t]
 \begin{lstlisting}
 import atlib.opencl as opencl
+import numpy
 
-dev = opencl.init_device(0)
-buffer = dev.send(numpy.zeros((80000,)))
-buffer_t = buffer.ty # == opencl.global_ptr[elem_t]
-elem_t = buffer_t.elem_t # == opencl.double
+device = opencl.init_device(0)
+buffer = device.send(numpy.zeros((800000,))
 
-@opencl.fn
-def map(x : buffer_t, f : opencl.fn[elem_t, elem_t]):
-  gid = get_global_id(0)
-  x[gid] = f(x[gid])
+@opencl.template_fn
+def map(b, f):
+  gid = get_global_id(0) # data parallel thread ID
+  b[gid] = f(b[gid])
 
-@opencl.fn
-def mad(x : elem_t, m : elem_t, y : elem_t):
-  return m*x + y
-@opencl.fn
-def my_mad(x : elem_t): return mad(x, 10, 5)
-@opencl.fn
-def my_mad2(x : elem_t): return mad(x, 20, 5)
+@opencl.template_fn
+def shift(x):
+  return x + 5
 
-map(buffer, my_mad)
-map(buffer, my_mad2)
+@opencl.template_fn
+def triple(x):
+  return 3 * x
+
+map(buffer, triple)
+map(buffer, shift)
 \end{lstlisting}
-\caption{An example of a type system for OpenCL.}
+\caption{An example use of our typed FFI to OpenCL, demonstrating both template functions and phaseless capture.}
 \label{example-opencl}
 \end{codelisting}
 
 \begin{codelisting}[t]
-\begin{lstlisting}
+\begin{lstlisting}[style=OpenCL]
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
-double mad(double x, double m, double y) {
-  return m*x + y;
+double shift(double x) {
+  return x + 5.0;
 }
 
-double my_mad(double x) {
-  return mad(x, 10.0, 5.0);
+double triple(double x) {
+  return 3.0 * x;
 }
 
-double my_mad2(double x) {
-  return mad(x, 20.0, 5.0);
+kernel void map__0_(global double* b) {
+  size_t gid = get_global_id(0); 
+  b[gid] = triple(b[gid])
 }
 
-kernel void map__1_(double x) {
+kernel void map__1_(global double* b) {
   size_t gid = get_global_id(0);
-  x[gid] = my_mad(x[gid]);
-}
-
-kernel void map__2_(double x) {
-  size_t gid = get_global_id(0);
-  x[gid] = my_mad2(x[gid]);
+  b[gid] = shift(b[gid])
 }
 \end{lstlisting}
-\caption{The underlying code generated by atlib.opencl.}
+\caption{The underlying code generated by \texttt{atlib.opencl} as a string passed through \texttt{pyopencl}.}
 \label{example-opencl-out}
 \end{codelisting}
+\begin{codelisting}[t]
+\begin{lstlisting}
+class template_fn(atlang.Type):
+  # ...
+  def syn_Call(self, ctx, e):
+    arg_types = [ctx.syn(arg) for arg in e.args]
+    return fn[fn.syn_idx_FunctionDef(ctx, self.idx.fn, 
+      (arg_types, Ellipsis))]
 
-Python is a common language in scientific computing and data analysis domains. The performance of large-scale analyses can often be a bottleneck, so programmers often wish to write and interact with code written in a low-level language. OpenCL is designed precisely for this workflow, exposing a C-based language that can compile to a variety of specialized hardware (e.g. GPUs) via a standard API. The \verb|pyopencl| package exposes this API to Python code and integrates it with the popular \verb|numpy|numeric array package \cite{klockner2011pycuda}. To compile an OpenCL function, however, users must write it as a string. This is neither idiomatic nor safe, because it defers typechecking to invocation-time. 
+  def trans_Call(self, ctx, e):
+    return _wrap_in_pyopencl(
+      e.ty.trans_FunctionDef(ctx, self.idx.fn))
+\end{lstlisting}
+\caption{A portion of the logic of OpenCL template functions, showing how they defer to the logic for standard OpenCL functions at each call site, rather than at the declaration site.}
+\label{example-opencl-templatefn}
+\end{codelisting}
+\begin{codelisting}[t]
+\begin{lstlisting}
+class Buffer(pyopencl.Buffer):
+  # ...
+  def atlang_syn_Capture(self):
+    return global_ptr[
+      _np_dtypes_to_cltypes(self.dtype)]
+\end{lstlisting}
+\caption{The \texttt{opencl.Buffer} class represents OpenCL memory objects in global device memory, inheriting from the \texttt{pyopencl.Buffer} class. These supports phaseless capture at the corresponding global pointer type.}
+\label{example-opencl-buffer}
+\end{codelisting}
 
-In Listing \ref{example-opencl}, we show usage of the \verb|atlib.opencl| package, which implements the entirety of the OpenCL language (which includes essentially the entirety of C99, plus some extensions to work with multiple memory spaces). Although the details are beyond the scope of this paper, we note that the mapping onto Python syntax was straightforward, particularly given the flexibility of analytic numeric literal forms, as described above.
+Python is a common language in scientific computing and data analysis domains. The performance of large-scale analyses can be a bottleneck, so programmers often wish to write and interact with code written in a low-level language. OpenCL is designed precisely for this workflow, exposing a C-based data parallel language that can compile to a variety of specialized hardware (e.g. GPUs) via a standard API, as well as a runtime that allows a program to manage device memory. The \lstinlinep{pyopencl} package exposes these APIs to Python code and integrates them with the popular \lstinlinep{numpy} numeric array package \cite{klockner2011pycuda}. To compile an OpenCL function, however, users must write it as a string. This is neither idiomatic nor safe, because it defers typechecking to invocation-time. OpenCL is also often too low-level, not supporting even features found in other low-level languages like function overloading, function templates and higher-order functions.
 
+In Listing \ref{example-opencl}, we show usage of the \lstinlinep{atlib.opencl} package, which implements the entirety of the OpenCL type system (which includes essentially the entirety of C99, plus some extensions to work with multiple memory spaces). Although the details are beyond the scope of this paper, we note that the mapping onto Python syntax was straightforward, particularly given the flexibility of analytic numeric literal forms, as described above, to support the wide variety of number types in C99-based languages. 
 
-After initializing a device, line 4 sends a \verb|numpy| array to the device, assigning \verb|buffer| its handle. Line 5 extracts its type, which is based on the dynamic element type of the \verb|numpy| array. The type constructor \verb|global_ptr| defines the semantics of OpenCL's pointers to global memory (e.g. subscripting, pointer arithmetic, pointer differencing), consistent with the C99 specification. Because the compilation script is programmatic, we can extract its element type programmatically as well. Here, it is the \verb|opencl.double| type, which supports arithmetic operations, including the full array of widening rules defined by C99 when paired with any of the other numeric OpenCL types (using handle sets, above, to prioritize control to the wider type).
+After initializing a device, line 4 sends a \lstinlinep{numpy} array to the device, assigning \lstinlinep{buffer} its handle, an object inheriting from \lstinlinep{opencl.Buffer}. The type of the \lstinlinep{numpy} array is also extracted and stored in this object.
 
-Lines 8-19 define several OpenCL functions using Python syntax, but retaining OpenCL's semantics. The \verb|map| function takes a buffer argument and a function over its elements and applies the function to each element in the buffer in a data parallel manner. Each thread handles the element corresponding to its thread ID, called a \verb|group ID| in OpenCL and accessed by a primitive on the first line. Note that OpenCL does not itself have support for higher-order functions, however. Instead, higher order functions are essentially an extension to the foreign language being encoded using active type constructors. The OpenCL function decorator treats uses of higher order functions as if each function ever provided to it had a \emph{singleton type}, i.e. a type inhabited only by that particular function. Each call lazily generates code for a specialized variant of that function. The result can be seen in Listing \ref{example-opencl-out}, which shows the OpenCL code generated (as a string sent through \verb|pyopencl|) by this example.
+On lines 7-18, we define three OpenCL template function. Let us consider the first, \lstinlinep{map}, which takes two arguments. A template function is one that does not have specified argument types, generally because many types might be valid, as in this case. The body of \lstinlinep{map} would be valid for any combination of types for \lstinlinep{b} and \lstinlinep{f} that support subscripting and calls as shown. Template functions thus defer typechecking to every invocation site, based on the types synthesized by the provided arguments. This is analagous to template functions in C++, but here we implicitly assume a distinct template parameter for each argument and implicitly instantiate these parameters at use sites. Technically, such functions have a singleton type, indexed by the function definition itself, as shown in Listing \ref{example-opencl-templatefn}. Note that  OpenCL itself doesn't have template functions; we are implementing them, essentially by extending the language across its FFI. 
 
-Though we do not show any other extensions atop the OpenCL library here, it is straightforward to implement variants of those described above that target their translation phase to OpenCL rather than Python. In many cases, the typechecking code can be inherited directly. This is, we argue, rather compelling: a decidedly low-level language like OpenCL can be extended with low-overhead versions of sophisticated features, like a prototypic object system, modularly, via its foreign function interface from a scripting language like Python.
+We see two applications of \lstinlinep{map} on lines 20 and 21. Note that these are in the dynamically typed portion of the code. By default, the first argument in each case, \lstinlinep{buffer}, would synthesize type \lstinlinep{dyn} and typechecking would fail (at line 10, technically, because \lstinlinep{dyn} doesn't support subscripting with the type that \lstinlinep{gid} synthesizes).  But we make use of the support for phaseless capture discussed in Sec. \ref{interactive}, which allows values to define a method, \lstinlinep{atlang_syn_Capture}, that permits capture and, in this case, function application with values that would not otherwise support crossing into \lstinlinep{atlang} functions with argument types other than \lstinlinep{dyn}. In this case, \lstinlinep{Buffer} objects synthesize a corresponding pointer type, represented by the tycon \lstinlinep{opencl.global_ptr} and indexed by the target type of the pointer, here \lstinlinep{opencl.double} because the initial \lstinlinep{numpy} array was an array of \lstinlinep{double}s and there is a mapping from \lstinlinep{numpy} data types to OpenCL types. The implementation is shown in Listing \ref{example-opencl-buffer}. Note that phaseless capture is distinct from lifting -- lifting requires a value persist from compile-time to run-time, but OpenCL buffers are clearly ephemeral. Phaseless capture can only occur when interactive invocation is being used.
+
+Each invocation of \lstinlinep{map} received the same buffer, but a different function. Because these were template functions, their types were distinct. As such, two different versions of map were generated, as shown in Listing \ref{example-opencl-out}. Indeed, without support for function pointers in OpenCL, code generation like this is the standard way of supporting ``higher-order'' functions like \lstinlinep{map}. Rather than having to do this manually, however, our type system handled this internally. 
+
+Though we do not show any other extensions atop the OpenCL library here, it is straightforward to implement variants of those described above that target their translation phase to OpenCL rather than Python. In many cases, the typechecking code can be inherited directly. This is, we argue, rather compelling: a decidedly low-level language like OpenCL can be extended with low-overhead versions of sophisticated features, like a prototypic object system or case types, modularly, via its foreign function interface from a scripting language like Python.
 
 \section{@$\lambda$: Active Type Constructors, Minimally}\label{theory}
 \newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
@@ -895,7 +1014,7 @@ $~~
 
 We now turn our attention to a type theoretic formulation of the key mechanisms described above atop a minimal abstract syntax, shown in Fig. \ref{syntax-clients}. This syntax supports a \emph{purely syntactic desugaring} from a conventional concrete syntax, shown by example in Fig. \ref{atlam-example}. 
 
-\paragraph{Fragment Client Perspective} A program, $\rho$, consists of a series of fragment imports, $\Phi$, defining active type constructors for use in an expression, $e$. Expression forms can be indexed by static terms, $\sigma$. The abstract syntax of $e$ provides $\FF{let}$ binding of variables and for convenience, static values can also be bound to a static variable, $\tvar{x}$ (distinguished in bold for clarity), using $\FF{slet}$. Static terms have a \emph{static dynamics} and evaluate to \emph{static values} or fail.
+\paragraph{Fragment Client Perspective} A program, $\rho$, consists of a series of fragment imports, $\Phi$, defining active type constructors for use in an expression, $e$. Expression forms can be indexed by static terms, $\sigma$. The abstract syntax of $e$ provides $\FF{let}$ binding of variables and for convenience, static values can also be bound to a static variable, $\tvar{x}$ (distinguished in bold for clarity), using $\FF{slet}$. Static terms have a \emph{static dynamics} and evaluate to \emph{static values} or fail. Static terms are analagous to top-level Python code in \verb|atlang|, and external terms are analagous to terms inside typed functions.
 
 \subparagraph{Types and Ascriptions} An expression can be ascribed a {type} or an {incomplete type}, both  {static values} constructed, as in the introduction, by naming an imported type constructor, $\fvar{tycon}$, and providing a type index, another static value. The static language also includes lists and atomic \emph{labels} for use in compound indices. %The remaining static term constructors are of use mainly to fragment providers (see below).
 
@@ -2410,7 +2529,7 @@ Typed Racket and other typed LISPs also add a type system to a fixed syntax atop
 
 Bidirectional type systems are increasingly being used in practical settings, e.g. in Scala and C\#. They are useful in producing good error messages (which our mechanism shows can be customized) and help avoid the need for redundant type annotations while avoiding decidability limitations associated with whole-program type inference. Bidirectional techniques have also been used for adding refinement types to languages like ML and Twelf \cite{Lovas08abidirectional}. Refinement types can add stronger static checking over a fixed type system (analagous to formal verification), but cannot be used to add new operations directly to the language. Our use of a dynamic semantics for the static language relates to the notion of \emph{type-level computation}, being explored in a number of languages (e.g. Haskell) for reasons other than extensibility. %Combining the approaches may be a fruitful avenue for future work. 
 
-Recent work we have done on the Wyvern programming language uses bidirectional typechecking to control aspects of literal syntax in a manner similar to, but somewhat more flexible than, how we treat introductory forms \cite{TSLs}. Wyvern is its own language dialect and does not have an extensible type system, supporting only desugarings like SugarJ \cite{erdweg2011sugarj}. The Wyvern formalism guarantees hygiene, using an approach that is also likely applicable in the setting of this paper.
+In recent work on the Wyvern programming language, we also used bidirectional typechecking to control aspects of literal syntax in a manner similar to, but somewhat more syntactically flexible than, how we treat introductory forms \cite{TSLs}. Wyvern is its own language dialect and does not have an extensible type system, supporting only desugarings like SugarJ \cite{erdweg2011sugarj}. The Wyvern formalism guarantees hygiene, using an approach that is also likely applicable in the setting of this paper.
 %\begin{figure*}[t]
 %\small
 %\vspace{-10pt}
@@ -2456,9 +2575,9 @@ This work aimed to show that one can add static typechecking to a language like 
 
 Although we only touched on the details here, we have conducted a substantial case study using @\texttt{lang}: an implementation of the entirety of the OpenCL type system (a variant of C99), as well as several extensions to it, as a library. Our operations translate to Python's lower-level FFI with OpenCL but guarantee type safety at the interface between languages. A neurobiological circuit simulation framework has been built atop this library (a detailed case study is in preparation). %Based on our examples in this paper and this admittedly anecdotal experience report, we submit that active type constructors deserve broad consideration by the research community as a foundational technique for structuring typed programming languages. We are currently refactoring these projects against the (new) bidirectional semantics described here. The language core of  has already been implemented.
 
-There remain several promising avenues for future work, many of which we mentioned throughout this paper. From a practical perspective, extensible implicit coercions (i.e. subtyping) using a mechanism similar to our ``handle sets'' mechanism for binary expressions would be useful. An extensible mechanism supporting type index polymorphism would also be of substantial utility and theoretical interest. Debuggers and other tools that rely not just on Python's syntax but also its semantics cannot be used directly. We believe that active types can be used to control debugging and other tools, and plan to explore this in the future. We have also not yet evaluated the feasibility of implementing more advanced type systems (e.g. linear, dependent or flow-dependent type systems) and those that require a more ``global'' view (e.g. security-oriented types) using our framework.
+There remain several promising avenues for future work, many of which we mentioned throughout this paper. From a practical perspective, extensible implicit coercions (i.e. subtyping) using a mechanism similar to our ``handle sets'' mechanism for binary expressions would be useful. An extensible mechanism supporting type index polymorphism would also be of substantial utility and theoretical interest. Debuggers and other tools that rely not just on Python's syntax but also its semantics cannot be used directly. We believe that active types can be used to control debugging and other tools, and plan to explore this in the future. We have also not yet evaluated the feasibility of implementing more advanced type systems (e.g. linear, dependent or flow-dependent type systems) and those that require a more ``global'' view (e.g. security-oriented types) using our framework. Type systems that require tracking contextual information are possible using our framework, but the context needs to be initialized on first use of a type that needs it. This is somewhat awkward, so we plan to include a mechanism that allows any imported tycons to initialize the context ahead of typechecking.
 
-From a theoretical perspective, the next step is to introduce a static semantics for the internal language and the static language, so that we can help avoid issues of extension correctness and guarantee extension safety (by borrowing techniques from the typed compilation literature). An even more interesting goal would be to guarantee that extensions are mutually conservative: that one cannot weaken any of the guarantees of the other. We believe that by enforcing strict abstraction barriers between extensions, we can approach this goal. Bootstrapping the @\texttt{lang} compiler would be an interesting direction to explore to enable this.
+From a theoretical perspective, the next step is to introduce a static semantics for the internal language and the static language, so that we can help avoid issues of extension correctness and guarantee extension safety (by borrowing techniques from the typed compilation literature). An even more interesting goal would be to guarantee that extensions are mutually conservative: that one cannot weaken any of the guarantees of the other. We believe that by enforcing strict abstraction barriers between extensions, we can approach this goal (and a manuscript is in preparation). Bootstrapping the @\texttt{lang} compiler would be an interesting direction to explore, to avoid the awkwardness of relying on a loose dynamically typed language to implement static type systems.
 % Different dialects can be difficult to combine manually, as we discussed in the introduction. We have implemented the full OpenCL programming language (a variant of C99) as a library (though the details are left for future work), showing that such languages can instead be written as libraries, rather than as dialects.
 % 
 %\subsection{Compositional Reasoning}\label{safety}
@@ -2502,7 +2621,7 @@ Not all extensions will be useful. Indeed, some language designers worry that of
 %Acknowledgments, if needed.
 
 % We recommend abbrvnat bibliography style.
-
+\newpage
 \bibliographystyle{abbrv}
 
 % The bibliography should be embedded for final submission.
