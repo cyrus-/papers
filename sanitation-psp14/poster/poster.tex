@@ -1,0 +1,508 @@
+\documentclass[final]{beamer}
+\usetheme{ISR}
+\usepackage[orientation=landscape,size=a1,scale=1.4,debug]{beamerposter}
+\usepackage[absolute,overlay]{textpos}
+\setlength{\TPHorizModule}{1cm}
+\setlength{\TPVertModule}{1cm}
+
+\title{Statically Typed String Sanitation Inside a Python}
+\author{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
+\footer{nathanfu@cs.cmu.edu $\cdot$ comar@cs.cmu.edu $\cdot$ jonathan.aldrich@cs.cmu.edu  }
+\date{}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+\usepackage{afterpage}
+\usepackage{listings}
+\usepackage{mathpartir}
+\usepackage{amsmath}
+\usepackage{amssymb} 
+
+% Hack. Something's wrong with PLAS paper when using the ACM Proc docclass
+\let\proof\relax
+\let\endproof\relax
+\usepackage{amsthm}
+
+\usepackage{ stmaryrd }
+\usepackage{verbatimbox}
+\input{../../att-icfp14/macros-atlam}
+\usepackage{alltt}
+\renewcommand{\ttdefault}{txtt}
+\usepackage{color}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{light-gray}{gray}{0.5}
+\usepackage{listings}
+\usepackage{wasysym}
+    \makeatletter
+%\usepackage{enumitem}
+\usepackage{enumerate}
+
+% \btIfInRange{number}{range list}{TRUE}{FALSE}
+%
+% Test if int number <number> is element of a (comma separated) list of ranges
+% (such as: {1,3-5,7,10-12,14}) and processes <TRUE> or <FALSE> respectively
+%
+        \newcount\bt@rangea
+        \newcount\bt@rangeb
+
+        \newcommand\btIfInRange[2]{%
+            \global\let\bt@inrange\@secondoftwo%
+            \edef\bt@rangelist{#2}%
+            \foreach \range in \bt@rangelist {%
+                \afterassignment\bt@getrangeb%
+                \bt@rangea=0\range\relax%
+                \pgfmathtruncatemacro\result{ ( #1 >= \bt@rangea) && (#1 <= \bt@rangeb) }%
+                \ifnum\result=1\relax%
+                    \breakforeach%
+                    \global\let\bt@inrange\@firstoftwo%
+                \fi%
+            }%
+            \bt@inrange%
+        }
+
+        \newcommand\bt@getrangeb{%
+            \@ifnextchar\relax%
+            {\bt@rangeb=\bt@rangea}%
+            {\@getrangeb}%
+        }
+
+        \def\@getrangeb-#1\relax{%
+            \ifx\relax#1\relax%
+                \bt@rangeb=100000%   \maxdimen is too large for pgfmath
+            \else%
+                \bt@rangeb=#1\relax%
+            \fi%
+        }
+
+%
+% \btLstHL{range list}
+%
+        \newcommand{\btLstHL}[1]{%
+            \btIfInRange{\value{lstnumber}}{#1}%
+            {\color{black!10}}%
+            {\def\lst@linebgrd}%
+        }%
+
+%
+% \btInputEmph[listing options]{range list}{file name}
+%
+        \newcommand{\btLstInputEmph}[3][\empty]{%
+            \lstset{%
+                linebackgroundcolor=\btLstHL{#2}%
+                \lstinputlisting{#3}%
+            }% \only
+        }
+
+
+        
+% Patch line number key to call line background macro
+        \lst@Key{numbers}{none}{%
+            \def\lst@PlaceNumber{\lst@linebgrd}%
+            \lstKV@SwitchCases{#1}{%
+                none&\\%
+                left&\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+                right&\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+            }{%
+                \PackageError{Listings}{Numbers #1 unknown}\@ehc%
+            }%
+        }
+
+% New keys
+        \lst@Key{linebackgroundcolor}{}{%
+            \def\lst@linebgrdcolor{#1}%
+        }
+        \lst@Key{linebackgroundsep}{0pt}{%
+            \def\lst@linebgrdsep{#1}%
+        }
+        \lst@Key{linebackgroundwidth}{\linewidth}{%
+            \def\lst@linebgrdwidth{#1}%
+        }
+        \lst@Key{linebackgroundheight}{\ht\strutbox}{%
+            \def\lst@linebgrdheight{#1}%
+        }
+        \lst@Key{linebackgrounddepth}{\dp\strutbox}{%
+            \def\lst@linebgrddepth{#1}%
+        }
+        \lst@Key{linebackgroundcmd}{\color@block}{%
+            \def\lst@linebgrdcmd{#1}%
+        }
+
+% Line Background macro
+        \newcommand{\lst@linebgrd}{%
+            \ifx\lst@linebgrdcolor\empty\else
+                \rlap{%
+                    \lst@basicstyle
+                    \color{-.}% By default use the opposite (`-`) of the current color (`.`) as background
+                    \lst@linebgrdcolor{%
+                        \kern-\dimexpr\lst@linebgrdsep\relax%
+                        \lst@linebgrdcmd{\lst@linebgrdwidth}{\lst@linebgrdheight}{\lst@linebgrddepth}%
+                    }%
+                }%
+            \fi
+        }
+
+ % Heather-added packages for the fancy table
+ \usepackage{longtable}
+ \usepackage{booktabs}
+ \usepackage{pdflscape}
+ \usepackage{colortbl}%
+ \newcommand{\myrowcolour}{\rowcolor[gray]{0.925}}
+ \usepackage{wasysym}
+ 
+    \makeatother
+
+\lstset{
+  language=Python,
+  showstringspaces=false,
+  formfeed=\newpage,
+  tabsize=2,
+  commentstyle=\itshape\color{light-gray},
+  basicstyle=\small,
+  morekeywords={lambda, self, assert, as, cls},
+  numbers=left,
+  numberstyle=\scriptsize\color{light-gray}\textsf,
+  xleftmargin=2em,
+  stringstyle=\color{mauve}
+}
+\lstdefinestyle{Bash}{
+    language={}, 
+    numbers=left,
+    numberstyle=\scriptsize\color{light-gray}\textsf,
+    moredelim=**[is][\color{blue}\bf\ttfamily]{`}{`},
+}
+\lstdefinestyle{OpenCL}{
+	language=C++,
+	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
+}
+
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{codelisting}{tp}{lop}
+\floatname{codelisting}{Listing}
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
+
+
+\usepackage{url}
+
+%\usepackage{todo}
+%\usepackage[subject={Todo},author={Josef}]{pdfcomment}
+%\usepackage{cooltooltips}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\usepackage{placeins}
+
+\usepackage{textpos}
+
+\renewcommand\topfraction{0.85}
+\renewcommand\bottomfraction{0.85}
+\renewcommand\textfraction{0.1}
+\renewcommand\floatpagefraction{0.85}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{bussproofs}    % Gentzen-style deduction trees *with aligned sequents!*
+\usepackage{mathpartir}	% For type-settting type checking rule figures
+\usepackage{syntax}		% For type-setting formal grammars.
+
+
+\usepackage{hyperref}		% For links in citations
+
+\usepackage{float}			% Make figures float if [H] option is passed.
+
+\iffalse
+\usepackage{listings}		% For typesetting code listings
+\usepackage{callout}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{upquote}
+\lstset{upquote=true}
+\fi
+
+\usepackage{textcomp}		% For \textquotesingle as used in introduction
+\usepackage{color}			% for box colors, like in TAPL.
+
+\usepackage{amsmath}		% Begin Carthage default packages
+\usepackage{makeidx}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphics}
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{epsfig}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+\newtheorem{thm}{Theorem}                                                       
+\newtheorem{cor}[thm]{Corollary}                                                
+\newtheorem{lem}[thm]{Lemma}                                                    
+\newtheorem{prop}[thm]{Proposition}                                             
+\newtheorem{ax}[thm]{Axiom}                                                     
+\theoremstyle{definition}                                                       
+\newtheorem{defn}[thm]{Definition}                                              
+\newtheorem{exam}[thm]{Example}                                                 
+\newtheorem{rem}[thm]{Remark} 
+\renewcommand*{\proofname}{Proof Sketch}
+
+%
+% For type setting inference rules with labels.
+%
+\newcommand{\inferlbl}[3]
+			{\inferrule{#3}{#2}{\textsf{\footnotesize{\sc #1}}}}
+\newcommand{\inferline}[3]
+			{\inferrule{#3}{#2} & {\textsf{\footnotesize{\sc #1}}} \\ \\}
+
+\newcommand{\Lagr}{\mathcal{L}}
+\newcommand{\lang}[1]{\Lagr\{#1\}}
+\newcommand{\stru}[2]{ {\tt string\_union}(#1,#2)}
+
+
+\newcommand{\dconvert}[2]{ {\tt dconvert}(#1,#2) }
+\newcommand{\filter}[2]{ {\tt filter}(#1,#2) }
+\newcommand{\ifilter}[2]{ {\tt ifilter}(#1,#2) }
+
+\newcommand{\reduces}{ \Rightarrow }
+\newcommand{\gvd}{\Gamma \vdash }
+\newcommand{\ovd}{\Omega \vdash }
+
+\newcommand{\trep}{{\tt rep}}
+
+\newcommand{\tstrf}[1]{`#1\textrm'} %??
+\newcommand{\strf}[1]{``#1"}
+
+
+\newcommand{\iso}{\cong}
+%%
+%% Source and Target language definitions.
+%%
+\newcommand{\lambdas}{\lambda_{RS}}
+\newcommand{\lambdap}{\lambda_P}
+
+% Source language terms.
+\newcommand{\sisubst}[3]{{\sf rreplace}[#1](#2;#3)} \newcommand{\rreplace}[3]{{\sf rreplace}[#1](#2;#3)} % lots of legacy naming around these parts...
+
+\newcommand{\rssreplace}[3]{\sisubst{#1}{#2}{#2}} % TODO-nrf fix this.
+
+\newcommand{\coerce}[2]{ {\sf rcoerce}[#1](#2)}
+\newcommand{\rcoerce}[2]{{\sf rcoerce}[#1](#2)}
+\newcommand{\sistr}[1]{{\sf rstr}[#1]}   \newcommand{\rstr}[1]{{\sf rstr}[#1]} % Lots of legacy naming around these parts...
+
+%\newcommand{\val}{{\sf val}}
+
+\newcommand{\rcheck}[4]{ {\sf rcheck}[#1](#2;#3;#4) }
+
+
+\newcommand{\strin}[1]{\sistr{#1}}
+\newcommand{\rsconcat}[2]{{\sf rconcat}(#1;#2)} \newcommand{\rconcat}[2]{{\sf rconcat}(#1;#2)} % lots of legact naming around these parts..
+
+% Source language types.
+\newcommand{\stringin}[1]{{\sf stringin}[#1]}
+
+% target language terms.
+\newcommand{\tsubst}[3]{{\sf replace}(#1;#2;#3)} \newcommand{\metareplace}[3]{{\sf replace}(#1;#2;#3)} % TODO-nrf rename the commands. Lots of legacy naming around these parts...
+
+\newcommand{\tcheck}[4]{{\sf check}(#1; #2; #3; #4)}
+\renewcommand{\tstr}[1]{{{\sf str}[#1]}}
+\newcommand{\preplace}[3]{{\sf replace}(#1;#2;#3)}
+\newcommand{\tconcat}[2]{{\sf concat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
+
+\newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
+\newcommand{\rx}[1]{ {\sf rx}[#1] }
+
+% Target language types
+\newcommand{\str}{{\sf string}}
+\newcommand{\regex}{{\sf regex}}
+
+% Meta-theoretic functions
+\newcommand{\lsubst}[3]{{\sf subst}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
+\newcommand{\lreplace}[3]{{\sf lreplace}(#1; #2; #3)}
+
+\newcommand{\sctx}{\Psi} % Context for external typing
+\newcommand{\tctx}{\Theta} % Context for internal typing
+\newcommand{\ereduces}{\Downarrow}
+
+
+\newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf strcase}(#1; #2; #3)}
+
+\newcommand{\lhead}[1]{ {\sf lhd}(#1) }
+\newcommand{\ltail}[1]{ {\sf ltl}(#1) }
+
+
+% Judgements
+\newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
+
+% Relations
+\newcommand{\treduces}{ \Downarrow }
+\newcommand{\sreduces}{ \Downarrow }
+
+%%
+%% Constrain the size of full-page diagrams and rule lists
+%%
+%%\newcommand{\pagewidth}{5in}
+%%\newcommand{\rulelistwidth}{3in}
+
+% Names of type systems presented in paper
+\newcommand{\lcs}{\lambda_{S}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+
+
+
+\begin{document}
+\begin{frame}[fragile]
+
+\begin{textblock}{10}(1,1)
+
+\includegraphics[height=3cm]{images/qr.png}
+\end{textblock}
+
+\begin{textblock}{27}(2,5.5)
+\begin{block}{Problem}
+Web applications must ultimately command systems, such as web browsers and database engines, using strings. 
+Strings derived from improperly sanitized user input are therefore a potential vector for command injection attacks.
+\end{block}
+
+\begin{block}{Milieu}
+To address the largest security threat facing today's web applications:
+\begin{itemize}[label=$-$]
+\item \textbf{Developers} use libraries and frameworks which ultimately
+\textbf{ground out to operations on strings}.
+
+\item \textbf{Researchers} propose information flow and taint analyses, which are 
+are often \textbf{attack-specific}, can become complicated, and do not generalize to arbitrary validation tasks (e.g., ``is this a unix file path?").
+\end{itemize}
+\end{block}
+
+\begin{block}{Approach}
+We introduce \textbf{regular expression types} for classifing strings and
+equip these types with standard operations.
+Our approach makes it possible to specify and verify correctness of conventional implementations of input sanitation procedures.
+
+
+%In this paper, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language. These types come equipped with common operations like concatenation, substitution and coercion, so they 
+
+%\textbf{We propose exploiting the rich set of decidable computations on regular expressions
+%to verify input sanitation algorithms written using a typical programming language's standard string and regular expression libraries.}
+%Our approach is simple:
+%\begin{enumerate}
+%\item Define a static semantics which captures the action of standard library
+%operations on strings.
+%\item Express verification conditions using types.
+
+\end{block}
+
+\begin{block}{References}
+\nocite{fulton2014}
+
+\bibliographystyle{abbrv}
+
+\bibliography{research}
+\end{block}
+
+\end{textblock}
+
+\begin{textblock}{23}(1.7,54.5)
+
+\includegraphics[height=2.7cm,width=27cm]{images/cmuh.png}
+
+\end{textblock}
+
+\begin{textblock}{51}(31,5.5)
+
+
+\begin{block}{Two Illustrative Excerpts}
+\begin{itemize}
+\item String \textbf{concatenation} is typed using regular expression concatenation:
+
+\begin{figure}[t]
+\begin{mathpar}
+\inferrule[S-T-Concat]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
+{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
+
+\inferrule[S-E-Concat]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
+{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
+\end{mathpar}
+\end{figure}
+
+\item \textbf{Substring} operations pattern match on the head of a string. Regular expression derivatives provide a natural approximation ({\sf ltl} is roughly the derivative of {\sf lhd}):
+
+\begin{figure}[t]
+\begin{mathpar}
+
+\inferrule[S-T-Case]
+{ 
+\sctx \vdash e_1 : \stringin{r} \\
+  \sctx \vdash e_2 : \sigma \\
+  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
+}
+{
+  \sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma
+}\\
+
+\inferrule[S-E-Case-$\epsilon$]
+{
+  e_1 \sreduces \strin{\epsilon} \\
+  e_2 \sreduces v_2
+}
+{
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_2
+}
+
+\inferrule[S-E-Case-Concat]
+{
+  e_1 \sreduces \strin{a s} \\
+  [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
+}
+{
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_3
+}
+\end{mathpar}
+\end{figure}
+\item 
+This system ($\lambdas$) also contains \textbf{replacement}, \textbf{checked casts} and \textbf{dynamically checked coercions}.
+See the paper for details\cite{fulton2014}.
+\end{itemize}
+\end{block}
+
+\begin{block}{Implementation Example}
+We are working toward a regular string types library for the extensible programming language Atlang.
+\begin{multicols*}{2}
+\begin{figure}[ht]\begin{lstlisting}
+@fn
+def sanitize(s : stringin[r'.*']):
+  return (s.replace(r'"', '&quot;') 
+           .replace(r'<', '&lt;')
+           .replace(r'>', '&gt;'))
+
+@fn
+def query(s : stringin[r'[^"]*']):
+  return 'SELECT * FROM users WHERE ' +
+         'name="' + s + '"'
+@fn
+def div(s : stringin[r'[^<>]*']):
+  return '<div>Results for '+s+'</div>'
+
+@fn
+def main():
+  input = sanitize(user_input())
+  results = db_execute(query(input))
+  return div(input) + format(results)
+\end{lstlisting}\end{figure}
+\end{multicols*}
+\end{block}
+
+
+
+\end{textblock}
+
+\end{frame}
+\end{document}
