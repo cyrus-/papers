@@ -1,0 +1,1670 @@
+\documentclass{llncs}
+\usepackage{amsmath}
+\usepackage{llncsdoc}
+\usepackage{amssymb} 
+%\usepackage{amsthm}
+\usepackage{ stmaryrd }
+\usepackage{mathpartir}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\newcommand{\copyleft}{\reflectbox{\sffamily\copyright}}
+%\input{macros-atlam}
+\input{macros-catlam}
+%\usepackage{cite}
+%\renewcommand{\citepunct}{,\,} % IEEEtran wants to use ],\,[ for this but that looks dumb...
+
+\usepackage{times}
+\renewcommand{\ttdefault}{txtt}
+\usepackage{alltt}
+\usepackage{listings}
+\lstset{language=ML,
+showstringspaces=false,
+basicstyle=\ttfamily\footnotesize,
+morekeywords={newcase,extends}}
+
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{codelisting}{tp}{lop}
+\floatname{codelisting}{Listing}
+
+\usepackage{url}
+% url.sty was written by Donald Arseneau. It provides better support for
+% handling and breaking URLs. url.sty is already installed on most LaTeX
+% systems. The latest version can be obtained at:
+% http://www.ctan.org/tex-archive/macros/latex/contrib/misc/
+% Read the url.sty source comments for usage information. Basically,
+% \url{my_url_here}.
+
+\usepackage{placeins}
+
+%\lefthyphenmin=4
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\usepackage{todonotes}
+\lefthyphenmin=7
+\sloppy
+
+\setlength{\abovecaptionskip}{5px}
+\setlength{\belowcaptionskip}{5px}
+
+\newcommand{\moutput}{^{\color{gray}+}}
+\newcommand{\rulename}[1]{(#1)}
+\def \TirNameStyle #1{\small\rulename{#1}}
+\renewcommand{\MathparLineskip}{\lineskiplimit=.6\baselineskip\lineskip=.6\baselineskip plus .2\baselineskip}
+
+\begin{document}
+\mainmatter  % start of an individual contribution
+
+% first the title is needed
+\title{Modular Type Constructors}
+\subtitle{Conservatively Composing Typed Language Fragments}
+% a short form should be given in case it is too long for the running head
+\titlerunning{Lecture Notes in Computer Science: Authors' Instructions}
+
+% the name(s) of the author(s) follow(s) next
+%
+% NB: Chinese authors should write their first names(s) in front of
+% their surnames. This ensures that the names appear correctly in
+% the running heads and the author index.
+%
+\author{Cyrus Omar%
+\and Jonathan Aldrich}
+%
+\authorrunning{Lecture Notes in Computer Science: Authors' Instructions}
+% (feature abused for this document to repeat the title also on left hand pages)
+
+% the affiliations are given next; don't give your e-mail address
+% unless you accept that it will be published
+\institute{Carnegie Mellon University, Pittsburgh, PA 15213, USA\\
+\texttt{\{comar,aldrich\}@cs.cmu.edu}
+}
+
+%
+% NB: a more complex sample for affiliations and the mapping to the
+% corresponding authors can be found in the file "llncs.dem"
+% (search for the string "\mainmatter" where a contribution starts).
+% "llncs.dem" accompanies the document class "llncs.cls".
+%
+
+\toctitle{Lecture Notes in Computer Science}
+\tocauthor{Authors' Instructions}
+\maketitle
+
+
+\begin{abstract}
+Researchers commonly describe typed programming languages in fragments or as simple calculi, leaving to language designers the task of composing these to form complete languages.  %comparable to those available for library-based embeddings packaged using a modern module system. 
+Metatheoretic results must be established monolithically for each such language, guided only informally by the results derived for simpler calculi.
+We argue that, as the language design space grows, mechanisms for defining and composing typed language fragments that provide strong modular reasoning principles are needed.%, so that important metatheoretic results need only be established locally and, ultimately, so that language extensions can be treated like libraries. 
+%,  Sometimes this fails because certain language features do not ``play well'' together, but precisely characterizing which is elusive given these practices.
+
+%Recent work has started to address this problem, e.g. by showing how to modularly reason about desugarings atop a fixed type system. Our focus here is on safely composing type system fragments. We organize fragments around type constructors, as is usual practice when describing type systems, and sidestep the difficulties of composing abstract syntax (i.e. the expression problem)  by delegating control over a small, uniform abstract syntax in a type-directed manner to logic associated with a type constructor.
+
+In this paper, we begin from first principles with a minimal calculus, @$\lambda$, specified as a bidirectionally typed translation semantics: external terms are simultaneously typechecked and given a translation to a fixed typed internal language. The external language is made extensible by indexing the typing judgement by a \emph{tycon context}. Each tycon defines the semantics of its associated operators using a fixed static language where types are values. This language is constructed to ensure that several strong semantic guarantees follow from reasoning that can be performed in the ``closed world'' of a fixed tycon context, notably \emph{type safety} and \emph{conservativity}: that the \emph{type invariants} maintained under a minimal tycon context will be conserved under any further extended context. 
+Violations are caught during typechecking by lifting typed compilation techniques into the semantics and enforcing an abstraction barrier around each tycon using type abstraction, so these \emph{modular type constructors} can be reasoned about modularly, i.e. like modules in an ML-like language. 
+%\keywords{extensible languages; typed compilation; type-level computation; type abstraction}
+\end{abstract}
+
+\section{Introduction}
+Typed programming languages are often described in \emph{fragments}, each defining distinct contributions to a language's concrete and abstract syntax, static semantics and dynamic semantics. 
+For example, in his textbook, Harper organizes fragments around type constructors, describing each in a different chapter \cite{pfpl}. Complete languages are then identified by a set of type constructors, e.g. $\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\keyw{1}}\,{\times}\,{+}\}$ is the language that builds in partial function types,  polymorphic types, recursive types, nullary and binary product types and binary sum types (its syntax is shown in Figure \ref{syntax-IL}, discussed further below).
+Another common pattern is for a researcher to describe a new fragment by defining a complete calculus, perhaps including a ``catch-all'' constant and base type to stand for all other terms and types that may be of interest. 
+
+Metatheoretic reasoning techniques for programming languages generally assume that a complete specification of a language is being considered, however. To use these techniques, every \emph{combination} of fragments must be treated as its own monolithic language for which metatheorems must be established anew, guided only informally by results derived for the smaller systems from which they are, notionally, composed.
+
+%In both cases, it is left as an extrinsic concern to ensure that the metatheory developed separately is actually conserved when fragments defined in these ways are composed to form a complete language.
+
+Luckily, fragment composition is not an everyday programming task because fragments like these are ``general purpose'' in that they make it possible to construct \emph{isomorphic embeddings} of many other fragments as ``libraries''. For example, lists need not be built in ``primitively'' because they can be placed in isomorphism with the polymorphic recursive sum of products $\iforall{\alpha}{\imu{t}{\iunit + (\alpha \times t))}}$. Languages providing datatypes al\'a ML  are perhaps most directly oriented around such embeddings. % Leaving the core language simple makes it easier to establish its metatheory and verify that tools, like compilers, are implemented correctly.% They also have encouraging connections to logic. %For example, we do not need to define the type constructor $\fvar{list}$ (indexed by a type) as a fragment (though it is possible to do so) because there is a user-defined datatype constructor, $\texttt{list}$, parameterized by a type, that is isomorphic. If we added the $\fvar{list}$ fragment to the language, it would be entirely redundant semantically: every well-typed term of a type constructed by $\fvar{list}$ corresponds to a well-typed term and a polymorphic recursive sum type such th%Although strings and numbers can be embedded as recursive sum types, it is recognized that this is impractical, so these are also usually included as primitives.
+%Establishing an isomorphic embedding of a desirable fragment in terms of general-purpose fragments is not always possible, nor are such embeddings always practical. 
+
+Although these fragments certainly appear to occupy a ``sweet spot'' in the design space, ``general purpose'' does not mean ``all-purpose'' and situations do continue to arise where using these fragments to establish an isomorphic embedding that preserves a desirable fragment's  static and dynamic semantics (including bounds specified by a cost semantics) is not possible. 
+Embeddings can also sometimes be unsatisfyingly \emph{complex}, as measured by the cost of the extralinguistic computations that are needed to map in and out of the embedding and, if these  must be performed mentally by programmers, considering  cognitive factors. %We will discuss specific examples below.
+%When an embedding is too complex, abstraction providers have a few options, discussed in Sec. \ref{prior-work}. When an embedding is not possible, however, or when these options are  insufficient, 
+%providers are often compelled to introduce these fragments by extending an existing language, thereby forming a new \emph{dialect}. To save effort, they may do so by forking existing artifacts or leverage tools like compiler generators or language frameworks, also reviewed in Sec. \ref{prior-work}. %Indeed, the proliferation of language dialects constructed for this reason might be taken as an evidence that the core language is not as ``general'', when considered comprehensively, as might be hoped. 
+Each time a researcher seeks to address one of these problems by designing a new language construct, a new \emph{dialect} of the language is born. Within the ML lineage, dialects that go  beyond core ML abound:
+%Reynolds, in a remark that recalls the ``Turing tarpit'' of Perlis \cite{Perl82a}, summarizes the issue \cite{Reynolds94anintroduction}: 
+%\begin{quote}
+%To say that any reasonable function can be expressed by some program is not to say that it can be expressed by the most reasonable program. It is clear that the language requires a novel programming style. Moreover, it is likely that certain important functions cannot be expressed by their most efficient algorithms.
+%\end{quote}
+%
+
+\begin{enumerate}
+%\compresslist
+\item 
+\textbf{General Purpose Fragments:} 
+A number of variations on product types, for example, have been introduced in dialects: 
+$n$-ary tuples, 
+labeled tuples, 
+records (identified up to reordering), 
+structurally typed or row polymorphic records \cite{Cardelli:1984:SMI:1096.1098}, 
+records with update and extension operators \cite{ocaml-manual}, 
+mutable fields \cite{ocaml-manual}, 
+%field delegation \cite{atlang-gpce14} \todo{gpce submission} 
+and 
+``methods'' (i.e. pure objects \cite{TSLs}).\footnote{The Haskell wiki notes that ''No, extensible records are not implemented in GHC. The problem is that the record design space is large, and seems to lack local optima. [...] As a result, nothing much happens.'' \cite{GHCFAQ}} 
+ Sum-like types are also exposed in various ways: 
+finite datatypes, 
+open datatypes \cite{conf/ppdp/LohH06}, 
+hierarchically open datatypes \cite{journals/toplas/MillsteinBC04}, 
+polymorphic variants \cite{ocaml-manual} and 
+ML-style exception types. Other generally useful fragments are also built in, e.g. \verb|sprintf| in the OCaml dialect statically distinguishes format strings from strings.
+
+\item
+\textbf{Specialized Fragments:} Fragments that track specialized static invariants to provide stronger correctness guarantees, manage unwieldy lower-level abstractions or control cost are also often introduced in dialects, e.g. for data parallelism  \cite{chakravarty2007data}, distributed programming \cite{Murphy:2007:TDP:1793574.1793585}, reactive programming \cite{mandel2005reactiveml}, authenticated data structures \cite{Miller:2014:ADS:2535838.2535851}, databases \cite{Ohori:2011:MSM:2034773.2034815},  units of measure \cite{conf/cefp/Kennedy09} and string sanitation \cite{sanitation-psp14}.% All of these are implemented as dialects of existing languages, presumably because a strong encoding was not feasible.
+
+\item
+\textbf{Foreign Fragments:} A safe and natural foreign function interface (FFI) can be a valuable feature (particularly given this proliferation of dialects). However, this requires enforcing the type system of the foreign language in the calling language. %Using  a FFI that does not do this can lead to safety issues, even when both languages are separately known to be safe. 
+%Safe FFIs generally require direct extensions to the language. 
+For example, MLj builds in a safe FFI to Java \cite{Benton:1999:IWW:317636.317791}.
+\end{enumerate}
+\vspace{-5px}
+
+
+This \emph{dialect-oriented} state of affairs is unsatisfying for language  designers, fragment providers and programmers alike. Language designers are burdened with needing to understand the complete metatheory of every fragment they add to their language to make sure it is not incompatible with existing fragments, so languages change rarely. This decreases the impact of many potentially useful innovations designed by fragment providers (e.g. many academic researchers) by making them unavailable to programmers. At best, programmers can choose from either a dialect supporting, for example, a principled approach to distributed programming, or one that builds in support for statically reasoning about units of measure. There may not be an available dialect supporting both. Using different dialects separately for different components of a program is untenable: components written in different dialects cannot always interface safely (an FFI, above, is needed). 
+
+These problems do not arise when a fragment can be expressed as an isomorphic embedding (i.e. as a library) because modern \emph{module systems} enforce abstraction barriers that ensure that the isomorphism need only be established in the ``closed world'' of the module. This is useful because it does not impose proof obligations on clients in the ``open world''. For example, a module defining the semantics of sets in ML can hold the representation of sets abstract, ensuring that any invariants maintained by the functions in the module (e.g. uniqueness) will hold even when other modules are in use. %Mechanisms that can help decrease the complexity of an embedding without violating abstraction barriers are thus valuable, and we will lead into our work in Sec. \ref{prior-work} by summarizing them. 
+
+Because embedding of this form are not always possible, as in the examples enumerated above, so mechanisms are needed that make it possible to modularly define new fragments that more directly influence the static and dynamic semantics of a language. Such mechanisms could ultimately be integrated directly into a language, blurring the distinction between fragments and libraries and decreasing the need for new dialects. Importing fragments that introduce new syntax and semantics   would be as safe and easy as importing a new module is today. %In the limit, the community could rely on modularly mechanized metatheory and compiler correctness results.% rather than requiring heroic efforts from individual research groups that consider an entire language at once. %Recent work has shown progress on modularly introducing new concrete syntax, reviewed in Sec. \ref{desugaring}. Our focus is on the problem of introducing new semantics.
+\begin{figure}[t]
+%\small
+\input{syntax-table-IL}
+\caption{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL).}
+\label{syntax-IL}
+%\vspace{-10px}
+\end{figure}
+
+
+\vspace{-10px}
+\subsubsection{Contributions} In this paper, we take substantial steps towards this goal by  constructing a minimal but powerful core calculus, @$\lambda$ (the ``actively typed'' lambda calculus). %Despite its minimality, it can host a variety of practical semantic extensions like those described above, while maintaining strong metatheoretic guarantees and, crucially, providing modular reasoning properties. %a calculus introduced briefly in recent work on \emph{active type constructors}  \cite{atlang-gpce14}\todo{TR? Arxiv?}, reviewed in Sec. \ref{overview}. 
+This calculus is structured in a manner similar to the Harper-Stone semantics for Standard ML \cite{Harper00atype-theoretic}, consisting of an \emph{external language} (EL) governed by a {(bidirectionally) typed translation semantics} targeting a fixed \emph{internal language} (IL). 
+Rather than building in a monolithic set of external type constructors, however, the typechecking judgement is indexed by a \emph{tycon context}. Each tycon defines the semantics of its associated operators via functions written in a \emph{static language} (SL). Types are values in the SL.%, which provides a form of type-level computation. %The authors demonstrate the expressive power of this technique primarily with an implementation and a number of examples of fragments as libraries, and their core calculus .% (unlike systems that treat the type system as a ``bag of rules'', where non-determinism can arise). 
+
+The bulk of the paper, in Sec. \ref{atlam}, introduces @$\lambda$ by building up two examples, one defining labeled product types with a functional update operator,  and the other regular string types, based on a recent ``core calculus'' style specification \cite{sanitation-psp14}.  We then examine the key metatheoretic properties of the calculus in Sec. \ref{metatheory}, beginning with \emph{type safety} and \emph{unicity of typing}, touching on  \emph{decidability of typechecking} and finally considering properties that relate to composition of tycon definitions: \emph{hygiene}, \emph{stability of typing} and a key modularity result, which we refer to as  \emph{conservativity}: any invariants that can be established about all values of a type under \emph{some} tycon context (i.e. in some  ``closed world'') are conserved in any further extended tycon context (i.e. in the ``open world''). Interestingly, the approach we take to guarantee conservativity relies on type abstraction, in this case in the internal language. As a result, we are able to borrow the same results that underly modular reasoning in languages like ML to reason about extensions to the semantics itself. Finally, we describe  related work in Sec. \ref{prior-work}.
+
+\section{@$\lambda$}\label{atlam}
+\begin{figure}[t]
+%\small
+\hspace{-2px}\input{syntax-table-EL}
+\caption{Syntax of the external language (EL). We write $x$ to range over variables and $\opname{op}$ over operator names. The form $\eother{\iota}$ is a technical device (and would have no concrete syntax).}\label{syntax-EL}
+\end{figure}
+
+
+
+We will begin by giving an overview of the basic organization of @$\lambda$ and introduce the main judgements in Section \ref{overview}, discuss how types are constructed and tycons are defined in Section \ref{types}, then describe how the semantics of external terms are controlled by tycons in Section \ref{external-terms}.
+
+\subsection{Overview}\label{overview}
+\vspace{-5px}
+\subsubsection{External Language}
+Programs in @$\lambda$ are written as \emph{external terms}, $e$. The syntax of external terms is shown in Figure \ref{syntax-EL}. %We will describe useful syntactic desugarings atop this syntax as we go on and review recent techniques that permit modularly introducing  desugarings like these in Sec. \ref{desugaring}. Our main focus here is on semantic extensions. 
+The static and dynamic semantics of external terms are specified simultaneously as a \emph{bidirectionally typed translation semantics}. The two central judgements in this paper take the form:  \[\esynX{e}{\st\moutput}{\iota\moutput} ~~~~~\text{and}~~~~~ \eanaX{e}{\st}{\iota\moutput}\]
+\noindent
+
+These are pronounced ``$e$ (synthesizes / analyzes against) type $\sigma$ and has  translation $\iota$ under typing context $\Upsilon$ and tycon context $\Phi$''. Our specifications in this paper are intended to be algorithmic: we indicate ``outputs'' when introducing judgement forms by \emph{mode annotations}, $\moutput$; these are not part of the judgement's syntax. 
+
+Bidirectional typechecking, also sometimes called \emph{local type inference} \cite{Pierce:2000:LTI:345099.345100}, is increasingly being used in modern languages (e.g. Scala) because it eliminates the need for type annotations in many circumstances while remaining decidable in more situations than Hindley-Milner style inference and providing what are widely perceived to be higher quality error messages, due to the locality of reasoning. It will also give us a clean way to reuse a fixed set of  introductory forms, discussed in Sec. \ref{external-terms}.
+
+%We will return to how we control the semantics of the single introductory form in the abstract syntax, $\eintro{\st}{\es}$, on the basis of the type it is being analyzed against, sidestepping issues related to the \emph{expression problem} as a result \todo{cite other paper}\cite{wadler1998expression}. The form $\eother{\iota}$ is a technical device used to quantify over all terms that may arise in a ``future'' tycon context, serving an analagous role to the  ``catchall'' base constants commonly found in minimal calculi, and we will return to its semantics later as well.%We will see how we leverage this bidirectionality when we discuss literal forms below. % The judgement is only well-defined for \emph{valid} tycon contexts, written judgementally as $\vdash \Phi$ and \emph{valid} typing contexts, $\vdash_\Phi \Upsilon$, which we also specify below.
+%  \begin{figure*}[t!]
+% \small
+% \hspace{-5px}\input{example-table}
+% %\\~\\
+% %$\begin{array}{rcl}
+% %e\cdot\conclbl{lbl}(\conclbl{lbl}_1=e_1, \cdots, \conclbl{lbl}_n=e_n)  :=  \etarg{(\conclbl{lbl}; \svar{list}n[\klbl]~\conclbl{lbl}_1~\cdots~\conclbl{lbl}_n)}{e}{e_1; \cdots; e_n}
+% %\end{array}$
+% \caption{An example external term, $e_{ex}$, in concrete syntax (left), desugared to abstract syntax (right), with static terms shown in green in examples (only). The notation ${\small \scolor{\desugar{...}}}$ stands for an embedding of the indicated ${\small \scolor{\conclbl{label}}}$, ${\small \scolor{\concrx{regular expression}}}$, ${\small \scolor{\concstr{string}}}$ or numeral into the SL, with derived kinds  $\klbl$, $\krx$,  $\kstr$ and $\knat$, not shown. The signatures of helper functions, e.g. ${\small \scolor{\svar{nil}}}$ and ${\small \scolor{\svar{list}n}}$, are shown in Figure \ref{helper-sigs}.}
+% \label{example}
+% \end{figure*}
+
+\vspace{-10px}
+\subsubsection{Internal Language} Internal terms, $\iota$, together with internal types, $\tau$, form the \emph{typed internal language}. @$\lambda$ relies on a typed internal language supporting type abstraction (i.e. universal quantification over types). In this paper, we use {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, the syntax for which is shown in Figure \ref{syntax-IL}. This is representative of a  standard intermediate language as might be found for a language like ML. The IL has a fixed semantics, so different choices of IL represent different dialects of @$\lambda$. 
+
+We assume the internal statics are specified in the standard way by judgements for internal type formation {$\iDelta \vdash \tau$}, typing context formation { $\iDelta \vdash \iGamma$} and type assignment {$\iDelta~\iGamma \vdash \iota : \tau\moutput$}. The typing and type formation contexts obey standard structural properties (i.e. weakening, exchange, contraction). Throughout the paper, we will omit leading $\emptyset$ (used as the base case for finite mappings) and $\cdot$ (used as the base case for finite sequences) in examples (e.g. writing $\Gamma_\text{1} := x : \tau$ rather than $\Gamma_\text{1} := \emptyset, x : \tau$). 
+
+The internal dynamics are also a standard structural operational semantics with stepping judgement {\small $\iota \mapsto \iota\moutput$} and value judgement {$\iota~\mathtt{val}$}. The judgement $\iota \mapsto^{*} \iota\moutput$ is the reflexive, transitive closure of the stepping judgement. The semantics of the IL can be found in any standard textbook covering typed lambda calculi (we closely follow \cite{pfpl}), so we assume familiarity and omit the details.
+
+% We also here define a syntax for simultaneous substitutions, of terms for variables, $\gamma$, and of types for polymorphic type variables, $\delta$, and assume standard judgements ensuring that these are valid with respect to a valid context, $\Delta \vdash \gamma : \Gamma$ and $\vdash \delta : \Delta$. We apply these substitutions to terms, types and typing contexts using the syntax $[\gamma]\iota$, $[\delta]\iota$, $[\delta]\tau$ and $[\delta]\Gamma$ (in some prior work, application of a substitution like this is written using a hatted form, e.g. $\hat\gamma(\iota)$; we intend the same semantics but use a notation more consistent with standard substitution, e.g. $[\iota/x]\iota'$). We will omit  leading $\emptyset$ and $\cdot$ in examples; in specifications, the former is used for  metatheoretic finite mappings, the latter for metatheoretic ordered lists.
+
+\vspace{-10px}
+\subsubsection{Static Language}
+\begin{figure}[t]
+\input{syntax-table-SL}
+\caption{Syntax of the static language (SL).}
+\vspace{-10px}
+\label{syntax-SL}
+\end{figure}
+The workhorse of our calculus is the \emph{static language}, which itself forms a typed lambda calculus where 
+%External terms are classified by (external) \emph{types}. 
+\emph{kinds}, $\kappa$, classify \emph{static terms}, $\sigma$.  The syntax of the SL is given in Figure \ref{syntax-SL}. We note that the core of the SL is a total functional programming language based  on several standard fragments: total functions, quantification over kinds, inductive kinds (constrained by a positivity condition to prevent non-termination), and products and sums. These all also closely follow \cite{pfpl}, so we again omit some details. Only three new kinds are introduced: $\kty$, $\kity$ and $\kitm$. We will describe these shortly. We write static term variables and kind variables in bold for clarity.
+
+The kinding judgement takes the form $\sofkX{\st}{\kappa\moutput}$, where $\kDelta$ and $\kGamma$ are analagous to $\iDelta$ and $\iGamma$ and analagous well-formedness judgements $\kDelta \vdash \kappa$ and $\kDelta \vdash \kGamma$ are also defined. The natural number $n$ is used as a technical device in our semantics to prevent certain forms (those indexed by $n$ in the syntax above) from arising except internally in the semantics (they would have no corresponding concrete syntax); $n$ can be assumed $0$ in all user-defined terms. The dynamic semantics of static terms is defined as a structural operational semantics by the stepping judgement $\sstep{\st}{\argEnv}{\st\moutput}$, the value judgement $\sval{\st}{\argEnv}$ and the error judgement $\serr{\st}{\argEnv}$. Here, $\argEnv$ ranges over \emph{argument environments}, which we will also return to later; we omit the subscript $\argEnv$ in cases where $\argEnv = \cdot; \emptyset; \cdot$. We define the judgement $\smanystep{\st}{\argEnv}{\st\moutput}$ as the reflexive, transitive closure of the stepping judgement and the evaluation judgement $\seval{\st}{\argEnv}{\st'}$ iff $\smanystep{\st}{\argEnv}{\st'}$ and $\sval{\st'}{\argEnv}$. %${\st}{\memD}{\memG}{\aCtx}{\st\moutput}{\memD\moutput}{\memG\moutput}$, where $\memD$, $\memG$ and $\aCtx$ are also technical devices that will be described later; they too can be ignored from the perspective of user code. We write $\st \Downarrow \st'$ iff $\snorm{\st}{\emptyset}{\cdot}{{\rightharpoonup}; \emptyset; \emptyset}{\st'}{\emptyset}{\cdot}$. \emph{Static values} are normalized static terms. Normalization can also raise an error (to indicate a type error in an external term, or a problem in a tycon definition, as we will discuss), indicated by the judgement $\serrX{\st}$. We omit error propagation rules.%We will refer to the relevant rules as we proceed. 
+
+\subsection{Types and Tycon Contexts}\label{types}
+
+\begin{figure}[t]
+$\begin{array}{lrcllrcl}
+\textbf{tycons} & c & ::= & \rightharpoonup ~|~ \tc\\
+\textbf{tycon contexts} & \Phi & ::= & \cdot ~|~ \Phi, \tcdef{\tc}{\psi}{\theta}\\
+\textbf{tycon structures} & \theta & ::= & \tcstruct{\st}{\omega} & \textbf{tycon sigs} & \psi & ::= & \tcsig{\kappa}{\chi}\\
+\textbf{opcon structures} & \omega & ::= & \tcstructn{\st} ~|~ \tcstructc{\omega}{op}{\st}~~~~&\textbf{opcon sigs}& \chi & ::= & \introsig{\kappa} ~|~ \opsigS{\theta}{op}{\kappa}\\
+\end{array}$
+\caption{Syntax of type constructors. Metavariable $\tc$ ranges over user-defined tycon names.}
+\label{syntax-TC}
+\end{figure}
+
+External types, or simply \emph{types}, are static values of kind $\kty$. We define the auxiliary relation $\istype{\st}{\Phi}$ for convenience:
+\begin{definition} $\istype{\st}{\Phi}$ iff $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\kty}$ and $\svalNA{\st}$.\end{definition}
+
+There are two introductory forms for  types: $\sty{c}{\st}$, where $c$ is a tycon and $\st$ is the \emph{type index}, and $\sotherty{m}{\tau}$. The syntax for tycons, shown in Fig. \ref{syntax-TC}, specifies that $c$ can either be the built-in tycon governing partial functions, $\rightharpoonup$, or a user-defined tycon name, written in small caps, $\tc$. There are three kinding rules governing these forms:\begin{mathpar}
+\small
+\inferrule[k-parr]{
+    \sofkX{\st}{\kprod{\kty}{\kty}}
+}{
+    \sofkX{\sty{\rightharpoonup}{\st}}{\kty}
+}
+~~~
+\inferrule[k-ty]{
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\theta} \in \Phi\\\\
+    \sofkX{\st}{\ktyidx}
+}{
+    \sofkX{\sty{\tc}{\st}}{\kty}
+}
+~~~
+\inferrule[k-otherty]{
+    \emptyset \vdash \tau
+}{
+    \sofkX{\sotherty{m}{\tau}}{\kty}
+}
+\end{mathpar}
+
+The rule \rulename{k-parr} specifies that the type index of partial function types must be a pair of types. We thus say that $\rightharpoonup$ has \emph{index kind} $\kty \times \kty$. To recover a conventional syntax, we might introduce a desugaring from $\st_1 \rightharpoonup \st_2$ to $\sty{\rightharpoonup}{(\st_1, \st_2)}$. %Here, we will benefit by treating it uniformly.
+
+
+All other tycons must be defined in the \emph{tycon context}, $\Phi$, ostensibly by the users of the language, rather than its designers. Each tycon specifies a \emph{tycon signature}, $\psi$, of the form $\tcsig{\ktyidx}{\chi}$, where $\ktyidx$ is the tycon's index kind (we will return to the opcon signature, $\chi$, in Sec. \ref{external-terms}). The first premise of the rule \rulename{k-ty} extracts the index kind and the second checks the type index against it. 
+
+For example, we will define a type constructor $\tcvar{rstr}$ classifying \emph{regular strings}, which  are known to be in a regular language specified by a regular expression, closely following \cite{sanitation-psp14}. The index kind of $\tcvar{rstr}$ is $\krx$, which we assume is defined as an inductive sum kind in the standard way. We can write its signature, $\psi_\text{rstr}$,  and define a tycon context containing only its definition, $\Phi_\text{rstr}$,  as follows:
+\[\begin{array}{lcl}
+\psi_\text{rstr} & := & \tcsig{\krx}{\chi_\text{rstr}}\\
+\Phi_\text{rstr} & := & \tcdef{\tcvar{rstr}}{\psi_\text{rstr}}{\theta_\text{rstr}}
+\end{array}\]
+We then have that, e.g., $\sofkz{\emptyset}{\emptyset}{\Phi_\text{rstr}}{\stx{title}}{\kty}$ and $\sofkz{\emptyset}{\emptyset}{\Phi_\text{rstr}}{\stx{conf}}{\kty}$, where 
+\[
+\begin{array}{lcl}
+\stx{title} & := & \sty{\tcvar{rstr}}{\concrx{.+}}\\
+\stx{conf}  & := & \sty{\tcvar{rstr}}{\concrx{[A-Z]+ \digit\digit\digit\digit}}
+\end{array}\]
+The type index is here written using standard concrete syntax for regular expressions for concision. In previous work, we have shown how to define type-specific (here, kind-specific) syntax like this composably in libraries \cite{TSLs}. 
+
+The second example we will define is the tycon $\tcvar{lprod}$, which will define a variant of labeled product type (which are like record types, but maintain a row  ordering). The index kind of $\tcvar{lprod}$ is $\klist{\klbl \times \kty}$, assuming lists are defined in the usual way, and $\klbl$ classifies static representations of syntactic labels. We can write the tycon signature of $\tcvar{lprod}$, $\psi_\text{lprod}$,  and the tycon context containing only its definition, $\Phi_\text{lprod}$, as follows:
+\[\begin{array}{lcl}
+\psi_\text{lprod} & := & \tcsig{\klist{\klbl \times \kty}}{\chi_\text{lprod}}\\
+\Phi_\text{lprod}  & := & \tcdef{\tcvar{lprod}}{\psi_\text{lprod}}{\theta_\text{lprod}}
+\end{array}\]
+
+In a tycon context containing both these tycon definitions, $\Phi_\text{rstr}\Phi_\text{lprod}$, we can derive that $\sofkz{\emptyset}{\emptyset}{\Phi_\text{rstr}\Phi_\text{lprod}}{\stx{paper}}{\kty}$ where: \[\small\stx{paper} := \sty{\tcvar{lprod}}{\{\conclbl{title} : \stx{title}, \conclbl{conf} : \stx{conf}\}}\] 
+
+We again use kind-specific syntax, here for $\klbl$ and $\klist{\klbl \times \kty}$,  for concision, and to again demonstrate how standard syntax for types can be recovered composably despite the uniform abstract syntax for types we use in our specification of the language.
+
+The remaining introductory form for types, $\sotherty{m}{\tau}$, is a technical device that will be used to quantify over all types other than those in a given tycon context. As there may be arbitrarily many of these, the term is indexed by a natural number, $m$. It is also indexed by a closed internal type, $\tau$, which serves as its translation, discussed below.
+
+The operational semantics for these forms is straightforward: the type index is recursively evaluated to a value and errors are propagated:
+\begin{mathpar}
+\small
+\inferrule[s-ty-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sty{c}{\st}}{\argEnv}{\sty{c}{\st'}}
+}
+
+\inferrule[s-ty-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sty{c}{\st}}{\argEnv}
+}
+
+\inferrule[s-ty-v]{
+    \sval{\st}{\argEnv}
+}{
+    \sval{\sty{c}{\st}}{\argEnv}
+}
+
+\inferrule[s-otherty-v]{ }{
+    \sval{\sotherty{m}{\tau}}{\argEnv}
+}
+\end{mathpar}
+
+\subsubsection{Type Case Analysis}
+A type $\st$ can be case analyzed against a known tycon $c$ using $\stycase{c}{\st}{\sx}{\st_1}{\st_2}$. If the value of $\st$ is constructed by $c$, its type index is bound to $\sx$ and the branch $\st_1$ is taken. For totality, a default branch, $\st_2$, must also be provided.
+\begin{mathpar}
+\small
+\inferrule[k-tycase-parr]{
+    \sofkX{\st}{\kty}\\\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kty \times \kty}{\Phi}{\st_1}{\kappa}\\\\
+    \sofkX{\st_2}{\kappa}
+}{
+    \sofkX{\stycase{\rightharpoonup}{\st}{\sx}{\st_1}{\st_2}}{\kappa}
+}
+
+\inferrule[k-tycase]{
+    \sofkX{\st}{\kty}\\\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\theta}}{\opdefs} \in \Phi\\\\
+    \sofk{\kDelta}{\kGamma, \sx :: \ktyidx}{\Phi}{\st_1}{\kappa}\\
+    \sofkX{\st_2}{\kappa}
+}{
+    \sofkX{\stycase{\tc}{\st}{\sx}{\st_1}{\st_2}}{\kappa}
+}
+\end{mathpar}
+The operational semantics are straightforward: 
+\begin{mathpar}
+\small
+\inferrule[s-tycase-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\stycase{c}{\st}{\sx}{\st_1}{\st_2}}{\argEnv}{\stycase{c}{\st'}{x}{\st_1}{\st_2}}
+}
+
+\inferrule[s-tycase-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\stycase{c}{\st}{\sx}{\st_1}{\st_2}}{\argEnv}
+}
+\end{mathpar}
+\begin{mathpar}\small
+\inferrule[s-tycase-match]{
+    \sval{\sty{c}{\st}}{\argEnv}
+}{
+    \sstep{\stycase{c}{\sty{c}{\st}}{\sx}{\st_1}{\st_2}}{\argEnv}{[\st/x]\st_1}
+}
+
+\inferrule[s-tycase-fail]{
+    \st \neq \sty{c}{\st'}
+}{
+    \sstep{\stycase{c}{\st}{\sx}{\st_1}{\st_2}}{\argEnv}{\st_2}
+}
+\end{mathpar}
+% \begin{mathpar}\small
+% \inferrule[s-tycase-fail-2]{ }{
+%     \sstep{\stycase{c}{\sotherty{m}{\tau}}{x}{\st_1}{\st_2}}{\argEnv}{\st_2}
+% }
+% \end{mathpar}
+
+Put another way, types can be thought of as arising from a distinguished ``open datatype'' defined by the tycon context. We will see how case analysis can be useful for defining the semantics of operators associated with tycons in Sec. \ref{external-terms}. 
+
+\subsubsection{Tycon Context Formation}
+The tycon context formation judgement, $\vdash \Phi$, requires that tycon names are unique (we assume some extralinguistic mechanism is used for avoiding naming conflicts) and checks that each tycon structure, $\theta$, is valid against its tycon signature, $\psi$. We consider the premises of (tcc-ext) below:
+\begin{mathpar}
+\small
+\inferrule[tcc-emp]{ }{
+    \vdash \cdot
+}
+~~~~
+\inferrule[tcc-ext]{
+    \vdash \Phi\\
+    \tc \notin \text{dom}(\Phi)\\
+    \theta = (\tcstruct{\stx{schema}}{\omega})\\
+    \psi = (\tcsig{\ktyidx}{\chi})\\\\
+    \keq{\emptyset}{\ktyidx}\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}\\
+    \vdash_{\Phi, \tcdef{\tc}{\psi}{\theta}} \omega \sim \psi
+}{
+    \vdash \Phi, \tcdef{\tc}{\psi}{\theta}
+}
+\end{mathpar}
+
+\subsubsection{Type Equivalence} 
+To simplify the handling of type equivalence, type index kinds must be \emph{equality kinds}: those for which semantic equivalence implies syntactic equality of values. We define these by the judgement $\keq{\kDelta}{\kappa}$, appearing as a premise in (tcc-ext). 
+Equality kinds are similar to equality types as found in Standard ML. The main implication of this choice is that type indices cannot contain static functions.
+\begin{mathpar}
+\small
+\inferrule[keq-k]{\kvar \in \kDelta}{\keq{\kDelta}{\kvar}}
+
+\inferrule[keq-ind]{\keq{\kDelta, \kvar}{\kappa}}{
+  \keq{\kDelta}{\kmu{\kvar}{\kappa}}}
+
+\inferrule[keq-unit]{ }{\keq{\kDelta}{\kunit}}
+\\
+\inferrule[keq-prod]{
+  \keq{\kDelta}{\kappa_1}~~~~
+  \keq{\kDelta}{\kappa_2}
+}{
+  \keq{\kDelta}{\kprod{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[keq-sum]{
+  \keq{\kDelta}{\kappa_1}~~~~
+  \keq{\kDelta}{\kappa_2}
+}{
+  \keq{\kDelta}{\ksum{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[keq-ty]{ }{\keq{\kDelta}{\kty}}
+\end{mathpar}
+ %We will discuss strategies for fragments that benefit from more sophisticated equivalences in Section \ref{examples}.\todo{do this}
+
+
+
+\subsubsection{Type Translations}
+Our style of specifying the meaning of external terms directly in terms of a  translation to the IL is similar to the Harper-Stone \emph{typed elaboration semantics} for Standard ML \cite{Harper00atype-theoretic}. There, however, external and internal terms were governed by a common type system. In @$\lambda$, each external type maps onto an internal type, called its \emph{translation}, as specified by the judgement $\vdash_\Phi \st \leadsto \tau$, defined below. This style may thus also be compared to specifications for the first stage of a type-directed compiler, e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD}, here lifted ``one level up'' into the semantics of the language itself.
+
+Each tycon determines the translations of the types it constructs as a function of each type's index by specifying a \emph{translation schema} in the {tycon structure}. For a tycon with index kind $\ktyidx$, the translation schema has kind $\ktyidx \rightarrow \kity$, checked by (tcc-ext). 
+
+The kind $\kity$ has a single introductory form, $\sqity{\qity}$, where $\qity$ is a \emph{translational internal type}. Each form in the syntax for internal types, $\tau$,  corresponds to a form in the syntax of translational internal types, $\qity$. For example, our translation schema for $\tcvar{rstr}$  simply chooses to ignore the type index and represent all regular strings internally as strings, of internal type abbreviated $\keyw{str}$. We abbreviate the corresponding translational internal type $\hat{\keyw{str}}$ and define the translation schema as follows:
+\[
+\begin{array}{lcl}
+\theta_\text{rstr} := \tcstruct{\slam{\krx}{\svar{tyidx}}{\sqity{\hat{\keyw{str}}}}}{\omega_\text{rstr}}
+\end{array}
+\]
+
+The kinding rules for these shared forms simply proceed recursively, e.g.:
+\begin{mathpar}
+\small
+\inferrule[k-ity-lam]{
+    \sofkX{\sqity{\qity_1}}{\kity}\\
+    \sofkX{\sqity{\qity_2}}{\kity}
+}{
+    \sofkX{\sqity{\qity_1 \times \qity_2}}{\kity}
+}
+
+\inferrule[k-ity-alpha]{ }{\sofkX{\sqity{\alpha}}{\kity}}
+\end{mathpar}
+The operational semantics for shared forms are also straightforwardly recursive:
+\begin{mathpar}
+\small
+\inferrule[s-ity-lam-step-1]{
+    \sstep{\sqity{\qity_1}}{\argEnv}{\sqity{\qity_1'}}%\sstep{\sqity{\qity_1}}{\argEnv}{\sstep{\sqity{\qity_1'}}}
+}{
+    \sstep{\sqity{\qity_1\times\qity_2}}{\argEnv}{\sqity{\qity_1' \times \qity_2}}
+}
+
+\inferrule[s-ity-lam-step-2]{
+    \sval{\sqity{\qity_1}}{\argEnv}\\
+    \sstep{\sqity{\qity_2}}{\argEnv}{\sqity{\qity_2'}}%\sstep{\sqity{\qity_1}}{\argEnv}{\sstep{\sqity{\qity_1'}}}
+}{
+    \sstep{\sqity{\qity_1\times\qity_2}}{\argEnv}{\sqity{\qity_1 \times \qity_2'}}
+}
+
+\inferrule[s-ity-lam-err-1]{
+    \serr{\sqity{\qity_1}}{\argEnv}
+}{
+    \serr{\sqity{\qity_1\times\qity_2}}{\argEnv}
+}
+
+\inferrule[s-ity-lam-err-2]{
+    \serr{\sqity{\qity_2}}{\argEnv}
+}{
+    \serr{\sqity{\qity_1\times\qity_2}}{\argEnv}
+}
+
+\inferrule[s-ity-lam-v]{
+    \sval{\sqity{\qity_1}}{\argEnv}\\
+    \sval{\sqity{\qity_2}}{\argEnv}
+}{
+    \sval{\sqity{\qity_1\times\qity_2}}{\argEnv}
+}
+
+\inferrule[s-ity-alpha-v]{ }{
+    \sval{\sqity{\alpha}}{\argEnv}
+}
+\end{mathpar}
+
+The syntax for translational internal types additionally includes an ``unquote'' form,  $\qtuq{\st}$, so that they can be constructed compositionally, as well as a form, $\srep{\st}$, that refers to the translation of type $\st$. For example, our translation schema for $\tcvar{lprod}$ translates labeled product types to nested binary product types computed by folding over the type index and referring to the translations of the types  therein. We assume a standard list recursor, $\small\svar{listfold} :: \kforall{\kalpha_1}{\kforall{\kalpha_2}{\klist{\kalpha_1}\rightarrow\kalpha_2\rightarrow(\kalpha_1\rightarrow\kalpha_2\rightarrow\kalpha_2)\rightarrow\kalpha_2}}$:
+\[\small
+\begin{array}{lcl}
+\theta_\text{lprod} & := & \tcstruct{\slam{\klist{\klbl \times \kty}}{\svar{tyidx}}{\\
+&&\quad\skap{\kity}{\skap{\klbl\times\kty}{\svar{listfold}}}~\svar{tyidx}~\sqity{\iunit}~\\&&
+  \quad\quad (\lambda \svar{h}{:}\klbl \times \kty.\lambda \svar{r}{:}\kity.\keyw{letpair}~(\svar{hlbl},\svar{hty})=\svar{h}~\keyw{in}~\\&&
+  \quad\quad\quad \sqity{\srep{\svar{hty}}\times\qtuq{\svar{r}}}}\\&&}{\omega_\text{rstr}}
+\end{array}\]
+For example, evaluating this translation schema with the index of $\stx{paper}$ produces $\stx{paper/trans} := \sqity{\qity_\text{paper/abstrans}}$ where: $\small\qity_\text{paper/abstrans} := \srep{\stx{title}}\times(\srep{\stx{conf}}\times \iunit)$. We do not include logic to optimize away the trailing unit type for simplicity.%For simplicity, and to make the point that the choice of representation has only tycon-local implications, our translation schema does not optimize away  
+
+The kinding rules for the unquote and translation forms are straightforward:
+\begin{mathpar}
+\inferrule[k-ity-unquote]{
+    \sofkX{\st}{\kity}   
+}{
+    \sofkX{\sqity{\qtuq{\st}}}{\kity}
+}
+
+\inferrule[k-ity-trans]{
+    \sofkX{\st}{\kty}
+}{
+    \sofkX{\sqity{\srep{\st}}}{\kity}
+}
+\end{mathpar}
+The unquote form is eliminated during evaluation:
+\begin{mathpar}
+\small
+\inferrule[s-ity-unquote-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sqity{\qtuq{\st}}}{\argEnv}{\sqity{\qtuq{\st'}}}
+}
+
+\inferrule[s-ity-unquote-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sqity{\qtuq{\st}}}{\argEnv}
+}
+
+\inferrule[s-ity-unquote-elim]{
+    \sval{\sqity{\qity}}{\argEnv}
+}{
+    \sstep{\sqity{\qtuq{\sqity{\qity}}}}{\argEnv}{\sqity{\qity}}
+}
+\end{mathpar}
+References to the translation of a type, however, are retained in values of kind $\kity$:
+\begin{mathpar}
+\small
+\inferrule[s-ity-trans-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sqity{\srep{\st}}}{\argEnv}{\sqity{\srep{\st'}}}
+}
+
+\inferrule[s-ity-trans-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sqity{\srep{\st}}}{\argEnv}
+}
+
+\inferrule[s-ity-trans-val]{
+    \sval{\st}{\argEnv}
+}{
+    \sval{\sqity{\srep{\st}}}{\argEnv}
+}
+\end{mathpar}
+
+This allows us to selectively hold these translations abstract and will be the key to our main results. The selective type abstraction judgement $\tdeabs{\Phi}{\tc}{\qity}{\memD}{\ity\moutput}{\memD\moutput}$ relates a normalized translational internal type $\qity$ to an internal type $\tau$, called an \emph{abstract type translation} because all references to translations of types constructed by a user-defined tycon other than those constructed by a ``delegated tycon'', $\tc$, are replaced by universally quantified type variables, $\alpha$. Each unique type has a unique type variable associated with it, tracked by the \emph{type translation store}, $\memD$, which maps from types, $\st$, to their (concrete) translation, $\tau$, and the type variable, $\alpha$, which appears in its place in the abstract type translation: $\memD ::= \emptyset ~|~ \memD, \st \leftrightarrow \ity/\alpha$.
+
+
+For example, $\small\tdeabs{\Phi_\text{rstr}\Phi_\text{lprod}}{\tcvar{lprod}}{\qity_\text{paper/trans}}{\emptyset}{\tau_\text{paper/abstrans}}{\memD_\text{paper/abstrans}}$
+where: \[\begin{array}{lcl}\small
+\tau_\text{paper/abstrans} & := & \alpha_1 \times (\alpha_2 \times \iunit)\\
+\memD_\text{paper/abstrans} & := & \stx{title} \leftrightarrow \keyw{str}/\alpha_1, \stx{conf} \leftrightarrow \keyw{str}/\alpha_2
+\end{array}\]
+
+
+Each type translation store induces a \emph{type substitution}, $\delta$, and a corresponding internal type formation context, $\Delta$, according to the judgement $\memD \leadsto \delta : \Delta$. Type substitutions are a standard type theoretic construct, $\delta ::= \emptyset ~|~ \delta, \tau/\alpha$. 
+
+For example, $\memD_\text{paper/abstrans} \leadsto \delta_\text{paper/abstrans} : \Delta_\text{paper/abstrans}$ where:
+\[\begin{array}{lcl}
+\delta_\text{paper/abstrans} & := & \keyw{str}/\alpha_1, \keyw{str}/\alpha_2\\
+\Delta_\text{paper/abstrans} & := & \alpha_1, \alpha_2\end{array}\] 
+
+This judgement is defined by the following straightforward rules:
+\begin{mathpar}\small
+\inferrule[tstore-emp]{ }{\emptyset \leadsto \emptyset : \emptyset}
+
+\inferrule[tstore-ext]{\memD \leadsto \delta : \Delta}{(\memD, \st \leftrightarrow \tau/\alpha) \leadsto (\delta, \tau/\alpha) : (\Delta, \alpha)}
+\end{mathpar}
+
+We can apply type substitutions to internal types, terms and typing contexts, written $[\delta]\ity$, $[\delta]\iota$ and $[\delta]\Gamma$, respectively. For example, $[\delta_\text{paper/abstrans}]\tau_\text{paper/abstrans}$ is: \[
+\begin{array}{lcl}
+\tau_\text{paper} := \keyw{str} \times (\keyw{str} \times \iunit)\end{array}\]
+
+This process of selectively holding the translations of all types constructed by any tycon other than the ``delegated tycon'' abstract will be critical for conservativity to hold below. This can be thought of as analagous to the process in ML by which the true identity of an abstract type in a module is held abstract outside the module until after typechecking is complete. Here, the translation of the type is being held abstract, rather than the type itself, and type translations are computed from indices, rather than declared ``literally''. 
+
+The selective type abstraction judgement is defined by recursing generically over sub-terms until terms of the form $\srep{\st}$ are encountered. For example, 
+\begin{mathpar}
+\small
+\inferrule[abs-iparr]{
+    \tdeabs{\Phi}{\tc}{\qity_1}{\memD}{\ity_1}{\memD'}\\
+    \tdeabs{\Phi}{\tc}{\qity_2}{\memD'}{\ity_2}{\memD''}
+}{
+    \tdeabs{\Phi}{\tc}{\qity_1 \times \qity_2}{\memD}{\ity_1 \times \ity_2}{\memD''}
+}
+
+\inferrule[abs-alpha]{ }{
+    \tdeabs{\Phi}{\tc}{\alpha}{\memD}{\alpha}{\memD}
+}
+\end{mathpar}
+
+The translation of partial function types is not held abstract, so that lambdas can be used as the sole binding construct in the language:
+\begin{mathpar}
+\small
+\inferrule[abs-parr]{
+    \tdeabs{\Phi}{\tc}{\srep{\st_1}}{\memD}{\ity_1}{\memD'}\\
+    \tdeabs{\Phi}{\tc}{\srep{\st_2}}{\memD'}{\ity_2}{\memD''}
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\sty{\rightharpoonup}{(\st_1, \st_2)}}}{\memD}{\tau_1 \rightharpoonup \tau_2}{\memD''}
+}
+\end{mathpar}
+
+The translation of user-defined types constructed by the delegated tycon is determined by calling the translation schema and checking that the type translation it generates refers only to type variables generated from $\memD'$.
+\begin{mathpar}
+\small
+\inferrule[abs-tc-local]{
+    \tcdef{\tc}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\\\
+    \sevalNA{\stx{schema}(\sttyidx)}{\sqity{\qity}}\\
+    \tdeabs{\Phi}{\tc}{\qity}{\memD}{\ity}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\tau}{\memD'}
+}
+\end{mathpar}
+
+The translation of a user-defined type constructed by any tycon other than the delegated tycon is added to the store, or retrieved from it if already there (using a store ensures that equal types map to equal abstract type variables, even if their translation is requested multiple times). The translation of $\sotherty{m}{\tau}$ is simply $\tau$. It is always held abstract, because it is designed to behave indistinguishably from a type from the ``future'', as we will discuss.
+\begin{mathpar}
+\small
+\inferrule[abs-tc-foreign-new]{
+    \tc \neq \tc'\\
+    \sty{\tc'}{\sttyidx} \notin \text{dom}(\memD)\\
+    \tcdef{\tc'}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\\\
+    \sevalNA{\stx{schema}~\sttyidx}{\sqity{\qity}}\\
+    \tdeabs{\Phi}{\tc}{\qity}{\memD}{\ity}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau\\
+    (\alpha~\text{fresh})
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\sty{\tc'}{\sttyidx}}}{\memD}{\alpha}{\memD', \sty{\tc'}{\sttyidx} \leftrightarrow \tau/\alpha}
+}
+
+\inferrule[abs-tc-other-new]{
+    \sotherty{m}{\tau} \notin \text{dom}(\memD)\\
+    (\alpha~\text{fresh})
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\sotherty{m}{\tau}}}{\memD}{\alpha}{\memD, \sotherty{m}{\tau}\leftrightarrow\tau/\alpha}
+}
+
+\inferrule[abs-tc-stored]{
+    \st \leftrightarrow \tau/\alpha \in \memD
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\st}}{\memD}{\alpha}{\memD}
+}
+\end{mathpar}
+
+Finally, we can give the rule defining the concrete translation judgement, $\vdash_\Phi \st \leadsto \tau$, mentioned at the beginning of this subsection. We simply determine any selectively abstract translation, then apply the substitution induced by the store:
+\begin{mathpar}
+\inferrule[conc-ty-trans]{
+    \tdeabs{\Phi}{\tc}{\srep{\st}}{\emptyset}{\tau}{\memD}\\
+    \memD \leadsto \delta : \Delta
+}{
+    \vdash_\Phi \st \leadsto [\delta]\tau
+}
+\end{mathpar}
+
+\subsubsection{Typing Contexts}
+The translation judgement for external typing contexts $\vdash_\Phi \Upsilon \leadsto \Gamma$ simply checks that $\Upsilon$ actually maps variables to types, then generates the corresponding internal typing context $\Gamma$. We follow standard practice in assuming implicitly that terms are congruent up to $\alpha$-equivalence so all variables in typing contexts can be assumed unique implicitly. We also have that external typing contexts obey the standard structural congruences: weakening, exchange and contraction.
+\begin{mathpar}\small
+\inferrule[etctx-emp]{ }{\vdash_\Phi \emptyset \leadsto \emptyset}
+
+\inferrule[etctx-ext]{\vdash_\Phi \Upsilon \leadsto \Gamma\\\istype{\st}{\Phi}\\\vdash_\Phi \st \leadsto \tau}{\vdash_\Phi \Upsilon, x \Rightarrow \st \leadsto \Gamma, x : \tau}
+\end{mathpar}
+
+
+\begin{figure*}[t]
+\fbox{$\esynX{e}{\st\moutput}{\iota\moutput}$}
+~\fbox{$\eanaX{e}{\st}{\iota\moutput}$}
+\begin{mathpar}
+\inferrule[subsume]{
+  \esynX{e}{\st}{\iota}
+}{
+  \eanaX{e}{\st}{\iota}
+}
+
+\inferrule[ascribe]{
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\st}{\kty}\\
+  \snormT{\st}{\st'}\\\\
+  \eanaX{e}{\st'}{\iota}
+}{
+  \esynX{\easc{e}{\st}}{\st'}{\iota}
+}
+
+% \inferrule[syn-slet]{
+%   \tccok{\Phi}{\kXi}\\
+%   \sofkz{\emptyset}{\emptyset}{\kXi}{\st}{\kappa}\\\\
+%   \snormT{\st}{\st'}\\
+%   \esynX{[\st'/\sx]e}{\stx{ty}}{\iota}
+% }{
+%   \esynX{\eslet{\st}{\sx}{e}}{\stx{ty}}{\iota}
+% }
+
+% \inferrule[ana-slet]{
+%   \tccok{\Phi}{\kXi}\\
+%   \sofkz{\emptyset}{\emptyset}{\kXi}{\st}{\kappa}\\\\
+%   \snormT{\st}{\st'}\\
+%   \eanaX{[\st'/\sx]e}{\stx{ty}}{\iota}
+% }{
+%   \eanaX{\eslet{\st}{\sx}{e}}{\stx{ty}}{\iota}
+% }
+%
+\inferrule[syn-var]{
+  x \Rightarrow \st \in \Upsilon
+}{
+  \esynX{x}{\st}{x}
+}
+
+% \inferrule[syn-let]{
+%   \esynX{e_1}{\st_1}{\iota_1}\\\sfinalrepX{\st_1}{\tau_1}\\\\
+%   \esyn{\Upsilon, x \Rightarrow \st_1}{\Phi}{e_2}{\st_2}{\iota_2}\\
+% }{
+%   \esynX{\elet{e_1}{x}{e_2}}{\st_2}{\iap{\ilam{\tau_1}{x}{\iota_2}}{\iota_1}}
+% }
+
+% \inferrule[ana-let]{
+%   \esynX{e_1}{\st_1}{\iota_1}\\\sfinalrepX{\st_1}{\tau_1}\\\\
+%   \eana{\Upsilon, x \Rightarrow \st_1}{\Phi}{e_2}{\st_2}{\iota_2}\\
+% }{\eanaX{\elet{e_1}{x}{e_2}}{\st_2}{\iap{\ilam{\tau_1}{x}{\iota_2}}{\iota_1}}}
+%
+% \inferrule[syn-lam]{
+%   \tccok{\Phi}{\kXi}\\
+%   \sofkz{\emptyset}{\emptyset}{\kXi}{\st_1}{\kty}\\
+%   \snormT{\st_1}{\st_1'}\\
+%   \sfinalrepX{\st_1'}{\tau_1}\\\\
+%   \esyn{\Upsilon, x \Rightarrow \st_1'}{\Phi}{e}{\st_2}{\iota}
+% }{
+%   \esynX{\elam{\st_1}{x}{e}}{\sparr{(\st_1',\st_2)}}{\ilam{\tau_1}{x}{\iota}}
+% }
+\inferrule[ana-lam]{
+    \eana{\Upsilon, x \Rightarrow \st_1}{\Phi}{e}{\st_2}{\iota}\\\\
+    \sfinalrepX{\st_1}{\tau_1}
+}{
+    \eanaX{\eanalam{x}{e}}{\sparr{(\st_1, \st_2)}}{\ilam{\tau_1}{x}{\iota}}
+}
+
+\inferrule[syn-ap]{
+  \esynX{e_1}{\sparr{(\st_1, \st_2)}}{\iota_1}\\\\
+  \eanaX{e_2}{\st_2}{\iota_2}
+}{
+  \esynX{\eap{e_1}{e_2}}{\st_2}{\iap{\iota_1}{\iota_2}}
+}
+
+\inferrule[ana-fix]{
+  \eana{\Upsilon, x \Rightarrow \st}{\Phi}{e}{\st}{\iota}\\\\
+  \sfinalrepX{\st}{\tau}
+}{
+  \eanaX{\efix{x}{e}}{\st}{\ifix{\tau}{x}{\iota}}
+}
+
+\inferrule[ana-lit]{
+  \tcdef{\tc}{\tcsig{\ktyidx}{\theta}}{\omega} \in \Phi\\\\
+  \introsig{\klitidx} \in \theta\\
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\stmidx}{\klitidx}\\\\
+  \keyw{ana intro}={\stx{def}} \in \omega\\
+  \keyw{args}(\es)=\stx{args}\\\\
+  \stx{def}~\sttyidx~\stmidx~\stx{args} \Downarrow_{\es;\Upsilon;\Phi} \sqitm{\qitm}\\\\
+  %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+  \qitm ... \delta:\Delta; \gamma:\Gamma; \iota\\
+  \srep{\sty{\tc}{\sttyidx}} ... \delta':\Delta'; \tau\\\\
+  \iDelta\iDelta'~\iGamma \vdash \iota : \tau
+}{
+  \eanaX{\eintro{\stmidx}{\es}}{\sty{\tc}{\sttyidx}}{[{\delta}][\delta'][{\gamma}]\iota}
+}
+
+\inferrule[syn-targ]{
+  \esynX{e_\text{targ}}{\sty{\tc}{\sttyidx}}{\iota_\text{targ}}\\\\
+  \tcdef{\tc}{\tcsig{\ktyidx}{\Omega}}{\omega} \in \Phi\\\\
+  \opsig{\opname{op}}{\ktargidx} \in \Omega\\
+  \tccok{\Phi}{\kXi}\\
+  \sofkz{\emptyset}{\emptyset}{\kXi}{\stmidx}{\ktargidx}\\\\
+  \synop{\opname{op}}{\stx{def}} \in \omega\\
+  \mkargs{e_\text{targ}; \es}{\stx{args}}{\memG_0}{n}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\emptyset}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{targ}}}{\memD_0}{\cdot}\\\\
+  \snorm{\stx{def}~\sttyidx~(\svar{tr}~\ssyn{0})~\stmidx~(\svar{atl}~\stx{args})}{\emptyset}{\memG_0}{{\rightharpoonup},\tc; \Upsilon; \Phi}{(\st, \sqitm{\itm_\text{abs}})}{\memD}{\memG}\\\\
+  \snorm{\srep{\st}}{\memD}{\cdot}{{\rightharpoonup},\tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+  \vdash_\Phi \memD' \leadsto {\delta} : \iDelta\\
+  \memG \leadsto {\gamma} : \iGamma\\
+  \iDelta~\iGamma \vdash \iota_\text{abs} : \tau_\text{abs}
+}{
+  \esynX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{[\delta][\gamma]\iota_\text{abs}}
+}
+
+\inferrule[ana-other]{
+  \sfinalrep{\Phi}{\srep{\Upsilon}}{\Gamma \parallel \memD}\\
+  \memD \leadsto \delta; \Delta\\
+  \Delta~\Gamma \vdash \iota : \tau
+}{
+  \eanaX{\eother{\iota}}{\sotherty{n}{\tau}}{[\delta]\iota}
+}
+\end{mathpar}
+\caption{Typing}
+\label{statics-EL}
+\end{figure*}
+\subsection{Typing and Translation of External Terms}\label{external-terms}
+Having established how types are constructed, and how they determine translations to internal types, we can finally give the typing and translation rules for external terms.
+
+\subsubsection{Variables and Functions}
+Variables and functions behave in the standard manner. We use Plotkin's fixpoint operator to support recursive (i.e. partial) functions (cf. \cite{pfpl}), and define both only in analytic positions for simplicity:
+\begin{mathpar}
+\small
+\inferrule[syn-var]{
+  x \Rightarrow \st \in \Upsilon
+}{
+  \esynX{x}{\st}{x}
+}
+
+% \inferrule[syn-let]{
+%   \esynX{e_1}{\st_1}{\iota_1}\\\sfinalrepX{\st_1}{\tau_1}\\\\
+%   \esyn{\Upsilon, x \Rightarrow \st_1}{\Phi}{e_2}{\st_2}{\iota_2}\\
+% }{
+%   \esynX{\elet{e_1}{x}{e_2}}{\st_2}{\iap{\ilam{\tau_1}{x}{\iota_2}}{\iota_1}}
+% }
+
+% \inferrule[ana-let]{
+%   \esynX{e_1}{\st_1}{\iota_1}\\\sfinalrepX{\st_1}{\tau_1}\\\\
+%   \eana{\Upsilon, x \Rightarrow \st_1}{\Phi}{e_2}{\st_2}{\iota_2}\\
+% }{\eanaX{\elet{e_1}{x}{e_2}}{\st_2}{\iap{\ilam{\tau_1}{x}{\iota_2}}{\iota_1}}}
+%
+% \inferrule[syn-lam]{
+%   \tccok{\Phi}{\kXi}\\
+%   \sofkz{\emptyset}{\emptyset}{\kXi}{\st_1}{\kty}\\
+%   \snormT{\st_1}{\st_1'}\\
+%   \sfinalrepX{\st_1'}{\tau_1}\\\\
+%   \esyn{\Upsilon, x \Rightarrow \st_1'}{\Phi}{e}{\st_2}{\iota}
+% }{
+%   \esynX{\elam{\st_1}{x}{e}}{\sparr{(\st_1',\st_2)}}{\ilam{\tau_1}{x}{\iota}}
+% }
+\inferrule[ana-lam]{
+    \eana{\Upsilon, x \Rightarrow \st_1}{\Phi}{e}{\st_2}{\iota}\\
+    \sfinalrepX{\st_1}{\tau_1}
+}{
+    \eanaX{\eanalam{x}{e}}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{\ilam{\tau_1}{x}{\iota}}
+}
+
+\inferrule[syn-ap]{
+  \esynX{e_1}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{\iota_1}\\\\
+  \eanaX{e_2}{\st_2}{\iota_2}
+}{
+  \esynX{\eap{e_1}{e_2}}{\st_2}{\iap{\iota_1}{\iota_2}}
+}
+
+\inferrule[ana-fix]{
+  \eana{\Upsilon, x \Rightarrow \st}{\Phi}{e}{\st}{\iota}\\\\
+  \sfinalrepX{\st}{\tau}
+}{
+  \eanaX{\efix{x}{e}}{\st}{\ifix{\tau}{x}{\iota}}
+}
+\end{mathpar}
+
+\subsubsection{Subsumption} Because we are defining a bidirectional type system, a subsumption rule is needed to allow synthetic terms to be analyzed against an equivalent type. Per above, equivalent types must be  syntactically identical, so the rule is straightforward:
+\begin{mathpar}\small
+\inferrule[subsume]{
+    \esynX{e}{\st}{\iota}
+}{
+    \eanaX{e}{\st}{\iota}
+}
+\end{mathpar}
+
+\subsubsection{Type Ascriptions}
+To use an analytic term in a synthetic position, the programmer must provide a type ascription, written $e : \st$. The ascription is kind checked and evaluated to a type before being used for analysis:
+\begin{mathpar}\small
+\inferrule[ascribe]{
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\st}{\kty}\\
+  \snormT{\st}{\st'}\\
+  \eanaX{e}{\st'}{\iota}
+}{
+  \esynX{\easc{e}{\st}}{\st'}{\iota}
+}
+\end{mathpar}
+\subsubsection{Generalized Introductory Operations}
+The meaning of the generalized introductory form, $\eintro{\sttmidx}{\es}$, is determined by the tycon of the type it is being analyzed against as a function of the type's index, the \emph{term index}, $\sttmidx$, and the arguments, $\es$.
+
+Note that we can recover a variety of standard introductory forms (and allow their use at more than one type) by a purely syntactic desugaring to this form. The term index captures all static portions of the concrete form and the arguments capture all external sub-terms. Some example desugarings are defined below (using kind-specific syntax for static terms as above and writing $n$ and $\texttt{"s"}$ for static numbers and strings):
+\[\small
+\begin{array}{lll}
+\textbf{Description} ~~~~& \textbf{Concrete Form}~~~~ & \textbf{Desugared Form}\\
+\text{sequences} & (e_1, \ldots, e_n) ~\text{or}~ \texttt{[}e_1, \ldots, e_n\texttt{]} & \eintro{()}{e_1; \ldots; e_n}\\
+\text{labeled sequences} & \{\mathtt{lbl}_1=e_1, \ldots, \mathtt{lbl}_n=e_n\} & \eintro{\texttt{[}\mathtt{lbl}_1, \ldots, \mathtt{lbl}_n\texttt{]}}{e_1; \ldots; e_n}\\
+\text{label application} & \mathtt{lbl}\langle e_1, \ldots, e_n \rangle & \eintro{\mathtt{lbl}}{e_1, \ldots, e_n}\\
+\text{numerals} & n & \eintro{n}{\cdot}\\
+\text{labeled numerals} & n\texttt{lbl} & \eintro{(n, \texttt{lbl})}{\cdot}\\
+\text{strings} & \texttt{"s"} & \eintro{\texttt{"s"}}{\cdot}
+\end{array}
+\]
+
+As an example, we will derive $\small\eana{\Upsilon_\text{example}}{\Phi_\text{rstr}\Phi_\text{lprod}}{e_\text{example}}{\stx{paper}}{\iota_\text{example}}$ where the labeled product type $\stx{paper}$ and regular string type $\stx{title}$ was defined in Sec. \ref{types} and:\[\small\begin{array}{lcl}
+\Upsilon_\text{example} & := & title \Rightarrow \stx{title}\\
+e_\text{example} & := & \{\conclbl{title}=title, \conclbl{conf}=\texttt{"EXMPL 2015"}\}\\
+& \hookrightarrow & \eintro{\texttt{[}\conclbl{title}, \conclbl{conf}\texttt{]}}{title; \eintro{\texttt{"EXMPL 2015"}}{\cdot}}\\
+\iota_\text{example} & := & (title, (\texttt{"EXMPL 2015"}, ()))
+\end{array}
+\]
+
+The rule governing this form is below:
+\begin{mathpar}\small
+\inferrule[ana-intro]{
+  \tcdef{\tc}{\tcsig{\_}{\chi}}{\tcstruct{\_}{\omega}} \in \Phi\\\\
+  \introsig{\klitidx} \in \chi\\
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\stmidx}{\klitidx}\\\\
+  \keyw{ana~intro}={\stx{def}} \in \omega\\
+  \keyw{args}(\es)=\stx{args}\\
+  \stx{def}~\sttyidx~\stmidx~\stx{args} \Downarrow_{\es;\Upsilon;\Phi} \sqitm{\qitm}\\\\
+  %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+  \edeabs{\tc}{{\es;\Upsilon;\Phi}}{\qitm}{\emptyset}{\emptyset}{\iota}{\memD}{\memG}\\
+  \tdeabs{\Phi}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\ity}{\memD'}\\\\
+  \memD' \leadsto \delta : \Delta\\
+  \memG \leadsto \gamma : \Gamma\\
+  \Delta~\Gamma \vdash \iota : \tau
+}{
+  \eanaX{\eintro{\stmidx}{\es}}{\sty{\tc}{\sttyidx}}{[{\delta}][{\gamma}]\iota}
+}
+\end{mathpar}
+
+The first premise of (ana-intro) extracts the tycon definition for the tycon of the type the literal is being analyzed against, which is the {delegated tycon}, from $\Phi$. In this example, the delegated tycon is $\tcvar{lprod}$. 
+
+The second premise extracts the \emph{intro index kind}, $\klitidx$, from the \emph{opcon signature}, $\chi$, of the delegated tycon's tycon signature. The third premise checks the provided term index against this kind. For example, $\tcvar{lprod}$ specifies $\klist{\klbl}$, so that it can use the labeled sequence form, while $\tcvar{rstr}$ specifies an intro index kind of $\keyw{Str}$, so that it can use the string literal form above:\[\small\begin{array}{lcl}
+\chi_\text{lprod} & := & \introsig{\klist{\klbl}}, \chi_\text{lprod/targops}\\
+\chi_\text{rstr} & := & \introsig{\keyw{Str}}, \chi_\text{rstr/targops}
+\end{array}
+\]
+
+
+
+The fourth premise extracts the \emph{intro opcon definition} from the \emph{opcon structure}, $\omega$, of the delegated tycon's tycon structure, calling it $\stx{def}$. This is the static function that is invoked to determine the translation of the term, returning a \emph{translational internal term} of kind $\kitm$ given the type index $\sttyidx$ of kind $\ktyidx$, the term index $\sttmidx$, of kind $\klitidx$, and an \emph{argument interface list}, $\stx{args}$, of kind $\kargs$, derived from $\es$ by the judgement $\keyw{args}(\es)=_n \st$, appearing as the fifth premise and described below. 
+
+For example, the intro opcon definition for $\tcvar{rstr}$ is shown below:
+\[\begin{array}{lcl}
+\omega_\text{rstr} & := & \tcstructn{(
+    \slam{\krx}{\svar{tyidx}}{\slam{\kstr}{\svar{tmidx}}{\slam{\kargs}{\svar{args}}{\\
+&&\quad \keyw{let}~\svar{aok} :: \kunit = \svar{arity0}~\svar{args}~\keyw{in}~\\
+&&\quad \keyw{let}~\svar{rok} :: \kunit = \svar{rmatch}~\svar{tyidx}~\svar{tmidx}~\keyw{in}~\\
+&&\quad \sqitm{(\quq{\svar{str\_of\_Str}~\svar{tmidx}}, \quq{\svar{nat\_of\_Nat}~(\svar{len}~\svar{tmidx})})}
+}}}
+}),\\&&\omega_\text{rstr/targops}
+\end{array}\]
+
+The  judgement, $\vdash_\Phi \omega \sim \psi$, which appeared as the final premise of the rule (tcc-ext) above,  checks that such an intro opcon definition is well-kinded:
+\begin{mathpar}\small
+\inferrule[ocstruct-intro]{
+    \introsig{\klitidx} \in \chi\\
+    \emptyset \vdash \klitidx\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow \kitm}
+}{
+    \vdash_\Phi \tcstructn{\stx{def}} \sim \tcsig{\ktyidx}{\chi}
+}
+\end{mathpar}
+
+
+This example intro opcon definition begins by making sure that no arguments were passed in, using the helper function $\svar{arity0} :: \kargs \rightarrow \kunit$ defined such that any non-empty input will raise an error, via the static term $\sraise{\kunit}$. The kinding rules and operational semantics of this exception-like form are standard:
+\begin{mathpar}\small
+\inferrule[k-raise]{\kDelta \vdash \kappa}{\sofkX{\sraise{\kappa}}{\kappa}}
+
+\inferrule[s-raise]{ }{\serr{\sraise{\kappa}}{\argEnv}}
+\end{mathpar}
+
+In practice, the tycon provider would specify an error message, but here we are satisfied simply signaling an error in this way.
+
+Next, this intro opcon definition checks the string provided as the term index against the regular expression given as the type index using $\svar{rmatch} :: \krx \rightarrow \keyw{Str} \rightarrow \kunit$, which we assume is defined in the usual way and again raises an error on failure.
+
+Finally, a \emph{translational internal term} corresponding to the term index is generated using the helper functions $\svar{str\_of\_Str} :: \keyw{Str} \rightarrow \kitm$ and $\svar{nat\_of\_Nat} :: \keyw{Nat} \rightarrow \kitm$ to generate  translational internal terms corresponding to the provided static terms and $\svar{len} :: \keyw{Str} \rightarrow \keyw{Nat}$ to statically compute the length of the string. 
+
+The only introductory form for kind $\kitm$ is $\sqitm{\qitm}$, where $\qitm$ is a translational internal term. This form is analagous to the introductory form for kind $\kity$ described previously, $\sqity{\qity}$, where $\qity$ is a translational internal type. Each form in the syntax of $\iota$ has a corresponding form in the syntax for $\qitm$ and the kinding rules simply recurse through these generically, i.e. as shown for variables and lambda functions below:
+\begin{mathpar}\small
+\inferrule[k-itm-var]{ }{
+    \sofkX{\sqitm{x}}{\kitm}
+}
+
+\inferrule[k-itm-lam]{
+    \sofkX{\sqity{\qity}}{\kity}\\
+    \sofkX{\sqitm{\qitm}}{\kitm}
+}{
+    \sofkX{\sqitm{\ilam{\qity}{x}{\qitm}}}{\kitm}
+}
+\end{mathpar} 
+The operational semantics for these shared forms are similarly recursive:
+\begin{mathpar}\small
+\inferrule[s-itm-var-v]{ }{
+    \sval{\sqitm{x}}{\argEnv}
+}
+
+\inferrule[s-itm-lam-step-1]{
+    \sstep{\sqity{\qity}}{\argEnv}{\sqity{\qity'}}
+}{
+    \sstep{\sqitm{\ilam{\qity}{x}{\qitm}}}{\argEnv}{\sqitm{\ilam{\qity'}{x}{\qitm}}}
+}
+
+\inferrule[s-itm-lam-step-2]{
+    \sval{\sqity{\qity}}{\argEnv}\\
+    \sstep{\sqitm{\qitm}}{\argEnv}{\sqitm{\qitm'}}
+}{
+    \sstep{\sqitm{\ilam{\qity}{x}{\qitm}}}{\argEnv}{\sqitm{\ilam{\qity}{x}{\qitm'}}}
+}
+\end{mathpar}
+\begin{mathpar}\small
+\inferrule[s-itm-lam-err-1]{
+    \serr{\sqity{\qity}}{\argEnv}
+}{
+    \serr{\sqitm{\ilam{\qity}{x}{\qitm}}}{\argEnv}
+}
+
+\inferrule[s-itm-lam-err-2]{
+    \serr{\sqitm{\qitm}}{\argEnv}
+}{
+    \serr{\sqitm{\ilam{\qity}{x}{\qitm}}}{\argEnv}
+}
+
+\inferrule[s-itm-lam-v]{
+    \sval{\sqity{\qity}}{\argEnv}\\
+    \sval{\sqitm{\qitm}}{\argEnv}
+}{
+    \sval{\sqitm{\ilam{\qity}{x}{\qitm}}}{\argEnv}
+}
+\end{mathpar}
+Like translational internal types, there is also an unquote form, $\quq{\st}$, that permits translational internal terms to be constructed compositionally:
+\begin{mathpar}\small
+\inferrule[k-itm-unquote]{
+    \sofkX{\st}{\kitm}
+}{
+    \sofkX{\sqitm{\quq{\st}}}{\kitm}
+}
+\end{mathpar}
+These unquote forms are eliminated in the course of evaluation:
+\begin{mathpar}\small
+\inferrule[s-itm-unquote-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sqitm{\quq{\st}}}{\argEnv}{\sqitm{\quq{\st'}}}
+}
+
+\inferrule[s-itm-unquote-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sqitm{\quq{\st}}}{\argEnv}
+}
+
+\inferrule[s-itm-unquote-elim]{
+    \sval{\sqitm{\qitm}}{\argEnv}
+}{
+    \sstep{\sqitm{\quq{\sqitm{\qitm}}}}{\argEnv}{\sqitm{\qitm}}
+}
+\end{mathpar}
+
+The final two forms of translational internal term are $\anatrans{n}{\st}$ and $\syntrans{n}$. These represent the translation of argument $n$, the first if it arises via analysis against type $\st$ and the second if it arises by synthesis. They are not intended to be written directly by tycon providers, arising only internally in the semantics of argument interface lists. Before giving the rules, let us motivate the mechanism by showing the intro opcon definition for $\tcvar{lprod}$:
+\[
+\begin{array}{lcl}
+\omega_\text{lprod} & := & \tcstructn{\lambda\svar{tyidx}{:}\klist{\klbl\times\kty}.\lambda\svar{tmidx}{:}\klist{\klbl}.\lambda\svar{args}{:}\kargs.\\
+&&\quad \keyw{let}~\svar{inhabited}:\kunit=\svar{uniqmap}~\svar{tyidx}\\
+&&\quad \skap{\kitm}{\skap{\karg}{\skap{\klbl}{\skap{\klbl\times\kty}{\svar{listrec3}}}}}}~\svar{tyidx}~\svar{tmidx}~\svar{args}~\sqitm{\itriv}\\
+&&\quad\quad \lambda \svar{rowtyidx}{:}\klbl\times\kty.\lambda \svar{rowtmidx}{:}\klbl.\lambda\svar{rowarg}{:}\karg.\lambda \svar{r}{:}\kitm.\\
+&&\quad\quad\quad \keyw{letpair}~(\svar{rowlbl}, \svar{rowty})=\svar{rowtyidx}\\
+&&\quad\quad\quad \keyw{let}~\svar{lok}::\kunit=\svar{lbleq}~\svar{rowlbl} ~\svar{rowtmidx}\\
+&&\quad\quad\quad \keyw{let}~\svar{rowtr} :: \kitm = \svar{ana}~\svar{rowarg}~\svar{rowty}\\
+&&\quad\quad\quad \sqitm{(\quq{\svar{rowtr}}, \quq{\svar{r}})
+},\\
+&&\omega_\text{lprod/targops}
+\end{array}
+\]
+
+
+The first line of the intro opcon definition for $\tcvar{lprod}$ checks that the type index is well-formed, in this case by checking that there are no duplicate labels via the helper function $\svar{uniqmap} :: \klist{\klbl \times \kty}\rightarrow \kunit$, raising an error if there are. An alternative strategy may have been to use an abstract kind that ensured that such type indices could not have been constructed, but to be compatible with our equality kind restriction, this would require support for abstract equality kinds, analagous to abstract equality types in SML. We chose not to formalize these for simplicity, and to demonstrate this more general technique: types with indices that are to be considered ``malformed'' can simply be left uninhabited. An analagous technique could be used to implement record types, leaving indices where the labels did not appear sorted uninhabited. In both cases, we could provide a static helper function of kind $\klist{\klbl\times\kty}\rightarrow \kty$ that checked well-formedness immediately before constructing the requested type.
+
+The rest of this intro opcon definition folds over the three lists provided as input: the list mapping labels to types provided as the type index, the list of labels provided as the term index, and the list of argument interfaces. We assume a straightforward helper function, $\svar{listfold3}$, that raises an error if the three lists are not of the same length. 
+
+The base case is the translational empty product. The recursive case first checks that the label provided in the term index matches the label provided in the type index, using a helper function $\svar{lbleq} :: \klbl \rightarrow \klbl \rightarrow \kunit$. Then, we request type analysis of the corresponding argument, $\svar{rowarg}$,  against the type in the type index, $\svar{rowty}$, by writing $\svar{ana}~\svar{rowarg}~\svar{rowty}$. 
+
+We define $\karg$, the kind of \emph{argument interfaces}, as a product of functions, one for analysis and the other for synthesis, and the helper functions $\svar{ana}$ and $\svar{syn}$ simply project the corresponding function out:\todo{fix products}
+\[\begin{array}{lcl}
+\karg & := & (\kty \rightarrow \kitm) \times (\kunit \rightarrow \kty\times\kitm)\\
+\svar{ana} & := & \slam{\karg}{\svar{arg}}{\keyw{fst}(\svar{arg})}\\
+\svar{syn} & := & \slam{\karg}{\svar{arg}}{\keyw{snd}(\svar{arg})}
+\end{array}
+\]
+
+%The $\kargs$ given where the $n$th entry is simply a pair of functions, the first of which allows for analysis of the $n$th argument of the operation against a type, and the second of which requests type synthesis for the $n$th argument. The helper functions simply project out the appropriate functions and invoke them.
+
+As mentioned above, the argument interface list is constructed from the argument list by the judgement $\keyw{args}(\es)=_n \stx{args}$, defined as follows:
+\begin{mathpar}\small
+\inferrule[args-z]{ }{
+    \keyw{args}(\cdot)=_0 \skap{\karg}{\svar{nil}}
+}
+
+\inferrule[args-s]{
+    \keyw{args}(\es)=_{n} \st
+}{
+    \keyw{args}(\es;e)=_{n+1} \skap{\karg}{\svar{rcons}}~\st~(\slam{\kty}{\svar{ty}}{\sana{n}{\svar{ty}}},\slam{\kunit}{\_}{\ssyn{n}})
+}
+\end{mathpar}
+We assume that the definitions of the standard helper functions $\svar{nil} :: \kforall{\kalpha}{\klist{\kalpha}}$ and $\svar{rcons} :: \kforall{\kalpha}{\klist{\kalpha} \rightarrow \kalpha \rightarrow \klist{\kalpha}}$, which adds an item to the end of a list, have been substituted into these rules.
+
+The $n$th element of the argument interface list simply wraps the static terms $\sana{n}{\st}$ and $\ssyn{n}$. Recall that the kinding judgement is indexed by $n$, which is an upper bound on the argument index of such terms. This is enforced in the kinding rules:
+\begin{mathpar}\small
+\inferrule[k-ana]{
+    n' < n\\
+    \sofkX{\st}{\kty}
+}{
+    \sofkX{\sana{n'}{\st}}{\kitm}
+}
+
+\inferrule[k-syn]{
+    n' < n
+}{
+    \sofkX{\ssyn{n'}}{\kty\times\kitm}
+}
+\end{mathpar}
+
+The following lemma thus characterizes the argument interface list judgement:
+\begin{lemma}
+If $\keyw{args}(\es)=_n \st$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kargs}$.
+\end{lemma}
+
+The rule (ocstruct-intro) ruled out writing either of these forms explicitly in an opcon definition by checking against the bound $n=0$. But accessing them via the argument interface list is possible because the following straightforward lemma holds (see appendix for proofs):
+\begin{lemma}
+If $\sofkn{\kDelta}{\kGamma}{\Phi}{n'}{\st}{\kappa}$ and $n > n'
+$ then $\sofkn{\kDelta}{\kGamma}{\Phi}{n}{\st}{\kappa}$.
+\end{lemma}
+
+The operational semantics for these couple the dynamics of the static language to the statics of the external language. For $\sana{n}{\st}$, after stepping the type $\st$ to a value and propagating errors, the argument environment, which stores the arguments themselves and the typing and tycon contexts, $\es; \Upsilon; \Phi$, is consulted to retrieve the $n$th argument and analyze it against $\st$. If this succeeds, the translational internal term $\sqitm{\anatrans{n}{\st}}$ is generated to refer to it. If it fails, an error is raised. We write the judgement $[\Upsilon \vdash_\Phi e \nLeftarrow \st]$ to indicate that $e$ fails to analyze against $\st$. Because we do not here define this judgement itself inductively, we also allow that this premise be left out entirely, resulting in a non-deterministic but sufficient semantics for our metatheory:
+\begin{mathpar}\small
+\inferrule[s-ana-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sana{n}{\st}}{\argEnv}{\sana{n}{\st'}}
+}
+
+\inferrule[s-ana-success]{
+    \svalNA{\st}\\
+    \keyw{nth}[n](\es) = e\\
+    \eana{\Upsilon}{\Phi}{e}{\st}{\iota}
+}{
+    \sstep{\sana{n}{\st}}{\es;\Upsilon;\Phi}{\sqitm{\anatrans{n}{\st}}}
+}
+
+\inferrule[s-ana-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sana{n}{\st}}{\argEnv}
+}
+
+\inferrule[s-ana-fail]{
+    \svalNA{\st}\\
+    \keyw{nth}[n](\es) = e\\
+    [\Upsilon \vdash_\Phi e \nLeftarrow \st]
+}{
+    \serr{\sana{n}{\st}}{\es;\Upsilon;\Phi}
+}
+\end{mathpar}
+The semantics for $\ssyn{n}$ are analagous, evaluating to a pair containing the translational internal term $\sqitm{\syntrans{n}}$ as well as the synthesized type:
+\begin{mathpar}\small
+\inferrule[s-syn-success]{
+    \keyw{nth}[n](\es) = e\\
+    \esynX{e}{\st}{\iota}
+}{
+    \sstep{\ssyn{n}}{\es;\Upsilon;\Phi}{(\st, \sqitm{\syntrans{n}})}
+}
+
+\inferrule[s-syn-fail]{
+    \keyw{nth}[n](\es) = e\\
+    [\Upsilon \vdash_\Phi e \nRightarrow]
+}{
+    \serr{\ssyn{n}}{\es;\Upsilon;\Phi}
+}
+\end{mathpar}
+
+The kinding rules also prevent the translational internal term forms generated by these operations from being written directly when $n = 0$:
+\begin{mathpar}\small
+\inferrule[k-itm-anatrans]{
+    n' < n\\
+    \sofkX{\st}{\kty}
+}{
+    \sofkX{\sqitm{\anatrans{n'}{\st}}}{\kitm}
+}
+
+\inferrule[k-itm-syntrans]{
+    n' < n
+}{
+    \sofkX{\sqitm{\syntrans{n'}}}{\kitm}
+}
+\end{mathpar}
+Like the translational internal type form $\srep{\st}$, these two translational internal term forms are retained in values of kind $\kitm$:
+\begin{mathpar}\small
+\inferrule[s-itm-anatrans-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sqitm{\anatrans{n}{\st}}}{\argEnv}{\sqitm{\anatrans{n}{\st'}}}
+}
+
+\inferrule[s-itm-anatrans-err]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sqitm{\anatrans{n}{\st}}}{\argEnv}
+}
+
+\inferrule[s-itm-anatrans-v]{
+    \svalNA{\st}\\
+    \keyw{nth}[n](\es)=e
+}{
+    \sval{\sqitm{\anatrans{n'}{\st}}}{\es;\Upsilon;\Phi}
+}
+
+\inferrule[s-itm-syntrans-v]{
+    \keyw{nth}[n](\es)=e
+}{
+    \sval{\sqitm{\syntrans{n}}}{\es;\Upsilon;\Phi}
+}
+\end{mathpar}
+
+The final line of the intro opcon definition for $\tcvar{lprod}$ constructs a nested tuple as the translation. Taken together, the translational internal term that will be derived for our example involving $e_\text{example}$ above is:
+\[\begin{array}{lcl}
+\qitm_\text{example} & := & (\anatrans{0}{\stx{title}}, (\anatrans{1}{\stx{conf}}, ()))
+\end{array}
+\]
+
+The reason that the translations themselves were not inserted yet (even though they were derived in rule (s-ana-success) above) is again because we want to be able to selectively hold these abstract. The selective term abstraction judgement $\edeabs{\tc}{\argEnv}{\qitm}{\memD}{\memG}{\itm}{\memD'}{\memG'}$, appearing as the seventh premise of (ana-intro), relates a translational internal term $\qitm$ to an internal term $\itm$ called the corresponding abstract internal term, where all references to the translation of a type constructed by a user-defined tycon other than the ``delegated tycon'' $\tc$ are replaced with an abstract type variable, and all references to the translation of an argument (having any type) are replaced with a variable. The type translation store, $\memD$, discussed previously, and term translation store, $\memG$, track these mappings. Term translation stores have the following syntax:\[
+\begin{array}{lcl}
+\memG & ::= & \emptyset ~|~ \memG, n : \st \leadsto \iota/x : \tau
+\end{array}\]
+
+Each entry can be read ``argument $n$ having type $\st$ and translation $\iota$ appears as variable $x$ with type $\tau$''. For example, we have that \[\edeabs{\tcvar{lprod}}{\es,\Upsilon,\Phi_\text{rstr}\Phi_\text{lprod}}{\qitm_\text{example}}{\emptyset}{\emptyset}{\iota_\text{example/abs}}{\memD_\text{example/abs}}{\memG_\text{example/abs}}\] where \[
+\begin{array}{lcl}
+\itm_\text{example/abs} & := & (x_0, (x_1, ()))\\
+\memG_\text{example/abs} & := & 0 : \stx{title} \leadsto title/x_0 : \alpha_0, 1 : \stx{conf} \leadsto \texttt{"EXMPL 2015"}/x_1 : \alpha_1\\
+\memD_\text{example/abs} & := & \stx{title} \leftrightarrow \keyw{str}/\alpha_1, \stx{conf} \leftrightarrow \keyw{str}/\alpha_2
+\end{array}\]
+The rules for the selective term abstraction judgement follow recursively for shared forms, e.g. for variables and lambdas:
+\begin{mathpar}\small
+\inferrule[abs-var]{ }{\edeabs{\tc}{\argEnv}{x}{\memD}{\memG}{x}{\memD}{\memG}}
+
+\inferrule[abs-lam]{
+    \tdeabs{\Phi}{\tc}{\qity}{\memD}{\ity}{\memD'}\\
+    \edeabs{\tc}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\itm}{\memD''}{\memG'}
+}{
+    \edeabs{\tc}{\es;\Upsilon;\Phi}{\ilam{\qity}{x}{\qitm}}{\memD}{\memG}{\ilam{\tau}{x}{\itm}}{\memG'}{\memD''}
+}
+\end{mathpar}
+The rules for references to argument translations operate as follows:
+\begin{mathpar}\small
+\inferrule[abs-anatrans-stored]{
+    n : \st \leadsto \iota/x : \tau \in \memG
+}{
+    \edeabs{\tc}{\argEnv}{\anatrans{n}{\st}}{\memG}{\memD}{x}{\memG}{\memD}
+}
+
+\inferrule[abs-syntrans-stored]{
+    n : \st \leadsto \iota/x : \tau \in \memG
+}{
+    \edeabs{\tc}{\argEnv}{\syntrans{n}}{\memG}{\memD}{x}{\memG}{\memD}
+}\end{mathpar}
+\begin{mathpar}\small
+\inferrule[abs-anatrans-new]{
+    n \notin \text{dom}(\memG)\\
+    \keyw{nth}[n](\es) = e\\
+    \eanaX{e}{\st}{\iota}\\
+    \tdeabs{\Phi}{\tc}{\srep{\st}}{\memD}{\ity}{\memD'}\\
+    (x~\text{fresh})
+}{
+    \edeabs{\tc}{\es;\Upsilon;\Phi}{\anatrans{n}{\st}}{\memG}{\memD}{x}{\memG, n : \st \leadsto \iota/x : \tau}{\memD'}
+}
+\end{mathpar}
+\begin{mathpar}\small
+\inferrule[abs-syntrans-new]{
+    n \notin \text{dom}(\memG)\\
+    \keyw{nth}[n](\es) = e\\
+    \esynX{e}{\st}{\iota}\\
+    \tdeabs{\Phi}{\tc}{\srep{\st}}{\memD}{\ity}{\memD'}\\
+    (x~\text{fresh})
+}{
+    \edeabs{\tc}{\es;\Upsilon;\Phi}{\syntrans{n}}{\memG}{\memD}{x}{\memG, n : \st \leadsto \iota/x : \tau}{\memD'}
+}
+\end{mathpar}
+
+After computing an abstract term translation, the eight premise computes an abstract type translation for the type the intro term is being analyzed against:
+\[\small\tdeabs{\Phi_\text{rstr}\Phi_\text{lprod}}{\tcvar{lprod}}{\srep{\stx{conf}}}{\memD_\text{example/abs}}{\tau_\text{example/abs}}{\memD_\text{example/abs}}\]
+where $\tau_\text{example/abs} := \alpha_0 \times (\alpha_1 \times \kunit)$ (alpha-equivalent to $\tau_\text{conf/abstrans}$ in Sec. \ref{types}).
+
+Each term translation store $\memG$ induces an internal term substitution, written in the standard way $\gamma ::= \emptyset ~|~ \gamma, \iota/x$, and a corresponding internal typing context $\Gamma$, as specified by the judgement $\memG \leadsto \gamma : \Gamma$ defined by the following rules:
+\begin{mathpar}
+\inferrule[ttrs-emp]{ }{\emptyset \leadsto \emptyset : \emptyset}
+
+\inferrule[ttrs-ext]{
+    \memG \leadsto \gamma : \Gamma
+}{
+    (\memG, n : \st \leadsto \iota/x : \tau) \leadsto (\gamma, \iota/x) : (\Gamma, x : \tau)
+}
+\end{mathpar}
+In this case, we have the ninth premise, $\memG_\text{example/abs} \leadsto \gamma_\text{example/abs} : \Gamma_\text{example/abs}$, where \[
+\begin{array}{lcl}
+\gamma_\text{example/abs} & := & title/x_0, \texttt{"EXMPL 2015"}/x_1\\
+\Gamma_\text{example/abs} & := & x_0 : \alpha_0, x_1 : \alpha_1
+\end{array}
+\]
+
+The tenth premise extracts a type substitution, $\delta_\text{example/abs}$, and type formation context, $\Delta_\text{example/abs}$, from $\memD_\text{example/abs}$, again equivalent to those defined in Sec. \ref{types}.
+
+Finally, the tenth premise checks that the abstract term translation is consistent with the abstract type translation: $\Delta_\text{example/abs}~\Gamma_\text{example/abs} \vdash \iota_\text{example/abs} : \tau_\text{example/abs}$, i.e. \[
+(\alpha_0, \alpha_1)~(x_0 : \alpha_0, x_1 : \alpha_1) \vdash (x_0, (x_1, ())) : \alpha_0 \times (\alpha_1 \times \kunit)
+\]
+
+Observe that the translation of the labeled product $e_\text{example}$ containing regular strings is being checked with all references to term and type translations of regular strings replaced by variables and type variables, respectively. Nevertheless, because our logic for labeled products has been treating regular strings parametrically, the check succeeds.
+
+Applying the substitutions $\gamma_\text{example/abs}$ and $\delta_\text{example/abs}$ in the conclusion of the rule, we have our final translation, $\iota_\text{example}$, i.e. $(title, (\texttt{"EXMPL 2015"}, ())$. 
+
+Note that $\Gamma_\text{example} \vdash \iota_\text{example} : \tau_\text{conf}$, where $\vdash_{\Phi_\text{rstr}\Phi_\text{lprod}} \Upsilon_\text{example} \leadsto \Gamma_\text{example}$ and $\vdash_{\Phi_\text{rstr}\Phi_\text{lprod}} \sigma_\text{conf} \leadsto \tau_\text{conf}$ as described in Sec. \ref{types}. In fact, this relationship between the translation of an external term and the translation of the type it has will always hold given the check we performed on the abstract term and type transations just described due to parametricity properties. Combined with type safety of the IL this will imply type safety of @$\lambda$. We give the details in Sec. \ref{metatheory}.
+
+Had the translational term generated by the intro opcon definition been, e.g., $(\anatrans{0}{\stx{title}}, (\texttt{"TEST"}, ())$, then the corresponding abstract term would be $(x_0, (\texttt{"TEST"}, ())$ and the check would fail because $(\alpha_0, \alpha_1)~(x_0 : \alpha_0) \nvdash \texttt{"TEST"} : \alpha_1$. Had we not gone through the machinations of holding types and terms abstract, however, the check would succeed, because $\keyw{str}$ would no longer have been held abstract as $\alpha_1$. This form of ``type translation independence'' is precisely analagous to the representation independence properties that underly abstraction theorems for module systems based on  abstract types and will similarly serve to ensure that the type invariants maintained by $\tcvar{rstr}$ are conserved when new tycons are defined. In this case the invariant is that only strings that are in the regular language specified in the type index can be generated from an external term of regular string type. Note that $\texttt{"TEST"}$ is not in the regular language specified by $\concrx{[A-Z]+ \digit\digit\digit\digit}$, so it is critical that it not be allowed, despite being consistent with the type translation of $\stx{conf}$, i.e. it is a string. Such an invariant could not be maintained if the type system were treated as merely a ``bag of rules''. We consider this more rigorously in Sec. \ref{metatheory}.
+
+Note also that the domains of $\Upsilon_\text{example}$ and $\Gamma_\text{example/abs}$ are disjoint. This serves to ensure \emph{hygienic translation} -- translations cannot refer to variables in the surrounding scope directly, so uniformly renaming a variable cannot change the meaning of a program. Variables in $\Upsilon_\text{example}$ can (and do -- $title$ in this example) occur in arguments to the operation, but the translations of the arguments only appear after the substitution $\gamma_\text{example/abs}$ has been applied. We assume that applying a substitution is capture-avoiding in the usual manner (i.e. consistent with a locally nameless implementation).
+\subsubsection{Generalized Targeted Operations} 
+All non-introductory opcons associated with user-defined tycons are used via a form for \emph{targeted operations}, $\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}$, where $\opname{op}$ is the opcon name, ${\sttmidx}$ is the term index, $e_\text{targ}$ is the \emph{target argument} and $\es$ are the remaining arguments. Some examples of desugarings to this form are below:
+\[\small
+\begin{array}{lll}
+\textbf{Description}& \textbf{Concrete Form}~~~~ & \textbf{Desugared Form}\\
+\text{index projection} & e_\text{targ}\texttt{\#}n & \etarg{\opname{idx}}{n}{e_\text{targ}}{\cdot}\\
+\text{label projection} & e_\text{targ}\texttt{\#}\conclbl{lbl} & \etarg{\opname{prj}}{\conclbl{lbl}}{e_\text{targ}}{\cdot}\\
+\text{explicit invocation}~~~~ & e_\text{targ}{\cdot}\opname{op}[\sttmidx](\es) & \etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}\\
+& e_\text{targ}{\cdot}\opname{op}(\es) & \etarg{\opname{op}}{()}{e_\text{targ}}{\es}\\
+& e_\text{targ}{\cdot}\opname{op}(\conclbl{lbl}_1=e_1, \ldots, \conclbl{lbl}_n=e_n) & \keyw{targ}[\opname{op}; \texttt{[}\conclbl{lbl}_1, \ldots, \conclbl{lbl}_n\texttt{]}](e_\text{targ}; \\
+& & \quad e_1; \ldots; e_n)\\
+\text{labeled case analysis} & e_\text{targ}{\cdot}\opname{case}\,\{ & \keyw{targ}[{\opname{case}}; {\texttt{[}\st_1, \ldots, \st_n\texttt{]}}]({e_\text{targ}}; \\
+ & ~|~~\st_1\langle x_1, \ldots, x_k \rangle \Rightarrow e_1 & \quad \eanalam{x_1}{\ldots \eanalam{x_k}{e_1}};\\
+ & ~|~~\ldots & \quad \ldots;\\ 
+ & ~|~~\st_n\langle x_1, \ldots, x_k \rangle \Rightarrow e_n\} & \quad \eanalam{x_1}{\ldots \eanalam{x_k}{e_n}})
+\end{array}
+\]
+
+Whereas introductory operations were strictly analytic, targeted operations are always synthetic in @$\lambda$. The type and translation is determined by the tycon of the type synthesized by the target argument (i.e. this tycon is used as the delegated tycon). The rule given below is otherwise similar to (ana-intro) in its key machinations:
+\begin{mathpar}\small
+\inferrule[syn-targ]{
+  \esynX{e_\text{targ}}{\sty{\tc}{\sttyidx}}{\iota_\text{targ}}\\
+  \tcdef{\tc}{\tcsig{\_}{\chi}}{\tcstruct{\_}{\omega}} \in \Phi\\\\
+  \opsig{\opname{op}}{\klitidx} \in \chi\\
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\stmidx}{\klitidx}\\\\
+  \keyw{syn~}\opname{op}={\stx{def}} \in \omega\\
+  \keyw{args}(e_\text{targ}; \es)=\stx{args}\\
+  \stx{def}~\sttyidx~\stmidx~\stx{args} \Downarrow_{(e_\text{targ}; \es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+  %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+  \edeabs{\tc}{{\es;\Upsilon;\Phi}}{\qitm}{\emptyset}{\emptyset}{\iota}{\memD}{\memG}\\
+  \tdeabs{\Phi}{\tc}{\srep{\st}}{\memD}{\ity}{\memD'}\\\\
+  \memD' \leadsto \delta : \Delta\\
+  \memG \leadsto \gamma : \Gamma\\
+  \Delta~\Gamma \vdash \iota : \tau
+}{
+    \esynX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{[\delta][\gamma]\iota}
+}
+\end{mathpar}
+
+The first premise synthesizes a type, $\sty{\tc}{\sttyidx}$, for the target argument. The second premise extracts the tycon definition for $\tc$ from the tycon context. The third extracts the \emph{operator index kind} from its opcon signature, and the fourth checks the term index against this kind. For example, we may associate the following targeted opcon signatures with the tycons $\tcvar{rstr}$ and $\tcvar{lprod}$:\[
+\begin{array}{lcl}
+\chi_\text{rstr/targops} & := & \opsig{\opname{concat}}{\kunit}, \opsig{\opname{case}}{\klist{\keyw{StrPattern}}}, \opsig{\opname{coerce}}{\krx}, \opsig{\opname{check}}{\krx}, \opsig{\opname{replace}}{\krx}\\
+\chi_\text{lprod/targops} & := & \opsig{\opname{prj}}{\klbl}, \opsig{\opname{with}}{\klist{\klbl}}, \opsig{\opname{drop}}{\klist{\klbl}}
+\end{array}
+\]
+
+The opcons associated with $\tcvar{rstr}$ are taken directly from Fulton et al.'s specification of regular string types \cite{sanitation-psp14}, with the exception of $\opname{case}$, which generalizes the case analysis operator given there to arbitrary string patterns, which we assume are encoded in some suitable way by kind $\keyw{StrPattern}$. The opcons associated with $\tcvar{lprod}$ are also straightforward: $\opname{prj}$ projects out a labeled value from a labeled product, $\opname{with}$ creates a new labeled product based on the target with some fields updated or added, and $\opname{drop}$ creates a new labeled product from the target with some fields dropped. Note that regular string types cannot directly be embedded into ML-like languages and the analogs of $\opname{with}$ and $\opname{drop}$ are only found in some dialects of ML. For concision, we will only show $\opname{concat}$ and $\opname{prj}$ here; more details on the others can be found in the appendix.
+
+The fifth premise of (syn-targ) extracts the targeted opcon definition of $\opname{op}$ from the opcon structure, $\omega$. Like the intro opcon definition, this is a static function that generates a translational internal term on the basis of the delegated tycon's type index, the term index and an argument interface list. Targeted opcon definitions pair the translation with the synthesized type as well. The rule (ocstruct-op) ensures that the opcon definition has a correct and well-formed kind:
+\begin{mathpar}\small
+\inferrule[ocstruct-op]{
+    \vdash_\Phi \omega \sim \tcsig{\ktyidx}{\chi}\\
+    \opname{op}\notin\text{dom}(\chi)\\
+    \emptyset \vdash \klitidx\\\\
+    \sofkn{\emptyset}{\emptyset}{\Phi}{0}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow (\kty \times \kitm)}
+}{
+    \vdash_\Phi \tcstructc{\omega}{op}{\stx{def}} \sim \tcsig{\ktyidx}{\chi, \opsig{\opname{op}}{\klitidx}}
+}
+\end{mathpar}
+
+For example, the opcon definition for $\opname{concat}$ is defined as follows:
+\[\small
+\begin{array}{lcl}
+\omega_\text{rstr/targops} & := & \keyw{syn}~\opname{concat}=\slam{\krx}{\svar{tyidx}}{
+    \slam{\kunit}{\svar{tmidx}}{
+        \slam{\kargs}{\svar{args}}{\\&&
+            \quad \keyw{letpair}~(\svar{arg1}, \svar{arg2}) = \svar{arity2}~\svar{args}\\&&
+            \quad \keyw{letpair}~(\_, \svar{tr1}) = \svar{syn}~\svar{arg1}\\&&
+            \quad \keyw{letpair}~(\svar{ty2}, \svar{tr2}) = \svar{syn}~\svar{arg2}\\&&
+            \quad \stycase{\tcvar{rstr}}{\svar{ty2}}{\svar{tyidx2}}{\\&&
+                \quad\quad (\sty{\tcvar{rstr}}{\svar{rxconcat}~\svar{tyidx}~\svar{tyidx2}}, \sqitm{sconcat~\quq{\svar{tr1}}~\quq{\svar{tr2}}})\\&&\quad\quad
+            }{\sraise{\kty\times\kitm}}
+        }
+    }
+}
+\end{array}
+\]
+The first line simply checks that exactly two total arguments, including the target term, were passed in using the helper function $\svar{arity2}$. We then request synthesis of both arguments. We can ignore the type synthesized by the first because by definition it is a regular string type with type index $\svar{tyidx}$. We case analyze the second against $\tcvar{rstr}$, extracting its index regular expression if so and failing if not. We finally synthesize the resulting regular string type, using the helper function $\svar{rxconcat} :: \krx \rightarrow \krx \rightarrow \krx$ which generates the concatenated regular expression, and the translation, using an internal helper function $sconcat : \keyw{str} \rightarrow \keyw{str} \rightarrow \keyw{str}$, the translational internal term for which we assume has been substituted in directly above.
+
+This definition is invoked as the sixth premise of (syn-targ), generating the type ...  and the translational internal term ... consistent with the rules described above. The remaining premises are identical to the corresponding premises in (ana-intro), with the only exception being that we check the abstract term translation against the abstract type translation of ... In this case... Note that because the delegated tycon and the tycon of the synthesized type are the same, the type is not held abstract, allowing our use of the helper function $sconcat$ to successfully typecheck. Had an identical translational internal term arisen from an opcon associated with $\tcvar{lprod}$, the corresponding abstract type translation would be a type variable, $\alpha$, so the check would fail. This implies that the choice of representation, and of representation invariants, for regular strings is entirely at the disrection of the $\tcvar{rstr}$ definition. More creative possibilities could be used with only local impact, e.g. traces through the regular language or ...
+
+\subsubsection{Other} The final form of external term is $\eother{m}{\iota}$. It can be analyzed against $\sotherty{m}{\tau}$ if $\iota$ has type $\tau$ in the translation of the current typing context. We will see how it is used as a technical device in the next section.
+\begin{mathpar}\small
+\inferrule[ana-other]{
+    \vdash_\Phi \Upsilon \leadsto \Gamma\\
+    \emptyset~\Gamma \vdash \iota : \tau
+}{
+    \eanaX{\eother{\iota}}{\sotherty{m}{\tau}}{\iota}
+}
+\end{mathpar}
+
+\section{Metatheory}\label{metatheory}
+%This judgement is only defined for values of kind $\kty$. We write $\st~\texttt{type}_\Phi$ iff $\vdash \Phi$ and $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\kty}$ and $\sval{\st}$.
+
+\begin{definition}[Argument Environment Formation] $\argEnvOK{n}{\es;\Upsilon;\Phi}$ iff $|\es|=n$ and $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$.\end{definition}
+
+\subsection{Static Language}
+
+%\begin{lemma}
+%If $\kDelta \vdash \kGamma$ and $\vdash \Phi$ and $\sofkn{\kDelta}{\kGamma}{\Phi}{n}{\st}{\kappa}$ then $\kDelta \vdash \kappa$.\todo{don't think we need this}
+%\end{lemma}
+
+\begin{theorem}[Static Canonical Forms] If $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kappa}$ and $\argEnvOK{n}{\argEnv}$ and $\sval{\st}{\argEnv}$ then:
+\begin{enumerate}
+\item TODO: arrow
+\item TODO: unit
+\item TODO: product
+\item TODO: sum
+\item TODO: inductive
+\item TODO: universal
+\item If $\kappa = \kty$ then $\istype{\st}{\Phi}$ and 
+    \begin{enumerate}
+    \item $\st = \sty{\rightharpoonup}{(\st_1, \st_2)}$ and $\istype{\st_1}{\Phi}$ and $\istype{\st_2}{\Phi}$; or
+    \item $\st = \sty{\tc}{\sttyidx}$ and $\tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\omega} \in \Phi$ and $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\ktyidx}$ and $\svalNA{\sttyidx}$; or
+    \item $\st = \sotherty{m}{\tau}$ and $\emptyset \vdash \tau$.
+    \end{enumerate}
+\item If $\kappa = \kity$ then $\st=\sqity{\qity}$ and $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\kity}$ and $\svalNA{\st}$ and $\qtuq{\st'} \notin \qity$ and 
+    \begin{enumerate}
+    \item The outer form of $\qity$ is shared with $\tau$ and if $\qity'$ is a sub-term of $\qity$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\sqity{\qity'}}{\kity}$ and $\svalNA{\sqity{\qity'}}$; or
+    \item $\qity = \srep{\st'}$ and $\istype{\st'}{\Phi}$
+    \end{enumerate}
+\item If $\kappa = \kitm$ then $\st=\sqitm{\qitm}$ and no sub-terms of $\qitm$ have the form $\quq{\st'}$ and 
+    \begin{enumerate}
+    \item The outer form of $\qitm$ is shared with $\itm$ and if $\qitm'$ is a sub-term of $\qitm$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\sqitm{\qitm'}}{\kitm}$ and $\sval{\sqitm{\qitm'}}{\argEnv}$ and if $\qity$ is a sub-term of $\qitm$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\sqity{\qity}}{\kity}$ and $\svalNA{\sqity{\qity}}$; or
+    \item $\qitm=\anatrans{n'}{\st'}$ and $n' < n$ and $\istype{\st'}{\Phi}$; or
+    \item $\qitm=\syntrans{n'}$ and $n' < n$.
+    \end{enumerate}
+\end{enumerate}
+\end{theorem}
+
+\begin{theorem}[Static Progress]
+If $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kappa}$ and $\vdash \Phi$ and $\vdash^n \argEnv$ then $\sval{\st}{\argEnv}$ or $\serr{\st}{\argEnv}$ or $\sstep{\st}{\argEnv}{\st'}$.
+\end{theorem}
+\begin{proof}We proceed by rule induction on the kinding judgement.
+(k-parr)
+
+(k-ty)
+
+(k-otherty)
+
+(k-tycase-parr)
+
+(k-tycase)
+
+(k-ity-lam)
+
+(k-ity-alpha)
+
+(k-ity-unquote)
+
+(k-ity-trans)
+
+(k-raise)
+
+(k-itm-var)
+
+(k-itm-lam)
+
+(k-itm-unquote)
+
+(k-itm-anatrans)
+
+(k-itm-syntrans)
+\end{proof}
+
+\begin{theorem}[Static Preservation]
+If $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kappa}$ and $\vdash \Phi$ and $\vdash^n \argEnv$ and $\sstep{\st}{\argEnv}{\st'}$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st'}{\kappa}$.
+\end{theorem}
+\begin{proof}
+(s-ty-step) (2 cases)
+(s-tycase-step) (2 cases)
+(s-tycase-match) (2 cases)
+(s-tycase-fail-1)
+(s-tycase-fail-2)
+(s-ity-lam-step-1)
+(s-ity-lam-step-2)
+(s-ity-unquote-step)
+(s-ity-unquote-elim)
+(s-ity-trans-step)
+(s-itm-lam-step-1)
+(s-itm-lam-step-2)
+(s-itm-unquote-step)
+(s-itm-unquote-elim)
+(s-ana-step)
+(s-ana-success)
+(s-syn-success) (relies on type synthesis theorem)
+(s-itm-anatrans-step)
+\end{proof}
+
+% \begin{lemma}[Kinding Stability]
+% If $\vdash \Phi$ and $\vdash \Phi, \tcdef{\tc}{\psi}{\theta}$ and $\kDelta \vdash \kGamma$ and $\sofkn{\kDelta}{\kGamma}{\Phi}{n}{\st}{\kappa}$ then $\sofkn{\kDelta}{\kGamma}{\Phi, \tcdef{\tc}{\psi}{\theta}}{n}{\st}{\kappa}$.
+% \end{lemma}
+% \begin{proof}
+% all cases straightforward by induction
+% \end{proof}
+
+% TODO: static normalization stability inside A?
+
+\subsection{Types}
+\begin{lemma}[Type Substitution Application]\label{thm:type-substitution-application}
+If $\vdash \delta : \Delta$ and $\Delta \vdash \tau$ then $\emptyset \vdash [\delta]\tau$.
+\end{lemma}
+
+\begin{lemma}[Selective Type Abstraction]\label{thm:selective-type-abstraction}
+If $\vdash \Phi$ and $\sofkz{\emptyset}{\emptyset}{\Phi}{\sqity{\qity}}{\kity}$ and $\svalNA{\sqity{\qity}}$ and $\memD \leadsto \delta : \Delta$ and $\vdash \delta : \Delta$ and $\tdeabs{\tc}{\Phi}{\qity}{\memD}{\tau}{\memD'}$ then $\memD' \leadsto \delta' : \Delta'$ and $\delta \subseteq \delta'$ and $\Delta \subseteq \Delta'$ and $\vdash \delta' : \Delta'$ and $\Delta' \vdash \tau$.
+\end{lemma}
+\begin{proof}
+(shared forms) (trans(st))
+\end{proof}
+
+\begin{lemma}[Type Translation]\label{type-translation}
+If $\vdash \Phi$ and $\istype{\st}{\Phi}$ and $\vdash_\Phi \st \leadsto \tau$ then $\emptyset \vdash \tau$.
+\end{lemma}
+\begin{proof} By Lemma \ref{thm:type-substitution-application} and Lemma \ref{thm:selective-type-abstraction}.
+\end{proof}
+
+\begin{lemma}[Typing Context Translation]
+If $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ then $\emptyset \vdash \Gamma$.\end{lemma}
+\begin{proof} We proceed by rule induction on typing context translation. Empty case trivial. Extended case follows by Lemma \ref{type-translation} and definition of internal typing context formation.\end{proof}
+
+\subsection{External Terms}
+\begin{theorem}[Type Synthesis]
+If $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and $\esynX{e}{\st}{\iota}$ then $\istype{\st}{\Phi}$ and $\vdash_\Phi \st \leadsto \tau$. \end{theorem}
+\begin{proof}
+(var) (ap) (syn-targ)
+\end{proof}
+
+\begin{lemma}[Selective Term Abstraction]
+If $\vdash \Phi$ and $\vdash^n \argEnv$ and $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\sqitm{\qitm}}{\kitm}$ and $\sval{\sqitm{\qitm}}{\argEnv}$ and $\memD \leadsto \delta : \Delta$ and $\vdash \delta : \Delta$ and $\emptyset \vdash \Gamma_\text{out}$ and $\memG \leadsto \gamma : \Gamma$ and $\Delta~\Gamma_\text{out} \vdash \gamma : \Gamma$ and $\edeabs{\tc}{\argEnv}{\qitm}{\memD}{\memG}{\itm}{\memD'}{\memG'}$ then $\memD' \leadsto \delta' : \Delta'$ and $\memG' \leadsto \gamma' : \Gamma'$ and $\delta \subseteq \delta'$ and $\Delta \subseteq \Delta'$ and $\gamma \subseteq \gamma'$ and $\Gamma \subseteq \Gamma'$ and $\vdash \delta' : \Delta'$ and $\Delta'~\Gamma_\text{out} \vdash \gamma' : \Gamma'$.
+\end{lemma}
+\begin{proof} By rule induction on selective term abstraction judgement.
+
+(shared forms) (unquote form not possibly by canonical forms) (anatrans) (syntrans)
+\end{proof}
+
+\begin{theorem}[Type-Preserving Translation]
+If $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and either
+\begin{enumerate}
+\item $\eanaX{e}{\st}{\iota}$ and $\istype{\st}{\Phi}$; or 
+\item $\esynX{e}{\st}{\iota}$
+\end{enumerate}
+then $\vdash_\Phi \st \leadsto \tau$ then $\emptyset~\Gamma \vdash \iota : \tau$.
+\end{theorem}
+\begin{proof} By rule induction on typing rules.
+
+(var) (lam) (ap) (fix) (subsume) (ascribe) (ana-intro) (syn-targ) (other)
+\end{proof}
+
+TODO: stability of typing
+TODO: Unicity of typing
+TODO: hygiene? 
+
+TODO: Make definitions out of these.
+The standard judgement $\Gamma \vdash \gamma : \Gamma'$ states that every binding $x : \tau$ in $\Gamma'$ has a corresponding substitution $\iota/x$ in $\gamma$ such that $\Gamma \vdash \iota : x$.  
+
+, and  the judgement $\vdash \delta : \Delta$ checks that every type variable in $\Delta$ has a well-formed substitution in $\delta$
+
+\subsection{Conservativity}
+\begin{theorem}[Conservativity]
+If $\vdash \Phi$ and $\istype{\sty{\tc}{\sttyidx}}{\Phi}$ and for all $e$, if $\eana{\emptyset}{\Phi}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\iota \Downarrow \iota'$ then $P(\iota')$, then if $\vdash \Phi, \tcdef{\tc'}{\psi}{\theta}$ then for all $e$, if $\eana{\emptyset}{\Phi, \tcdef{\tc'}{\psi}{\theta}}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\iota \Downarrow \iota'$ then $P(\iota')$.
+\end{theorem}
+
+\begin{lemma}[Other Substitution]
+If $\vdash \Phi, \tcdef{\tc}{\psi}{\theta}$ and $\istype{\st}{\Phi}$ and $\eana{\Upsilon}{\Phi, \tcdef{\tc}{\psi}{\theta}}{e}{\st}{\iota}$ then there exists $e'$ such that $\eana{\Upsilon}{\Phi}{e'}{\st}{\iota}$.
+\end{lemma}
+
+\section{Related Work}\label{prior-work}
+
+\section{Conclusion}\label{conclusion}
+We combine several interesting type theoretic techniques, applying them to novel ends: 1)  a bidirectional type system permits flexible reuse of a fixed syntax; 2) the SL serves both as an extension language and as the type-level language; we give it its own statics (i.e. a \emph{kind system}); 3) we use a typed intermediate language and leverage corresponding \emph{typed compilation} techniques, here lifted into the semantics of the EL; 4) we leverage internal type abstraction implicitly as an effect during normalization of the SL to enforce abstraction barriers between type constructors. 
+As a result, conservativity follows from the same elegant parametricity results that underly  abstraction theorems for module systems. 
+Like modules, reasoning about these \emph{modular type constructors} does not require  mechanized specifications or proofs: correctness issues in the type constructor logic necessarily causes typechecking to fail, so even extensions that are not proven correct can be distributed and ``tested'' in the wild without compromising the integrity of an entire program (at worst, only values of types constructed by the tycon being tested may exhibit undesirable properties). 
+
+% But mechanized proofs can be provided to verify that such failures (which do not indicate mistakes in client code but are more analagous to ``translation validation failures'' arising from the compiler \cite{Pnueli-Siegel-Singerman98}, will not occur during typechecking), 
+% and that a type constructor adequately implements a separately specified fragment. We take the first steps towards such a \emph{modularly mechanized metatheory} by briefly discussing how to construct contextual embeddings of our semantics into Coq (Sec. \ref{coq}). 
+%Though surprisingly expressive, we discuss some limitations of the core calculus, and suggest variants  that increase its expressive power while maintaining these key guarantees (Sec. \ref{variants}). 
+%We conclude by discussing some limitations, proposing some richer variants of the calculus and discussing related work (Sec. \ref{prior-work}). %Note that readers unfamiliar with prior approaches may wish to read this section first. %so that even fragments like those enumerated above can be defined as safely composable libraries, rather than in dialects that must be considered monolithically. %In the limit, building safe FFIs between every pair languages in a project is more effort than attempting to combine the languages. 
+%Libraries are preferable to dialects, so there has been considerable interest in mechanisms that can make it possible to implement and reason about fragments like those above orthogonally and compose them automatically.% Mechanisms that guarantee composition will \emph{always} be safe can be integrated directly into a language as a general-purpose abstraction mechanism.  %that can fully automate the process of combining dialects defined atop a common framework (\emph{language-external mechanisms}).
+
+
+
+% CANT GUARANTEE THAT SPECIFICATIONS ARE ACTUALLY DECIDABLE 
+\bibliographystyle{abbrv}
+\bibliography{../research}
+\appendix
+\section{Appendix}
+\subsection{More Examples}
+
+For example, the opcon definition for $\opname{prj}$ in $\tcvar{lprod}$ is:
+\[\small
+\begin{array}{lcl}
+\omega_\text{lprod/targops} & := & \keyw{syn}~\opname{prj}=\slam{\klist{\klbl\times\kty}}{\svar{tyidx}}{
+    \slam{\klbl}{\svar{tmidx}}{
+        \slam{\kargs}{\svar{args}}{\\&&
+            \quad \keyw{let}~\svar{self} :: \keyw{Arg} = \svar{arity1}~\svar{args}\\&&
+            \quad \keyw{letpair}~(\_, \svar{str}) = \svar{syn}~\svar{self}\\&&
+            \quad \keyw{letpair}~(\svar{oty}, \svar{tr})=\skap{\keyw{Opt}[\kty]\times\kitm}{\skap{\klbl\times\kty}{\svar{listrec}}}~\svar{tyidx}~(\skap{\kty}{\svar{none}}, \svar{str})\\&&
+            \quad\quad \slam{\klbl\times\kty}{\svar{row}}{
+                \slam{\keyw{Opt}[\kty]\times\kitm}{\svar{rout}}{\\&&
+                    \quad\quad\quad \keyw{letpair}~(\svar{rty}, \svar{rtr})=\svar{rout}\\&&
+                    \quad\quad\quad \skap{\keyw{Opt}[\kty]\times\kitm}{\skap{\kty}{\svar{optcase}}}~(\svar{rty})~(\slam{\kty}{\_}{\svar{rout}})~(\slam{\kunit}{\_}{\\&&
+                        \quad\quad\quad\quad\keyw{letpair}~(\svar{rowlbl}, \svar{rowty})=\svar{row}\\&&
+                        \quad\quad\quad\quad \svar{iflbleq}~\svar{rowlbl}~\svar{tmidx}~\\&&
+                        \quad\quad\quad\quad\quad (\slam{\kunit}{\_}{(\skap{\kty}{\svar{some}}~\svar{rowty}, \sqitm{\keyw{fst}(\quq{\svar{rtr}})})})\\&&
+                        \quad\quad\quad\quad\quad (\slam{\kunit}{\_}{(\svar{rty}, \sqitm{\keyw{snd}(\quq{\svar{rtr}})})}))
+                    }
+                }
+            }\\&&
+            \quad \svar{optcase}~\svar{oty}~(\slam{\kty}{\svar{ty}}{(\svar{ty}, \svar{tr})})~(\slam{\kunit}{\_}{\sraise{\kty\times\kitm}})
+        }
+    }
+},\\&&
+\omega_\text{lprod/targops/1}
+\end{array}
+\]
+The target term is passed in as the first argument. The first two lines simply check that no other arguments were passed in and (re-)synthesize the type and translation for the target. Then, we recurse over the type index looking for the provided label. We maintain a translation and a type option, which remains $\svar{none}$ until the label is found. The translation involves projecting out the second component of the translation of the labeled product until the label is found, at which point we project out the first component and stop. If this process succeeds, we return the resulting type and translation. Otherwise, we raise a type error. 
+
+\begin{lemma}
+If $\sofkn{\kDelta}{\kGamma}{\Phi}{n'}{\st}{\kappa}$ and $n > n'
+$ then $\sofkn{\kDelta}{\kGamma}{\Phi}{n}{\st}{\kappa}$.
+\end{lemma}
+\begin{proof}
+We can proceed by straightforward rule induction, noting that all the kinding rules  have been defined for all $n$ except for the four most recently defined. In these cases, the transitive property of inequality on natural numbers implies that the same rule can directly be applied to derive the consequent in each  case.
+\end{proof}
+
+% \begin{figure}
+% \begin{mathpar}
+% \inferrule{a}{b}
+% \end{mathpar}
+% \caption{SL Dynamics}
+% \label{SL-dynamics}
+% \end{figure}
+\end{document}
+
