@@ -79,14 +79,123 @@ morekeywords={newcase,extends}}
 %extensible languages; module systems; type abstraction; typed compilation; type-level computation
 
 \section{Internal Language}
-\todo{copy from one of the 312 HWs}
+We assume the statics of the IL are specified in the standard way by judgements for  type formation {$\iDelta \vdash \tau$}, typing context formation { $\iDelta \vdash \iGamma$} and type assignment {$\iDelta~\iGamma \vdash \iota : \tau\moutput$}. 
+%The typing and type formation contexts obey standard structural properties (i.e. weakening, exchange and contraction). 
+The internal dynamics are specified as a structural operational semantics with a stepping judgement {\small $\iota \mapsto \iota\moutput$} and a value judgement {$\iota~\mathtt{val}$}. The multi-step judgement $\iota \mapsto^{*} \iota\moutput$ is the reflexive, transitive closure of the stepping judgement and the evaluation judgement $\iota \Downarrow \iota'$ is defined iff $\iota \mapsto^{*} \iota'$ and $\iota'~\mathtt{val}$. Both the static and dynamic semantics of the IL can be found in any standard textbook covering typed lambda calculi (we directly follow \cite{pfpl}), so we assume familiarity and give the lemmas in this section without proof.
 
-\subsection{Substitutions}
+We use {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, the syntax for which is shown in Figure \ref{syntax-IL}, as representative of any intermediate language for a typed functional language. In fact, our intention is not to prescribe a particular choice of IL, so we will here only review the key metatheoretic properties that the IL must possess. Each choice of IL is technically a distinct dialect of @$\lambda$, but for the broad class of ILs that enjoy these properties, the metatheory in the remainder of the supplement should follow without trouble.
 
-\subsection{Abstraction Theorem}
-\todo{hm...}
+\begin{lemma}[Internal Type Assignment]
+If $\Delta \vdash \Gamma$ and $\Delta~\Gamma \vdash \iota : \tau$ then $\Delta \vdash \tau$.
+\end{lemma}
+
+Internal type safety follows the standard methodology of proving preservation and progress lemmas.
+
+\begin{lemma}[Internal Progress]
+If $\emptyset~\emptyset \vdash \iota : \tau$ then either $\iota~\texttt{val}$ or $\iota \mapsto \iota'$.
+\end{theorem}
+\begin{lemma}[Internal Preservation]
+If $\emptyset~\emptyset \vdash \iota : \tau$ and $\iota \mapsto \iota'$ then $\emptyset~\emptyset \vdash \iota' : \tau$. 
+\end{lemma}
+
+We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\gamma$, have the standard semantics, and that typing and type formation contexts, $\Delta$ and $\Gamma$, obey standard properties of weakening, exchange and contraction. We assume that the names of variables and type variables are unimportant, so that $\alpha$-equivalent terms, types and contexts can be identified implicitly throughout this work. In particular, we need the definitions of substitution validity shown in Figures \ref{fig:internal-type-substitution-validity} and \ref{fig:internal-term-substitution-validity} and the following lemmas.
+
+\begin{figure}[t]
+\small
+\hspace{-5px}\input{syntax-table-IL}
+\caption{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL). Metavariable $x$ ranges over term variables and $\alpha$ and $t$ both range over type variables.}
+\label{syntax-IL}
+\end{figure}
+
+\begin{figure}
+\small\fbox{$\Delta \vdash \delta : \Delta$}~~$\delta ::=  \emptyset ~|~ \delta, \tau/\alpha$
+
+\begin{mathpar}
+\inferrule[tysub-emp]{ }{\Delta \vdash \emptyset : \emptyset}
+
+\inferrule[tysub-ext]{
+    \Delta \vdash \delta : \Delta'\\
+    \Delta \vdash \tau
+}{
+    \Delta \vdash \delta, \tau/\alpha : \Delta', \alpha
+}
+\end{mathpar}
+\caption{Internal Type Substitution Validity}
+\label{fig:internal-type-substitution-validity}
+\end{figure}
+\begin{figure}
+\small\fbox{$\Delta~\Gamma \vdash \gamma : \Gamma$}~~$\gamma ::= \emptyset ~|~ \gamma, \iota/x$
+\begin{mathpar}
+\inferrule[tmsub-emp]{ }{\Delta~\Gamma \vdash \emptyset : \emptyset}
+
+\inferrule[tmsub-ext]{
+    \Delta~\Gamma \vdash \gamma : \Gamma'\\
+    \Delta \vdash \tau\\
+    \Delta~\Gamma \vdash \iota : \tau
+}{
+    \Delta~\Gamma \vdash \gamma, \iota/x : \Gamma', x : \tau
+}
+\end{mathpar}
+\caption{Internal Term Substitution Validity}
+\label{fig:internal-term-substitution-validity}
+\end{figure}
+\begin{lemma}[Internal Type Substitution on Types] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ then $\Delta \vdash [\delta]\tau$.\end{lemma}
+
+\begin{lemma}[Internal Type Substitutions on Typing Contexts] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \Gamma$ then $\Delta \vdash [\delta]\Gamma$.
+\end{lemma}
+
+\begin{lemma}[Internal Type Substitutions on Terms] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ and $\Delta\Delta' \vdash \Gamma$ and $\Delta\Delta'~\Gamma \vdash \iota : \tau$ then $\Delta~[\delta]\Gamma \vdash [\delta]\iota : [\delta]\tau$.
+\end{lemma}
+
+
+\begin{lemma}[Internal Term Substitutions] If $\Delta \vdash \Gamma$ and $\Delta \vdash \Gamma'$ and $\Delta~\Gamma \vdash \gamma : \Gamma'$ and $\Delta~\Gamma\Gamma' \vdash \iota : \tau$ then $\Delta~\Gamma \vdash [\gamma]\iota : \tau$.
+\end{lemma}
+
 
 \section{Tycon Contexts}
+\begin{figure}\fbox{$\vdash \Phi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcc-emp]{ }{\vdash \cdot}
+
+\inferrule[tcc-ext]{
+    \vdash \Phi\\
+    \tc \notin \text{dom}(\Phi)\\
+    \keq{\emptyset}{\ktyidx}\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}\\\\
+    \vdash_{\Phi,  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}} \omega \sim \tcsig{\ktyidx}{\chi}
+}{
+    \vdash \Phi, \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}
+}
+\end{mathpar}
+\caption{Tycon context well-definedness.}
+\label{fig:tycon-ctxs}
+\end{figure}
+\begin{figure}[t]
+\small\fbox{$\vdash_\Phi \omega \sim \psi$}
+\begin{mathpar}\small
+\inferrule[ocstruct-intro]{
+    \introsig{\klitidx} \in \chi\\
+    \emptyset \vdash \klitidx\\\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow \kitm}
+}{
+    \vdash_\Phi \tcstructn{\stx{def}} \sim \tcsig{\ktyidx}{\chi}
+}
+
+\inferrule[ocstruct-targ]{
+    \vdash_\Phi \omega \sim \tcsig{\ktyidx}{\chi}\\
+    \opname{op}\notin\text{dom}(\chi)\\
+    \emptyset \vdash \klitidx\\\\
+    \sofkn{\emptyset}{\emptyset}{\Phi}{0}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow (\kty \times \kitm)}
+}{
+    \vdash_\Phi \tcstructc{\omega}{op}{\stx{def}} \sim \tcsig{\ktyidx}{\chi, \opsig{\opname{op}}{\klitidx}}
+}
+\end{mathpar}
+\caption{Checking opcon structures against tycon signatures.}
+\label{ocstruct}
+\end{figure}
+
+
 \subsection{Tycon Context Well-Definedness}
 
 \subsection{Equality Kinds}
