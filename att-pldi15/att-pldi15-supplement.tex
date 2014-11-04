@@ -1,5 +1,7 @@
 %\documentclass[12pt]{article}
-\documentclass[10pt,preprint]{sigplanconf}
+\documentclass[12pt]{article}
+\usepackage{fullpage,cmu-titlepage2}
+\usepackage{times}
 % The following \documentclass options may be useful:
 %
 % 10pt          To set in 10-point type instead of 9-point.
@@ -10,6 +12,7 @@
 \usepackage{amsthm}
 \usepackage{ stmaryrd }
 \usepackage{mathpartir}
+\usepackage{enumerate}
 \usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
 
 \input{macros-catlam}
@@ -56,19 +59,24 @@ morekeywords={newcase,extends}}
 
 \begin{document}
 
-\conferenceinfo{-}{-} 
-\copyrightyear{-} 
-\copyrightdata{[to be supplied]} 
-
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
 %\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
 
-\title{Modularly Composing Typed Language Fragments}
-\subtitle{Supplemental Material}
-\authorinfo{}{}{}
+\title{Modularly Composing Typed Language Fragments (Supplemental Material)}
+%\subtitle{Supplemental Material}
+%\authorinfo{}{}{}
 %\authorinfo{Cyrus Omar \and Jonathan Aldrich}
  %         {Carnegie Mellon University}
   %         {\{comar, aldrich\}@cs.cmu.edu}   
+
+\author{ }
+
+\abstract{
+    This document provides the full technical development described in the paper ``Modularly Composing Typed Language Fragments'' submitted to PLDI 2015. 
+}
+\keywords{Statistical Model Checking, Markov Decision Processes, Reinforcement Learning}
+
+\trnumber{ }
 
 \maketitle
 
@@ -83,7 +91,16 @@ We assume the statics of the IL are specified in the standard way by judgements 
 %The typing and type formation contexts obey standard structural properties (i.e. weakening, exchange and contraction). 
 The internal dynamics are specified as a structural operational semantics with a stepping judgement {\small $\iota \mapsto \iota\moutput$} and a value judgement {$\iota~\mathtt{val}$}. The multi-step judgement $\iota \mapsto^{*} \iota\moutput$ is the reflexive, transitive closure of the stepping judgement and the evaluation judgement $\iota \Downarrow \iota'$ is defined iff $\iota \mapsto^{*} \iota'$ and $\iota'~\mathtt{val}$. Both the static and dynamic semantics of the IL can be found in any standard textbook covering typed lambda calculi (we directly follow \cite{pfpl}), so we assume familiarity and give the lemmas in this section without proof.
 
-We use {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, the syntax for which is shown in Figure \ref{syntax-IL}, as representative of any intermediate language for a typed functional language. In fact, our intention is not to prescribe a particular choice of IL, so we will here only review the key metatheoretic properties that the IL must possess. Each choice of IL is technically a distinct dialect of @$\lambda$, but for the broad class of ILs that enjoy these properties, the metatheory in the remainder of the supplement should follow without trouble.
+We use {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, the syntax for which is shown in Figure \ref{syntax-IL}, as representative of any intermediate language for a typed functional language. 
+
+\begin{figure}[h!]
+\small
+\hspace{-5px}\input{syntax-table-IL}
+\caption{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL). Metavariable $x$ ranges over term variables and $\alpha$ and $t$ both range over type variables.}
+\label{syntax-IL}
+\end{figure}
+
+In fact, our intention is not to prescribe a particular choice of IL, so we will here only review the key metatheoretic properties that the IL must possess. Each choice of IL is technically a distinct dialect of @$\lambda$, but for the broad class of ILs that enjoy these properties, the metatheory in the remainder of the supplement should follow without trouble.
 
 \begin{lemma}[Internal Type Assignment]
 If $\Delta \vdash \Gamma$ and $\Delta~\Gamma \vdash \iota : \tau$ then $\Delta \vdash \tau$.
@@ -93,23 +110,15 @@ Internal type safety follows the standard methodology of proving preservation an
 
 \begin{lemma}[Internal Progress]
 If $\emptyset~\emptyset \vdash \iota : \tau$ then either $\iota~\texttt{val}$ or $\iota \mapsto \iota'$.
-\end{theorem}
+\end{lemma}
 \begin{lemma}[Internal Preservation]
 If $\emptyset~\emptyset \vdash \iota : \tau$ and $\iota \mapsto \iota'$ then $\emptyset~\emptyset \vdash \iota' : \tau$. 
 \end{lemma}
 
 We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\gamma$, have the standard semantics, and that typing and type formation contexts, $\Delta$ and $\Gamma$, obey standard properties of weakening, exchange and contraction. We assume that the names of variables and type variables are unimportant, so that $\alpha$-equivalent terms, types and contexts can be identified implicitly throughout this work. In particular, we need the definitions of substitution validity shown in Figures \ref{fig:internal-type-substitution-validity} and \ref{fig:internal-term-substitution-validity} and the following lemmas.
 
-\begin{figure}[t]
-\small
-\hspace{-5px}\input{syntax-table-IL}
-\caption{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL). Metavariable $x$ ranges over term variables and $\alpha$ and $t$ both range over type variables.}
-\label{syntax-IL}
-\end{figure}
-
-\begin{figure}
+\begin{figure}[h]
 \small\fbox{$\Delta \vdash \delta : \Delta$}~~$\delta ::=  \emptyset ~|~ \delta, \tau/\alpha$
-
 \begin{mathpar}
 \inferrule[tysub-emp]{ }{\Delta \vdash \emptyset : \emptyset}
 
@@ -123,7 +132,16 @@ We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\ga
 \caption{Internal Type Substitution Validity}
 \label{fig:internal-type-substitution-validity}
 \end{figure}
-\begin{figure}
+
+\begin{lemma}[Internal Type Substitution on Types] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ then $\Delta \vdash [\delta]\tau$.\end{lemma}
+
+\begin{lemma}[Internal Type Substitutions on Typing Contexts] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \Gamma$ then $\Delta \vdash [\delta]\Gamma$.
+\end{lemma}
+
+\begin{lemma}[Internal Type Substitutions on Terms] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ and $\Delta\Delta' \vdash \Gamma$ and $\Delta\Delta'~\Gamma \vdash \iota : \tau$ then $\Delta~[\delta]\Gamma \vdash [\delta]\iota : [\delta]\tau$.
+\end{lemma}
+
+\begin{figure}[h]
 \small\fbox{$\Delta~\Gamma \vdash \gamma : \Gamma$}~~$\gamma ::= \emptyset ~|~ \gamma, \iota/x$
 \begin{mathpar}
 \inferrule[tmsub-emp]{ }{\Delta~\Gamma \vdash \emptyset : \emptyset}
@@ -139,21 +157,31 @@ We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\ga
 \caption{Internal Term Substitution Validity}
 \label{fig:internal-term-substitution-validity}
 \end{figure}
-\begin{lemma}[Internal Type Substitution on Types] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ then $\Delta \vdash [\delta]\tau$.\end{lemma}
-
-\begin{lemma}[Internal Type Substitutions on Typing Contexts] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \Gamma$ then $\Delta \vdash [\delta]\Gamma$.
-\end{lemma}
-
-\begin{lemma}[Internal Type Substitutions on Terms] If $\Delta \vdash \delta : \Delta'$ and $\Delta\Delta' \vdash \tau$ and $\Delta\Delta' \vdash \Gamma$ and $\Delta\Delta'~\Gamma \vdash \iota : \tau$ then $\Delta~[\delta]\Gamma \vdash [\delta]\iota : [\delta]\tau$.
-\end{lemma}
-
 
 \begin{lemma}[Internal Term Substitutions] If $\Delta \vdash \Gamma$ and $\Delta \vdash \Gamma'$ and $\Delta~\Gamma \vdash \gamma : \Gamma'$ and $\Delta~\Gamma\Gamma' \vdash \iota : \tau$ then $\Delta~\Gamma \vdash [\gamma]\iota : \tau$.
 \end{lemma}
 
 
-\section{Tycon Contexts}
-\begin{figure}\fbox{$\vdash \Phi$}\vspace{-25px}
+\section{Tycons}
+\begin{figure}[h]
+\small
+$\begin{array}{lrcl}
+\textbf{tycons} & c & ::= & \rightharpoonup ~|~ \tc ~|~ \keyw{other}[m]\\
+\textbf{tycon contexts} & \Phi & ::= & \cdot ~|~ \Phi, \tcdef{\tc}{\psi}{\theta}\\
+\textbf{tycon structures} & \theta & ::= & \tcstruct{\st}{\omega} \\
+\textbf{opcon structures} & \omega & ::= & \tcstructn{\st} ~|~ \tcstructc{\omega}{op}{\st}\\
+\textbf{tycon sigs} & \psi & ::= & \tcsig{\kappa}{\chi}\\
+\textbf{opcon sigs}& \chi & ::= & \introsig{\kappa} ~|~ \opsigS{\chi}{op}{\kappa}\\
+\end{array}$
+\caption{Syntax of tycons. Metavariables $\tc$ and $\opname{op}$ range over user-defined tycon and opcon names, respectively, and $m$ ranges over natural numbers.}
+\label{syntax-TC}
+\end{figure}
+
+\subsection{Tycon Contexts}
+Tycon contexts are ordered mappings from tycon names $\tc$ to tycon definitions. The tycon context well-definedness judgement $\vdash \Phi$ is specified in Figure \ref{fig:tycon-ctxs}. 
+
+\begin{figure}[h]
+\fbox{$\vdash \Phi$}\vspace{-25px}
 \begin{mathpar}
 \small
 \inferrule[tcc-emp]{ }{\vdash \cdot}
@@ -171,7 +199,12 @@ We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\ga
 \caption{Tycon context well-definedness.}
 \label{fig:tycon-ctxs}
 \end{figure}
-\begin{figure}[t]
+
+
+
+Opcon structures are checked against the tycon's signature.
+
+\begin{figure}[h]
 \small\fbox{$\vdash_\Phi \omega \sim \psi$}
 \begin{mathpar}\small
 \inferrule[ocstruct-intro]{
@@ -188,46 +221,250 @@ We assume substitution and simultaneous $n$-ary substitutions, $\delta$ and $\ga
     \emptyset \vdash \klitidx\\\\
     \sofkn{\emptyset}{\emptyset}{\Phi}{0}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow (\kty \times \kitm)}
 }{
-    \vdash_\Phi \tcstructc{\omega}{op}{\stx{def}} \sim \tcsig{\ktyidx}{\chi, \opsig{\opname{op}}{\klitidx}}
+    \vdash_\Phi \tcstructc{\omega}{op}{\stx{def}} \sim \tcsig{\ktyidx}{\chi; \opsig{\opname{op}}{\klitidx}}
 }
 \end{mathpar}
 \caption{Checking opcon structures against tycon signatures.}
 \label{ocstruct}
 \end{figure}
 
+For the purposes of the SL, only the type signatures are relevant. We thus define  judgements $\vdash \psi$, $\vdash \chi$ and $\vdash \Phi~\mathtt{sigsok}$ in Figure \ref{fig:tycon-and-opcon-signature-well-formedness} for checking this only.
 
-\subsection{Tycon Context Well-Definedness}
+The following lemmas characterize these judgements. 
+\begin{figure}[h]
+\fbox{$\vdash \psi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcsig-ok]{
+    \keq{\emptyset}{\ktyidx}\\
+    \vdash \chi
+}{
+    \vdash \tcsig{\ktyidx}{\chi}
+}
+\end{mathpar}
+\fbox{$\vdash \chi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[ocsig-intro-ok]{
+    \emptyset \vdash \kappa
+}{
+    \vdash \introsig{\kappa}
+}
 
-\subsection{Equality Kinds}
-Need an equational theory for SL to state equality kind property, but not important for other metatheory. 
+\inferrule[ocsig-targ-ok]{
+    \emptyset \vdash \kappa\\
+    \opname{op} \notin \text{dom}(\chi)
+}{
+    \vdash \opsigS{\chi}{op}{\kappa}
+}
+\end{mathpar}
+\fbox{$\vdash \Phi~\mathtt{sigsok}$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcc-sigsok-emp]{ }{
+    \vdash \emptyset~\mathtt{sigsok}
+}
+
+\inferrule[tcc-sigsok-ext]{
+    \vdash \Phi~\mathtt{sigsok}\\
+    \vdash \psi
+}{
+    \vdash \Phi, \tcdef{\tc}{\psi}{\theta}~\mathtt{sigsok}
+}
+\end{mathpar}
+\caption{Tycon and Opcon Signature Well-Formedness}
+\label{fig:tycon-and-opcon-signature-well-formedness}
+\end{figure}
+
+
+\begin{lemma}[Inversion on Tycon Context Well-Definedness]
+\label{lemma:inversion-on-tycon-context-well-definedness}
+If (1) $$\vdash \Phi, \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}$$ then (a) $\vdash \Phi$ and (b) $\tc \notin \text{dom}(\Phi)$ and (c) $\keq{\emptyset}{\ktyidx}$ and (d) $\sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}$ and (e) $\vdash_{\Phi,  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}} \omega \sim \tcsig{\ktyidx}{\chi}$.
+\end{lemma}
+\begin{proof}
+Rule induction on assumption (1). Rule (tcc-emp) does not apply. Rule (tcc-ext) applies. The conclusions (a-e) are the five premises of (tcc-ext) and thus follow immediately.
+\end{proof}
+
+
+\begin{lemma}[Tycon Context Composition]
+If (i) $\vdash \Phi_1$ and (ii) $\vdash \Phi_2$ and (iii) $\text{dom}(\Phi_1) \cap \text{dom}(\Phi_2) = \emptyset$ then (a) $\vdash \Phi_1\Phi_2$.
+\end{lemma}
+\begin{proof}
+By syntactic case analysis on $\Phi_1$ and $\Phi_2$.
+
+If $\Phi_1=\emptyset$ and $\Phi_2=\emptyset$, then $\Phi_1\Phi_2=\emptyset$ and (a) follows by (tcc-emp).
+
+If $\Phi_2=\emptyset$ then $\Phi_1\Phi_2=\Phi_1$ and (a) follows by (1).
+
+If $\Phi_1=\emptyset$ then $\Phi_1\Phi_2=\Phi_2$ and (a) follows by (2).
+
+If $\Phi_1=\Phi_1', \tcdef{\tc_1}{\psi_1}{\theta_1}$ and $\Phi_2=\Phi_2',\tcdef{\tc_2}{\psi_2}{\theta_2}$ then $\Phi_1\Phi_2=\Phi_1'\Phi_2',\tcdef{\tc_1}{\psi_1}{\theta_1},\tcdef{\tc_2}{\psi_2}{\theta_2}$. Let (1-5) be the result of applying Lemma \ref{lemma:inversion-on-tycon-context-well-definedness} on (i), and (6-10) be the result of applying Lemma \ref{lemma:inversion-on-tycon-context-well-definedness} on (ii). By (iii) and the usual properties of domains of finite mappings, we have that (11) $\text{dom}(\Phi_1') \cap \text{dom}(\Phi_2') = \emptyset$ and further by (2) we have that (12) $\tc\notin\keyw{dom}(\Phi_1'\Phi_2')$ and by (8) that (13) $\tc'\notin\text{dom}({\Phi_1'\Phi_2'})$.  By the IH on (1), (6) and (11) we have that (14) $\vdash \Phi_1'\Phi_2'$. By (tcc-ext) on (14), (12), (3), (4) and \todo{weakening of kinding and opcon well-definedness} on (5), we have that (15) $\vdash \Phi_1'\Phi_2', \tcdef{\tc_1}{\psi_1}{\theta_1}$. By (tcc-ext) on (15), (13), (8), (9) and SAME on (10), we have (a).
+\end{proof}
+
+\begin{lemma}[Intro Opcon Existence and Well-Definedness]
+If (1) $\vdash_\Phi \omega \sim \tcsig{\ktyidx}{\chi}$ then (a) $\keyw{intro}[\klitidx] \in \chi$ and (b) $\emptyset \vdash \klitidx$ and (c) $\keyw{ana~intro}=\stx{def}\in\omega$ and (d) $\sofkz{\emptyset}{\emptyset}{\Phi}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow \kitm}$.
+\end{lemma}
+\begin{proof}
+Rule induction on assumption (1). If rule (ocstruct-intro) applies then conclusion (c) follows syntactically and (a), (b) and (d) are the three premises and thus follow immediately. If rule (ocstruct-targ) applies, then we apply the IH to the first premise.
+\end{proof}
+
+\begin{lemma}[Targeted Opcon Well-Definedness and Unicity]
+If (1) $\vdash_\Phi \omega \sim \tcsig{\ktyidx}{\chi}$ and (2) $\keyw{syn}~\opname{op}=\stx{def} \in \omega$ then (a) $\opname{op}[\klitidx] \in \chi$ and (b) $\emptyset \vdash \klitidx$ and (c) $
+    \sofkn{\emptyset}{\emptyset}{\Phi}{0}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow (\kty \times \kitm)}$ and (d) if $\keyw{syn}~\opname{op}=\stx{def}' \in \omega$ then $\stx{def}'=\stx{def}$ and (e) if $\opname{op}[\klitidx']\in\chi$ then $\klitidx'=\klitidx$.
+\end{lemma}
+\begin{proof}
+Rule induction on assumption (1). Rule (ocstruct-intro) does not apply by assumption (2). Rule (ocstruct-targ) applies. Conclusion (a) follows syntactically. Conclusions (b) and (c) are premises 3 and 4. Conclusion (d) follows because either $\stx{def}'=\stx{def}$ (i.e. we considering the current definition) or we can apply the IH to premise 1 and the assumption of (d). Conclusion (e) follows because premise 2 checks the unicity condition directly.
+\end{proof}
+
 
 \subsection{Full Examples}
+\subsubsection{Regular Strings}
+
+\subsubsection{Labeled Products}
+
+\subsubsection{Records}
 
 \section{Static Language}
 \subsection{Kind Formation}
 
-\subsection{Kinding Context Formation}
+\begin{figure}[h]
+\small\fbox{$\kDelta \vdash \kappa$}
+\begin{mathpar}
+\inferrule[kf-arrow]{
+    \kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \karrow{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-alpha]{
+    \kalpha \in \kDelta
+}{
+    \kDelta \vdash \kalpha
+}
+
+\inferrule[kf-forall]{
+    \kDelta, \kalpha \vdash \kappa
+}{
+    \kDelta \vdash \kforall{\kalpha}{\kappa}
+}
+
+\inferrule[kf-k]{
+    \kvar \in \kDelta
+}{
+    \kDelta \vdash \kvar
+}
+
+\inferrule[kf-ind]{
+    ???
+}{
+    \kDelta \vdash \kmu{\kvar}{\kappa}
+}
+
+\inferrule[kf-unit]{ }{
+    \kDelta \vdash \kunit
+}
+
+\inferrule[kf-prod]{
+    \kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \kprod{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-sum]{\kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \ksum{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-ty]{ }{\kDelta \vdash \kty}
+
+\inferrule[kf-ity]{ }{\kDelta \vdash \kity}
+
+\inferrule[kf-itm]{ }{\kDelta \vdash \kitm}
+\end{mathpar}
+\caption{Kind Formation}
+\label{fig:kind-formation}
+\end{figure}
+\begin{lemma}[Kind Variable Substitution - Kinds]~\\
+\begin{enumerate}
+\item If $\kDelta, \kalpha \vdash \kappa$ and $\kDelta \vdash \kappa'$ then $\kDelta \vdash [\kappa'/\kalpha]\kappa$.
+\item If $\kDelta, \kvar \vdash \kappa$ and $\kDelta \vdash \kappa'$ then $\kDelta \vdash [\kappa'/\kvar]\kappa$.
+\end{enumerate}
+\end{lemma}
+\begin{figure}[h]
+???
+\caption{Positive Kinds}
+\label{fig:positive-kinds}
+\end{figure}
+
+\begin{figure}[h]
+\small\fbox{$\kDelta \vdash \kGamma$}
+\begin{mathpar}
+\inferrule[kctx-emp]{ }{\kDelta \vdash \emptyset}
+
+\inferrule[kctx-ext]{
+    \kDelta \vdash \kGamma\\
+    \kDelta \vdash \kappa
+}{
+    \kDelta \vdash \kGamma, \sx :: \kappa
+}
+\end{mathpar}
+\caption{Kinding Context Formation}
+\label{fig:kinding-context-formation}
+\end{figure}
+
+\subsection{Equality Kinds}
+Need an equational theory for SL to state equality kind property, but not important for other metatheory. 
+
+\begin{lemma}[Equality Kind Well-Formedness]
+If $\keq{\emptyset}{\kappa}$ then $\emptyset \vdash \kappa$. 
+\end{lemma}
 
 \subsection{Kinding}
 
-\subsection{Dynamic Semantics}
+\subsection{Static Dynamics}
 
-\subsection{Kind Safety}
+\begin{lemma}[Static Canonical Forms]
+...
+\end{lemma}
 
-\section{Types}
+Discussion of decidability and weak normalization.
+
 \subsection{Type Translations}
 
 \subsection{Typing Context Translations}
 
+\subsection{Arguments}
+\begin{definition}[Argument Interface Kind]
+The kind abbreviated $\karg$ is defined as\[\karg := (\kty \rightarrow \kitm) \times (\kunit \rightarrow \kty\times\kitm)\]
+\end{definition}
+
+\subsection{Kind Safety}
+\paragraph{Kind Safety} Kind safety ensures that normalization of well-kinded static terms cannot go wrong. We can take a standard progress and preservation based approach. 
+\begin{theorem}[Static Progress]\label{thm:static-progress}
+If $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kappa}$ and $\vdash \Phi$ and $|\es|=n$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ then $\sval{\st}{\es; \Upsilon; \Phi}$ or $\serr{\st}{\es; \Upsilon; \Phi}$ or $\sstep{\st}{\es; \Upsilon; \Phi}{\st'}$.
+\end{theorem}
+
+\begin{theorem}[Static Preservation]\label{thm:static-preservation}
+If $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st}{\kappa}$ and $\vdash \Phi$ and $|\es|=n$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and $\sstep{\st}{\es; \Upsilon; \Phi}{\st'}$ then $\sofkn{\emptyset}{\emptyset}{\Phi}{n}{\st'}{\kappa}$.
+\end{theorem}
+The case in the proof of Theorem \ref{thm:static-preservation} for $\ssyn{n}$ requires that the following theorem be mutually defined. The mutual induction is well-founded because the total number of argument lists in the terms being considered decreases.
+\begin{theorem}[Type Synthesis]
+If $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and $\esynX{e}{\st}{\iota}$ then $\vdash_\Phi \st \leadsto \tau$ (and thus $\istype{\st}{\Phi}$). 
+\end{theorem}
+
+\section{External Language}
+\subsection{Additional Desugarings}
+\subsection{Typing}
 \paragraph{Unicity}
 The rules are structured so that if a term is well-typed, both its type and translation are unique.\todo{could move this whole thing to supplement if room needed}
 \begin{theorem}[Unicity]
 If $\vdash \Phi$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and $\vdash_\Phi \st \leadsto \tau$ and $\vdash_\Phi \st' \leadsto \tau'$ and $\eanaX{e}{\st}{\iota}$ and $\eanaX{e}{\st'}{\iota'}$ then $\st = \st'$ and $\tau=\tau'$ and $\iota = \iota'$.
 \end{theorem}
 
-\section{External Language}
-\subsection{Additional Desugarings}
-\subsection{Typing}
+
 \subsection{Proof of Regular String Soundness Tycon Invariant}
 
 
@@ -651,4 +888,12 @@ The argument interfaces that populate the list provided to opcon definitions is 
     \keyw{args}(\es;e)=_{n+1} \skap{\karg}{\svar{rcons}}~\st~(\slam{\kty}{\svar{ty}}{\sana{n}{\svar{ty}}},\slam{\kunit}{\_}{\ssyn{n}})
 }
 \end{mathpar}
-We assume that the definitions of the standard helper functions $\small\svar{nil} :: \kforall{\kalpha}{\klist{\kalpha}}$ and $\small\svar{rcons} :: \kforall{\kalpha}{\klist{\kalpha} \rightarrow \kalpha \rightarrow \klist{\kalpha}}$, which adds an item to the end of a list, have been substituted into these rules. The result is that the $n$th element of the argument interface list simply wraps the static terms $\sana{n}{\st}$ and $\ssyn{n}$.\end{document}
+We assume that the definitions of the standard helper functions $\small\svar{nil} :: \kforall{\kalpha}{\klist{\kalpha}}$ and $\small\svar{rcons} :: \kforall{\kalpha}{\klist{\kalpha} \rightarrow \kalpha \rightarrow \klist{\kalpha}}$, which adds an item to the end of a list, have been substituted into these rules. The result is that the $n$th element of the argument interface list simply wraps the static terms $\sana{n}{\st}$ and $\ssyn{n}$.
+
+\begin{lemma}
+\small If $\sofkn{\kDelta}{\kGamma}{\Phi}{n'}{\st}{\kappa}$ and $n > n'
+$ then $\sofkn{\kDelta}{\kGamma}{\Phi}{n}{\st}{\kappa}$.
+\end{lemma}
+
+
+\end{document}
