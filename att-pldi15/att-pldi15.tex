@@ -92,7 +92,7 @@ As the language design space grows, mechanisms that provide stronger modular rea
 
 %Recent work has started to address this problem, e.g. by showing how to modularly reason about desugarings atop a fixed type system. Our focus here is on safely composing type system fragments. We organize fragments around type constructors, as is usual practice when describing type systems, and sidestep the difficulties of composing abstract syntax (i.e. the expression problem)  by delegating control over a small, uniform abstract syntax in a type-directed manner to logic associated with a type constructor.
 
-In this paper, we begin from first principles by specifying a language, @$\lambda$, in the style of many full-scale languages: as a bidirectionally typed translation semantics. Only the $\rightarrow$ type constructor (tycon) is built in; all other external tycons (we show constrained strings and a variant on records) are defined by extending a \emph{tycon context}. Each tycon defines the semantics of its  term-level operators (e.g. record projection) using a static language where types and translations are values. The semantics includes a simple check that leads to powerful metatheoretic guarantees, notably \emph{type safety} and \emph{conservativity}: that  \emph{tycon invariants} will always be conserved under extension. Type system providers need not provide mechanized proofs. Instead, the check enforces a \emph{translation independence} property via type abstraction, the same principle underlying ML-style module systems.
+In this paper, we begin from first principles by specifying a language, @$\lambda$, in a style that follows many full-scale languages: as a bidirectionally typed translation semantics. Only the $\rightarrow$ type constructor (tycon) is built in; all other external tycons (we show constrained strings and a variation on record types) are defined by extending a \emph{tycon context}. Each tycon defines the semantics of its associated term-level \emph{opcons} (e.g. row projection) using a static language where types and translations are values. The semantics guarantees \emph{type safety} and, unlike other approaches, \emph{conservativity}: that all \emph{tycon-specific invariants} that can be established in a ``closed world'' will be conserved in the ``open world''. Type system providers need not provide mechanized proofs. Instead, these follow from a form of translation validation that uses type abstraction to check that tycons maintain \emph{translation independence}, analagous to the representation independence maintained by ML-style module systems.
 \end{abstract}
 
 %\category{D.3.2}{Programming Languages}{Language Classifications}[Extensible Languages]
@@ -112,11 +112,12 @@ In contrast, the usual metatheoretic reasoning techniques for programming langua
 This is not an everyday problem for programmers only because fragments like those mentioned above are ``general purpose'': they make it possible to \emph{isomorphically embed}  many other fragments as ``libraries''. For example, list types need not be built in because they are isomorphic to the type $\iforall{\alpha}{\imu{t}{\iunit + (\alpha \times t))}}$ (datatypes in ML combine these into a single declaration construct). %Languages providing datatypes al\'a ML  are perhaps most directly oriented around  embeddings into this core. % Leaving the core language simple makes it easier to establish its metatheory and verify that tools, like compilers, are implemented correctly.% They also have encouraging connections to logic. %For example, we do not need to define the type constructor $\fvar{list}$ (indexed by a type) as a fragment (though it is possible to do so) because there is a user-defined datatype constructor, $\texttt{list}$, parameterized by a type, that is isomorphic. If we added the $\fvar{list}$ fragment to the language, it would be entirely redundant semantically: every well-typed term of a type constructed by $\fvar{list}$ corresponds to a well-typed term and a polymorphic recursive sum type such th%Although strings and numbers can be embedded as recursive sum types, it is recognized that this is impractical, so these are also usually included as primitives.
 %Establishing an isomorphic embedding of a desirable fragment in terms of general-purpose fragments is not always possible, nor are such embeddings always practical. 
 
-Universality properties (e.g. ``Turing-completeness'') are often invoked to guarantee that an embedding that preserves a desirable fragment's dynamics can be constructed, but an isomorphic embedding must also preserve the static semantics and, if defined, performance bounds specified using a cost semantics. This is not always possible. 
-Embeddings are also sometimes too \emph{complex}, as measured by the cost of the extralinguistic computations that are needed to map in and out of the embedding and, if these  must be performed mentally by programmers, considering various human factors. %We will discuss specific examples below.
+Universality properties (e.g. ``Turing completeness'') are often enough to guarantee that an embedding that preserves a desirable fragment's dynamic semantics can be constructed, but an isomorphic embedding must also preserve the static semantics and, if defined, performance bounds specified using a cost semantics. This is not always possible. For example, in $\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\keyw{1}}\,{\times}\,{+}\}$, it is impossible to introduce record types as a library because you need the row projection operators, in ML written $\opname{\#}\conclbl{lbl}$, one for each of the infinite set of row labels $\conclbl{lbl}$ ($\opname{\#}$ itself is an \emph{operator constructor}). %You can only use $\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\keyw{1}}\,{\times}\,{+}\}$ as a \emph{target of compilation} for a language with record types (they can be implemented using nested binary products,  lists, or other types). %(and attempting to simulate records via a hash table over strings plus a refinement type system to check that the lookup operation will not fail will not satisfy a cost semantics prescribing $\mathcal{O}(1)$ lookup; see Sec. \ref{prior-work}).
+
+%Embeddings are also sometimes too \emph{complex}, as measured by the cost of the extralinguistic computations that are needed to map in and out of the embedding and, if these  must be performed mentally by programmers, considering various human factors. %We will discuss specific examples below.
 %When an embedding is too complex, abstraction providers have a few options, discussed in Sec. \ref{prior-work}. When an embedding is not possible, however, or when these options are  insufficient, 
 %providers are often compelled to introduce these fragments by extending an existing language, thereby forming a new \emph{dialect}. To save effort, they may do so by forking existing artifacts or leverage tools like compiler generators or language frameworks, also reviewed in Sec. \ref{prior-work}. %Indeed, the proliferation of language dialects constructed for this reason might be taken as an evidence that the core language is not as ``general'', when considered comprehensively, as might be hoped. 
-Each time a fragment must be exposed directly, rather than as a library, a new \emph{dialect} of the language must be constructed. Within the ML lineage, for example, dialects that go beyond ``core ML'' abound:
+Each time a fragment must be introduced directly, rather than as a library, a new \emph{dialect} of the language arises. Within the ML lineage, dialects that go beyond ``core ML'' abound:%, showing that this is not an isolated example:
 %Reynolds, in a remark that recalls the ``Turing tarpit'' of Perlis \cite{Perl82a}, summarizes the issue \cite{Reynolds94anintroduction}: 
 %\begin{quote}
 %To say that any reasonable function can be expressed by some program is not to say that it can be expressed by the most reasonable program. It is clear that the language requires a novel programming style. Moreover, it is likely that certain important functions cannot be expressed by their most efficient algorithms.
@@ -124,11 +125,11 @@ Each time a fragment must be exposed directly, rather than as a library, a new \
 %
 
 \begin{enumerate}
-\vspace{-5px}
+\vspace{-7px}
 %\compresslist
 \item 
 \textbf{General Purpose Fragments:} 
-A number of variations on product types, for example, have been introduced in dialects: 
+Many variations on product types, for example, exist: 
 $n$-ary tuples, 
 labeled tuples, 
 records (identified up to reordering), 
@@ -138,15 +139,14 @@ records with mutable fields \cite{ocaml-manual},
 %field delegation \cite{atlang-gpce14} \todo{gpce submission} 
 and 
 records with ``methods'' (i.e. pure objects \cite{TSLs}). 
- Sum-like types are also exposed in various ways: 
-finite datatypes, 
-open datatypes \cite{conf/ppdp/LohH06}, 
-hierarchically open datatypes \cite{journals/toplas/MillsteinBC04}, 
+ Sum-like types are also exposed variously: 
+standard datatypes, 
+open datatypes \cite{conf/ppdp/LohH06,journals/toplas/MillsteinBC04}, 
 polymorphic variants \cite{ocaml-manual} and 
-ML-style exception types. Combinations of these manifest themselves as class-based object systems \cite{ocaml-manual}. 
+exception types \cite{harper1997programming}. Combinations of these manifest themselves as class-based object systems \cite{ocaml-manual}. 
 
 \item
-\textbf{Specialized Fragments:} Fragments that track specialized static invariants to provide stronger correctness or security guarantees, manage unwieldy lower-level abstractions and run-time systems or control cost are also frequently introduced in dialects, e.g. for data parallelism  \cite{chakravarty2007data}, distributed programming \cite{Murphy:2007:TDP:1793574.1793585}, reactive programming \cite{mandel2005reactiveml}, authenticated data structures \cite{Miller:2014:ADS:2535838.2535851}, databases \cite{Ohori:2011:MSM:2034773.2034815},  units of measure \cite{conf/cefp/Kennedy09} and regular string sanitation \cite{sanitation-psp14}. %\verb|sprintf| in the OCaml dialect statically distinguishes format strings from strings.% All of these are implemented as dialects of existing languages, presumably because a strong encoding was not feasible.
+\textbf{Specialized Fragments:} Fragments that track specialized static invariants are also frequently introduced in dialects, e.g. for distributed programming \cite{Murphy:2007:TDP:1793574.1793585}, reactive programming \cite{mandel2005reactiveml}, authenticated data structures \cite{Miller:2014:ADS:2535838.2535851}, databases \cite{Ohori:2011:MSM:2034773.2034815},  units of measure \cite{conf/cefp/Kennedy09} and regular string sanitation \cite{sanitation-psp14}, amongst many other examples. %\verb|sprintf| in the OCaml dialect statically distinguishes format strings from strings.% All of these are implemented as dialects of existing languages, presumably because a strong encoding was not feasible.
 \vspace{-3px}
 \item
 \textbf{Foreign Fragments:} A safe and natural foreign function interface (FFI) can be valuable (particularly given this proliferation of dialects). This requires enforcing the type system of the foreign language in the calling language. %Using  a FFI that does not do this can lead to safety issues, even when both languages are separately known to be safe. 
@@ -157,20 +157,22 @@ For example, MLj builds in a safe FFI to Java \cite{Benton:1999:IWW:317636.31779
 
 
 This \emph{dialect-oriented} state of affairs is unsatisfying. %Language designers are burdened with needing to understand the complete metatheory of every fragment they add to their language to make sure it is not incompatible with existing fragments, so languages change rarely. This decreases the impact of many potentially useful innovations designed by fragment providers (e.g. many academic researchers) by making them unavailable to programmers. 
-While programmers can choose from dialects supporting, e.g., a principled approach to distributed programming, or one that builds in support for statically reasoning about units of measure, one that supports both fragments may not be available. Using different dialects separately for different components of a program is untenable: components written in different dialects cannot always interface safely (i.e. a safe FFI, item 3 above, is needed between every pair of dialects). And as just mentioned, composing dialects is non-trivial.
+While programmers can choose from dialects supporting, e.g., a principled approach to distributed programming, or one that builds in support for statically reasoning about units of measure, one that supports both fragments may not be available. Using different dialects separately for different components of a program is untenable: components written in different dialects cannot always interface safely (i.e. a safe FFI, item 3 above, is needed between every pair of dialects). %And as just mentioned, composing dialects is non-trivial.
 
-These problems do not arise for a fragment that can be expressed as an isomorphic embedding (i.e. as a library) because modern \emph{module systems} can enforce abstraction barriers that ensure that the isomorphism needs only to be established in the ``closed world'' of the module. For example, a module defining sets in ML can hold the representation of sets abstract, ensuring that any invariants maintained by the functions in the module (e.g. uniqueness, if using a list representation) will hold no matter which other modules are in use by a client \cite{harper1997programming}. Other languages provide similar facilities, e.g. Scala's abstract type members \cite{conf/oopsla/AminRO14}. %Mechanisms that can help decrease the complexity of an embedding without violating abstraction barriers are thus valuable, and we will lead into our work in Sec. \ref{prior-work} by summarizing them. 
+These problems do not arise for fragment expressed as an isomorphic embedding (i.e. as a library) because modern \emph{module systems} can enforce abstraction barriers that ensure that the isomorphism needs only to be established in the ``closed world'' of the module. For example, a module defining sets in ML can hold the representation of sets abstract, ensuring that any invariants necessary to maintain the isomorphism need only be maintained by the functions in the module (e.g. uniqueness, if using a list representation). These then continue to hold no matter which other modules are in use by a client \cite{harper1997programming}. Other languages provide similar forms of \emph{abstract data types} to localize reasoning \cite{liskov1974programming}. %Mechanisms that can help decrease the complexity of an embedding without violating abstraction barriers are thus valuable, and we will lead into our work in Sec. \ref{prior-work} by summarizing them. 
 
-When library-based embeddings are not possible, as in the examples above, mechanisms are needed that make it possible to define and  reason in a similarly modular manner about  direct extensions to the semantics of a language. Such a mechanism could ultimately be integrated directly into the language, blurring the distinction between fragments and libraries and decreasing the need for new dialects.% Importing fragments that introduce new semantics   would be as easy and reasonable as importing a new module is in ML today. %In the limit, the community could rely on modularly mechanized metatheory and compiler correctness results.% rather than requiring heroic efforts from individual research groups that consider an entire language at once. %Recent work has shown progress on modularly introducing new concrete syntax, reviewed in Sec. \ref{desugaring}. Our focus is on the problem of introducing new semantics.
+Mechanisms are needed that make it possible to define and  reason in a similarly modular, localized manner about  direct extensions to the semantics of a language. For example, if a language is extended with \emph{regular string types} as described in \cite{sanitation-psp14}, all terms having a regular string type like $\sty{\tcvar{rstr}}{\concrx{[A-Z]+ \digit\digit\digit\digit}}$ should continue to behave as strings in the regular language indicated no matter which other extensions are in use by a client. %Such a mechanism could ultimately be integrated directly into the language, blurring the distinction between fragments and libraries and decreasing the need for new dialects.% Importing fragments that introduce new semantics   would be as easy and reasonable as importing a new module is in ML today. %In the limit, the community could rely on modularly mechanized metatheory and compiler correctness results.% rather than requiring heroic efforts from individual research groups that consider an entire language at once. %Recent work has shown progress on modularly introducing new concrete syntax, reviewed in Sec. \ref{desugaring}. Our focus is on the problem of introducing new semantics.
 
 
 
 
 \paragraph{Contributions} In this paper, we take foundational steps toward this goal by  constructing a simple but surprisingly powerful core calculus, @$\lambda$ (the ``actively typed'' lambda calculus). %Despite its minimality, it can host a variety of practical semantic extensions like those described above, while maintaining strong metatheoretic guarantees and, crucially, providing modular reasoning properties. %a calculus introduced briefly in recent work on \emph{active type constructors}  \cite{atlang-gpce14}\todo{TR? Arxiv?}, reviewed in Sec. \ref{overview}. 
 Its semantics are structured like those of many modern languages, consisting of an \emph{external language} (EL) governed by a {typed translation semantics} targeting a much simpler \emph{internal language} (IL). 
-Rather than building in a monolithic set of external type constructors, however, the  semantics are indexed by a \emph{tycon context}. Each tycon defines the semantics of its operators via functions written in a \emph{static language} (SL) where types and translations are values. %, which provides a form of type-level computation. %The authors demonstrate the expressive power of this technique primarily with an implementation and a number of examples of fragments as libraries, and their core calculus .% (unlike systems that treat the type system as a ``bag of rules'', where non-determinism can arise). 
+Rather than building in a monolithic set of external type constructors, however, the  semantics are indexed by a \emph{tycon context}. Each tycon, e.g. $\tcvar{lprod}$ defining labeled products or $\tcvar{rstr}$ defining regular strings, determines the semantics of its associated opcons (e.g. $\opname{\#}$ for row projection, or $\opname{conc}$ for concatenation) via \emph{static functions}, i.e. functions written in a \emph{static language} (SL), where types and translations are values. 
 
-We will begin by giving an overview of the organization  and main judgements of @$\lambda$ in Sec. \ref{atlam}, then discuss how types are constructed and introduce our two main examples, one defining labeled product types with a functional update operator, and the other regular string types, based on a recent core calculus style specification \cite{sanitation-psp14}, in Sec. \ref{types}. We describe how tycons control the semantics of their term-level operator constructors (opcons) in Sec. \ref{external-terms}.  We next give the key metatheoretic properties of the calculus in Sec. \ref{metatheory}, including \emph{type safety} and a key modularity result, which we call  \emph{conservativity}: any invariants that can be established about all values of a type under \emph{some} tycon context (i.e. in some  ``closed world'') are conserved in any further extended tycon context (i.e. in the ``open world''). Interestingly, type system providers need not provide mechanized proofs to maintain these guarantees. Instead, the approach we take relies on type abstraction in the internal language. As a result, we are able to use the same parametricity results that underly modular reasoning in simply-typed languages like ML to reason modularly about typed language fragments. We conclude with  related and future work in Sec. \ref{prior-work}.
+All translation invariants maintained by these opcons in any ``closed world'', e.g. the regular string invariant just mentioned, are guaranteed to be maintained in any further extended tycon context, i.e. in the ``open world'', due to a simple static check that maintains \emph{translation independence} between tycons using type abstraction in the IL, the same fundamental mechanism underlying representation independence in ML-style module systems. As in ML, mechanized specifications and proofs are not needed.%, which provides a form of type-level computation. %The authors demonstrate the expressive power of this technique primarily with an implementation and a number of examples of fragments as libraries, and their core calculus .% (unlike systems that treat the type system as a ``bag of rules'', where non-determinism can arise). 
+
+% We will begin by giving an overview of  @$\lambda$ in Sec. \ref{atlam}, introducing our two main examples, one defining labeled product types (i.e. record types maintaining an ordering for simplicity) with a functional update operator, and the other regular string types, based on a recent core calculus style specification \cite{sanitation-psp14}. In Sec. \ref{types}, we detail how tycons are defined and how types arise from tycons. We then describe how tycons control the semantics of their term-level operator constructors (opcons) in Sec. \ref{external-terms}.  We next give the key metatheoretic properties of the calculus in Sec. \ref{metatheory}, including \emph{type safety} and a key modularity result, which we call  \emph{conservativity}: any invariants that can be established about all values of a type under \emph{some} tycon context (i.e. in some  ``closed world'') are conserved in any further extended tycon context (i.e. in the ``open world'').  Interestingly, type system providers need not provide mechanized proofs to maintain such guarantees. Instead, the approach we take relies on type abstraction in the internal language. As a result, we are able to use the same parametricity results that underly modular reasoning in simply-typed languages like ML to reason modularly about typed language fragments. We conclude with  related and future work in Sec. \ref{prior-work}.
 
 \section{Overview of @$\lambda$}\label{atlam}\label{overview}
 \begin{figure}[t]
@@ -181,19 +183,20 @@ We will begin by giving an overview of the organization  and main judgements of 
 \vspace{-10px}
 \end{figure}
 \paragraph{External Language}
-Programmers interface with @$\lambda$ by writing \emph{external terms}, $e$. The abstract syntax of external terms is shown in Figure \ref{syntax-EL} (we will give various concrete desugarings in Sec. \ref{external-terms}). %We will describe useful syntactic desugarings atop this syntax as we go on and review recent techniques that permit modularly introducing  desugarings like these in Sec. \ref{desugaring}. Our main focus here is on semantic extensions. 
-The static and dynamic semantics are specified simultaneously as a \emph{bidirectionally typed translation semantics}, i.e. the key judgements take the form:\[\esynX{e}{\st\moutput}{\iota\moutput} ~~~~~\text{and}~~~~~ \eanaX{e}{\st}{\iota\moutput}\]
+Programmers interface with @$\lambda$ by writing \emph{external terms}, $e$. The abstract syntax of external terms is shown in Figure \ref{syntax-EL} and we will introduce various concrete desugarings in Sec. \ref{external-terms}. %We will describe useful syntactic desugarings atop this syntax as we go on and review recent techniques that permit modularly introducing  desugarings like these in Sec. \ref{desugaring}. Our main focus here is on semantic extensions. 
+The semantics are specified as a \emph{bidirectionally typed translation semantics}, i.e. the key judgements have the form:\[\esynX{e}{\st\moutput}{\iota\moutput} ~~~~~\text{and}~~~~~ \eanaX{e}{\st}{\iota\moutput}\]
 \noindent
-These are pronounced ``$e$ (synthesizes / analyzes against) type $\sigma$ and has  translation $\iota$ under typing context $\Upsilon$ and tycon context $\Phi$''. Note that our specifications in this paper are intended to be algorithmic: we indicate ``outputs'' when introducing judgement forms by \emph{mode annotations}, $\moutput$; these are not part of the judgement's syntax. In particular, note that the type is an ``output'' only for the synthetic judgement.
+These are pronounced ``$e$ (synthesizes / analyzes against) type $\sigma$ and has  translation $\iota$ under typing context $\Upsilon$ and tycon context $\Phi$''. Note that our specifications in this paper are intended to be algorithmic: we indicate ``outputs'' when introducing judgement forms by \emph{mode annotations}, $\moutput$. Note that the type is an ``output'' only for the synthetic judgement.
 
-This basic separation of the EL and IL is commonly used for full-scale language specifications, e.g. the Harper-Stone semantics for Standard ML \cite{Harper00atype-theoretic}. The internal language is purposely kept small, e.g. defining only binary products, to simplify metatheoretic reasoning and compilation. The EL then specifies various useful higher-level constructs, e.g. record types, by translation to the IL. In @$\lambda$, the EL builds in only function types. All other external constructs are defined in the \emph{tycon context}, described starting in the Sec. \ref{types}. 
+This separation of the EL from the IL is commonly used for full-scale language specifications, e.g. the Harper-Stone semantics for Standard ML \cite{Harper00atype-theoretic} or the semantics of Wyvern \cite{TSLs}. The internal language is purposely kept small, e.g. defining only binary products, to simplify metatheoretic reasoning and compilation. The EL then specifies various useful higher-level constructs, e.g. record types, by translation to the IL. In @$\lambda$, the EL builds in only function types. All other external constructs are defined in the \emph{tycon context}, $\Phi$, described starting in the Sec. \ref{types}. 
 
-We choose bidirectional typechecking, also sometimes called \emph{local type inference} \cite{Pierce:2000:LTI:345099.345100}, for two main reasons. The first is once again to justify the practicality of our approach: local type inference is increasingly being used in modern languages (e.g. Scala \cite{OdeZenZen01}) because it eliminates the need for type annotations in many situations while remaining decidable in more situations than whole-function type inference and providing what are widely perceived to be higher quality error messages \cite{journals/jfp/JonesVWS07}. Secondly, it  gives us a clean way to reuse the generalized introductory form, $\eintro{\st}{\es}$, and its associated desugarings, at many types \cite{TSLs}. For example, regular string types can use standard string literal syntax. 
+We choose bidirectional typechecking, also sometimes called \emph{local type inference} \cite{Pierce:2000:LTI:345099.345100}, for two main reasons. The first is once again to justify the practicality of our approach: local type inference is increasingly being used in modern languages (e.g. Scala \cite{OdeZenZen01}) because it eliminates the need for type annotations in many situations while being simpler and decidable in more situations than whole-function type inference and providing what are widely perceived to be higher quality error messages \cite{journals/jfp/JonesVWS07}. Secondly, it  gives us a clean way to reuse the generalized introductory form, $\eintro{\st}{\es}$, and its associated desugarings, at many types \cite{TSLs}. For example, regular string types can use standard string literal syntax. 
 
-Unlike the Harper-Stone semantics, where external and internal terms were governed by a common type system, in @$\lambda$ each external type, $\st$, maps onto an internal type, $\tau$, called the \emph{type translation} of $\st$. This mapping is specified by the  type translation judgement, $\vdash_\Phi \st \leadsto \tau$, which will be described in Sec. \ref{sec:type-translations}. 
-For this reason, this specification style may also be compared to specifications for the first stage of a type-directed compiler, e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD}, here lifted ``one level up'' into the semantics of the language itself. As we will see, type safety follows from a property analagous to a correctness condition that arises in typed compilers. Modular reasoning will be based on holding the type translation of $\st$ abstract ``outside'' the tycon.
+Unlike the Harper-Stone semantics, where external and internal terms were governed by a common type system, in @$\lambda$ each external type, $\st$, maps onto an internal type, $\tau$, called the \emph{type translation} of $\st$. This mapping is specified by the  type translation judgement, $\vdash_\Phi \st \leadsto \tau$, which will be described in Sec. \ref{sec:type-translations}. For example, regular string types will translate to internal type abbreviated $\keyw{str}$, and labeled product types will translate to nested binary product types, though we will emphasize that there are other valid choices. 
 
-External typing contexts $\Upsilon$ map variables to types, so we also need the judgement $\vdash_\Phi \Upsilon \leadsto \Gamma$ to construct a $\Gamma$ that maps the same variables to corresponding type translations.
+This specification style may thus also be compared to specifications for the first stage of a type-directed compiler, e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD}, here lifted ``one level up'' into the semantics of the language itself. As we will see, type safety follows from a property analagous to a correctness condition that arises in typed compilers. Modular reasoning will be based on holding the type translation of $\st$ abstract ``outside'' the tycon.
+
+External typing contexts $\Upsilon$ map variables to types, so we also need the judgement $\vdash_\Phi \Upsilon \leadsto \Gamma$.
 
 %We will return to how we control the semantics of the single introductory form in the abstract syntax, $\eintro{\st}{\es}$, on the basis of the type it is being analyzed against, sidestepping issues related to the \emph{expression problem} as a result \todo{cite other paper}\cite{wadler1998expression}. The form $\eother{\iota}$ is a technical device used to quantify over all terms that may arise in a ``future'' tycon context, serving an analagous role to the  ``catchall'' base constants commonly found in minimal calculi, and we will return to its semantics later as well.%We will see how we leverage this bidirectionality when we discuss literal forms below. % The judgement is only well-defined for \emph{valid} tycon contexts, written judgementally as $\vdash \Phi$ and \emph{valid} typing contexts, $\vdash_\Phi \Upsilon$, which we also specify below.
 %  \begin{figure*}[t!]
@@ -234,26 +237,17 @@ The internal dynamics are specified as a structural operational semantics with a
 \caption{Syntax of the static language (SL). Metavariable $\sx$ ranges over static term variables, $\kalpha$ and $\kvar$ over kind variables and $n$ over natural numbers.}\vspace{-5px}
 \label{syntax-SL}
 \end{figure}
-The workhorse of @$\lambda$ is the \emph{static language}, which itself forms a typed lambda calculus where 
+The main novelty of @$\lambda$ is the \emph{static language}, which itself forms a typed lambda calculus where we use the word 
 %External terms are classified by (external) \emph{types}. 
-\emph{kinds}, $\kappa$, classify \emph{static terms}, $\sigma$.  The syntax of the SL is given in Figure \ref{syntax-SL}. The portion of the SL covered by the first row of kinds and first row of static terms, some of which are elided for concision, forms an entirely standard  functional programming language consisting of total functions, universal quantification over kinds, inductive kinds, and products and sums. The reader can consider these as forming a total subset of ML or a simply-typed subset of Coq and we will assume standard conveniences from such languages (e.g. let bindings, pattern matching and inference of type parameters when applying polymorphic functions) are available in examples for concision. The semantics we assume also directly follows \cite{pfpl}, so we also omit the details of this core here.  Only three new  kinds are needed for the SL to serve its role as the language used to   control typing and translation of the EL: $\kty$ (Sec. \ref{types}), $\kity$ (Sec. \ref{sec:type-translations}) and $\kitm$ (Sec. \ref{sec:introop}). 
+\emph{kind}, $\kappa$, to refer to the ``types'' of \emph{static terms}, $\sigma$.  The syntax of the SL is given in Figure \ref{syntax-SL}. The portion of the SL covered by the first row of kinds and static terms, some of which are elided for concision, forms an entirely standard total functional programming language consisting of total functions, universal quantification over kinds, inductive kinds, and products and sums  \cite{pfpl}. The reader can consider these as forming a total subset of ML \cite{harper1997programming} or a simply-typed subset of Coq \todo{citation}and we will assume standard conveniences from such languages (e.g. let bindings, pattern matching and inference of type parameters when applying polymorphic functions) in examples for concision. Only three new  kinds are needed for the SL to serve its role as the language used to   control typing and translation of the EL: $\kty$, classifying types (Sec. \ref{types}), $\kity$, classifying \emph{translational internal types} (Sec. \ref{sec:type-translations}) and $\kitm$, classifying \emph{translational internal terms} (Sec. \ref{sec:introop}). 
 
-The kinding judgement takes the form $\sofkX{\st}{\kappa\moutput}$, where $\kDelta$ and $\kGamma$ are analagous to $\iDelta$ and $\iGamma$ and analagous kind and kinding context formation judgements $\kDelta \vdash \kappa$ and $\kDelta \vdash \kGamma$ are  defined. All such contexts in @$\lambda$ are identified up to exchange and contraction and obey weakening \cite{pfpl}. The natural number $n$ is used as a technical device in our semantics to ensure that the forms shown as being indexed by $n$ in the syntax only arise in a controlled manner internally to prevent ``out of bounds'' issues, as we will discuss; they would have no corresponding concrete syntax so $n$ can be assumed $0$ in user-defined terms. 
+The kinding judgement takes the form $\sofkX{\st}{\kappa\moutput}$, where $\kDelta$ and $\kGamma$ are analagous to $\iDelta$ and $\iGamma$ and analagous kind and kinding context formation judgements $\kDelta \vdash \kappa$ and $\kDelta \vdash \kGamma$ are  defined. All such contexts in @$\lambda$ are identified up to exchange and contraction and obey weakening \cite{pfpl}. The natural number $n$ is used as a technical device in our semantics to ensure that the forms shown as being indexed by $n$ arise in a controlled manner to prevent ``out of bounds'' issues, as we will discuss; they would have no corresponding concrete syntax so $n$ can be assumed $0$ in user-defined terms. 
 
-The dynamic semantics of static terms is defined as a structural operational semantics by a stepping judgement $\sstep{\st}{\argEnv}{\st\moutput}$, a value judgement $\sval{\st}{\argEnv}$ and an error judgement $\serr{\st}{\argEnv}$. Here, $\argEnv$ ranges over \emph{argument environments}, which we will  return to when considering opcons in Sec. \ref{external-terms}. The multi-step judgement $\smanystep{\st}{\argEnv}{\st\moutput}$ is the reflexive, transitive closure of the stepping judgement. The normalization judgement $\seval{\st}{\argEnv}{\st'}$ is defined iff $\smanystep{\st}{\argEnv}{\st'}$ and $\sval{\st'}{\argEnv}$. %${\st}{\memD}{\memG}{\aCtx}{\st\moutput}{\memD\moutput}{\memG\moutput}$, where $\memD$, $\memG$ and $\aCtx$ are also technical devices that will be described later; they too can be ignored from the perspective of user code. We write $\st \Downarrow \st'$ iff $\snorm{\st}{\emptyset}{\cdot}{{\rightharpoonup}; \emptyset; \emptyset}{\st'}{\emptyset}{\cdot}$. \emph{Static values} are normalized static terms. Normalization can also raise an error (to indicate a type error in an external term, or a problem in a tycon definition, as we will discuss), indicated by the judgement $\serrX{\st}$. We omit error propagation rules.%We will refer to the relevant rules as we proceed. 
-\begin{figure}[t]
-\small
-$\begin{array}{lrcl}
-\textbf{tycons} & c & ::= & \rightharpoonup ~|~ \tc ~|~ \keyw{other}[m]\\
-\textbf{tycon contexts} & \Phi & ::= & \cdot ~|~ \Phi, \tcdef{\tc}{\psi}{\theta}\\
-\textbf{tycon structures} & \theta & ::= & \tcstruct{\st}{\omega} \\
-\textbf{opcon structures} & \omega & ::= & \tcstructn{\st} ~|~ \tcstructc{\omega}{op}{\st}\\
-\textbf{tycon sigs} & \psi & ::= & \tcsig{\kappa}{\chi}\\
-\textbf{opcon sigs}& \chi & ::= & \introsig{\kappa} ~|~ \opsigS{\chi}{op}{\kappa}\\
-\end{array}$
-\caption{Syntax of tycons. Metavariables $\tc$ and $\opname{op}$ range over user-defined tycon and opcon names, respectively, and $m$ ranges over natural numbers.}
-\label{syntax-TC}\vspace{-8px}
-\end{figure}
+The dynamic semantics of static terms is defined as a structural operational semantics by a stepping judgement $\sstep{\st}{\argEnv}{\st\moutput}$, a value judgement $\sval{\st}{\argEnv}$ and an error raised judgement $\serr{\st}{\argEnv}$. $\argEnv$ ranges over \emph{argument environments}, which we will  return to when considering opcons in Sec. \ref{external-terms}. The multi-step judgement $\smanystep{\st}{\argEnv}{\st\moutput}$ is the reflexive, transitive closure of the stepping judgement. The normalization judgement $\seval{\st}{\argEnv}{\st'}$ is defined iff $\smanystep{\st}{\argEnv}{\st'}$ and $\sval{\st'}{\argEnv}$. %${\st}{\memD}{\memG}{\aCtx}{\st\moutput}{\memD\moutput}{\memG\moutput}$, where $\memD$, $\memG$ and $\aCtx$ are also technical devices that will be described later; they too can be ignored from the perspective of user code. We write $\st \Downarrow \st'$ iff $\snorm{\st}{\emptyset}{\cdot}{{\rightharpoonup}; \emptyset; \emptyset}{\st'}{\emptyset}{\cdot}$. \emph{Static values} are normalized static terms. Normalization can also raise an error (to indicate a type error in an external term, or a problem in a tycon definition, as we will discuss), indicated by the judgement $\serrX{\st}$. We omit error propagation rules.%We will refer to the relevant rules as we proceed. 
+
+
+\section{Types}\label{types}
+
 \begin{figure*}\begin{mathpar}
 \small
 \inferrule[k-parr]{
@@ -262,7 +256,7 @@ $\begin{array}{lrcl}
     \sofkX{\sty{\rightharpoonup}{\st}}{\kty}
 }
 
-\inferrule[k-ty]{
+\inferrule[k-tc]{
     \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\theta} \in \Phi\\
     \sofkX{\st}{\ktyidx}
 }{
@@ -270,39 +264,51 @@ $\begin{array}{lrcl}
 }
 
 \inferrule[k-otherty]{
-    \sofkX{\sttyidx}{\keyw{Nat} \times \kity}
+    \sofkX{\sttyidx}{\kappa \times \kity}
 }{
-    \sofkX{\sty{\keyw{other}[m]}{\sttyidx}}{\kty}
+    \sofkX{\sty{\keyw{other}[m; \kappa]}{\sttyidx}}{\kty}
 }\vspace{-10px}
 \end{mathpar}
 \caption{Kinding rules for types, which take the form $\sty{c}{\sttyidx}$ where $c$ is a tycon and $\sttyidx$ is the type index.}
 \label{fig:types}\vspace{-10px}
 \end{figure*}
+\begin{figure}[t]
+\small
+$\begin{array}{lrcl}
+\textbf{tycons} & c & ::= & \rightharpoonup ~|~ \tc ~|~ \keyw{other}[m; \kappa]\\
+\textbf{tycon contexts} & \Phi & ::= & \cdot ~|~ \Phi, \tcdef{\tc}{\psi}{\theta}\\
+\textbf{tycon structures} & \theta & ::= & \tcstruct{\st}{\omega} \\
+\textbf{opcon structures} & \omega & ::= & \tcstructn{\st} ~|~ \tcstructc{\omega}{op}{\st}\\
+\textbf{tycon sigs} & \psi & ::= & \tcsig{\kappa}{\chi}\\
+\textbf{opcon sigs}& \chi & ::= & \introsig{\kappa} ~|~ \opsigS{\chi}{op}{\kappa}\\
+\end{array}$
+\caption{Syntax of tycons. Metavariables $\tc$ and $\opname{op}$ range over extension tycon and opcon names, respectively, and $m$ ranges over natural numbers.}
+\label{syntax-TC}\vspace{-8px}
+\end{figure}
 
-\section{Types}\label{types}
+\noindent
+External types, or simply \emph{types}, are static values of kind $\kty$. We write $\istype{\st}{\Phi}$  iff $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\kty}$ and $\sval{\st}{\cdot;\emptyset;\Phi}$. The introductory form for kind $\kty$ is $\sty{c}{\st}$, where $c$ is a \emph{tycon} and $\st$ is the \emph{type index}. The dynamics are simple: the index is eagerly normalized and errors propagate  (see supplement for the complete set of rules in this paper). 
+
+The syntax  for tycons given in Figure \ref{syntax-TC} specifies that $c$ can have one of three forms, so there are three corresponding kinding rules for types, shown in Figure \ref{fig:types}. 
+
+\paragraph{Arrow Types} The rule \rulename{k-parr} specifies that the type index of partial function types must be a pair of types. We thus say that $\rightharpoonup$ has \emph{index kind} $\kty \times \kty$. We can introduce a desugaring from $\st_1 \rightharpoonup \st_2$ to $\sty{\rightharpoonup}{(\st_1, \st_2)}$. %Here, we will benefit by treating it uniformly.
 
 
-External types, or simply \emph{types}, are static values of kind $\kty$. The introductory form for kind $\kty$ is $\sty{c}{\st}$, where $c$ is a \emph{tycon} and $\st$ is the \emph{type index}. The syntax  for tycons given in Figure \ref{syntax-TC} specifies that $c$ is either the built-in tycon governing partial functions, $\rightharpoonup$, a user-defined tycon name written in small caps, $\tc$, or an ``other'' tycon, $\keyw{other}[m]$, indexed by a natural number $m$ to allow arbitrarily many such tycons. The kinding rules governing the form $\sty{c}{\st}$ are shown in Figure \ref{fig:types}. The dynamics are simple (see supplement): the index is eagerly normalized and errors propagate. We write $\istype{\st}{\Phi}$  iff $\sofkn{\emptyset}{\emptyset}{\Phi}{0}{\st}{\kty}$ and $\sval{\st}{\cdot;\emptyset;\Phi}$.
+\paragraph{Extension Types} For types constructed by an extension tycon, written in small caps, $\tc$, the rule \rulename{k-tc} extracts the index kind of $\tc$ from the tycon context, $\Phi$, which is simply a list of tycon definitions, $\tcdef{\tc}{\psi}{\theta}$, where $\theta$ is the \emph{tycon structure} and $\psi$ is the \emph{tycon signature}.  Tycon signatures have the form $\tcsig{\ktyidx}{\chi}$, where $\ktyidx$ is the tycon's index kind. We cover the remaining components of tycon definitions and signatures as we continue. Two examples of tycon contexts (each defining only one tycon)\footnote{In examples, we omit leading $\emptyset$, used as the base case for finite mappings, and $\cdot$, used as the base case for finite sequences, for concision.} and their signatures are shown in Figure \ref{fig:example-tycons}.
 
-The rule \rulename{k-parr} specifies that the type index of partial function types must be a pair of types. We thus say that $\rightharpoonup$ has \emph{index kind} $\kty \times \kty$. To recover a conventional syntax, we can introduce a desugaring from $\st_1 \rightharpoonup \st_2$ to $\sty{\rightharpoonup}{(\st_1, \st_2)}$. %Here, we will benefit by treating it uniformly.
-
-
-All user-defined tycons $\tc$ must be defined in the \emph{tycon context}, $\Phi$, which is simply a list of tycon definitions, $\tcdef{\tc}{\psi}{\theta}$, where $\theta$ is the \emph{tycon structure} and $\psi$ is the \emph{tycon signature}. We will return to tycon structures below. Tycon signatures have the form $\tcsig{\ktyidx}{\chi}$, where $\ktyidx$ is the tycon's index kind and $\chi$ is the \emph{opcon signature}, which we   discuss in Sec. \ref{external-terms}. The first premise of \rulename{k-ty} extracts the index kind and the second checks the type index against it. 
-
-The rule (k-otherty) governs types constructed by an ``other'' tycon. These will serve only as technical devices to stand in for types other than those in a given tycon context in Sec. \ref{metatheory}. The index of such a type must pair a natural number with a static value of kind $\kity$, discussed in Sec. \ref{sec:type-translations}.
-
-
-
-
-\paragraph{Examples} Two examples of tycon contexts (each defining only one tycon)  and their signatures are shown in Figure \ref{fig:example-tycons}. \footnote{In examples, we omit leading $\emptyset$, used as the base case for finite mappings, and $\cdot$, used as the base case for finite sequences, for concision.}
-
-Our first example, $\tcvar{rstr}$, has index kind $\krx$, which we assume classifies static regular expression patterns (defined as an inductive sum kind in the usual way). Types constructed by $\tcvar{rstr}$ will classify terms that behave as \emph{regular strings}, statically obeying the invariant that they are in the regular language specified by the type index \cite{sanitation-psp14}. For example, $\stx{title} := \sty{\tcvar{rstr}}{\concrx{.+}}$ will classify non-empty strings and $\stx{conf} := \sty{\tcvar{rstr}}{\concrx{[A-Z]+ \digit\digit\digit\digit}}$ will classify conference names.  The type indices are  here written using standard concrete syntax for concision; recent work has specified how to define type-specific (or here, kind-specific) syntax like this composably in libraries \cite{TSLs}. %We define the tycon context containing only the definition of $\tcvar{rstr}$, $\Phi_\text{rstr} := \tcdef{\tcvar{rstr}}{\tcsig{\krx}{\chi_\text{rstr}}}{\theta_\text{rstr}}$.
+Our first example is $\tcvar{rstr}$. Its signature specifies that it has index kind $\krx$, which classifies static regular expression patterns (defined as an inductive sum kind in the usual way). Types constructed by $\tcvar{rstr}$ will classify terms that behave as \emph{regular strings}, i.e. they are statically known to be in the regular language specified by the type index \cite{sanitation-psp14}. For example, $\stx{title} := \sty{\tcvar{rstr}}{\concrx{.+}}$ will classify non-empty strings and $\stx{conf} := \sty{\tcvar{rstr}}{\concrx{[A-Z]+ \digit\digit\digit\digit}}$, shown in Sec. \ref{intro}, will classify conference names.  The type indices are  here written using standard concrete syntax for concision; recent work has specified how to define type-specific (or here, kind-specific) syntax like this composably \cite{TSLs}. %We define the tycon context containing only the definition of $\tcvar{rstr}$, $\Phi_\text{rstr} := \tcdef{\tcvar{rstr}}{\tcsig{\krx}{\chi_\text{rstr}}}{\theta_\text{rstr}}$.
 
 Our second example is the tycon $\tcvar{lprod}$, which will define a variant of labeled product type (labeled products are like record types, but maintain a row  ordering; record types are also definable in a manner discussed in the supplement, but maintaining an ordering simplifies our discussion). We choose the index kind of $\tcvar{lprod}$ to be $\klist{\klbl \times \kty}$, where list kinds are defined as inductive sums in the usual way, and $\klbl$ classifies static representations of row labels.  In the tycon context containing both tycon definitions, $\Phi_\text{rstr}\Phi_\text{lprod}$, we can define a labeled product type classifying conference papers, $\stx{paper} := \sty{\tcvar{lprod}}{\{\conclbl{title} : \stx{title}, \conclbl{conf} : \stx{conf}\}}$. Note that $\istype{\stx{paper}}{\Phi_\text{rstr}\Phi_\text{lprod}}$ and we again use kind-specific syntax, in this case for $\klist{\klbl \times \kty}$.
 
+\paragraph{Other Types}
+The rule (k-otherty) governs types constructed by $\keyw{other}[m; \kappa]$. These will serve only as technical devices to stand in for types other than those in a given tycon context in Sec. \ref{metatheory}. The index must pair a term of kind $\kappa$  with a static term of kind $\kity$, discussed in Sec. \ref{sec:type-translations}. %The natural number $m$ serves to create arbitrarily many of these tycons.
 
 
-\subsection{Static Type Case Analysis}
+
+
+
+
+\subsection{Type Case Analysis}
 
 \begin{figure}\small
 \hspace{-10px}\begin{tabular}{ll}
@@ -323,11 +329,29 @@ $\psi_\text{lprod} := \tcsig{\klist{\klbl\times\kty}}{\introsig{\klist{\klbl}}; 
 \caption{Example tycon contexts and signatures.}
 \label{fig:example-tycons}\vspace{-8px}
 \end{figure}
+\begin{figure}[t]
+\vspace{-10px}
+\begin{mathpar}
+\small\inferrule[tcc-ext]{
+    \vdash \Phi\\
+    \tc \notin \text{dom}(\Phi)\\
+    \keq{\emptyset}{\ktyidx}\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}\\\\
+    \vdash_{\Phi,  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}} \omega \sim \tcsig{\ktyidx}{\chi}
+}{
+    \vdash \Phi, \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}
+}\vspace{-10px}
+\end{mathpar}
+\caption{Tycon context well-definedness.}
+\label{fig:tycon-context-well-definedness}
+\vspace{-10px}
+\end{figure}
 
-Types in @$\lambda$ can be thought of as arising from a distinguished ``open datatype'' defined by the tycon context \cite{conf/ppdp/LohH06}. Consistent with this view, a type $\st$ can be case analyzed using $\stycase{c}{\st}{\sx}{\st_1}{\st_2}$. If the value of $\st$ is constructed by $c$, its type index is bound to $\sx$ and the branch $\st_1$ is taken. For totality, a default branch, $\st_2$, must also be provided.  For example, the kinding rule for when $c$ is user-defined is below. \vspace{-5px}
+
+Types in @$\lambda$ can be thought of as arising from a distinguished ``open datatype'' defined by the tycon context \cite{conf/ppdp/LohH06}. Consistent with this view, a type $\st$ can be case analyzed using $\stycase{c}{\st}{\sx}{\st_1}{\st_2}$. If the value of $\st$ is constructed by $c$, its type index is bound to $\sx$ and the branch $\st_1$ is taken. For totality, a default branch, $\st_2$, must also be provided.  For example, the kinding rule for when $c$ is user-defined is below. 
 \begin{mathpar}
 \small
-\inferrule[k-tycase]{
+\inferrule[k-tccase]{
     \sofkX{\st}{\kty}\\
     \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\theta} \in \Phi\\
     \sofk{\kDelta}{\kGamma, \sx :: \ktyidx}{\Phi}{\st_1}{\kappa}\\
@@ -341,9 +365,7 @@ Types in @$\lambda$ can be thought of as arising from a distinguished ``open dat
 %     \sstep{\stycase{c}{\sotherty{m}{\tau}}{x}{\st_1}{\st_2}}{\argEnv}{\st_2}
 % }
 % \end{mathpar}
-The rule for $c{=}{\rightharpoonup}$ is analagous, but no rule for $c{=}\keyw{other}[m]$ is defined (such types always take the default branch).
-
-The dynamics (see supplement) are straightforwardly consistent with the intuition above.% We will see an example of its use in Sec. \ref{sec:targops}.
+The rule for $c{=}{\rightharpoonup}$ is analagous, but, importantly, no rule for $c{=}\keyw{other}[m; \kappa]$ is defined. %The dynamics (see supplement) are straightforwardly consistent with these intuitions.% We will see an example of its use in Sec. \ref{sec:targops}.
 
 \subsection{Tycon Context Well-Definedness}
 
@@ -353,21 +375,9 @@ The dynamics (see supplement) are straightforwardly consistent with the intuitio
 % \vspace{-8px}
 % \end{figure}
 The tycon context well-definedness judgement, $\vdash \Phi$, requires that all tycon names are unique and performs three additional checks,  described below (we omit (tcc-emp)).
-\begin{mathpar}
-\small
-\inferrule[tcc-ext]{
-    \vdash \Phi\\
-    \tc \notin \text{dom}(\Phi)\\
-    \keq{\emptyset}{\ktyidx}\\
-    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}\\\\
-    \vdash_{\Phi,  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}} \omega \sim \tcsig{\ktyidx}{\chi}
-}{
-    \vdash \Phi, \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}
-}
-\end{mathpar}
 \subsection{Type Equivalence}\label{sec:type-equivalence}
-The first check simplifies the handling of type equivalence: type index kinds must be \emph{equality kinds}, i.e. those for which semantic equivalence implies syntactic equality at normal form. We define these by the judgement $\keq{\kDelta}{\kappa}$ (see supplement). 
-Equality kinds are similar to equality types as found in Standard ML \cite{Tofte:89:TheDefinitionOfStandardML}. The main implication of this choice is that type indices cannot contain static functions.
+The first check simplifies type equivalence: type index kinds must be \emph{equality kinds}, i.e. those for which semantically equivalent values are syntactically equal. We define these by the judgement $\keq{\kDelta}{\kappa}$ (see supplement).  Arrow kinds are not equality kinds, so type indices cannot contain static functions. 
+Equality kinds are analagous to equality types as found in Standard ML \cite{Tofte:89:TheDefinitionOfStandardML}.
 
 
 \subsection{Type Translations}\label{sec:type-translations}
@@ -416,17 +426,17 @@ The unquote form is eliminated during normalization, while references to type tr
 These forms are needed in the translation schema for $\tcvar{lprod}$, which generates nested binary product types (though we could also have used a list) by recursing over the type index and referring to the translations of the types therein. We assume the standard $\small\svar{listrec} :: \kforall{\kalpha_1}{\kforall{\kalpha_2}{\klist{\kalpha_1}\rightarrow\kalpha_2\rightarrow(\kalpha_1\rightarrow\kalpha_2\rightarrow\kalpha_2)\rightarrow\kalpha_2}}$ in defining $\stx{lprod/trans}:=$
 \[\small
 \begin{array}{l}
-\slam{\klist{\klbl \times \kty}}{\svar{tyidx}}{\skap{\kity}{\skap{\klbl\times\kty}{\svar{listrec}}}~\svar{tyidx}~\sqity{\iunit}~\\
+\slam{\klist{\klbl \times \kty}}{\svar{tyidx}}{\svar{listrec}~\svar{tyidx}~\sqity{\iunit}~\\
   \quad (\lambda \svar{h}{:}\klbl \times \kty.\lambda \svar{r}{:}\kity.\sqity{\srep{{\ssnd{\svar{h}}}}\times\qtuq{\svar{r}}}}
 \end{array}\]
-Applying this translation schema to the index of $\stx{paper}$, for example, produces  $\stx{paper/trans} := \sqity{\qity_\text{paper/trans}}$ where $\small\qity_\text{paper/trans} := \srep{\stx{title}}\times(\srep{\stx{conf}}\times \iunit)$. Note that our schema did not remove the trailing unit type for simplicity (and to again emphasize that this choice will have only local implications due to the \emph{translation independence} property we will enforce as the core of our modularity guarantee).%For simplicity, and to make the point that the choice of representation has only tycon-local implications, our translation schema does not optimize away  
+Applying this translation schema to the index of $\stx{paper}$, for example, produces  $\stx{paper/trans} := \sqity{\qity_\text{paper/trans}}$ where $\small\qity_\text{paper/trans} := \srep{\stx{title}}\times(\srep{\stx{conf}}\times \iunit)$. Note that our schema did not remove the trailing unit type for simplicity (and to again emphasize that this choice is local).%For simplicity, and to make the point that the choice of representation has only tycon-local implications, our translation schema does not optimize away  
 
 \subsubsection{Selective Type Translation Abstraction}\label{sec:selective-type-translation-abstraction}
-References to type translations are maintained in values of kind $\kity$ like this to  allow us to selectively hold them abstract, which will be the key to translation independence. This can be thought of as analagous to the process in ML by which the true identity of an abstract type in a module is held abstract outside the module until after typechecking. The judgement $\small\tdeabs{\Phi}{c}{\qity}{\memD}{\ity\moutput}{\memD\moutput}$ relates a normalized translational internal type $\qity$ to an internal type $\tau$, called a \emph{selectively abstracted type translation} because references to translations of types constructed by a tycon other than the ``delegated tycon'', $c$, are replaced by a corresponding type variable, $\alpha$. The \emph{type translation store} $\memD ::= \emptyset ~|~ \memD, \st \leftrightarrow \ity/\alpha$ maintains this correspondence between types, their actual translations and the unique type variables which appear in their place, e.g. $\small\tdeabs{\Phi_\text{rstr}\Phi_\text{lprod}}{\tcvar{lprod}}{\qity_\text{paper/trans}}{\emptyset}{\tau_\text{paper/abs}}{\memD_\text{paper/abs}}$
+References to type translations are maintained in values of kind $\kity$ like this to  allow us to selectively hold them abstract, which will be the key to translation independence. This can be thought of as analagous to the process in ML by which the true identity of an abstract type in a module is held abstract outside the module until after typechecking. The judgement $\small\tdeabs{\Phi}{c}{\qity}{\memD}{\ity\moutput}{\memD\moutput}$ relates a normalized translational internal type $\qity$ to an internal type $\tau$, called a \emph{selectively abstracted type translation} because references to translations of types constructed by a tycon other than the ``delegated tycon'', $c$, are replaced by a corresponding type variable, $\alpha$. The \emph{type translation store} $\memD ::= \emptyset ~|~ \memD, \st \leftrightarrow \ity/\alpha$ maintains this correspondence between types, their actual translations and the distinct type variables which appear in their place, e.g. $\small\tdeabs{\Phi_\text{rstr}\Phi_\text{lprod}}{\tcvar{lprod}}{\qity_\text{paper/trans}}{\emptyset}{\tau_\text{paper/abs}}{\memD_\text{paper/abs}}$
 where $\small\tau_\text{paper/abs} := \alpha_1 \times (\alpha_2 \times \iunit)$ and 
 $\memD_\text{paper/abs}  := \stx{title} \leftrightarrow \keyw{str}/\alpha_1, \stx{conf} \leftrightarrow \keyw{str}/\alpha_2$. 
 
-Each type translation store induces a \emph{type substitution}, $\delta$, and a corresponding internal type formation context, $\Delta$, according to the judgement $\memD \leadsto \delta : \Delta$. Type substitutions simply define an $n$-ary substitution for type variables, $\delta ::= \emptyset ~|~ \delta, \tau/\alpha$. For example, $\memD_\text{paper/abs} \leadsto \delta_\text{paper/abs} : \Delta_\text{paper/abs}$ where $\delta_\text{paper/abs} := \keyw{str}/\alpha_1, \keyw{str}/\alpha_2$ and $\Delta_\text{paper/abs} := \alpha_1, \alpha_2$. 
+The judgement $\memD \leadsto \delta : \Delta$ constructs the $n$-ary \emph{type substitution}, $\delta ::= \emptyset ~|~ \delta, \tau/\alpha$, and corresponding internal type formation context, $\Delta$, implied by the type translation store $\memD$. For example, $\memD_\text{paper/abs} \leadsto \delta_\text{paper/abs} : \Delta_\text{paper/abs}$ where $\delta_\text{paper/abs} := \keyw{str}/\alpha_1, \keyw{str}/\alpha_2$ and $\Delta_\text{paper/abs} := \alpha_1, \alpha_2$. 
 We can apply type substitutions to internal types, terms and typing contexts, written $[\delta]\ity$, $[\delta]\iota$ and $[\delta]\Gamma$, respectively. For example, $[\delta_\text{paper/abs}]\tau_\text{paper/abs}$ is $\tau_\text{paper} := \keyw{str} \times (\keyw{str} \times \iunit)$, i.e. the actual type translation of $\stx{paper}$. Indeed, we can now give the rule defining the type translation judgement, $\vdash_\Phi \st \leadsto \tau$, mentioned in Sec. \ref{overview}. We simply determine any selectively abstract translation, then apply the induced substitution:
 \begin{mathpar}\small
 \inferrule[ty-trans]{
@@ -442,7 +452,7 @@ We can apply type substitutions to internal types, terms and typing contexts, wr
 
 %This process of selectively holding the translations of all types constructed by any tycon other than the ``delegated tycon'' abstract will be critical for conservativity to hold below. Here, the translation of the type is being held abstract, rather than the type itself, and type translations are computed from indices, rather than declared ``literally''. 
 
-The rules for the selective type translation abstraction judgement are straightforward. We recurse generically over sub-terms of $\qity$ until sub-terms of form $\srep{\st}$ are encountered (see supplement). The translation of partial function types is direct and is not held abstract, so that lambdas can be used as the sole binding construct in the EL:
+The rules for the selective type translation abstraction judgement recurse generically over shared forms in $\qity$. Only sub-terms of form $\srep{\st}$ are interesting. The translations of function types are not held abstract, so that lambdas can serve as the sole binding construct in the EL:
 \begin{mathpar}
 \small
 \inferrule[abs-parr]{
@@ -452,10 +462,10 @@ The rules for the selective type translation abstraction judgement are straightf
     \tdeabs{\Phi}{c}{\srep{\sty{\rightharpoonup}{(\st_1, \st_2)}}}{\memD}{\tau_1 \rightharpoonup \tau_2}{\memD''}
 }
 \end{mathpar}
-The translation of a user-defined type constructed by the delegated tycon is determined by calling the translation schema and checking that the type translation it generates refers only to type variables in $\memD'$:
+The translation of an extension type constructed by the delegated tycon is determined by calling the translation schema and checking that the type translation it generates is closed except for type variables tracked by $\memD'$:
 \begin{mathpar}
 \small
-\inferrule[abs-tc-local]{
+\inferrule[abs-tc-delegated]{
     \tcdef{\tc}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\
     \sevalNA{\stx{schema}(\sttyidx)}{\sqity{\qity}}\\
     \tdeabs{\Phi}{\tc}{\qity}{\memD}{\ity}{\memD'}\\
@@ -465,10 +475,10 @@ The translation of a user-defined type constructed by the delegated tycon is det
     \tdeabs{\Phi}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\tau}{\memD'}
 }
 \end{mathpar}
-The translation of a user-defined type constructed by any tycon other than the delegated tycon is added to the store (the supplement has the simple rule for retriving it once there):
+The translation of an extension type constructed by any tycon other than the delegated tycon is held abstract via a fresh type variable added to the store (the supplement has the rule (abs-stored) for retrieving it once there):
 \begin{mathpar}
 \small
-\inferrule[abs-tc-foreign-new]{
+\inferrule[abs-tc-not-delegated-new]{
     c \neq \tc\\
     \sty{\tc}{\sttyidx} \notin \text{dom}(\memD)\\
     \tcdef{\tc}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\\\
@@ -481,19 +491,19 @@ The translation of a user-defined type constructed by any tycon other than the d
     \tdeabs{\Phi}{c}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\alpha}{\memD', \sty{\tc}{\sttyidx} \leftrightarrow [\delta]\tau/\alpha}
 }
 \end{mathpar}
-The translation of an ``other'' type is given directly in its index (rule (abs-other-foreign-new) is in the supplement):
+The translation of an ``other'' type is given in its index (rule (abs-other-not-delegated-new) is in the supplement):
 \begin{mathpar}
 \small
-\inferrule[abs-other-local]{
-    \tdeabs{\Phi}{\keyw{other}[m]}{\qity}{\memD}{\tau}{\memD'}
+\inferrule[abs-other-delegated]{
+    \tdeabs{\Phi}{\keyw{other}[m;\kappa]}{\qity}{\memD}{\tau}{\memD'}
 }{
-    \tdeabs{\Phi}{\keyw{other}[m]}{\srep{\sty{\keyw{other}[m]}{(\stx{nat}, \sqity{\qity}}}}{\memD}{\tau}{\memD'}
+    \tdeabs{\Phi}{\keyw{other}[m;\kappa]}{\srep{\sty{\keyw{other}[m;\kappa]}{(\stx{nat}, \sqity{\qity}}}}{\memD}{\tau}{\memD'}
 }
 \end{mathpar}
 
 %\vspace{-5px}
  %We have that external typing contexts obey the standard structural congruences: weakening, exchange and contraction.
-\section{Typing and Translation of External Terms}\label{external-terms}
+\section{External Terms}\label{external-terms}
 
 Having established how types are constructed, and how they determine selectively abstracted and from there actual type translations, we can finally give the typing and translation rules for external terms, shown in Figure \ref{typing}.
 
@@ -601,25 +611,25 @@ Before discussing rules (ana-intro) and (ana-intro-other), we note that we can r
     |\es| = n\\
     \keyw{args}(n)=\stx{args}\\
     \stx{def}(\stx{args}) \Downarrow_{\es; \Upsilon; \Phi} \sqitm{\qitm}\\\\
-    \edeabs{\keyw{other}[m]}{\es; \Upsilon;\Phi}{\qitm}{\emptyset}{\emptyset}{\itm_\text{abs}}{\memD}{\memG}\\\\
-    \tdeabs{\Phi}{\keyw{other}[m]}{\srep{\sty{\keyw{other}[m]}{\sttyidx}}}{\memD}{\tau_\text{abs}}{\memD'}\\\\
+    \edeabs{\keyw{other}[m;\kappa]}{\es; \Upsilon;\Phi}{\qitm}{\emptyset}{\emptyset}{\itm_\text{abs}}{\memD}{\memG}\\\\
+    \tdeabs{\Phi}{\keyw{other}[m;\kappa]}{\srep{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}}{\memD}{\tau_\text{abs}}{\memD'}\\\\
     \memD' \leadsto \delta : \Delta_\text{abs}\\
     \memG \leadsto \gamma : \Gamma_\text{abs}\\
     \Delta_\text{abs}~\Gamma_\text{abs} \vdash \iota_\text{abs} : \tau_\text{abs}
 }{
-    \eanaX{\eintro{\stx{def}}{\es}}{\sty{\keyw{other}[m]}{\sttyidx}}{[\delta][\gamma]\iota_\text{abs}}
+    \eanaX{\eintro{\stx{def}}{\es}}{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}{[\delta][\gamma]\iota_\text{abs}}
 }
 ~~~~~~
 \inferrule[syn-targ-other]{
-\esynX{e_\text{targ}}{\sty{\keyw{other}[m]}{\sttyidx}}{\iota_\text{targ}}\\\\
+\esynX{e_\text{targ}}{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}{\iota_\text{targ}}\\\\
   \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{def}}{\kargs\rightarrow(\kty\times\kitm)}\\\\
   |e_\text{targ}; \es| = n\\
     \keyw{args}(n)=\stx{args}\\
   \stx{def}(\stx{args}) \Downarrow_{(e_\text{targ}; \es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
   %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
   %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
-  \edeabs{\keyw{other}[m]}{{(e_\text{targ}; \es);\Upsilon;\Phi}}{\qitm}{\emptyset}{\emptyset}{\iota_\text{abs}}{\memD}{\memG}\\\\
-  \tdeabs{\Phi}{\keyw{other}[m]}{\srep{\st}}{\memD}{\ity_\text{abs}}{\memD'}\\\\
+  \edeabs{\keyw{other}[m;\kappa]}{{(e_\text{targ}; \es);\Upsilon;\Phi}}{\qitm}{\emptyset}{\emptyset}{\iota_\text{abs}}{\memD}{\memG}\\\\
+  \tdeabs{\Phi}{\keyw{other}[m;\kappa]}{\srep{\st}}{\memD}{\ity_\text{abs}}{\memD'}\\\\
   \memD' \leadsto \delta : \Delta_\text{abs}\\
   \memG \leadsto \gamma : \Gamma_\text{abs}\\
   \Delta_\text{abs}~\Gamma_\text{abs} \vdash \iota_\text{abs} : \tau_\text{abs}
@@ -765,7 +775,7 @@ The kinding rules also prevent these translational internal term forms  from bei
 }
 \end{mathpar}
 
-\paragraph{Selectively Abstracted Term Translations} The reason for this is again because we will hold argument translations abstract by replacing them with variables. The judgement $\edeabs{c}{\argEnv}{\qitm}{\memD}{\memG}{\itm\moutput}{\memD\moutput}{\memG\moutput}$, appearing as the eighth premise of (ana-intro), relates a translational internal term $\qitm$ to an internal term $\itm$ called a \emph{selectively abstracted term translation}, because all references to the translation of an argument (having any type) are replaced with a corresponding variable and, as in Sec. \ref{sec:selective-type-translation-abstraction}, all references to the translation of a type constructed by a user-defined tycon other than the ``delegated tycon'' $c$ are replaced with a corresponding abstract type variable. The type translation store, $\memD$, discussed previously, and term translation store, $\memG$, track these correspondences. Term translation stores have  syntax $\memG ::= \emptyset ~|~ \memG, n : \st \leadsto \iota/x : \tau$. Each entry can be read ``argument $n$ having type $\st$ and translation $\iota$ appears as variable $x$ with type $\tau$'', e.g. 
+\paragraph{Selectively Abstracted Term Translations} The reason for this is again because we will hold argument translations abstract by replacing them with variables. The judgement $\edeabs{c}{\argEnv}{\qitm}{\memD}{\memG}{\itm\moutput}{\memD\moutput}{\memG\moutput}$, appearing as the eighth premise of (ana-intro), relates a translational internal term $\qitm$ to an internal term $\itm$ called a \emph{selectively abstracted term translation}, because all references to the translation of an argument (having any type) are replaced with a corresponding variable and, as in Sec. \ref{sec:selective-type-translation-abstraction}, all references to the translation of a type constructed by an extension tycon other than the ``delegated tycon'' $c$ are replaced with a corresponding abstract type variable. The type translation store, $\memD$, discussed previously, and term translation store, $\memG$, track these correspondences. Term translation stores have  syntax $\memG ::= \emptyset ~|~ \memG, n : \st \leadsto \iota/x : \tau$. Each entry can be read ``argument $n$ having type $\st$ and translation $\iota$ appears as variable $x$ with type $\tau$'', e.g. 
 \[\small\edeabs{\tcvar{lprod}}{(title; \texttt{"EXMPL 2015"});\Upsilon;\Phi_\text{rstr}\Phi_\text{lprod}}{\qitm_\text{ex}}{\emptyset}{\emptyset}{\iota_\text{ex/abs}}{\memD_\text{ex/abs}}{\memG_\text{ex/abs}}\] where $\itm_\text{ex/abs} := (x_0, (x_1, ()))$ and $\memG_\text{ex/abs} := 0 : \stx{title} \leadsto title/x_0 : \alpha_0, 1 : \stx{conf} \leadsto \texttt{"EXMPL 2015"}_\text{IL}/x_1 : \alpha_1$ and  $\memD_\text{ex/abs}$ is $\memD_\text{paper/abs}$ from Sec. \ref{sec:selective-type-translation-abstraction}.
 
 This judgement proceeds recursively along shared forms, like the selectively abstracted type translation judgement in Sec. \ref{sec:selective-type-translation-abstraction}. The key rule for references to argument translations derived via analysis is below ($\syntrans{n}$ is analagous; the full rules are in the supplement). Note that we are rederiving the translation already determined in (s-ana-success) for simplicity (in practice, this might be cached):
@@ -796,7 +806,7 @@ Applying the substitutions $\gamma_\text{ex/abs}$ and $\delta_\text{ex/abs}$ in 
 The rule (ana-intro-other) is used to introduce terms of a type constructed by an ``other'' tycon. The term index, rather than the tycon context, directly specifies the static function that maps the arguments to a translation. In all other respects, it is analagous. It is used as a technical device in Sec. \ref{metatheory}.
 
 \subsection{Generalized Targeted Operations} 
-All non-introductory opcons associated with user-defined tycons go through another generalized form, in this case for \emph{targeted operations}, $\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}$, where $\opname{op}$ ranges over opcon names, ${\sttmidx}$ is the term index, $e_\text{targ}$ is the \emph{target argument} and $\es$ are the remaining arguments. 
+All non-introductory opcons associated with extension tycons go through another generalized form, in this case for \emph{targeted operations}, $\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}$, where $\opname{op}$ ranges over opcon names, ${\sttmidx}$ is the term index, $e_\text{targ}$ is the \emph{target argument} and $\es$ are the remaining arguments. 
 
 Concrete desugarings include $e_\text{targ}.\opname{op}\langle\sttmidx\rangle(\es)$ (and variants where the term index or arguments are omitted), projection syntax for use by record-like types, $e_\text{targ}\opname{\#}\conclbl{lbl}$, which desugars to $\etarg{\opname{prj}}{\conclbl{lbl}}{e_\text{targ}}{\cdot}$, and $e_\text{targ} \cdot e_\text{arg}$, which desugars to $\etarg{\opname{conc}}{\striv}{e_\text{targ}}{e_\text{arg}}$. We show other desugarings, including case analysis, in the supplement.
 
@@ -882,13 +892,13 @@ Like (ana-intro-other), rule (syn-targ-other) is used when the target synthesize
 % \begin{proof}We proceed by rule induction on the kinding judgement.
 % (k-parr)
 
-% (k-ty)
+% (k-tc)
 
 % (k-otherty)
 
-% (k-tycase-parr)
+% (k-tccase-parr)
 
-% (k-tycase)
+% (k-tccase)
 
 % (k-ity-lam)
 
@@ -1053,21 +1063,21 @@ Extending the tycon context also conserves all \emph{tycon invariants} maintaine
 \begin{tyconinvariant}[Regular String Soundness]
 If $\eana{\emptyset}{\Phi_\text{rstr}}{e}{\sty{\tcvar{rstr}}{\concrx{r}}}{\iota}$ and $\iota \Downarrow \iota'$ then $\iota'=\texttt{"s"}$ and $\texttt{"s"}$ is in the regular language $\mathcal{L}(\texttt{r})$.
 \end{tyconinvariant}
-\begin{proof-sketch} The proof is not unusually difficult because we have fixed the tycon context $\Phi_\text{rstr}$, so we can essentially treat the calculus like a type-directed compiler for a calculus with only two tycons, $\rightharpoonup$ and $\tcvar{rstr}$, plus one ``other'' one. Such a calculus and compiler specification was given in \cite{sanitation-psp14}, so we must simply show that the opcon definitions in $\tcvar{rstr}$ adequately capture these specifications using standard techniques for the SL, a simply-typed functional language \cite{conf/pldi/Chlipala07}. The only ``twist'' is that the rule (syn-targ-other) can synthesize a regular string type. But if so, $\iota_\text{abs}$ will be checked against $\tau_\text{abs}=\alpha$. Thus, the invariants cannot be violated by direct application of relational parametricity in the IL (i.e. a ``free theorem'') \cite{WadlerThms}. \end{proof-sketch}
+\begin{proof-sketch} The proof is not unusually difficult because we have fixed the tycon context $\Phi_\text{rstr}$, so we can essentially treat the calculus like a type-directed compiler for a calculus with only two tycons, $\rightharpoonup$ and $\tcvar{rstr}$, plus one ``other'' one. Such a calculus and compiler specification was given in \cite{sanitation-psp14}, so we must simply show that the opcon definitions in $\tcvar{rstr}$ adequately satisfy these specification using standard techniques for the SL, a simply-typed functional language \cite{conf/pldi/Chlipala07}. The only ``twist'' is that the rule (syn-targ-other) can synthesize a regular string type. But if so, $\iota_\text{abs}$ will be checked against $\tau_\text{abs}=\alpha$. Thus, the invariants cannot be violated by direct application of relational parametricity in the IL (i.e. a ``free theorem'') \cite{WadlerThms}. \end{proof-sketch}
 
 The reason why (syn-targ-other) is never a problem in proving a tycon invariant -- \emph{translation independence} of tycons -- turns out to be the same reason extending the tycon context conserves all tycon invariants. A newly introduced tycon defining a targeted operator that synthesizes a regular string type, e.g. $\stx{paper}$, and generating a translation that is not in the corresponding regular language, e.g. $\texttt{""}$, could be defined, but when used, the rule (syn-targ) would check the translation against $\tau_\text{abs}=\alpha$, which would fail. %Type abstraction is the basis for conservatively composing type system fragments, just like it is the basis for composing ML-style modules.
 
  We can state this more generally:
 
 \begin{theorem}[Conservativity] If $\vdash \Phi$ and $\tc \in \text{dom}(\Phi)$ and a tycon invariant for $\tc$ holds under $\Phi$: \begin{itemize}
-\item If $\eana{\emptyset}{\Phi}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\vdash_\Phi {\sty{\tc}{\sttyidx}} \leadsto \tau$  then $P(\sttyidx, \iota)$.
+\item If $\eana{\Upsilon}{\Phi}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\vdash_\Phi \Upsilon \leadsto \Gamma$ and $\vdash_\Phi {\sty{\tc}{\sttyidx}} \leadsto \tau$  then $P(\Gamma, \sttyidx, \iota)$.
 \end{itemize} then for all $\Phi' = \Phi, \tcdef{\tc'}{\psi'}{\theta'}$ such that $\vdash \Phi'$, the same tycon invariant holds under $\Phi'$: \begin{itemize}
-\item If $\eana{\emptyset}{\Phi'}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\vdash_{\Phi'}{\sty{\tc}{\sttyidx}}\leadsto{\tau}$ then $P(\sttyidx, \iota)$.
+\item If $\eana{\Upsilon}{\Phi'}{e}{\sty{\tc}{\sttyidx}}{\iota}$ and $\vdash_{\Phi'} \Upsilon \leadsto \Gamma$ and $\vdash_{\Phi'}{\sty{\tc}{\sttyidx}}\leadsto{\tau}$ then $P(\Gamma, \sttyidx, \iota)$.
 \end{itemize}
-(if proposition $P(\sttyidx, \iota)$ is \emph{modular}, defined below)
+(if proposition $P(\Gamma, \sttyidx, \iota)$ is \emph{modular}, defined below)
 \end{theorem}
 \begin{proof-sketch}
-The proof maps every well-typed term under $\Phi'$ to a well-typed term under $\Phi$ with the same translation, and if the term has a type constructed by a tycon in $\Phi$, e.g. $\tc$, the new term has a type constructed by that tycon with the same type translation, and only a slightly different type index. In particular, the mapping's effect on static terms is to replace all types constructed by $\tc'$ with a unique type constructed by $\keyw{other}[m]$ (for some suitable $m$ not already used). If $P(\sttyidx, \iota)$ is preserved under this transformation then we can simply invoke the existing proof of the tycon invariant. We call such propositions \emph{modular}. Non-modular propositions are uninteresting because they have knowledge of tycons ``from the future''. 
+The proof maps every well-typed term under $\Phi'$ to a well-typed term under $\Phi$ with the same translation, and if the term has a type constructed by a tycon in $\Phi$, e.g. $\tc$, the new term has a type constructed by that tycon with the same type translation, and only a slightly different type index. In particular, the mapping's effect on static terms is to replace all types constructed by $\tc'$ with a type constructed by $\keyw{other}[m;\ktyidx']$ for some $m$ corresponding to $\tc'$ and the index kind of $\tc'$. If $P(\Gamma, \sttyidx, \iota)$ is preserved under this transformation then we can simply invoke the existing proof of the tycon invariant. We call such propositions \emph{modular}. Non-modular propositions are uninteresting because they have knowledge of tycons ``from the future''. 
 
 On external terms, the mapping replaces all intro and targeted terms associated with $\tc'$ with an equivalent one that passes through the rules (ana-intro-other) and (syn-targ-other) by partially applying the intro and targeted opcon definitions to generate the term indices. Typing, kinding, static normalization and selective translation abstraction are preserved under the mapping, defined inductively in the supplement. Note that for this reason all propositions decidable by the SL are modular. \end{proof-sketch}
 %Had the translational term generated by the intro opcon definition been, e.g., $(\anatrans{0}{\stx{title}}, (\texttt{"TEST"}, ())$, then the corresponding abstract term would be $(x_0, (\texttt{"TEST"}, ())$ and the check would fail because $(\alpha_0, \alpha_1)~(x_0 : \alpha_0) \nvdash \texttt{"TEST"} : \alpha_1$. Had we not gone through the machinations of holding types and terms abstract, however, the check would succeed, because $\keyw{str}$ would no longer have been held abstract as $\alpha_1$. This form of ``type translation independence'' is precisely analagous to the representation independence properties that underly abstraction theorems for module systems based on  abstract types and will similarly serve to ensure that the type invariants maintained by $\tcvar{rstr}$ are conserved when new tycons are defined. In this case the invariant is that only strings that are in the regular language specified in the type index can be generated from an external term of regular string type. Note that $\texttt{"TEST"}$ is not in the regular language specified by $\concrx{[A-Z]+ \digit\digit\digit\digit}$, so it is critical that it not be allowed, despite being consistent with the type translation of $\stx{conf}$, i.e. it is a string. Such an invariant could not be maintained if the type system were treated as merely a ``bag of rules''.\todo{put conservativity here?} %We consider this more rigorously in Sec. \ref{metatheory}.
@@ -1085,7 +1095,7 @@ Similarly, when an embedding that preserves a desired static semantics exists, b
 % dialects of languages built using Sugar* \cite{erdweg2013framework} allow syntax extensions to be packaged separately and combined using language-integrated declarations. If the desugaring logic obeys the same constraints described above for macros, semantic reasoning can be performed compositionally (and recent work has shown how reasoning about type correctness can be automated \cite{conf/icfp/LorenzenE13}). 
 
 % These systems do not guarantee that the composition of unambiguous grammars will remain unambiguous (and realistic examples of ambiguous combinations are not uncommon, e.g. XML and HTML). %Every combination of desugarings is thus a  dialect with respect to syntactic reasoning. 
-% Recent work has made progress in addressing this problem by restricting how syntax extensions can interface with the host syntax. Schwerdfeger and Van Wyk require a globally unique start token and describe checkable conditions pertaining to the follow sets of host language non-terminals to guarantee that extensions can be composed unambiguously \cite{conf/pldi/SchwerdfegerW09}. This suffices for modularly adding new keyword-prefixed forms, but literal forms are awkward to define in this way. Omar et al. describe a language-integrated technique specifically for this purpose, using a technique with parallels to the one we are building on \cite{TSLs}. Literal parsing logic is directly associated with user-defined types, forming \emph{type-specific languages} (TSLs), and local type inference controls invocation of TSL parsing logic, guaranteeing that composition is unambiguous. The mechanism guarantees hygiene and inner terms cannot be inspected, so  fully modular reasoning is possible.
+% Recent work has made progress in addressing this problem by restricting how syntax extensions can interface with the host syntax. Schwerdfeger and Van Wyk require a globally unique start token and describe checkable conditions pertaining to the follow sets of host language non-terminals to guarantee that extensions can be composed unambiguously \cite{conf/pldi/SchwerdfegerW09}. This suffices for modularly adding new keyword-prefixed forms, but literal forms are awkward to define in this way. Omar et al. describe a language-integrated technique specifically for this purpose, using a technique with parallels to the one we are building on \cite{TSLs}. Literal parsing logic is directly associated with extension types, forming \emph{type-specific languages} (TSLs), and local type inference controls invocation of TSL parsing logic, guaranteeing that composition is unambiguous. The mechanism guarantees hygiene and inner terms cannot be inspected, so  fully modular reasoning is possible.
 
 %We assumed these desugaring techniques were available to solve issues strictly related to complexity and convenience.
 
@@ -1094,8 +1104,8 @@ Similarly, when an embedding that preserves a desired static semantics exists, b
 
 %\paragraph{Refinement Types}
 %When T, the solution is less clear. 
-When new distinctions are needed within an existing type, but new operators are not necessary, one solution is to develop an overlying system of \emph{refinement types} \cite{Freeman91}. For example, a refinement of  integers might distinguish negative integers. Proposals for ``pluggable type systems'' describe composing such   systems \cite{Brac04a,Andreae:2006:FIP:1167473.1167479}. Refinements of abstract types can be used for representation independence, but note that the type being refined is not held abstract. %Because the dynamic semantics are fixed,  composition is safe. Although our regular string types could perhaps be approximated with refinements, this does not permit the advanced operations, optimizations and representation independence results we enable.
-Such a system could be seen in some ways as a degenerate mode of use of our work: we further cover the cases when new  operators are needed. 
+When new static distinctions are needed within an existing type, but new operators are not necessary, one solution is to develop an overlying system of \emph{refinement types} \cite{Freeman91}. For example, a refinement of  integers might distinguish negative integers. Proposals for ``pluggable type systems'' describe composing such   systems \cite{Brac04a,Andreae:2006:FIP:1167473.1167479}. Refinements of abstract types can be used for representation independence, but note that the type being refined is not held abstract. %Because the dynamic semantics are fixed,  composition is safe. Although our regular string types could perhaps be approximated with refinements, this does not permit the advanced operations, optimizations and representation independence results we enable.
+Were it to be, the system could be seen in some ways as a degenerate mode of use of our work: we further cover the cases when new  operators are needed. 
 For example, the $\tcvar{lprod}$ opcons use labels and types, which exist only statically. Thus, labeled tuples cannot be seen as refinements of nested pairs because the row projection operators don't exist. %Labeled products are not refinements of binary products because the label projection operator is not defined for binary products.%Regular string types could also support an operation that the internal string type would not (e.g. extraction of a subgroup defined in the type index).% The regular string type's group projection operator had a specialized cost semantics, so a simple refinement would not be able to approximate it. Scala's type system does not track the necessary invariants, so LMS-like optimizations would also not be appropriate.%For example, projection operators,  written concretely in some dialects of ML as \verb|#label|, can be seen as applications of \verb|#|, the projection operator constructor, to \verb|label|, a static index. The type of an operation like \verb|#label e| (sometimes written postfix as \verb|e#label|) is a function of the index of the type of \verb|e|. The dynamics also needs (some trace of) this information to determine how the operation is evaluated.
 
 %Many of the other examples mentioned above as motivations for new dialects have a similar flavor. We will detail another example in the next section of a type constructor that tracks strings known statically to be in a regular language, using it to dispense with unnecessary run-time checks in cases where they are not strictly necessary (affecting the cost component of the dynamic semantics).
@@ -1114,13 +1124,13 @@ For example, the $\tcvar{lprod}$ opcons use labels and types, which exist only s
 % (i.e. fragments defining families of operations that cannot simply be written as a finite collection of functions, examples of which we will discuss). If there are a finite number of operations, and they can be typechecked without inspecting the structure of the types of the arguments, then an abstract type can be used. new primitive operations (including new variants of existing operations) that require static knowledge of these invariants, however, this too is infeasible. take advantage of the invariants being maintained, and these operations must be usable throughout a program, . %At best, annotations might be written as ``comments'' or metadata for use by these tools.
 
 Many \emph{language frameworks} exist that can simplify  dialect implementation (cf. \cite{erdweg2013state}). %Some \emph{extensible compilers} are also actually language frameworks, because they permit the introduction of new constructs, not just new meaning-preserving optimizations. The maintainers of many compilers, e.g. Haskell's GHC, treat their compiler as a ``laboratory'' for new fragments, toggled by flags or special comments. \emph{Logical frameworks} focus more specifically on helping language designers mechanize the metatheory of language and logic specifications. T
-These sometimes do not support forming  languages from fragments due to the ``expression problem'' (EP) \cite{wadler1998expression,Reynolds75}. We sidestep the most serious consequences of the EP by leaving our abstract syntax entirely fixed, instead  delegating to tycons. Few tools require knowledge of all external tycons in a typed translation semantics. As discussed previously, our treatment of concrete syntax in both the EL and SL defers to recent work on \emph{type-specific languages}, which takes a similar bidirectional approach for syntactic elaborations \cite{TSLs}. Some language frameworks do address the EP, but  provide few clear principles from which to reason modularly about metatheoretic properties specific to typed languages, like type safety and tycon invariants. One important decision that makes this tractable in @$\lambda$ is to associate opcons with tycons, forming \emph{modular tycons}, rather than considering terms and types both as open datatypes \cite{conf/ppdp/LohH06}.
+These sometimes do not support forming  languages from fragments due to the ``expression problem'' (EP) \cite{wadler1998expression,Reynolds75}. We sidestep the most serious consequences of the EP by leaving our abstract syntax entirely fixed, instead  delegating to tycons. Fewer tools require knowledge of all external tycons in a typed translation semantics. As discussed previously, our treatment of concrete syntax in both the EL and SL defers to recent work on \emph{type-specific languages}, which takes a similar bidirectional approach for composably introducing syntactic desugarings \cite{TSLs}. Some language frameworks do address the EP, e.g. by encoding terms and types as open datatypes \cite{conf/ppdp/LohH06}, but this makes it quite difficult to reason modularly, particularly about metatheoretic properties specific to typed languages, like type safety and tycon invariants. Our key insight is to instead associate term-level opcons with tycons, which then become the fundamental constituents of the semantics (consistent with Harper's informal notation \cite{pfpl}).
 
 Proof assistants can be used to specify and mechanize the metatheory of languages, but also usually require a complete specification (this  has been identified as a key challenge \cite{aydemir05tphols}). Techniques for composing specifications and proofs exist \cite{conf/popl/DelawareOS13,Delaware11,conf/plpv/SchwaabS13}, but they  require additional proofs at composition-time and provide no guarantees that \emph{all} fragments having some modularly checkable property can safely and  conservatively be composed, as in our work. %For example, Delaware et al. develop a technique based on software product lines that requires specifying assumptions at feature boundaries and providing proofs of these for each composition \cite{Delaware11}. In later work based on Mendler-style $f$-algebras, this problem of \emph{feature interactions} persists for many lemmas, including those related to tycon invariants (e.g. canonical forms) \cite{conf/popl/DelawareOS13}. 
 The authors, along with Chlipala  \cite{Chlipala10}, suggest  proof automation. This is fundamentally a heuristic approach. 
 
-A strength of @$\lambda$ is that fragment providers need not provide the semantics with mechanized proofs to modularly reason about language extension. Instead, under a fixed tycon context, the calculus can be reasoned about like a very small type-directed compiler \cite{tarditi+:til-OLD,conf/pldi/Chlipala07}. Errors in reasoning can only lead to failure at typechecking time, a form of \emph{translation validation} \cite{Pnueli-Siegel-Singerman98}. Incorrect opcon definitions (relative to a specification, e.g. \cite{sanitation-psp14} for regular strings) can at worst weaken expected invariants at that tycon, like incorrectly implemented modules in ML. Thus, modular tycons can reasonably be tested ``in the field'' without concern about the reliability of the system as a whole. The simplicity of writing extensions directly in a functional language also suggests educational applications (following TinkerType \cite{LevinPierce99}).  
-To eliminate even these localized failure modes for ``reliability-critical'' tycons, we plan to introduce \emph{optional} proof mechanization into the SL (by basing it on a dependently typed language like Coq) in subsequent work. %We also hope to mechanize the metatheory of @$\lambda$ itself in future work.%Every combination of fragments is a new dialect, and must be reasoned about monolithically. %Efforts to reason modularly areeed, several problems can come up when fragments are combined, so . 
+In contrast, with @$\lambda$ fragment providers need not provide the semantics with mechanized proofs to benefit from modular reasoning principles. Instead, under a fixed tycon context, the calculus can be reasoned about like a very small type-directed compiler \cite{tarditi+:til-OLD,conf/pldi/Chlipala07}. Errors in reasoning can only lead to failure at typechecking time, via a novel form of \emph{translation validation} \cite{Pnueli-Siegel-Singerman98}. Incorrect opcon definitions (relative to a specification, e.g. \cite{sanitation-psp14} for regular strings) can at worst weaken expected invariants at that tycon, like incorrectly implemented modules in ML. Thus, modular tycons can reasonably be tested ``in the field'' without concern about the reliability of the system as a whole. 
+To eliminate even these localized failure modes for ``reliability-critical'' tycons, we plan to introduce \emph{optional} proof mechanization into the SL (by basing it on a dependently typed language like Coq). %We also hope to mechanize the metatheory of @$\lambda$ itself in future work.%Every combination of fragments is a new dialect, and must be reasoned about monolithically. %Efforts to reason modularly areeed, several problems can come up when fragments are combined, so . 
 % Let us briefly review difficulties that arise. 
 
 % %Concrete syntax known to be separately unambiguous might not be unambiguous when combined, as was already discussed above. 
@@ -1136,9 +1146,11 @@ To eliminate even these localized failure modes for ``reliability-critical'' tyc
 
 %We note that is increasingly being deployed in contemporary languages (e.g. Scala) due to the perception that it enables good error messages, and to support semantics where  non-local type inference is undecidable. Permitting extensibility together with non-local type inference is an open problem.
 
-Type abstraction, encouragingly, also underlies modular reasoning in ML-like languages \cite{pfpl,harper1997programming} and languages with other forms of ADTs \cite{liskov1974programming} like Scala \cite{conf/oopsla/AminRO14}. Indeed, proofs of tycon invariants can rely on existing parametricity theorems \cite{WadlerThms}. Our work is technically reminiscent of  work on  translating modules to System $\mathbf{F}_\omega$ \cite{conf/tldi/RossbergRD10}.  Unlike in module systems, type translations (analagous to the choice of representation for an abstract type) are statically \emph{computed} based on a type index, rather than statically \emph{declared}. Moreover, there can be arbitrarily many operators because they arise by providing a term index to an opcon, and their  semantics can be complex because a static function computes the types and translations that arise. In contrast, modules and ADTs can only specify a fixed number of operations, and each must have function type. Note also that these are not competing mechanisms: we did not specify quantification over external types here for simplicity, but we conjecture that it is complementary and thus @$\lambda$ could serve as the core of a language with an ML-style module system. Another related direction is \emph{tycon functors}, which would abstract over tycons with the same signature to support a tunable cost semantics. % This permits us tocode targeting a separate IL, and permit operations whose types cannot simply be written as functions. %Both examples we used here would be quite difficult to fully embed using only modules.
+Type abstraction, encouragingly, also underlies modular reasoning in ML-like languages \cite{pfpl,harper1997programming} and languages with other forms of ADTs \cite{liskov1974programming} like Scala \cite{conf/oopsla/AminRO14}. Indeed, proofs of tycon invariants can rely on existing parametricity theorems \cite{WadlerThms}. 
+Our work is reminiscent of  work on elaborating an ML-style module system into System $\mathbf{F}_\omega$ \cite{conf/tldi/RossbergRD10}.  Unlike in module systems, type translations (analagous to the choice of representation for an abstract type) are statically \emph{computed} based on a type index, rather than statically \emph{declared}. Moreover, there can be arbitrarily many operators because they arise by providing a term index to an opcon, and their  semantics can be complex because a static function computes the types and translations that arise. In contrast, modules and ADTs can only specify a fixed number of operations, and each must have function type. Note however that these are not competing mechanisms: we did not specify quantification over external types here for simplicity, but we conjecture that it is complementary and thus @$\lambda$ could serve as the core of a language with an ML-style module system. Another related direction is \emph{tycon functors}, which would abstract over tycons with the same signature to support tunable cost semantics. % This permits us tocode targeting a separate IL, and permit operations whose types cannot simply be written as functions. %Both examples we used here would be quite difficult to fully embed using only modules.
 
-A limitation of our approach is that it supports only  fragments with the standard ``shape'' of typing judgement. Fragments that require new forms of scoped contexts (e.g. symbol contexts \cite{pfpl}) or unscoped declarations cannot presently be defined. Relatedly, the language controls variable binding, so, for example, linear type systems, cannot be defined. Another limitation is that opcons cannot directly invoke one another (e.g. a \opname{len} opcon on regular strings could not construct a natural number; see supplement for a workaround, however). We conjecture that these are not fundamental limitations and expect @$\lambda$ to serve as a minimal foundation for future efforts that increase  expressiveness while maintaining the strong guarantees, like type safety and conservativity, established  here. %(tycons could define new contexts which are threaded opaquely through ``outside'' operations). 
+
+A limitation of our approach is that it supports only  fragments with the standard ``shape'' of typing judgement. Fragments that require new forms of scoped contexts (e.g. symbol contexts \cite{pfpl}) or unscoped declarations cannot presently be defined. Relatedly, the language controls variable binding, so, for example, linear type systems, cannot be defined. Another limitation is that opcons cannot directly invoke one another (e.g. a \opname{len} opcon on regular strings could not construct a natural number). We conjecture that these are not fundamental limitations and expect @$\lambda$ to serve as a minimal foundation for future efforts that increase  expressiveness while maintaining the strong guarantees, like type safety and conservativity, established  here. %(tycons could define new contexts which are threaded opaquely through ``outside'' operations). 
 
 
 
