@@ -339,7 +339,6 @@
 
 % Judgements
 \newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
-
 % Relations
 \newcommand{\treduces}{ \Downarrow }
 \newcommand{\sreduces}{ \Downarrow }
@@ -368,7 +367,7 @@
 
 
 \title{Statically Typed String Sanitation Inside a Python: Technical Report}
-\author{Nathan Fulton \\ Cyrus Omar \\ Jonathan Aldrich}
+\author{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
 
 \begin{document}
 \linenumbers
@@ -382,6 +381,11 @@ and theorems asserted in the paper, examples, and additional discussion of
 the paper's technical content.
 \end{abstract}
 
+Theorems and lemmas appearing in \cite{fulton2014} are numbered, while
+supporting facts appearing only in the Technical Report are lettered.
+Numbered items correspond to the numbering in \cite{fulton2014}.
+
+
 \section{Proofs of Lemmas and Theorems about $\lambdas$}
 
 This section presents proofs of lemmas and theorems about the type systems
@@ -391,9 +395,6 @@ motivate and explain definitions.
 To facilitate the type safety proof, we introduce
 a small step semantics for both $\lambdas$ and $\lambdap$. All theorems in
 this section are proven as stated in \cite{fulton2014}.
-
-Theorems and lemmas appearing in \cite{fulton2014} are numbered, while
-supporting facts appearing only in the Technical Report are lettered.
 
 \subsection{Head and Tail Operations}
 
@@ -1080,7 +1081,104 @@ By inversion of S-T-Rstr, $s \in \lang{r}$.
 
 \section{Proofs of Lemmas and Theorems About $\lambdap$}
 
+
+\begin{thm}[Safety for $\lambdap$] If $\emptyset \vdash \iota : \tau$ 
+  then $\iota \sreduces \dot v$ and $\emptyset \vdash \dot v : \tau$.
+\end{thm}
+
+We can also define canonical forms for regular expressions and strings in the usual way:
+
+
+\begin{lem}[Canonical Forms for Target Language]
+~
+\begin{itemize}
+\item 
+If $\emptyset \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$ is a well-formed regular expression. 
+\item 
+If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
+\end{itemize}
+\end{lem}
+
+
 \section{Proofs and Lemmas and Theorems About Translation}
+
+
+\begin{thm}[Translation Correctness]\label{thm:trcorrect}
+  If $\tctx \vdash e : \sigma$ then 
+  there exists an $\iota$ such that $\trden{e} = \iota$
+  and $\trden{\tctx} \vdash \iota : \trden{\sigma}$.
+  Furthermore, $e \sreduces v$ and
+  $\iota \treduces \dot{v}$ such that
+  $\trden{v} = \dot{v}$.
+\end{thm}
+\begin{proof}
+We present a proof by induction on the derivation that $\tctx \vdash e : \sigma$.
+we write $e \leadsto \iota$ as shorthand for the final property.
+
+\begin{itemize}[label=$ $, itemsep=1ex]
+\item \textbf{Case $e = \rstr{s}$}. Suppose $\tctx \vdash \rstr{s} : \sigma$.
+
+By examination the syntactic structure of conclusions in the relation S-T, 
+we know this is true just in case $\sigma = \stringin{r}$ for some $r$ such that
+$s \in \lang{r}$; and of course, there is always such an $r$.
+
+There are no free variables in $\rstr{s}$, so we might as well proceed from the
+fact that $\emptyset \vdash \rstr{s} : \stringin{r}$.
+
+By definition of the translation ($\trden{\cdot}$) the following statements hold:
+\begin{align}
+\trden{\rstr{s}} &= \str{s} \\
+\trden{\stringin{r}} &= \str \\
+\trden{\emptyset} &= \emptyset
+\end{align}
+Note that $\emptyset \vdash \str{s} : \str$ by P-T-Str.
+Recall that contexts are standard and, in particular, can be weakened.
+So since $\trden{\tctx}$ is either a weakening of $\emptyset$ or $\emptyset$ itself,
+$\trden{\tctx} \vdash \tstr{s} : \str$ by weakening.
+
+Summarily, $\str{s}$ is a term of $\lambdap$ such that $\trden{\tctx} \vdash \str{s} : \trden{\sigma}$
+
+It remains to be shown that there exist $v, \dot{v}$ such that $\rstr{s} \sreduces v$,
+$\str{s} \treduces \dot{v}$, and $\trden{v} = \dot{v}$. But this is immediate because
+each term evaluates to itself and we have already established the equality.
+
+\item \textbf{Case $e = \rconcat{e_1}{e_2}$}. This case is an obvious appeal to induction.
+
+\item \textbf{Case $e = \strcase{e_1}{e_2}{x,y.e_3}$}. This case relies on our definition
+of context translation.
+
+Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
+By inversion of the typing relation it follows that
+$\sctx \vdash e_1 : \stringin{r}$, $\sctx \vdash e_2 : \sigma$ and $\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma$.
+
+By induction, there exists an $\iota_1$ such that $\trden{e_1} = \iota_1$,
+$\trden{\sctx} \vdash \iota_1 : \trden{\sigma}$, and $e_1 \leadsto \iota_1$.
+Similarly for $e_2$ and some $\iota_2$.
+
+By canonical forms, $e_1 \sreduces \rstr{s}$ and so $\iota_1 \treduces \tstr{s}$ by $\leadsto$.
+
+Choose $\iota = \tconcat{\iota_1}{\iota_2}{x,y.\iota_3}$ \todo{and note that by the properties established via induction,
+$\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.}
+
+Suppose $s = \epsilon$. Then $e \sreduces v$ where $e_2 \sreduces v$
+and $\iota \treduces \dot{v}$ where $\iota_2 \treduces \dot{v}$.
+But recall that $e_2 \leadsto v_2$ and so $\trden{v} = \dot{v}$.
+
+Suppose otherwise that $s = at$ for some character $a$ and string $t$.
+Then $e \sreduces v$ where $[a, t / x, y] e_3 \sreduces v$.
+Similarly, $\iota \treduces \dot{v}$ where $[a, t / x, y] \iota_3 \treduces \dot{v}$
+
+\end{itemize}
+\end{proof}
+
+\begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
+  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ then $\iota \sreduces \tstr{s}$
+  for $s \in \lang{r}$.
+\end{thm}
+\begin{proof}
+  By Theorem \ref{thm:trcorrect} and the rules given, $\iota \sreduces \tstr{s}$ implies that $e \sreduces \strin{s}$.
+  Theorem \ref{thm:scorrect} together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
+\end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
