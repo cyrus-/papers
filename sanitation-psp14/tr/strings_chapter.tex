@@ -375,16 +375,21 @@
 \maketitle
 
 \begin{abstract}
-This Technical Report contains supporting materials for Statically Typed
-String Sanitation Inside a Python \cite{fulton2014} including proofs of lemmas
-and theorems asserted in the paper, examples, and additional discussion of
-the paper's technical content.
+Web applications must ultimately command systems like web browsers and database engines using strings. Strings derived from improperly sanitized user input  can thus be a vector for command injection attacks. 
+
+In this report, we introduce \emph{regular string types}, which classify strings known statically to be in a specified regular language. These types come equipped with common operations like concatenation, substitution and coercion, so they  can be used to implement, in a conventional manner, the portions of a web application or application framework that must directly construct command strings. Simple type annotations at key interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system in a minimal typed lambda calculus, $\lambda_{RS}$.
+
+We then specify a translation from $\lambda_{RS}$ to a language fragment containing only standard strings and regular expressions and prove that the correctness theorem for
+$\lambda_{RS}$ is preserved under translation.
 \end{abstract}
 
-Theorems and lemmas appearing in \cite{fulton2014} are numbered, while
-supporting facts appearing only in the Technical Report are lettered.
-Numbered items correspond to the numbering in \cite{fulton2014}.
+\section{Introduction}
 
+Command injection vulnerabilities are among the most common and severe security vulnerabilities in modern web applications.  They arise because web applications, at their boundaries, control external systems using commands represented as  strings. In \cite{fulton2014} the authors argue that extensible type systems are an attractive solution to this important security problem. This Technical Report contains supporting evidence for claims put forth and explained in \cite{fulton2014}, including proofs of lemmas
+and theorems asserted in the paper, examples, and additional discussion of the paper's technical content.
+
+Theorems and lemmas appearing in \cite{fulton2014} are numbered, while supporting facts appearing only in the Technical Report are lettered.
+Numbered items correspond to the numbering in \cite{fulton2014}.
 
 \section{Proofs of Lemmas and Theorems about $\lambdas$}
 
@@ -400,14 +405,14 @@ this section are proven as stated in \cite{fulton2014}.
 
 \begin{defn}[Definition of \lhead{r}]\label{def:lhead}
 The relation $\lhead{r}=r'$ is defined in terms of the structure of $r$:
-\begin{itemize}[noitemsep]
-\item $\lhead{\epsilon} = \epsilon$
-\item $\lhead{.} = a_1 + a_2 + ... + a_n$ for all $a_i \in \Sigma$ where $|\Sigma| = n$.
-\item $\lhead{a} = a$ %where $a \in \Sigma$
-\item $\lhead{r_1\cdot r_2} = \lhead{r_1}$
-\item $\lhead{r_1 +  r_2}  = \lhead{r_1} + \lhead{r_2}$
-\item $\lhead{r*} = \epsilon + \lhead{r}$
-\end{itemize}
+\begin{align*}
+\lhead{r}                 &= \lhead{r, \epsilon} \\
+\lhead{\epsilon, r'}      &= \epsilon \\
+\lhead{a, r'}             &= a \\
+\lhead{r_1\cdot r_2, r'}  &= \lhead{r_1, r_2} \\
+\lhead{r_1 + r_2, r'}     &= \lhead{r_1, r'} + \lhead{r_2, r'} \\
+\lhead{r^*, r'}           &= \lhead{r', \epsilon} + \lhead{r, \epsilon}
+\end{align*}
 \end{defn}
 
 \begin{defn}[Brzozowski's Derivative]\label{def:derivative}
@@ -418,8 +423,78 @@ The relation $\lhead{r}=r'$ is defined in terms of the structure of $r$:
 \begin{defn}[Definition of \ltail{r}]
 The relation $\ltail{r} = r'$ is defined in terms of $\lhead{r}$.
 Note that $\lhead{r} = a_1 + a_2 + ... + a_i$.
-We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)$.
+We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r) + \epsilon$.
 \end{defn}
+
+Using these definitions of head and tail, we establish a correctness
+result upon which type soundness for the concatenation operator in
+$\lambdas$ depends.
+
+\begin{trlem}[Leading characters are in the head] \label{trlemmax}
+If $c_1 \cdot c_2 \cdot ... \cdot c_m \in \lang{r}$, then
+$c_1 \in \lhead{r}$.
+\end{trlem}
+\begin{proof}
+By structural induction on $r$...
+\end{proof}
+
+\begin{trthm}[Correctness of \textsf{ltail}]
+If $s \in \lang{r}$ then $s \in \lang{\lhead{r}} \cdot \lang{\ltail{r}}$.
+\end{trthm}
+\begin{proof}
+The proof proceeds by structural induction on $r$.
+In each case, we demonstrate three facts:
+\begin{itemize}
+  \item First, that the string $s = a \cdot b$ is a concatenation of two substrings (each of which may be $\epsilon$).
+  \item Second, $a \in \lang{\lhead{r}}$ (or, equivalently, $s \in \lang{\lhead{r}}$ letting $b = \epsilon$).
+  \item Third, there exists a $c \in \lhead{r}$ such that $a = c \cdot a'$ and $a' \cdot b \in \lang{\delta_c(r)}$, or else $s = a$. 
+\end{itemize}
+
+Throughout, we consider $\epsilon$ as idenetity under all operators for expressions and $\cdot$ for strings.
+
+\begin{itemize}[label=$ $,itemsep=1ex]
+
+\item \textbf{Case $r = c$ for $c \in Sigma$}.
+Note that if $s \in \lang{c}$ then $s = c$.
+Note that $\lhead{c} = \lhead{c, \epsilon} = c$, and $c \in \lang{c}$.
+So $c \in \lang{c}$, which is sufficient since $\epsilon \in \ltail{r}$.
+
+\item \textbf{Case $r = r_1 \cdot r_2$}.
+Suppose $s \in \lang{r}$.
+We may decompose $s$ as $s_1 \cdot ... \cdot s_n$ such that $s_1 = c_1 \cdot ... \cdot c_m \in r_1$.
+Note that $c_1 \in \lhead{r_1}$ by \ref{trlemmax}.
+Let $a' = c_2 \cdot ... \cdot c_m$.
+It suffices to show that $a' \cdot b \in \lang{\delta_c(r)}$.
+Since $s = c_1 \cdot a' \cdot b$ and $s \in \lang{r}$, it follows by the definition of derivative that $a' \cdot b \in \delta_{c_1}(r)$.
+
+\item \textbf{Case $r = r_1 + r_2$}.
+Suppose $s \in \lang{r_1 + r_2}$
+so that $s \in \lang{r_1}$ or $s \in \lang{r_2}$.
+In either case, the result follows by induction. 
+
+\item \textbf{Case $r = q^*$}.
+Note that $s = \epsilon$ or else $s = s_1 \cdot s_2 \cdot ... s_n$ where each $s_i \in \lang{q}$\footnote{intuitively, $s$ is either empty or a finitary concatenation of strings matching $q$.}.
+
+Suppose $s = \epsilon$.
+Note that $\lhead{r} = \lhead{q^*} = \lhead{q^*, \epsilon} = \lhead{\epsilon, \epsilon} + h' = \epsilon + h'$.
+Therefore, $s \in \lhead{r}$.
+
+In the other case, suppose $s = s_1 \cdot ... \cdot s_n$ where each $s_i \in \lang{q}$.
+Let $a = s_1$ and $b = s_2 \cdot ... s_n$, so that $s = a \cdot b$.
+Note that $a = c_1 \cdot ... \cdot c_n$.
+We will show that $c_1 \in \lang{\lhead{q^*}}$ and that $(c_2 \cdot ... c_n) \cdot b \in \delta_{c_1}(q^*)$.
+
+The latter property is trivial. Note that $s = c_1 \cdot c_2 \cdot ... \cdot c_n \cdot b \in \lang{q^*}$.
+The result follows immediately from the definition of derivative.
+
+What remains to be shown is that $c_1 \in \lang{q^*}$.
+Note that $\lhead{q^*} = \epsilon + \lhead{q, \epsilon}$.
+Recall that $a = s_1$ where $s_1 \in \lang{q}$.
+Also recall that $a= c_1 \cdot ... \cdot c_n$.
+Therefore, $c_1 \in \lhead{q}$ by \ref{trlemmax}.
+
+\end{itemize}
+\end{proof}
 
 \begin{trexam}[All the heads of all the tails can be more than one head and tail]\label{exam:headsandtails}
 $r \not = \lhead{r} \cdot \ltail{r}$.
@@ -768,7 +843,7 @@ By inversion of S-T-Check, $\emptyset \vdash e_2 : \sigma$.
 If $\emptyset\vdash e : \sigma$ then either $e \ \val$ or $e \mapsto^* e'$ and $\emptyset\vdash e' : \sigma$.
 \end{trthm}
 \begin{proof}
-\todo{Follows directly from progress and preservation.}
+Follows directly from progress and preservation.
 \end{proof}
 
 
