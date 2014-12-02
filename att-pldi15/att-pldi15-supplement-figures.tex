@@ -1,4 +1,4 @@
-
+%!TEX root = att-pldi15-supplement.tex
 \begin{figure}[p]
 \small
 $\begin{array}{lcl}%\\
@@ -137,6 +137,35 @@ $
 \clearpage
 
 \begin{figure}[p]
+\small\fbox{$\Delta \vdash \tau$}
+\begin{mathpar}
+abc
+\end{mathpar}
+\caption{Internal Type Formation}
+\label{fig:internal-type-formation}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta \vdash \Gamma$} \vspace{-25px}
+\begin{mathpar}
+\inferrule[ictx-emp]{ }{\Delta \vdash \emptyset}
+
+\inferrule[ictx-ext]{\Delta \vdash \Gamma\\ \Delta \vdash \tau}{\Delta \vdash \Gamma, x : \tau}
+\end{mathpar}
+\caption{Internal Typing Context Formation}
+\label{fig:internal-typing-context-formation}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta~\Gamma \vdash \iota : \tau$}
+\begin{mathpar}
+abc
+\end{mathpar}
+\caption{Internal Type Assignment}
+\label{fig:internal-type-asignment}
+\end{figure}
+
+\begin{figure}[p]
 \small\fbox{$\Delta \vdash \delta : \Delta$}\vspace{-25px}
 \begin{mathpar}
 \inferrule[tysub-emp]{ }{\Delta \vdash \emptyset : \emptyset}
@@ -169,16 +198,7 @@ $
 \label{fig:internal-term-substitution-validity}
 \end{figure}
 
-\begin{figure}[p]
-\small\fbox{$\Delta \vdash \Gamma$} \vspace{-25px}
-\begin{mathpar}
-\inferrule[ictx-emp]{ }{\Delta \vdash \emptyset}
 
-\inferrule[ictx-ext]{\Delta \vdash \Gamma\\ \Delta \vdash \tau}{\Delta \vdash \Gamma, x : \tau}
-\end{mathpar}
-\caption{Internal Typing Context Formation}
-\label{fig:internal-typing-context-formation}
-\end{figure}
 
 \begin{figure}[p]
 \fbox{$\vdash \Phi$}\vspace{-25px}
@@ -650,6 +670,13 @@ $
     \krqitm{\qitm_2}
 }{
     \krqitm{\iap{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[k-qitm-fix]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\ifix{\qity}{x}{\qitm}}
 }
 
 \inferrule[k-qitm-tabs]{
@@ -2303,4 +2330,376 @@ $
 \end{mathpar}
 \caption{Typing}
 \label{fig:typing}
+\end{figure}
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\st}{\st}$}~(continued in Figure \ref{fig:backprojection-kitm})
+\begin{mathpar}\small
+\inferrule[bp-nil]{ }{
+    \bprjX{\keyw{nil}[\kappa]}{\keyw{nil}[\kappa]}
+}
+
+\inferrule[bp-cons]{
+    \bprjX{\st_1}{\st_1'}\\
+    \bprjX{\st_2}{\st_2'}
+}{
+    \bprjX{\keyw{cons}(\st_1; \st_2)}{\keyw{cons}(\st_1'; \st_2')}
+}
+
+\inferrule[bp-triv]{ }{
+    \bprjX{\striv}{\striv}
+}
+
+\inferrule[bp-pair]{
+    \bprjX{\st_1}{\st_1'}\\
+    \bprjX{\st_2}{\st_2'}
+}{
+    \bprjX{(\st_1, \st_2)}{(\st_1', \st_2')}
+}
+
+\inferrule[bp-inl]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sinl{\kappa}{\st}}{\sinl{\kappa}{\st'}}
+}
+
+\inferrule[bp-inr]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sinr{\kappa}{\st}}{\sinr{\kappa}{\st'}}
+}
+
+\inferrule[bp-ty-old]{
+    c \neq \tc'\\
+    \bprjX{\sttyidx}{\sttyidx'}
+}{
+    \bprjX{\sty{c}{\sttyidx}}{\sty{c}{\sttyidx'}}
+}
+
+\inferrule[bp-ty-new]{
+    \stx{schema}(\sttyidx) \Downarrow_{\cdot;\emptyset;\emptyset} \sqity{\qity}\\
+    \bprj{\Phi, \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}}{\tc'}{\sttyidx}{\sttyidx'}
+}{
+    \bprj{\Phi, \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}}{\tc'}{\sty{\tc'}{\sttyidx}}{\sty{\otherc{m}{\ktyidx}}{(\sttyidx', \sqity{\qity})}}
+}
+
+\inferrule[bp-qity-trans]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sqity{\srep{\st}}}{\sqity{\srep{\st'}}}
+}
+
+\inferrule[bp-qity-parr]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\iparr{\qity_1}{\qity_2}}}{\sqity{\iparr{\qity_1'}{\qity_2'}}}
+}
+
+\inferrule[bp-qity-alpha]{ }{
+    \bprjX{\sqity{\alpha}}{\sqity{\alpha}}
+}
+
+\inferrule[bp-qity-forall]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqity{\iforall{\alpha}{\qity}}}{\sqity{\iforall{\alpha}{\qity'}}}
+}
+
+\inferrule[bp-qity-t]{ }{
+    \bprjX{\sqity{t}}{\sqity{t}}
+}
+
+\inferrule[bp-qity-mu]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqity{\imu{t}{\qity}}}{\sqity{\imu{t}{\qity'}}}
+}
+
+\inferrule[bp-qity-unit]{ }{\bprjX{\sqity{\iunit}}{\sqity{\iunit}}}
+
+\inferrule[bp-qity-prod]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\iprod{\qity_1}{\qity_2}}}{\sqity{\iprod{\qity_1'}{\qity_2'}}}
+}
+
+\inferrule[bp-qity-sum]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\isum{\qity_1}{\qity_2}}}{\sqity{\isum{\qity_1'}{\qity_2'}}}
+}
+\end{mathpar}
+\caption{Backprojection - Static Values of Equality Kind}
+\label{fig:backprojection-eq-kind}
+\end{figure}
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\st}{\st}$} (continued from Figure \ref{fig:backprojection-eq-kind})
+\begin{mathpar}
+\inferrule[bp-qitm-var]{ }{
+    \bprjX{\sqitm{x}}{\sqitm{x}}
+}
+
+\inferrule[bp-qitm-abs]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ilam{\qity}{x}{\qitm}}}{\ilam{\qity'}{x}{\qitm'}}
+}
+
+\inferrule[bp-qitm-ap]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2}}
+}{
+    \bprjX{\sqitm{\iap{\qitm_1}{\qitm_2}}}{\sqitm{\iap{\qitm_1'}{\qitm_2'}}}
+}
+
+\inferrule[bp-qitm-fix]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifix{\qity}{x}{\qitm}}}{\sqitm{\ifix{\qity'}{x}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-tabs]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iLam{\alpha}{\qitm}}}{\sqitm{\iLam{\alpha}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-tap]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqitm{\iAp{\qity}{\qitm}}}{\sqitm{\iAp{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-fold]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifold{t}{\qity}{\qitm}}}{\sqitm{\ifold{t}{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-unfold]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iunfold{\qitm}}}{\sqitm{\iunfold{\qitm'}}}
+}
+
+\inferrule[bp-qitm-triv]{ }{
+    \bprjX{\sqitm{()}}{\sqitm{()}}
+}
+
+\inferrule[bp-qitm-pair]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1'}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2'}}
+}{
+    \bprjX{\sqitm{(\qitm_1, \qitm_2)}}{\sqitm{(\qitm_1', \qitm_2')}}
+}
+
+\inferrule[bp-qitm-fst]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifst{\qitm}}}{\sqitm{\ifst{\qitm'}}}
+}
+
+\inferrule[bp-qitm-snd]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\isnd{\qitm}}}{\sqitm{\isnd{\qitm'}}}
+}
+
+\inferrule[bp-qitm-inl]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqity{\qitm'}}
+}{
+    \bprjX{\sqitm{\iinl{\qity}{\qitm}}}{\sqitm{\iinl{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-inr]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iinr{\qity}{\qitm}}}{\sqitm{\iinr{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-case]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1'}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2'}}\\
+    \bprjX{\sqitm{\qitm_3}}{\sqitm{\qitm_3'}}
+}{
+    \bprjX{\sqitm{\icase{\qitm_1}{x}{\qitm_2}{x}{\qitm_3}}}{\sqitm{\icase{\qitm_1'}{x}{\qitm_2'}{x}{\qitm_3'}}}
+}
+\end{mathpar}
+\caption{Backprojection - Static Values of Kind $\kitm$}
+\label{fig:backprojection-kitm}
+\end{figure}
+
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\Upsilon}{\Upsilon}$}
+\begin{mathpar}
+\inferrule[bp-ctx-emp]{ }{
+    \bprjX{\emptyset}{\emptyset}
+}
+
+\inferrule[bp-ctx-ext]{
+    \bprjX{\Upsilon}{\Upsilon'}\\
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\Upsilon, x : \st}{\Upsilon', x : \st'}
+}
+\end{mathpar}
+\caption{Backprojection - Typing Contexts}
+\label{fig:backprojection-typing-contexts}
+\end{figure}
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(contines into Figure \ref{fig:backprojection-external-terms-2})
+\begin{mathpar}
+\inferrule[bp-var]{ }{
+    \bprjeX{x}{\st}{x}
+}
+
+\inferrule[bp-syn-lam]{
+    \bprje{\Phi'}{\tc'}{\Upsilon, x : \st_1'}{e'}{\st_2}{e''}\\
+    \bprjX{\st_1'}{\st_1''}
+}{
+    \bprjeX{\elam{\st_1}{x}{e'}}{\sty{\rightharpoonup}{(\st_1', \st_2)}}{\elam{\st_1''}{x}{e''}}
+}
+
+\inferrule[bp-ana-lam]{
+    \bprje{\Phi'}{\tc'}{\Upsilon, x : \st_1'}{e'}{\st_2}{e''}
+}{
+    \bprjeX{\eanalam{x}{e'}}{\sty{\rightharpoonup}{(\st_1', \st_2)}}{\eanalam{x}{e''}}
+}
+
+\inferrule[bp-ap]{
+    \bprjeX{e_1}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{e_1'}\\
+    \bprjeX{e_2}{\st_1}{e_2'}
+}{
+    \bprjeX{\eap{e_1}{e_2}}{\st_2}{\eap{e_1'}{e_2'}}
+}
+
+\inferrule[bp-fix]{
+    \bprje{\Phi}{\tc'}{\Upsilon, x : \st'}{e'}{\st'}{e''}
+}{
+    \bprjeX{\efix{x}{e'}}{\st'}{\efix{x}{e''}}
+}
+
+\inferrule[bp-asc]{
+    \bprjeX{e}{\st'}{e''}\\
+    \bprjX{\st'}{\st''}
+}{
+    \bprjeX{(e : \st)}{\st'}{e'' : \st''}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Variables, Functions and Ascription)}
+\label{fig:backprojection-external-terms-1}
+\end{figure}
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(continued from Figure \ref{fig:backprojection-external-terms-1}, continues into Figure \ref{fig:backprojection-external-terms-3})
+\begin{mathpar}
+\inferrule[bp-intro-ext-old]{
+    \tc \neq \tc'\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{ana}~\keyw{intro}=\stx{def} \in \omega\\
+    |\es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\stx{tyidx})(\stx{tmidx})(\stx{args}) \Downarrow_{\es;\Upsilon;\Phi'} \sqitm{\qitm}\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{\es;\Upsilon;\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sttmidx}{\sttmidx'}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sttmidx}{\es}}{\sty{\tc}{\sttyidx}}{\eintro{\sttmidx'}{\es'}}
+}
+
+\inferrule[bp-intro-ext-new]{
+    \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{ana}~\keyw{intro}=\stx{def} \in \omega\\
+    |\es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\stx{tyidx})(\stx{tmidx})(\stx{args}) \Downarrow_{\es;\Upsilon;\Phi} \sqitm{\qitm}\\\\
+    \tdeabs{\Phi'}{\tc'}{\srep{\sty{\tc'}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc'}{\es;\Upsilon;\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sttmidx}{\es}}{\sty{\tc}{\sttyidx}}{\eintro{\sqitm{\qitm'}}{\es'}}
+}
+
+\inferrule[bp-intro-other]{
+    \tdeabs{\Phi'}{\otherc{m'}{\kappa}}{\srep{\sty{\otherc{m'}{\kappa}}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\otherc{m'}{\kappa}}{\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sqitm{\qitm}}{\es}}{\sty{\otherc{m}{\kappa}}{\sttyidx}}{\eintro{\sqitm{\qitm'}}{\es'}}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Introductory Operations)}
+\label{fig:backprojection-external-terms-2}
+\end{figure}
+
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(continued from Figure \ref{fig:backprojection-external-terms-2})
+\begin{mathpar}
+\inferrule[bp-targ-ext-old]{
+    \bprjeX{e_\text{targ}}{\sty{\tc}{\sttyidx}}{e_\text{targ}'}\\
+    \tc \neq \tc'\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{syn}~\opname{op}=\stx{def} \in \omega\\
+    |\es|=n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\sttyidx)(\sttmidx)(\stx{args}) \Downarrow_{(e_\text{targ};\es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sttmidx}{\sttmidx'}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{\sttmidx'}{e_\text{targ}'}{\es'}}
+}
+
+\inferrule[bp-targ-ext-new]{
+    \bprjeX{e_\text{targ}}{\sty{\tc'}{\sttyidx}}{e_\text{targ}'}\\\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{syn}~\opname{op}=\stx{def} \in \omega\\
+    |\es|=n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\sttyidx)(\sttmidx)(\stx{args}) \Downarrow_{(e_\text{targ};\es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\st}{\st'}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{(\st', \sqitm{\qitm'})}{e_\text{targ}'}{\es'}}
+}
+
+\inferrule[bp-targ-other]{
+    \bprjeX{e_\text{targ}}{\sty{\otherc{m}{\kappa}}{\sttyidx}}{e_\text{targ}'}\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\st}{\st'}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{(\st, \sqitm{\qitm})}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{(\st', \sqitm{\qitm'})}{e_\text{targ}'}{\es'}}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Targeted Operations)}
+\label{fig:backprojection-external-terms-3}
 \end{figure}

@@ -1,0 +1,313 @@
+% cmu-titlepage.sty created 2 November 1989 R. Harper and D. Long
+% substyle for use with standard LaTeX article or report document styles
+% adapted from titlepage.sty
+%
+% cmu-titlepage2.sty by Håkan Younes, October 2004:
+%   - Removed DARPA funding templates.  Just use generic \support command.
+%   - Adjusted position of title/author box (required by recent versions of
+%     LaTeX to get the box at the same location as the cutout of the CMU tech
+%     report cover.
+%   - Added support for PhD theses: \committee and \dedication commands.
+% February 2005:
+%   - Added fullpage and dblspace options.
+%
+% Example usage for tech reports, with 11pt times and caption2:
+%
+%   \documentclass[11pt,leqno]{article}
+%   \usepackage[fullpage]{cmu-titlepage2}
+%   \usepackage[small,bf]{caption2}
+%   \usepackage{times}
+%   \usepackage{helvet}
+%   \usepackage{courier}
+%   ...
+%   \title{The Gentrification of Wean Hall: Preliminary Study}
+%   \author{Harry Q. Bovik}
+%   \date{January 1978}
+%   \trnumber{CMU-CS-78-100}
+%   \keywords{Gentrification, poverty}
+%   \support{Supported by the taxpayers.}
+%   \abstract{We examine...}
+%   ...
+%   \begin{document}
+%   \maketitle
+%   ...
+%   \end{document}
+%
+% Example usage for theses, with 11pt times and caption2:
+%
+%   \documentclass[11pt,leqno]{book}
+%   \usepackage[thesis,fullpage,dblspace]{cmu-titlepage2}
+%   \usepackage[small,bf]{caption2}
+%   \usepackage{times}
+%   \usepackage{helvet}
+%   \usepackage{courier}
+%   ...
+%   \title{The Gentrification of Wean Hall}
+%   \author{Harry Q. Bovik}
+%   \date{June 1978}
+%   \trnumber{CMU-CS-78-117}
+%   \committee{Herbert A. Simon, chair\\
+%   Allen Newell\\
+%   Alan J. Perlis\\
+%   Gunnar Myrdal, Stockholm University}
+%   \copyrightnotice{\copyright\ 1978 Harry Bovik}
+%   \keywords{Gentrification, poverty}
+%   \support{Supported by the taxpayers.}
+%   \abstract{We examine...}
+%   \dedication{For my parents}
+%   ...
+%   \begin{document}
+%   \frontmatter
+%   \maketitle
+%
+%   \chapter*{Acknowledgments}
+%
+%   I would like to thank ...
+%
+%   \tableofcontents
+%   \listoffigures
+%   \listoftables
+%   \mainmatter
+%   ...
+%   \appendix
+%   ...
+%   \backmatter
+%   ...
+%   \end{document}
+%
+% The thesis style uses the uheadings page style to get underlined page
+% headings, which is a new page style defined in this package.  Note
+% the use of \frontmatter, \mainmatter, and \backmatter.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{cmu-titlepage2}[2005/02/04 (H. Younes)]
+
+\newif\ifCMUTP@thesis
+\newif\ifCMUTP@fullpage
+\CMUTP@fullpagefalse
+\newif\ifCMUTP@dblspace
+\CMUTP@dblspacefalse
+\newcommand{\CMUTP@blstretch}{1}
+\newcommand{\CMUTP@floatblstretch}{1}
+\DeclareOption{report}{\CMUTP@thesisfalse}
+\DeclareOption{thesis}{\CMUTP@thesistrue}
+\DeclareOption{fullpage}{\CMUTP@fullpagetrue}
+\DeclareOption{dblspace}{\CMUTP@dblspacetrue}
+\ExecuteOptions{report}
+\ProcessOptions*
+
+% set the page size
+\ifCMUTP@fullpage
+  \ifCMUTP@thesis
+    \addtolength{\headsep}{3pt}
+  \else
+    \setlength{\headheight}{0pt}
+    \setlength{\headsep}{0pt}
+  \fi
+  \setlength{\textwidth}{\paperwidth}
+  \addtolength{\textwidth}{-2in}
+  \setlength{\oddsidemargin}{0in}
+  \setlength{\evensidemargin}{\oddsidemargin}
+  \setlength{\textheight}{\paperheight}
+  \addtolength{\textheight}{-\headheight}
+  \addtolength{\textheight}{-\headsep}
+  \addtolength{\textheight}{-\footskip}
+  \addtolength{\textheight}{-2in}
+  \setlength{\topmargin}{0in}
+\else
+  \ifCMUTP@thesis
+    \addtolength{\headsep}{3pt}
+    \addtolength{\textheight}{-3pt}
+  \fi
+\fi
+
+\def\title#1{\gdef\@title{#1}}
+
+\def\author#1{\gdef\@author{#1}}
+
+\ifCMUTP@thesis
+  \def\committee#1{\gdef\@committee{#1}}
+  \def\dedication#1{\gdef\@dedication{#1}}
+\fi
+
+% set baseline stretch
+\ifCMUTP@dblspace
+  \renewcommand{\CMUTP@blstretch}{1.5}
+\fi
+
+% the following is adapted from latex.tex to flag multiple authors
+\def\and{%%                             % \begin{tabular} 
+\gdef\@multipleauthors{}%
+\end{tabular}\hskip 1em plus .17fil\begin{tabular}[t]{c}%% \end{tabular}
+}
+
+\def\date#1{\gdef\@date{#1}}
+\gdef\@date{\today}          % default is today's date
+
+% keywords
+\def\keywords#1{\gdef\@keywords{#1}}
+
+% technical report number
+\def\trnumber#1{\gdef\@trnumber{#1}}
+\gdef\@trnumber{CMU-CS-??-???}
+
+% declaring citation information sets up formatting too
+\def\citationinfo#1{\gdef\@citationinfo{\vskip 2em\begin{quote}{\small #1}\end{quote}\par}}
+\gdef\@citationinfo{}
+
+% declaring copyright information sets up formatting too
+\def\copyrightnotice#1{\gdef\@copyrightnotice{\vfill\begin{center}{\small #1}\end{center}\par}}
+\gdef\@copyrightnotice{}
+
+% unmarked footnote
+\long\def\unmarkedfootnote#1{{\xdef\@thefnmark{}\@footnotetext
+{\ifcase\@ptsize\small\else\relax\fi#1}}}
+% Must be a certain size to be readable after copying
+
+% support acknowledgement, defaults to empty
+\def\support#1{\begingroup\def\protect{\noexpand\protect\noexpand}\xdef\@support{\@support\protect\unmarkedfootnote{#1}}\endgroup}
+\gdef\@support{}
+
+% these just store away the arguments for later consideration
+\def\othersupport#1{\gdef\@othersupport{#1}}
+\def\authorsupport#1{\gdef\@authorsupport{#1}}
+\let\@authorsupport=\relax
+
+% generate ``author'' or ``authors,'' depending on the number of
+% authors
+\def\authororauthors{\@ifundefined{@multipleauthors}{author}{authors}}
+
+% disclaimer information may be omitted, defaults to the standard
+% disclaimer
+\def\disclaimer#1{\begingroup\def\protect{\noexpand\protect\noexpand}\xdef\@disclaimer{\protect\unmarkedfootnote{#1}}\endgroup}
+\def\otherdisclaimer#1{\gdef\@otherdisclaimer{#1}}
+
+\def\abstract#1{\gdef\@abstract{#1}}
+
+% code to build the title page
+\def\maketitle{
+% calculate skip needed to ensure that title appears in the cut-out
+\newlength{\@cutoutvskip}
+\setlength{\@cutoutvskip}{2.18750truein}	% position of cut-out
+\addtolength{\@cutoutvskip}{-1truein}		% printer margin
+\addtolength{\@cutoutvskip}{-\topmargin}
+\addtolength{\@cutoutvskip}{-\headheight}
+\addtolength{\@cutoutvskip}{-\headsep}
+\newcounter{savetotal}
+\setcounter{savetotal}{\value{totalnumber}}
+\begin{titlepage}
+\let\footnoterule\relax
+\vglue\@cutoutvskip
+\begin{center}
+\begin{minipage}[t]{4.75in}	% must be a minipage due to \thanks
+\vbox to 2in{
+%\vfill
+\begin{center}
+{\Large\bf \strut \@title\par}
+\vfill
+{\large\bf \begin{tabular}[t]{c}\@author\end{tabular}\par}
+\medskip
+{\@date\par}
+\textsc{\@trnumber}\par
+\end{center}
+\vfill}
+\end{minipage}
+\end{center}
+\vskip 3em
+\begin{center}
+School of Computer Science \\
+Carnegie Mellon University \\
+Pittsburgh, PA 15213
+\end{center} \par
+\vskip 1.5em
+\ifCMUTP@thesis
+  \begin{center}
+  \textbf{Thesis Committee:}\\
+  \@committee
+  \end{center} \par
+  \vskip 1.5em
+  \begin{center}
+    \textit{Submitted in partial fulfillment of the requirements}\\
+    \textit{for the degree of Doctor of Philosophy}
+  \end{center} \par
+\fi
+\@citationinfo
+% these are footnotes; abstract must appear afterwards
+\@thanks
+\@support
+\@ifundefined{@disclaimer}{\relax}{\@disclaimer}
+\ifCMUTP@thesis
+  \relax
+\else
+  \setcounter{totalnumber}{0}
+  \begin{figure}[ht]
+    \begin{center}
+    \textbf{Abstract}
+    \end{center}
+    \@abstract
+  \end{figure}
+  \par
+\fi
+\@copyrightnotice
+\end{titlepage}
+\setcounter{totalnumber}{\value{savetotal}}
+\setcounter{page}{2}
+{\pagestyle{empty}\vspace*{\fill}\textbf{Keywords:} \@keywords\clearpage}
+% flush abstract if it floated; make sure text starts on a facing page
+
+\setcounter{footnote}{0}
+\setcounter{figure}{0}
+\ifCMUTP@thesis
+  \def\ps@uheadings{%
+      \let\@oddfoot\@empty\let\@evenfoot\@empty
+      \def\@evenhead{\rule[-3pt]{\textwidth}{0.01in}\hspace{-\textwidth}%
+                     \thepage\hfil\slshape\leftmark}%
+      \def\@oddhead{\rule[-3pt]{\textwidth}{0.01in}\hspace{-\textwidth}%
+                    {\slshape\rightmark}\hfil\thepage}%
+      \let\@mkboth\markboth}
+  \pagestyle{uheadings}
+  \renewcommand{\baselinestretch}{\CMUTP@blstretch}\small\normalsize
+  {\pagestyle{empty}
+  \vspace*{53\p@}%
+  \begin{center}
+  \textbf{Abstract}
+  \end{center}
+  \@abstract
+  \cleardoublepage}
+  \@ifundefined{@dedication}{}{%
+  {\pagestyle{empty}
+  \vspace*{53\p@}%
+  \begin{center}
+  \textit{\@dedication}
+  \end{center}
+  \cleardoublepage}}
+\else
+  {\pagestyle{empty}
+  \ifodd\thepage \relax \else \ \newpage \fi
+  \clearpage \setcounter{page}{1}}
+\fi
+
+\let\support\relax\gdef\@support{}\gdef\@author{}\gdef\@title{}\gdef\@trnumber{}\gdef\@citationinfo{}\gdef\@copyrightnotice{}\gdef\@shortabstract{}\gdef\@longabstract{}\let\maketitle\relax}
+
+
+\ifCMUTP@dblspace
+  \renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.0ex \@plus .2ex}%
+                                     {\normalfont\large\bfseries}}
+  \renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.0ex \@plus .2ex}%
+                                     {\normalfont\normalsize\bfseries}}
+\fi
+
+\renewenvironment{figure}
+                 {\renewcommand{\baselinestretch}{\CMUTP@floatblstretch}%
+                  \small\normalsize\@float{figure}}
+                 {\end@float\renewcommand{\baselinestretch}{\CMUTP@blstretch}%
+                  \small\normalsize}
+\renewenvironment{table}
+                 {\renewcommand{\baselinestretch}{\CMUTP@floatblstretch}%
+                  \small\normalsize\@float{table}}
+                 {\end@float\renewcommand{\baselinestretch}{\CMUTP@blstretch}%
+                  \small\normalsize}
