@@ -1078,27 +1078,12 @@ Similarly, $\iota \treduces \dot{v}$ where $[a, t / x, y] \iota_3 \treduces \dot
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-\section{String Substitution and Language Replacement}
-
-\subsection{The Trivial Definition}
-
-\subsection{An Automaton Construction}
-
-Insert Automaton stuff...
-
-
-\subsection{Toward a Precise Definition}
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
+\newpage
 
 \renewcommand{\grammarlabel}[2]{#1\hfill#2}
 \begin{figure}[b]
@@ -1116,8 +1101,8 @@ Insert Automaton stuff...
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$ | $\stringin{r}$    \hfill  source types
 
 <$e$> ::= 
-      $x$ | $\lambda x . e$ | $e(e) $\hfill source terms \alt 
-      $\strin{s}$ | $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \hfill $s \in \Sigma^{*}$ \alt
+      $x$ | $v$ \hfill source terms \alt 
+      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \hfill $s \in \Sigma^{*}$ \alt
       $\sisubst{r}{e}{e}$ | $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
 <$v$> ::= $\lambda x . e$ | $\strin{s}$ \hfill source values 
@@ -1135,11 +1120,11 @@ Insert Automaton stuff...
 
 <$\tau$> ::= $\tau \rightarrow \tau$ | $\str$ | $\regex$ \hfill target types
 
-<$\iota$> ::= $x$ | $\lambda x . \iota$ | $\iota(\iota)$ \hfill target terms \alt
-$\tstr{s}$ | $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
+<$\iota$> ::= $x$ | $\dot{v}$ \hfill target terms \alt
+$\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
   $\rx{r}$ | $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
-  <$\dot{v}$> ::= $\lambda x . \iota$ | \tstr{s} | \rx{r} \hfill target values
+  <$\dot{v}$> ::= $\lambda x . \iota$ | $\tstr{s}$ | $\rx{r}$ \hfill target values
 
 \end{grammar}
 \caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
@@ -1182,8 +1167,8 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 }
 
 \inferrule[S-T-Replace]
-{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} \\\\ \lreplace{r}{r_1}{r_2} = r'}
-{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{r'}}
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2} }
+{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{\lreplace{r}{r_1}{r_2}}}
 
 \inferrule[S-T-SafeCoerce]
 {\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
@@ -1268,26 +1253,17 @@ $\fbox{\inferrule{}{e \sreduces v}}$
 
 \begin{figure}
   \small
-$\fbox{\inferrule{}{e \ \val}}$
-
-\begin{mathpar}
-\inferrule[L-Val]
-{  }
-{\lambda x:\tau.t \ \val}
-\end{mathpar}
-
-
 $\fbox{\inferrule{}{e \mapsto e}}$
 
 \begin{mathpar}
 
 \inferrule[L-E-AppLeft]
 {e_1 \mapsto e_1'}
-{e_1 e_2 \mapsto e_1' e_2}
+{e_1(e_2) \mapsto e_1'(e_2)}
 
 \inferrule[L-E-AppRight]
 {e_2 \mapsto e_2'}
-{e_1 e_2 \mapsto e_1 e_2'}
+{v_1 \mapsto v_1}
 
 \inferrule[L-E-AppAbs]
 { \ }
@@ -1304,12 +1280,8 @@ $\fbox{\inferrule{}{e \mapsto e}}$
 {e \mapsto^* e}
 
 \inferrule[RT-Trans]
-{ e \mapsto^* e' \\ e' \mapsto^* e'' }
+{ e \mapsto^* e' \\ e' \mapsto e'' }
 { e \mapsto^* e'' }
-
-\inferrule[RT-Step\footnote{This is a special case of RT-Trans which we distinguish in order to write clearer proofs.}]
-{ e \mapsto^* e' \\ e' \mapsto v }
-{ e \mapsto^* v }
 
 \end{mathpar}
 
@@ -1319,19 +1291,16 @@ $\fbox{\inferrule{}{e \mapsto e}}$
 
 \begin{figure}
   \small
+$\fbox{\inferrule{}{e \mapsto e}}$ (Contiues figure 6)
 %$\fbox{\inferrule{}{e \mapsto e}} \  \fbox{ \inferrule{}{v \ \val}}$
 \begin{mathpar}
-\inferrule[SS-E-RStr]
-{ \ }
-{\strin{s} \ \val}
-
 \inferrule[SS-E-Concat-Left]
 {e_1 \mapsto e_1'}
 {\rsconcat{e_1}{e_2} \mapsto \rsconcat{e_1'}{e_2}}
 
 \inferrule[SS-E-Concat-Right]
 {e_2 \mapsto e_2'}
-{\rsconcat{e_1}{e_2} \mapsto \rsconcat{e_1}{e_2'}}
+{\rsconcat{v_1}{e_2} \mapsto \rsconcat{v_1}{e_2'}}
 
 \inferrule[SS-E-Concat]
 { \ }
@@ -1343,14 +1312,6 @@ $\fbox{\inferrule{}{e \mapsto e}}$
 }
 {
   \strcase{e_1}{e_2}{x,y.e_3} \mapsto \strcase{e_1'}{e_2}{x,y.e_3}
-}
-
-\inferrule[SS-E-Case-Right]
-{
-  e_2 \mapsto e_2'
-}
-{
-  \strcase{e_1}{e_2}{x,y.e_3} \mapsto \strcase{e_1}{e_2'}{x,y.e_3}
 }
 
 \inferrule[SS-E-Case-$\epsilon$-val]
@@ -1371,7 +1332,7 @@ $\fbox{\inferrule{}{e \mapsto e}}$
 
 \inferrule[SS-E-Replace-Left]
 {e_1 \mapsto e_1'}
-{ \sisubst{r}{e_1}{e_2} \mapsto \sisubst{r}{e_1'}{e_2}}
+{ \sisubst{r}{v_1}{e_2} \mapsto \sisubst{r}{v_1'}{e_2}}
 
 \inferrule[SS-E-Replace-Right]
 {e_2 \mapsto e_2'}
@@ -1394,13 +1355,10 @@ $\fbox{\inferrule{}{e \mapsto e}}$
 {e \mapsto e'}
 {\rcheck{r}{e}{x.e_1}{e_2} \mapsto \rcheck{r}{e'}{x.e_1}{e_2}}
 
-\inferrule[SS-E-Check-StepRight]
-{e_2 \mapsto e_2'}
-{\rcheck{r}{e}{x.e_1}{e_2} \mapsto \rcheck{r}{e}{x.e_1}{e_2'}}
-
 \inferrule[SS-E-Check-Ok]
 {s \in \lang{r}}
 {\rcheck{r}{\strin{s}}{x.e_1}{e_2} \mapsto [\rstr{s} / x]e_1}
+
 \inferrule[SS-E-Check-NotOk]
 {s \not \in \lang{r}}
 {\rcheck{r}{\strin{s}}{x.e_1}{e_2} \mapsto e_2} 
@@ -1504,23 +1462,23 @@ $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 }
 
 \inferrule[P-E-Replace]
-{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s_2} \\ \iota_3 \treduces \tstr{s_3} \\ \lsubst{r}{s_2}{s_3} = s} 
-{\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
+{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s_2} \\ \iota_3 \treduces \tstr{s_3} } 
+{\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{\lsubst{r}{s_2}{s_3} }}
 
 \inferrule[P-E-Check-OK]
 {
-  \iota_r \treduces \rx{r} \\
+  \iota_x \treduces \rx{r} \\
   \iota \treduces \tstr{s} \\ 
 s \in \lang{r} \\ 
 \iota_1 \treduces \dot{v_1} 
 }
 {
-  \tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
+  \tcheck{\iota_x}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
 }
 
 \inferrule[P-E-Check-NotOK]
-{\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
-{\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
+{\iota_x \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
+{\tcheck{\iota_x}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
 \end{mathpar}
 \caption{Big step semantics for $\lambdap$}.
 \label{fig:dlambdap}
