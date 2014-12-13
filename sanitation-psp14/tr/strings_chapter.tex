@@ -28,11 +28,12 @@
 
 \newtheorem{tr}{TR Item}
 \renewcommand{\thetr}{\Alph{tr}} % "letter-numbered" theorems
-\newtheorem{trexam}[tr]{TR Example}
-\newtheorem{trthm}[tr]{TR Theorem}
-\newtheorem{trlem}[tr]{TR Lemma}
-\newtheorem{trdef}[tr]{TR Definition}
-\newtheorem{trconj}[tr]{TR Conjecture}
+\newtheorem{trexam}[tr]{Example}
+\newtheorem{trthm}[tr]{Theorem}
+\newtheorem{trlem}[tr]{Lemma}
+\newtheorem{trdef}[tr]{Definition}
+\newtheorem{trconj}[tr]{Conjecture}
+\newtheorem{ass}[tr]{Assumption}
 
 \newtheorem{thm}{Theorem}                                                       
 \newtheorem{cor}[thm]{Corollary}                                                
@@ -211,83 +212,106 @@ Using these definitions of head and tail, we establish a correctness
 result upon which type soundness for the concatenation operator in
 $\lambdas$ depends.
 
+Throughout the following proofs, we abbreviate $s \in \lang{r}$ by $s \in r$.
+
 \begin{trlem}[Leading characters are in the head] \label{trlemmax}
-If $c_1 \cdot c_2 \cdot ... \cdot c_m \in \lang{r}$, then
+If $s = c_1  c_2 \cdots c_m \in \lang{r}$, then
 $c_1 \in \lhead{r}$.
 \end{trlem}
 \begin{proof}
-By structural induction on $r$...
+By structural induction on $r$.
+
+If $r = x$ for some character $x$ then $s \in \lang{r}$ implies $s = x$.
+By definition of lhead, $\lhead{s} = \lhead{s, \epsilon} = \lhead{x, \epsilon} = x$.
+Finally, $x \in \lang{x}$.
+
+If $r = r_1 \cdot r_2$ then $s \in \lang{r}$ implies $s = c_1 s_1 s_2$
+such that $c_1 s_1 \in \lang{r_1}$. 
+By definition of lhead, $\lhead{r_1 \cdot r_2} = \lhead{r_1, r_2} =
+\cdots + \lhead{r_1, \epsilon} = \cdots + \lhead{r_1}$. Therefore, $r_1 \subseteq \lhead{r_1, r_2}$
+and so it suffices to show that $s = c_1 s_1 s_2$ such that $c_1 \in \lhead{r_1}$,
+\todo{this is why we break out the $c_1$ from the $s_1$, both here and going forward}
+which holds by induction because $c_1 s_1 \in \lang{r_1}$. 
+
+If $r = r_1 + r_2$ then $s \in r$ implies either $s \in r_1$ or $s \in r_2$.
+Without loss of generality suppose $s \in r_1$.
+Then by induction $s = c_1 \cdots c_m$ such that $c_1 \in \lhead{r_1}$.
+By definition, $\lhead{r} = \lhead{r_1, \epsilon} + \lhead{r_2, \epsilon} = \lhead{r_1} + \cdots$.
+Therefore, $c_1 \in \lhead{r}$.
+
+If $r = r_1^*$ then $s \in r$ implies that $s = s_1 \cdots s_k$ where $k \ge 0$ and $s_i \in \lang{r}$.
+By definition of lhead, $\lhead{r_1^*} = \epsilon + \lhead{r_1}$.
+If $s = \epsilon$, then $s \in \lang{\epsilon} \subseteq \lang{\lhead{r_1}}$.
+If $s = s_1 \cdots s_k$, then $s_1 \in \lang{r}$ and so by induction $s_1 = c_1 \cdots c_k$ such that $c_1 \in \lang{\lhead{r}}$.
 \end{proof}
 
 \begin{trthm}[Correctness of \textsf{ltail}]
-If $s \in \lang{r}$ then $s \in \lang{\lhead{r}} \cdot \lang{\ltail{r}}$.
+If $s \in \lang{r}$ then $s \in \lang{\lhead{r} \cdot \ltail{r}}$.
 \end{trthm}
 \begin{proof}
 The proof proceeds by structural induction on $r$.
-In each case, we demonstrate three facts:
-\begin{itemize}
-  \item First, that the string $s = a \cdot b$ is a concatenation of two substrings (each of which may be $\epsilon$).
-  \item Second, $a \in \lang{\lhead{r}}$ (or, equivalently, $s \in \lang{\lhead{r}}$ letting $b = \epsilon$).
-  \item Third, there exists a $c \in \lhead{r}$ such that $a = c \cdot a'$ and $a' \cdot b \in \lang{\delta_c(r)}$, or else $s = a$. 
-\end{itemize}
-
-Throughout, we consider $\epsilon$ as idenetity under all operators for expressions and $\cdot$ for strings.
+In each case, we identify sublanguages of the head and tail of $r$ such that 
+$s$ is in the concatenation of the the sublanguages.
+Throughout the proof, we use the fact that $\lang{r'} \subseteq \lang{r}$ and $\lang{q'} \subseteq \lang{q}$
+implies $\lang{r' \cdot q'} \subseteq \lang{r \cdot q}$.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
 
 \item \textbf{Case $r = c$ for $c \in Sigma$}.
-Note that if $s \in \lang{c}$ then $s = c$.
-Note that $\lhead{c} = \lhead{c, \epsilon} = c$, and $c \in \lang{c}$.
-So $c \in \lang{c}$, which is sufficient since $\epsilon \in \ltail{r}$.
+By definition, if $s \in \lang{c}$ then $s = c$.
+By definition of lhead and ltail, $\lhead{c} = \lhead{c, \epsilon} = c$
+and $\lang{\epsilon} \subseteq \lang{\ltail{r}}$.
+Therefore, $c \in \lang{c \cdot \epsilon} \subseteq \lang{\lhead{r} + \ltail{r}}$.
 
 \item \textbf{Case $r = r_1 \cdot r_2$}.
 Suppose $s \in \lang{r}$.
-We may decompose $s$ as $s_1 \cdot ... \cdot s_n$ such that $s_1 = c_1 \cdot ... \cdot c_m \in r_1$.
+We may decompose $s$ as $s_1  \cdots s_n$ such that $s_1 = c_1 s_1' \in \lang{r_1}$.
 Note that $c_1 \in \lhead{r_1}$ by \ref{trlemmax}.
-Let $a' = c_2 \cdot ... \cdot c_m$.
-It suffices to show that $a' \cdot b \in \lang{\delta_c(r)}$.
-Since $s = c_1 \cdot a' \cdot b$ and $s \in \lang{r}$, it follows by the definition of derivative that $a' \cdot b \in \delta_{c_1}(r)$.
+Therefore, $c_1 \in \lhead{r_1 \cdot r_2}$ by definition of lhead.
+It suffices to show that $s_1' s_2 \in \lang{\delta_{c_1}(r)}$.
+Since $s = c_1 s_1' s_2\in \lang{r}$, it follows by the definition of derivative that $s_1' s_2 \in \delta_{c_1}(r)$.
+Therefore, $s = c_1 s_1' s_2 \in \lang{ c_1 \cdot \delta_{c_1} } \subseteq \lang{ \lhead{r} \cdot \ltail{r}}$.
+
 
 \item \textbf{Case $r = r_1 + r_2$}.
 Suppose $s \in \lang{r_1 + r_2}$
 so that $s \in \lang{r_1}$ or $s \in \lang{r_2}$.
-In either case, the result follows by induction. 
+Consider without loss of generality the case where $s \in \lang{r_1}$.
+By induction, $s \in \lang{\lhead{r_1} \cdot \ltail{r_1}}$
+Note that $\lhead{r_1} \subseteq \lhead{r}$
+and $\ltail{r_1} \subseteq \ltail{r}$.
+Therefore, $\lhead{r_1} \cdot \ltail{r_2} \subseteq \lhead{r_1} \cdot \ltail{r_1}$.
+
 
 \item \textbf{Case $r = q^*$}.
-Note that $s = \epsilon$ or else $s = s_1 \cdot s_2 \cdot ... s_n$ where each $s_i \in \lang{q}$\footnote{intuitively, $s$ is either empty or a finitary concatenation of strings matching $q$.}.
+Either $s$ is the empty string or else the $k^{th}$ unwinding (i.e., $s = s_1 \cdots s_k$ where $k > 0$ and $s_i \in \lang{q}$).
 
 Suppose $s = \epsilon$.
-Note that $\lhead{r} = \lhead{q^*} = \lhead{q^*, \epsilon} = \lhead{\epsilon, \epsilon} + h' = \epsilon + h'$.
-Therefore, $s \in \lhead{r}$.
+By definition of lhead, $\lhead{r} = \lhead{q^*} = \lhead{q^*, \epsilon} = \lhead{\epsilon, \epsilon} + \cdots = \epsilon + \cdots$.
+By definition of ltail, $\ltail{r} = \epsilon \cdots$.
+From these facts we conclude that $s = \epsilon \in \lang{\epsilon \cdot \epsilon} \subseteq \lang{\lhead{r} \cdot \ltail{r}}$.
 
-In the other case, suppose $s = s_1 \cdot ... \cdot s_n$ where each $s_i \in \lang{q}$.
-Let $a = s_1$ and $b = s_2 \cdot ... s_n$, so that $s = a \cdot b$.
-Note that $a = c_1 \cdot ... \cdot c_n$.
-We will show that $c_1 \in \lang{\lhead{q^*}}$ and that $(c_2 \cdot ... c_n) \cdot b \in \delta_{c_1}(q^*)$.
-
-The latter property is trivial. Note that $s = c_1 \cdot c_2 \cdot ... \cdot c_n \cdot b \in \lang{q^*}$.
-The result follows immediately from the definition of derivative.
-
-What remains to be shown is that $c_1 \in \lang{q^*}$.
-Note that $\lhead{q^*} = \epsilon + \lhead{q, \epsilon}$.
-Recall that $a = s_1$ where $s_1 \in \lang{q}$.
-Also recall that $a= c_1 \cdot ... \cdot c_n$.
-Therefore, $c_1 \in \lhead{q}$ by \ref{trlemmax}.
-
+Suppose instead that $s = s_1 \cdots s_k$ for $k < 0$ where $s_i \in \lang{q}$.
+If $q = \epsilon$ then $s = \epsilon$ and the conclusion follows for the same reason as the epsilon subcase of the character case.
+Otherwise, $s$ is not the empty string and so $s = c_1 s_1 s_2$ where $s_1$ and $s_2$ might be empty.
+By the lemma above, $c_1 \in \lhead{s}$.
+By the definition of derivative, $s_1s_2 \in \delta_{c_1}(s)$.
+Therefore, $s \in \lang{\lhead{s} \cdot \delta_{c_1}(s)} \subseteq \lang{\lhead{r} \cdot \ltail{r}}$, where the set inclusion follows by the definition
+of lhead and ltail.
 \end{itemize}
 \end{proof}
 
-\begin{trexam}[All the heads of all the tails can be more than one head and tail]\label{exam:headsandtails}
+\begin{trexam}[Decomposition is not Reversible]\label{exam:headsandtails}
 $r \not = \lhead{r} \cdot \ltail{r}$.
 \end{trexam}
 \begin{proof}
 A simple counter-example is $ab + cd$. 
-Note that $\lhead{ab + cd} = a+c$ and $\ltail{ab + cd} = b + d$. 
-Therefore, $\{ad,bc\} \subset \lang{\lhead{ab + cd} \cdot \ltail{ab + cd}}$ even though neither of these is in $\lang{r}$.
+Note that $\lhead{a\cdot b + c\cdot d} = a+c$ and $\ltail{a\cdot b + c\cdot d} = b + d$. 
+Therefore, $\{ad,bc\} \subset \lang{\lhead{a\cdot b + cd\cdot } \cdot \ltail{a\cdot b + c\cdot d}}$ even though neither of these is in $\lang{r}$.
 \end{proof}
 
 Example~\ref{exam:headsandtails} does not imply a counter-example to type soundness because $s \in \lang{r} \implies s \in \lhead{r}\cdot\ltail{r}$ is the
-property required for soundness. Still, in a production implementation, it will make sense to massage the definitions of $\lhead{r}$ and $\ltail{r}$ so that type information is not unnecessarily lost during substring operations.
+property required for soundness. 
 
 This is a general pattern in string operations: $\lambdas$ simulates -- within the type system -- common operations on strings. 
 If there is an operation for concatenating to strings, we define an operation for concatenating two regular expressions.
@@ -301,6 +325,10 @@ Soundness is not lost because the types are conservative in their approximation.
 
 In the case of string replacement, there are \emph{trivial} definitions of substitution (on strings) and replacement (on languages) which over-approximate 
 the effect of a substitution. Closing these gaps in approximation is important, and motivates the string operations portion of this technical report.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Substitution.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Some Corollaries About Substitution and Language Replacement}
 
@@ -326,32 +354,32 @@ This result is proven for various formulations in the next section.
 This is exactly the correctness result proven for some pairs of ${\tt subst}$ and ${\tt replace}$ in the previous section.
 \end{proof}
 
-\begin{lem}[Properties of Regular Languages.] \label{thm:regexprops}
+\begin{ass}[Properties of Regular Languages.] \label{thm:regexprops}
 ~
-\begin{itemize}
+\begin{enumerate}
 
 \item If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1\cdot r_2}$.
 \item For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
 \item Regular languages are closed under reversal.
-\end{itemize}
-\end{lem}
+\end{enumerate}
+\end{ass}
 
 Lemma~\ref{thm:regexprops} states some well-known properties about regular expressions.
 
-\begin{lem}
-  If $\emptyset \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
-\end{lem}
-\begin{proof}
-  The proof proceeds by induction on the derivation of the premise.
-  The only non-trivial cases (those which require more than an appeal to inversion) are S-T-Case, S-T-Replace and S-T-Concat. 
-
-In the S-T-Case case, note that ${\sf lhead}$ and ${\sf ltail}$ are total functions for well-formed regular expressions to well-formed regular expressions.
-
-In the S-T-Concat case, note that Lemma~\ref{thm:total} implies that if $r_1$ and $r_2$ are regular expressions then so is $r_1 \cdot r_2$.
-
-In the S-T-Replace case, it suffices to show that $\lreplace{r}{r_1}{r_2}$ is a regular expression assuming (inductively) that $r, r_1$ and $r_2$ are all regular expressions.
-This follows from the Closure proposition.
-\end{proof}
+%\begin{lem}
+%  If $\emptyset \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
+%\end{lem}
+%\begin{proof}
+%  The proof proceeds by induction on the derivation of the premise.
+%  The only non-trivial cases (those which require more than an appeal to inversion) are S-T-Case, S-T-Replace and S-T-Concat. 
+%
+%In the S-T-Case case, note that ${\sf lhead}$ and ${\sf ltail}$ are total functions for well-formed regular expressions to well-formed regular expressions.
+%
+%In the S-T-Concat case, note that Lemma~\ref{thm:total} implies that if $r_1$ and $r_2$ are regular expressions then so is $r_1 \cdot r_2$.
+%
+%In the S-T-Replace case, it suffices to show that $\lreplace{r}{r_1}{r_2}$ is a regular expression assuming (inductively) that $r, r_1$ and $r_2$ are all regular expressions.
+%This follows from the Closure proposition.
+%\end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Type Safety and Security.
@@ -372,26 +400,27 @@ proving a correspondence between the semantics.
 %$\therel(e)$ iff $e$ halts and $\emptyset \vdash e : \stringin{r}$.
 %\end{trdef}
 
-\begin{trconj}
-if $\emptyset \vdash e : \sigma$ then $e \mapsto^* v$ such that $v \ \val$.
-\end{trconj}
-%\begin{trthm}[Termination of small step semantics]
-%\end{trthm}
-%\begin{proof}
-We do not develop the full proof here, but note that the simply typed lambda calculus terminates.
-For the string fragment, observe that the S-T- rules do not add any non-trivial binding structure because substitutions
-$[e/x]e'$ may only occur in the special case where $e = \rstr{s}$, so that the length of the term
-never increases and the number of free variables strictly decreases. Therefore, the standard normalization
-argument proceeds without complication after fixing an evaluation order for the compatibility rules 
-(all our other proofs are agnostic to evaluation order).
+%\begin{trconj}
+%if $\Gamma \vdash e : \sigma$ then $e \mapsto^* v$ such that $v \ \val$.
+%\end{trconj}
+%%\begin{trthm}[Termination of small step semantics]
+%%\end{trthm}
+%%\begin{proof}
+%We do not develop the full proof here, but note that the simply typed lambda calculus terminates.
+%For the string fragment, observe that the S-T- rules do not add any non-trivial binding structure because substitutions
+%$[e/x]e'$ may only occur in the special case where $e = \rstr{s}$, so that the length of the term
+%never increases and the number of free variables strictly decreases. Therefore, the standard normalization
+%argument proceeds without complication after fixing an evaluation order for the compatibility rules 
+%(all our other proofs are agnostic to evaluation order).
 %\end{proof}
 
 \begin{trlem}[Canonical Forms]\label{cfgen}
-Suppose $v \ \val$.%or $e \sreduces v$.
+If $\emptyset \vdash v : \sigma$ then:
+\begin{enumerate}
+\item If $\sigma = \stringin{r}$ then $u = \rstr{s}$.
+\item If $\sigma = \sigma_1 \rightarrow \sigma_2$ then $v = \lambda x . e'$ and $s \in \lang{r}$.
+\end{enumerate}
 
-If $\emptyset\vdash v : \stringin{r}$ then $v = \rstr{s}$.
-
-If $\emptyset\vdash v : \sigma \rightarrow \sigma'$ then $v = \lambda x . e'$ for some $e'$.
 \end{trlem}
 \begin{proof}
 By inspection of valuation and typing rules.
@@ -404,41 +433,38 @@ stated in the paper:
   If $\emptyset \vdash e : \stringin{r}$ and $e \sreduces v$ then $v=\rstr{s}$. 
 \end{lem}
 \begin{proof}
-This fact follows directly from Lemma~\ref{cfgen}.
+This fact follows directly from Lemma~\ref{cfgen} and the preservation lemma.
 \end{proof}
 
 
 
-
-
 \begin{trlem}[Progress of small step semantics.]
-If $\emptyset\vdash e : \sigma$ either $e \ \val$ or $e \mapsto e'$ for some $e'$.
+If $\emptyset\vdash e : \sigma$ either $e = v$ or $e \mapsto e'$ for some $e'$.
 \end{trlem}
 \begin{proof}
 The proof proceeds by induction on the derivation of $\emptyset\vdash e : \sigma$.
 \begin{itemize}[label=$ $,itemsep=1ex]
-\item \textbf{$\lambda$ fragment}. Cases SS-T-Var, SS-T-Abs, and SS-T-App are exactly as in a proof of type safety for
+\item \textbf{$\lambda$ fragment}. Cases SS-T-Var, SS-T-Abs, and SS-T-App are exactly as in a proof of progress for
 the simply typed lambda calculus.
 
 \item \textbf{S-T-Stringin-I}. Suppose $\emptyset\vdash \rstr{s} : \stringin{s}$.
-The $\rstr{s} \ \val$ by SS-E-RStr.
+Then $\rstr{s} \ \val$ by SS-E-RStr.
 
-\item \textbf{S-T-Concat}. Suppose $\emptyset\vdash \rconcat{e_1}{e_2} : \stringin{s}$.
-By inversion and induction, $e_1 \mapsto e_1'$ or $e_1 \ \val$ and similarly
+\item \textbf{S-T-Concat}. Suppose $\emptyset\vdash \rconcat{e_1}{e_2} : \stringin{r}$ and $\emptyset e_1 : \stringin{r_1}$ and $\emptyset \vdash e_2 : \stringin{r_2}$.
+By induction, $e_1 \mapsto e_1'$ or $e_1 = v_1$ and similarly
 for $e_2$. 
 If $e_1$ steps, then SS-E-Concat-Left applies and so
 $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1'}{e_2}$. Similarly, if $e_2$ steps
 then $e$ steps by SS-E-Concat-Right.
 
-In the remaining case, $e_1 \ \val$ and $e_2 \ \val$.
+In the remaining case, $e_1 =v_1$ and $e_2 =v_2$.
 But then it follows by Canonical Forms that $e_1 = \rstr{s_1}$
 and $e_2 = \rstr{s_2}$.
-Finally, by SS-E-Concat, \\ $\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
+Finally, by SS-E-Concat, $\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
 
 \def\mline#1{\par\hspace*{-\leftmargin}\parbox{\textwidth}{\[#1\]}}
 \item \textbf{S-T-Case}.
-Suppose $e = \strcase{e_1}{e_2}{x,y.e_3}$. 
-By inversion,\\ $\emptyset\vdash e_1 : \stringin{r}$.
+Suppose $e = \strcase{e_1}{e_2}{x,y.e_3}$ and $\emptyset\vdash e_1 : \stringin{r}$.
 %\begin{align}
 %&\vdash e_1 : \stringin{r} \\
 %&\vdash e_2 : \sigma \\
@@ -447,52 +473,51 @@ By inversion,\\ $\emptyset\vdash e_1 : \stringin{r}$.
 %Actually this isn't even necessary...
 %By (2), $e_2 \mapsto e_2'$ or $e_2 \val$. 
 %In the former case, $e \mapsto \strcase{e_1}{e_2'}{x,y.e_3}$.
-From this fact, induction, and Canonical Forms it follows that $e_1 \mapsto e_1'$ or $e_1 = \rstr{s}$.
+By induction and Lemma~\ref{thm:cfs} it follows that $e_1 \mapsto e_1'$ or $e_1 = \rstr{s}$.
 In the former case, $e$ steps by S-E-Case-Left.
 In the latter case, note that $s = \epsilon$ or $s = at$ for some string $t$.
 If $s = \epsilon$ then $e$ steps by S-E-Case-$\epsilon$-Val,
 and if $s = at$ the $e$ steps by S-E-Case-Concat.
 
 \item \textbf{S-T-Replace}.
-Suppose $e = \rreplace{r}{e_1}{e_2}$ and $\emptyset\vdash e : \stringin{r'}$ where, by inversion of S-T-Replace,
+Suppose $e = \rreplace{r}{e_1}{e_2}$, $\emptyset\vdash e : \stringin{r'}$ and:
 \begin{align}
 &\emptyset\vdash e_1 : \stringin{r_1} \\
 &\emptyset\vdash e_2 : \stringin{r_2} \\
 &\lreplace{r}{r_1}{r_2} = r'
 \end{align}
 
-By (1), inversion and induction $e_1 \ \val$ or $e_1 \mapsto e_1'$ for some $e_1'$,
+By induction on (1), $e_1 \mapsto e_1'$ or $e_1 = v_1$  for some $e_1'$.
 If $e_1 \mapsto e_1'$ then $e$ steps by SS-E-Replace-Left.
 Similarly, if $e_2$ steps then $e$ steps by SS-E-Replace-Right.
-The only remaining case is where $e_1 \ \val$ and also $e_2 \ \val$.
-But then by Canonical Forms, $e_1 = \strin{s_1}$ and $e_2 = \strin{s_2}$.
+The only remaining case is where $e_1 = v_1$ and also $e_2 = v_2$.
+By Canonical Forms, $e_1 = \strin{s_1}$ and $e_2 = \strin{s_2}$.
 Therefore, $e \mapsto \rstr{\lsubst{r}{s_1}{s_2}}$ by SS-E-Replace.
 
 \item \textbf{S-T-SafeCoerce}.
 Suppose that $\emptyset\vdash \rcoerce{r}{e_1} : \stringin{r}$.
-By inversion of S-T-SafeCoerce,
+and
 %\begin{align}
 $\emptyset\vdash e_1 : \stringin{r'}$ for $\lang{r'} \subseteq \lang{r}$.% \\
 %&\lang{r'} \subseteq \lang{r}
 %\end{align}
-By induction, $e_1 \ \val$ or $e_1 \mapsto e_1'$ for some $e_1'$.
+By induction, $e_1 =v_1$ or $e_1 \mapsto e_1'$ for some $e_1'$.
 If $e_1 \mapsto e_1'$ then $e$ steps by SS-E-SafeCoerce-Step.
-Otherwise, $e_1 \ \val$ and by Canonical Forms $e_1 = \rstr{s}$.
+Otherwise, $e_1 =v$ and by Canonical Forms $e_1 = \rstr{s}$.
 In this case, $e = \rcoerce{r}{\rstr{s}} \mapsto \rstr{s}$ by SS-E-SafeCoerce.
 
 \item \textbf{S-T-SafeCheck}
-Suppose that $\emptyset\vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \stringin{r}$.
-By inversion of S-T-Check:
+Suppose that $\emptyset\vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \stringin{r}$ and:
 \begin{align}
 &\vdash e_0 : \stringin{r_0}  \\
 x:\stringin{r} &\vdash e_1 : \sigma \\
 &\vdash e_2 : \sigma \label{align6}
 \end{align}
 
-By (\ref{align6}) and induction,  $e_0 \mapsto e_0'$ or $e_0 \ \val$.
+By induction,  $e_0 \mapsto e_0'$ or $e_0 = v$.
 In the former case $e$ steps by SS-E-Check-StepRight.
 Otherwise, $e_0 = \rstr{s}$ by Canonical Forms.
-By Lemma~\ref{thm:regexprops}, either $s \in \lang{r_0}$ or $s \not\in\lang{r_0}$.
+By Lemma~\ref{thm:regexprops} part 2, either $s \in \lang{r_0}$ or $s \not\in\lang{r_0}$.
 In the former case $e$ takes a step by SS-E-Check-Ok.
 In the latter case $e$ takes a step by SS-E-Check-NotOk.
 
@@ -500,12 +525,17 @@ In the latter case $e$ takes a step by SS-E-Check-NotOk.
 
 \end{proof}
 
+\begin{trlem}[Substitution] \label{lem:subst}
+If $\Psi\ x : \sigma \vdash e : \sigma'$ and $\psi \vdash e' : \sigma$, then
+$\psi \vdash [e' / x] e : \sigma'$.
+\end{trlem}
+
 \begin{trlem}[Preservation for Small Step Semantics]
-If $\emptyset \vdash e : \sigma$ and $e \mapsto e'$ then $\emptyset \vdash e : \sigma$.
+If $\emptyset \vdash e : \sigma$ and $e \mapsto e'$ then $\emptyset \vdash e' : \sigma$.
 \end{trlem}
 \begin{proof}
 
-By induction on the derivation of $e \mapsto e'$.
+By induction on the derivation of $e \mapsto e'$ and $\emptyset \vdash e : \sigma$.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
 \item \textbf{$\lambda$ fragment}. Cases SS-T-Var, SS-T-Abs, and SS-T-App are exactly as in a proof of type safety for
@@ -513,23 +543,31 @@ the simply typed lambda calculus.
 
 \item \textbf{SS-E-Concat-Left}.
 Suppose $e = \rconcat{e_1}{e_2} \mapsto \rconcat{e_1'}{e_2}$ and $e_1 \mapsto e_1'$.
-By inversion of S-T-Concat, $\emptyset\vdash e_1 : \stringin{r_1}$ where \\$\emptyset\vdash e : \stringin{r_1r_2}$.
-By induction, if $e_1 \mapsto e_1'$ then $\emptyset\vdash e_1' : \stringin{r_1}$.
-Therefore, $\emptyset\vdash \rconcat{e_1'}{e_2} : \stringin{r_1r_2}$.
+The only rule that applies is S-T-Concat, so $\emptyset\vdash e_1 : \stringin{r_1}$ and $\emptyset\vdash e_2 : \stringin{r_2}$.
+By induction, $\emptyset\vdash e_1' : \stringin{r_1}$.
+Therefore, by S-T-Concat, $\emptyset\vdash \rconcat{e_1'}{e_2} : \stringin{r_1r_2}$.
 
-\item {\textbf{SS-E-Concat-Right}}. \todo{Similar to SS-E-Concat-Left.}
+\item {\textbf{SS-E-Concat-Right}}. 
+Suppose $e = \rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'}$ and $e_2 \mapsto e_2'$.
+The only rule that applies is S-T-Concat, so $\emptyset\vdash e_1 : \stringin{r_1}$ and $\emptyset\vdash e_2 : \stringin{r_2}$.
+By induction, $\emptyset\vdash e_2' : \stringin{r_2}$.
+Therefore, by S-T-Concat, $\emptyset\vdash \rconcat{e_1}{e_2'} : \stringin{r_1r_2}$.
 
-\item \textbf{SS-E-Concat}. Suppose $\emptyset\vdash\rconcat{\rstr{s_1}}{\rstr{s_2}} : \stringin{r_1r_2}$ and
-$\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
-Then by inversion $\emptyset\vdash\rstr{s_1} : \stringin{r_1}$ and similarly for $\rstr{s_2}$.
-Therefore, $s_1 \in \lang{r_1}$ and\\ $s_2 \in  \lang{r_2}$ from which it follows by Lemma~\ref{thm:regexprops}
+
+\item \textbf{SS-E-Concat}. 
+Suppose $\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
+The only applicable rule is S-T-Concat, so 
+$\emptyset\vdash\rstr{s_1} : \stringin{r_1}$ 
+and
+$\emptyset\vdash\rstr{s_2} : \stringin{r_2}$. 
+By Lemma~\ref{lem:cfs}, $s_1 \in \lang{r_1}$ and $s_2 \in  \lang{r_2}$ from which it follows by Lemma~\ref{thm:regexprops}
 that $s_1s_2 \in \lang{r_1r_2}$. Therefore, $\emptyset\vdash \rstr{s_1s_2} : \stringin{r_1r_2}$ by S-T-Rstr.
 
 \item \textbf{S-E-Case-Left}.
-Suppose that $e = \strcase{e_1}{e_2}{x,y.e_3}$ and also that
+Suppose 
 $e \mapsto \strcase{e_1'}{e_2}{x,y.e_3}$
-and $\emptyset \vdash e : \stringin{r}$.
-By inversion of S-T-Case:
+and $\emptyset \vdash e : \sigma$ and $e_1 \rightarrow e_1'$.
+The only rule that applies is S-T-Case, so:
 \begin{align}
 \emptyset&\vdash e_1 : \stringin{r} \label{align7} \\
 \emptyset&\vdash e_2 : \sigma \label{align8} \\ 
@@ -539,26 +577,26 @@ By (\ref{align7}) and the assumption that $e_1 \mapsto e_1'$, it follows by indu
 This fact together with (\ref{align8}) and (\ref{align9}) implies by S-T-Case that
 $\emptyset\vdash\strcase{e_1'}{e_2}{x,y.e_3} : \sigma$.
 
-\item \textbf{SS-E-Case-Right}. 
-We have that $e = \strcase{e_1}{e_2}{x,y.e_3}$, Suppose $e \mapsto \strcase{e_1}{e_2'}{x,y.e_3}$
-and $\emptyset \vdash e : \stringin{r}$.
-By inversion of S-T-Case:
-\begin{align}
-\emptyset&\vdash e_1 : \stringin{r} \label{align10}\\
-\emptyset&\vdash e_2 : \sigma \label{align11} \\ 
-x:\stringin{\lhead{r}}, y : \stringin{\ltail{r}} &\vdash e_3 : \sigma \label{align12}
-\end{align}
-By (\ref{align11}) and the assumption that $e_2 \mapsto e_2'$, it follows by induction that $\emptyset\vdash e_2' : \stringin{r}$.
-This fact together with (\ref{align10}) and (\ref{align12}) implies by S-T-Case that 
-$\emptyset\vdash\strcase{e_1}{e_2'}{x,y.e_3} : \sigma$.
+%\item \textbf{SS-E-Case-Right}. 
+%We have that $e = \strcase{e_1}{e_2}{x,y.e_3}$, Suppose $e \mapsto \strcase{e_1}{e_2'}{x,y.e_3}$
+%and $\emptyset \vdash e : \stringin{r}$.
+%By inversion of S-T-Case:
+%\begin{align}
+%\emptyset&\vdash e_1 : \stringin{r} \label{align10}\\
+%\emptyset&\vdash e_2 : \sigma \label{align11} \\ 
+%x:\stringin{\lhead{r}}, y : \stringin{\ltail{r}} &\vdash e_3 : \sigma \label{align12}
+%\end{align}
+%By (\ref{align11}) and the assumption that $e_2 \mapsto e_2'$, it follows by induction that $\emptyset\vdash e_2' : \stringin{r}$.
+%This fact together with (\ref{align10}) and (\ref{align12}) implies by S-T-Case that 
+%$\emptyset\vdash\strcase{e_1}{e_2'}{x,y.e_3} : \sigma$.
 
 \item \textbf{SS-E-Case-$\epsilon$-Val}.
 Suppose: \begin{align*}
-&e = \strcase{-}{e_2}{-} \\
+&e = \strcase{e_0}{e_2}{x,y.e_3} \\
 &\emptyset\vdash e: \sigma \\
 &e \mapsto e_2
 \end{align*}
-By inversion of S-T-Case, $e_2 : \sigma$.
+The only rule htat applies is S-T-Case, so $e_2 : \sigma$.
 
 \item \textbf{SS-E-Case-Concat}.
 Suppose that $e = \strcase{\rstr{as}}{e_2}{x,y.e_3} \mapsto [\rstr{a}, \rstr{s} / x,y] e_3$
@@ -566,43 +604,44 @@ and that $\emptyset\vdash e : \sigma$.
 By inversion of S-T-Case:
 \begin{align}
 \emptyset&\vdash \rstr{as} : \stringin{r} \label{align13}\\
-\emptyset&\vdash \rstr{e_2} : \sigma \label{align14} \\ 
+\emptyset&\vdash e_2 : \sigma \label{align14} \\ 
 x:\stringin{\lhead{r}}, y : \stringin{\ltail{r}} &\vdash e_3 : \sigma \label{align15}
 \end{align}
 
-We know that $as \in \lang{r}$ by (\ref{align13}) and inversion of S-T-Rstr.
+We know that $as \in \lang{r}$ by canonical forms on (\ref{align13}) 
 Therefore, $a \in \lang{\lhead{r}}$ by definition of ${\sf lhead}$.
-Furthermore, $\ltail{r} = ... | \delta_a{r} | ...$ by definition of ${\sf ltail}$.
+Furthermore, $\ltail{r} = ... + \delta_a{r} + ...$ by definition of ${\sf ltail}$.
 Note that $s \in \lang{\delta_a{r}}$ by definition of the derivative, and so
 $s \in \lang{\ltail{r}}$
 
 From these facts about $a$ and $s$ we know by S-T-Rstr that $\emptyset\vdash \rstr{a} : \stringin{\lhead{r}}$
 and $\emptyset\vdash \rstr{s} : \stringin{\lhead{r}}$.
-It follows by (\ref{align15}) that  $\emptyset\vdash [\rstr{a}, \rstr{s} / x,y] e_3 : \sigma$.
+It follows by (\ref{lem:subst}) that  $\emptyset\vdash [\rstr{a}, \rstr{s} / x,y] e_3 : \sigma$.
 
-\item \textbf{Cases SS-E-Replace-Left, SS-E-Replace-Right, SS-E-Check-StepLeft, SS-E-SafeCoerce-Step, SS-E-Check-StepRight}.
-\todo{At this point the method for handling compatibility cases is clear; therefore,
-we elide these cases.}
+\item \textbf{Cases SS-E-Replace-Left, SS-E-Replace-Right, SS-E-Check-StepLeft, SS-E-SafeCoerce-Step, SS-E-Check-StepRight}. \todo{todo}
 
 \item \textbf{Case SS-E-Replace}.
 
 Suppose $e = \rreplace{r}{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{\lsubst{r}{s_1}{s_2}}$.
-Assume $\emptyset \vdash e : \stringin{r'}$ for $r' = \lreplace{r}{r_1}{r_2}$.
-Then by inversion of S-T-Replace:
+The only applicable rule is 
+S-T-Replace, so
 \begin{align*}
 \emptyset &\vdash \rstr{s_1} : \stringin{r_1} \\
 \emptyset &\vdash \rstr{s_2} : \stringin{r_2}
 \end{align*}
-from which follows that $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
-Therefore, $\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$ by Theorem~\ref{thm:substcorrespondence}.
+By conanical forms,
+$s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
+Therefore, $\lreplace{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$ by Theorem~\ref{thm:substcorrespondence}.
 It is finally derivable by S-T-Rstr that:
 
-$\emptyset \vdash \rstr{\lsubst{r}{s_1}{s_2}} : \stringin{\lreplace{r}{r_1}{r_2}}$.
+$\emptyset \vdash \rstr{\lreplace{r}{s_1}{s_2}} : \stringin{\lreplace{r}{r_1}{r_2}}$.
 
 
 \item \textbf{Case SS-E-SafeCoerce}.
-Suppose that $\rcoerce{r}{s_1} \mapsto \rstr{s_1}$ and that $\emptyset\vdash \rcoerce{r}{s_1} : \stringin{r}$.
-By inversion of S-T-SafeCoerce we know that $s \in \lang{r}$. Therefore, $\emptyset\vdash s : \stringin{r}$.
+Suppose that $\rcoerce{r}{\rstr{s_1}} \mapsto \rstr{s_1}$.
+The only applicable rule is S-T-SafeCoerce, so 
+$\emptyset\vdash \rcoerce{r}{s_1} : \stringin{r}$.
+By Canonical Forms, $s \in \lang{r}$. Therefore, $\emptyset\vdash \rstr{s} : \stringin{r}$.
 
 \item \textbf{Case SS-E-Check-Ok}.
 Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto \subst{\rstr{s}}{x}{e_1}$,
@@ -614,7 +653,7 @@ Therefore, $\emptyset \vdash \subst{\rstr{s}}{x}{e_1} : \sigma$.
 \item \textbf{Case SS-E-Check-NotOk}.
 Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto e_2$,
 $s \not \in \lang{r}$, and $\emptyset \vdash \rcheck{r}{\rstr{s}}{x.e_1}{e_2} : \sigma$.
-By inversion of S-T-Check, $\emptyset \vdash e_2 : \sigma$.
+The only applicable rule is S-T-Check, so $\emptyset \vdash e_2 : \sigma$.
 
 \end{itemize}
 \end{proof}
@@ -649,7 +688,7 @@ We proceed by structural induction on $e$.
 % Abstraction case.
 \item \textbf{Case $e = \lambda x . e_1$}. 
 The only applicable rule is S-E-Abs, so $v = \lambda x . e_1$.
-Note that $\lambda x . e_2 \mapsto^* \lambda x . e_2$ by RT-Refl.
+Note that $\lambda x . e_1 \mapsto^* \lambda x . e_1$ by RT-Refl.
 
 % Application case.
 \item \textbf{Case $e=e_1(e_2)$}.
@@ -909,13 +948,13 @@ Recall that $e_1 \sreduces \strin{s_1}$ and so by S-E-Case it follows that $e \s
 
 \begin{thm}[Type Safety] \label{thm:typesafety}
   If $\emptyset \vdash e : \sigma$ 
-  then $e \sreduces v$ and $\emptyset \vdash v : \sigma$.
+  and $e \sreduces e'$ then $\emptyset \vdash e' : \sigma$.
 \end{thm}
 \begin{proof}
-If $\emptyset \vdash e : \sigma$ then $e \mapsto^* v$ for $v \ \val$ by termination.
-Therefore, $e \sreduces v$ by part 2 of the semantic correspondence theorem.
+If $\emptyset \vdash e : \sigma$ then $e \mapsto^* e'$.
+Therefore, $e \sreduces e'$ by part 2 of the semantic correspondence theorem.
 
-Since $\emptyset \vdash e : \sigma$ and $e \mapsto^* v$, it follows that $\emptyset \vdash v : \sigma$ by type safety for the small step semantics.
+Since $\emptyset \vdash e : \sigma$ and $e \mapsto^* e'$, it follows that $\emptyset \vdash e' : \sigma$ by type safety for the small step semantics.
 \end{proof}
 
 
@@ -927,7 +966,7 @@ Since $\emptyset \vdash e : \sigma$ and $e \mapsto^* v$, it follows that $\empty
 \end{thm}
 \begin{proof}
 If $\emptyset \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $\emptyset \vdash \rstr{s} : \stringin{r}$ by Type Safety.
-By inversion of S-T-Rstr, $s \in \lang{r}$.
+By Caonical Forms, $s \in \lang{r}$.
 \end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1013,8 +1052,8 @@ Similarly for $e_2$ and some $\iota_2$.
 
 By canonical forms, $e_1 \sreduces \rstr{s}$ and so $\iota_1 \treduces \tstr{s}$ by $\leadsto$.
 
-Choose $\iota = \tconcat{\iota_1}{\iota_2}{x,y.\iota_3}$ \todo{and note that by the properties established via induction,
-$\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.}
+Choose $\iota = \tconcat{\iota_1}{\iota_2}{x,y.\iota_3}$ and note that by the properties established via induction,
+$\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.
 
 Suppose $s = \epsilon$. Then $e \sreduces v$ where $e_2 \sreduces v$
 and $\iota \treduces \dot{v}$ where $\iota_2 \treduces \dot{v}$.
