@@ -1012,17 +1012,17 @@ By Caonical Forms, $s \in \lang{r}$.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+% LAMBDAP SECTION
 
 \section{Proofs of Lemmas and Theorems About $\lambdap$}
 
+This section follows the same structure as the safety proof for $\lambdas$ --
+we prove type safety for a small-step semantics, prove a semantic correspondence,
+and then transfer the safety result to the big-step semantics in the paper.
 
-\begin{thm}[Safety for $\lambdap$] If $\emptyset \vdash \iota : \tau$ 
-  then $\iota \sreduces \dot v$ and $\emptyset \vdash \dot v : \tau$.
-\end{thm}
-
-We can also define canonical forms for regular expressions and strings in the usual way:
-
+Our proofs here are more sketchy than in the $\lambdas$ section both because the
+proof method is already demonstrated, and becaues $\lambdap$ is a fairly straightforward
+extension of $\lambda$ for which these results are already estbalished.
 
 \begin{lem}[Canonical Forms for Target Language]
 ~
@@ -1033,6 +1033,91 @@ If $\emptyset \vdash \iota : \regex$ then $\iota \treduces \rx{r}$ such that $r$
 If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
 \end{itemize}
 \end{lem}
+
+
+\begin{thm}[Progress]
+If $\emptyset\vdash \iota : \tau$ either $\iota = \dot{v}$ or $\iota \mapsto \iota'$ for some $\iota'$.
+\end{thm}
+\begin{proof}
+The proof proceeds by induction on the typing assumption. We elide contexts where context has obviously not changed.
+
+Consider only the string and regex (non-$\lambda$) fragments of $\lambdap$.
+
+Regular expressions are always values.
+
+For strings, the concatenation cases are trivial.
+
+\begin{itemize}[label=$ $,itemsep=1ex]
+
+\item \textbf{P-T-Case}.
+Suppose $\emptyset \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3}$.
+By inversion, $\iota_1 : \str$ and so either $\iota_1 \mapsto \iota_1'$
+or by canonical forms, $\iota_1 = \tstr{s_1}$.
+Similarly, $\iota_2 \mapsto \iota_2'$ or else $\iota_2 = \tstr{s_2}$.
+In the former cases, progress occurs via the compatibility rules.
+in the case where both are string values, progress occurs via the case concatenation rule.
+
+\item \textbf{P-T-Replace}.
+Suppose $\emptyset \vdash \preplace{\iota_1}{\iota_2}{\iota_3}$.
+By inversion, $\iota_1 : \regex$ and so by canonical forms $\iota_1 = \rx{r}$.
+By inversion, $\iota_2 : \str$ and so by induction either $\iota_2 \mapsto \iota_2'$
+or else $\iota_2 = \tstr{s_2}$ for some string $s_2$.
+Similarly, either $\iota_3$ steps or else $\iota_3 = \tstr{s_3}$.
+In case any steps occur, progress occurs. In the remaining case,
+PP-E-Replace applies and so progress occurs.
+
+\item \textbf{P-T-Check}.
+Finally, suppose $\emptyset \vdash \check{\iota_x}{\iota_1}{\iota_2}{\iota_3}$.
+In case any of these step, then progress occurs.
+In the remaining cases, applications of inversion and canonical forms for each
+$\iota_x$ and $\iota_1$ implies that the term at hand equals $\check{\rx{r}}{\tstr{s}}{\iota_2}{\iota_3}$,
+which evaluates to either $\iota_2$ or $\iota_3$.
+
+\end{itemize}
+\end{proof}
+
+\begin{thm}[Preservation]
+If $\emptyset \vdash \iota : \tau$ and $\iota \mapsto \iota'$ then $\emptyset \vdash \iota' : \tau$.
+\end{thm}
+\begin{proof}
+\todo{Fill in if there's time. Otherwise there's nothing interesting going on.}
+\end{proof}
+
+
+\begin{thm}[Safety for Small-Step Semantics]
+If $\iota \sreduces \dot{v}$ and $\iota \mapsto \iota'$ then $\iota' \sreduces \dot{v}$. 
+\end{thm}
+\begin{proof}
+A direct result from progress and preservation.
+\end{proof}
+
+We only prove semantic correspondence in one direction; again, whereas $\lambdas$ proofs
+were detailed, here we provide a less verbosy proof.
+
+\begin{thm}[Semantic Correspondence]
+If $\iots \mapsto^* \iota'$ then $\iota \sreduces \iota'$.
+\end{thm}
+\begin{proof}
+By induction on the structure of $\iota$.
+
+
+\begin{itemize}[label=$ $,itemsep=1ex]
+\end{itemize}
+\end{proof}
+
+\begin{thm}[Safety for $\lambdap$] If $\emptyset \vdash \iota : \tau$ 
+  then $\iota \sreduces \dot v$ and $\emptyset \vdash \dot v : \tau$.
+\end{thm}
+\begin{proof}
+If $\emptyset \vdash \iota : \tau$ then $\iota \mapsto^* \iota'$.
+Therefore, $\iota \sreduces \iota'$ by part 2 of the semantic correspondence theorem.
+
+Since $\emptyset \vdash \iota : \tau$ and $\iota \mapsto^* \iota'$, it follows that $\emptyset \vdash \iota' : \tau$ by type safety for the small step semantics.
+
+\end{proof}
+
+We can also define canonical forms for regular expressions and strings in the usual way:
+
 
 
 \section{Proofs and Lemmas and Theorems About Translation}
@@ -1531,66 +1616,70 @@ s \in \lang{r} \\
 $\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
 
 \begin{mathpar}
-\inferrule[SP-E-Abs]
-{ \ }
-{\lambda x.e \sreduces \lambda x.e}
+\inferrule[PP-E-ConcatLeft]
+{\iota_1 \mapsto \iota_1'}
+{\tconcat{\iota_1}{\iota_2} \treduces \tconcat{\iota_1'}{\iota_2}}
 
-\inferrule[SP-E-App]
-{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \dot{v}_2 \\ [\dot{v}_2 / x] \iota_3 \sreduces \dot{v}_3}
-{ \iota_1(\iota_2) \sreduces \dot{v}_3}
+\inferrule[PP-E-ConcatRight]
+{\iota_2 \mapsto \iota_2'}
+{\tconcat{\iota_1}{\iota_2} \treduces \tconcat{\iota_1}{\iota_2'}}
 
-\inferrule[SP-E-Str]
-{ \ }
-{\tstr{s} \treduces \tstr{s}}
+\inferrule[PP-E-Concat]
+{\ }
+{\tconcat{\tstr{s_1}}{\tstr{s_2}} \treduces \tstr{s_1s_2}}
 
-\inferrule[SP-E-Rx]
-{ \ }
-{\rx{r} \treduces \rx{r}}
+\inferrule[PP-E-CaseLeft]
+{ \iota_1 \mapsto \iota_1' }
+{ \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \pstrcase{\iota_1'}{\iota_2}{x,y.\iota_3} }
 
-\inferrule[SP-E-Concat]
-{\iota_1 \treduces \tstr{s_1} \\ \iota_2 \treduces \tstr{s_2}} 
-{\tconcat{\iota_1}{\iota_2} \treduces \tstr{s_1 s_2}} % ???
 
-\inferrule[SP-E-Case-$\epsilon$]
-{
-  \iota_1 \treduces \tstr{ \epsilon } \\
-  \iota_2 \treduces \dot{v_2} \\
-}
-{
-  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v_2}
-}
+\inferrule[PP-E-CaseRight]
+{ \iota_2 \mapsto \iota_2' }
+{ \pstrcase{\dot{v}}{\iota_2}{x,y.\iota_3} \mapsto \pstrcase{\dot{v}}{\iota_2'}{x,y.\iota_3} }
 
-\inferrule[SP-E-Case-Concat]
-{
-  \iota_1 \treduces \tstr{as} \\
-  [\tstr{a},\tstr{s}/x,y] \iota_3 \treduces \dot{v} 
-}
-{
-  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v}
-}
+\inferrule[PP-E-Case]
+{ }
+{ \pstrcase{\tstr{s_1}}{\tstr{s_2}}{x,y.\iota_3} \mapsto \tstr{s_1s_2}}
 
-\inferrule[SP-E-Replace]
-{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s_2} \\ \iota_3 \treduces \tstr{s_3} \\ \lsubst{r}{s_2}{s_3} = s} 
-{\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
 
-\inferrule[SP-E-Check-OK]
-{
-  \iota_r \treduces \rx{r} \\
-  \iota \treduces \tstr{s} \\ 
-s \in \lang{r} \\ 
-\iota_1 \treduces \dot{v_1} 
-}
-{
-  \tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
-}
+\inferrule[PP-E-ReplaceLeft]
+{\iota_1 \mapsto \iota_1'}
+{ \preplace{\iota_1}{\iota_2}{\iota_3} \mapsto \preplace{\iota_1'}{\iota_2}{\iota_3} }
 
-\inferrule[SP-E-Check-NotOK]
-{\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
-{\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
+\inferrule[PP-E-ReplaceMid]
+{\iota_2 \mapsto \iota_2'}
+{ \preplace{\rx{r}}{\iota_2}{\iota_3} \mapsto \preplace{\rx{r}}{\iota_2'}{\iota_3} }
+
+\inferrule[PP-E-ReplaceRight]
+{\iota_3 \mapsto \iota_3'}
+{ \preplace{\rx{r}}{\tstr{s_2}}{\iota_3} \mapsto \preplace{\rx{r}}{\tstr{s_2}}{\iota_3'} }
+
+\inferrule[PP-E-Replace]
+{\ }
+{ \preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}} }
+
+\inferrule[PP-E-Check-Left]
+{ \iota_x \mapsto \iota_x' }
+{ \check{\iota_x}{\iota}{\iota_1}{\iota_2} \mapsto \check{\iota_x}{\iota}{\iota_1}{\iota_2} }
+
+\inferrule[PP-E-Check-Right]
+{ \iota \mapsto \iota' }
+{ \check{\rx{r}}{\iota}{\iota_1}{\iota_2} \mapsto \check{\rx{r}}{\iota'}{\iota_1}{\iota_2} }
+
+\inferrule[PP-E-Check-OK]
+{ s \in \lang{r} }
+{ \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_1}
+
+\inferrule[PP-E-Check-OK]
+{ s \not\in \lang{r} }
+{ \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_2}
+
 \end{mathpar}
-\caption{Small step semantics for $\lambdap$}.
+\caption{Small step semantics for $\lambdap$ (extends L-E rules)}.
 \label{fig:sdlambdap}
 \end{figure}
+
+
 
 \begin{figure}[h]
 \small
