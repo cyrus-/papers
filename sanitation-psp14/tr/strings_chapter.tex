@@ -1131,7 +1131,7 @@ and $\emptyset \vdash \iota_2 : \str$ where $\tau = \str$.
 By induction, $\emptyset \vdash \iota_1' : \str$,
 so $\emptyset \vdash \rconcat{\iota_1}{\iota_2'} : \str$.
 
-\todo{Everything above in this proof was sleep deprived plane work -- need to check}
+\todo{Everything above in the $\lambdap$ section was sleep deprived plane work -- need to check}
 
 \item \textbf{Case PS-E-Concat}
 Let $e = \rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$. 
@@ -1209,6 +1209,42 @@ Let $\iota = \rreplace{\rx{r}}{\rstr{s_2}}{\rstr{s_3}} \mapsto \rstr{\lreplace{r
 The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$.
 The result follows by canonical forms.
 
+\item \textbf{Case PS-E-CheckLeft}
+Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3}$
+where $\iota_x \mapsto \iota_x'$.
+The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\begin{align*}
+  \emptyset &\vdash \iota_x : \regex \\
+  \emptyset &\vdash \iota_1 : \str \\
+  \emptyset &\vdash \iota_2 : \tau \\
+  \emptyset &\vdash \iota_3 : \tau
+\end{align*}
+By induction, $\iota_x : \regex$. Therefore,
+$\emptyset \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3} : \tau$.
+
+
+\item \textbf{Case PS-E-CheckRight}
+Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3}$
+where $\iota_1 \mapsto \iota_1'$.
+The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\begin{align*}
+  \emptyset &\vdash \iota_x : \regex \\
+  \emptyset &\vdash \iota_1 : \str \\
+  \emptyset &\vdash \iota_2 : \tau \\
+  \emptyset &\vdash \iota_3 : \tau
+\end{align*}
+By induction, $\iota_1' : \str$. Therefore,
+$\emptyset \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3} : \tau$.
+
+\item \textbf{Case PS-E-Check-Ok} 
+Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_2$ and $s \in \lang{r}$.
+The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
+$\emptyset \vdash \iota_2 : \tau$.
+
+\item \textbf{Case PS-E-Check-NotOk} 
+Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_3$ where $s \not \in \lang{r}$.
+The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
+$\emptyset \vdash \iota_3 : \tau$.
 
 \end{itemize}
 
@@ -1675,8 +1711,8 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
-{\tctx \vdash \tcheck{\iota_r}{\iota_1}{\iota_2}{\iota_3} : \sigma}
+{\tctx \vdash \iota_x : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx \vdash \iota_3 : \tau}
+{\tctx \vdash \tcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} : \tau}
 \end{mathpar}
 \caption{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
@@ -1798,21 +1834,21 @@ $\fbox{\inferrule{}{\iota \mapsto \iota}}$
 {\ }
 { \preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}} }
 
-\inferrule[PS-E-Check-Left]
+\inferrule[PS-E-CheckLeft]
 { \iota_x \mapsto \iota_x' }
-{ \check{\iota_x}{\iota}{\iota_1}{\iota_2} \mapsto \check{\iota_x}{\iota}{\iota_1}{\iota_2} }
+{ \rcheck{\iota_x}{\iota}{\iota_1}{\iota_2} \mapsto \rcheck{\iota_x}{\iota}{\iota_1}{\iota_2} }
 
-\inferrule[PS-E-Check-Right]
+\inferrule[PS-E-CheckRight]
 { \iota \mapsto \iota' }
-{ \check{\rx{r}}{\iota}{\iota_1}{\iota_2} \mapsto \check{\rx{r}}{\iota'}{\iota_1}{\iota_2} }
+{ \rcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \mapsto \rcheck{\rx{r}}{\iota'}{\iota_1}{\iota_2} }
 
 \inferrule[PS-E-Check-OK]
 { s \in \lang{r} }
-{ \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_1}
+{ \rcheck{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_1}
 
 \inferrule[PS-E-Check-NotOK]
 { s \not\in \lang{r} }
-{ \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_2}
+{ \rcheck{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_2}
 
 \end{mathpar}
 \caption{Small step semantics for $\lambdap$ (extends L-E rules)}.
