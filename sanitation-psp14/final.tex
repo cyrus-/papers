@@ -1,0 +1,1602 @@
+\documentclass[10pt]{sigplanconf}
+\newcommand{\lamAce}{\lambda_{\text{Ace}}}
+% The following \documentclass options may be useful:
+%
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+\usepackage{afterpage}
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{mathpartir}
+\usepackage{amsmath}
+\usepackage{amssymb} 
+\def \TirNameStyle #1{\footnotesize \textsc{#1}}
+\renewcommand{\MathparLineskip}{\lineskiplimit=.4\baselineskip\lineskip=.4\baselineskip plus .2\baselineskip}
+
+% Hack. Something's wrong with PLAS paper when using the ACM Proc docclass
+\let\proof\relax
+\let\endproof\relax
+\usepackage{amsthm}
+\usepackage{thmtools}
+
+\usepackage{ stmaryrd }
+\usepackage{verbatimbox}
+\input{../att-icfp14/macros-atlam}
+\usepackage{alltt}
+\renewcommand{\ttdefault}{txtt}
+\usepackage{color}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{light-gray}{gray}{0.5}
+\usepackage{listings}
+\usepackage{wasysym}
+    \makeatletter
+%\usepackage{enumitem}
+\usepackage{enumerate}%
+
+% \btIfInRange{number}{range list}{TRUE}{FALSE}
+%
+% Test if int number <number> is element of a (comma separated) list of ranges
+% (such as: {1,3-5,7,10-12,14}) and processes <TRUE> or <FALSE> respectively
+%
+        \newcount\bt@rangea
+        \newcount\bt@rangeb
+
+        \newcommand\btIfInRange[2]{%
+            \global\let\bt@inrange\@secondoftwo%
+            \edef\bt@rangelist{#2}%
+            \foreach \range in \bt@rangelist {%
+                \afterassignment\bt@getrangeb%
+                \bt@rangea=0\range\relax%
+                \pgfmathtruncatemacro\result{ ( #1 >= \bt@rangea) && (#1 <= \bt@rangeb) }%
+                \ifnum\result=1\relax%
+                    \breakforeach%
+                    \global\let\bt@inrange\@firstoftwo%
+                \fi%
+            }%
+            \bt@inrange%
+        }
+
+        \newcommand\bt@getrangeb{%
+            \@ifnextchar\relax%
+            {\bt@rangeb=\bt@rangea}%
+            {\@getrangeb}%
+        }
+
+        \def\@getrangeb-#1\relax{%
+            \ifx\relax#1\relax%
+                \bt@rangeb=100000%   \maxdimen is too large for pgfmath
+            \else%
+                \bt@rangeb=#1\relax%
+            \fi%
+        }
+
+%
+% \btLstHL{range list}
+%
+        \newcommand{\btLstHL}[1]{%
+            \btIfInRange{\value{lstnumber}}{#1}%
+            {\color{black!10}}%
+            {\def\lst@linebgrd}%
+        }%
+
+%
+% \btInputEmph[listing options]{range list}{file name}
+%
+        \newcommand{\btLstInputEmph}[3][\empty]{%
+            \lstset{%
+                linebackgroundcolor=\btLstHL{#2}%
+                \lstinputlisting{#3}%
+            }% \only
+        }
+
+
+        
+% Patch line number key to call line background macro
+        \lst@Key{numbers}{none}{%
+            \def\lst@PlaceNumber{\lst@linebgrd}%
+            \lstKV@SwitchCases{#1}{%
+                none&\\%
+                left&\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+                right&\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+            }{%
+                \PackageError{Listings}{Numbers #1 unknown}\@ehc%
+            }%
+        }
+
+% New keys
+        \lst@Key{linebackgroundcolor}{}{%
+            \def\lst@linebgrdcolor{#1}%
+        }
+        \lst@Key{linebackgroundsep}{0pt}{%
+            \def\lst@linebgrdsep{#1}%
+        }
+        \lst@Key{linebackgroundwidth}{\linewidth}{%
+            \def\lst@linebgrdwidth{#1}%
+        }
+        \lst@Key{linebackgroundheight}{\ht\strutbox}{%
+            \def\lst@linebgrdheight{#1}%
+        }
+        \lst@Key{linebackgrounddepth}{\dp\strutbox}{%
+            \def\lst@linebgrddepth{#1}%
+        }
+        \lst@Key{linebackgroundcmd}{\color@block}{%
+            \def\lst@linebgrdcmd{#1}%
+        }
+
+% Line Background macro
+        \newcommand{\lst@linebgrd}{%
+            \ifx\lst@linebgrdcolor\empty\else
+                \rlap{%
+                    \lst@basicstyle
+                    \color{-.}% By default use the opposite (`-`) of the current color (`.`) as background
+                    \lst@linebgrdcolor{%
+                        \kern-\dimexpr\lst@linebgrdsep\relax%
+                        \lst@linebgrdcmd{\lst@linebgrdwidth}{\lst@linebgrdheight}{\lst@linebgrddepth}%
+                    }%
+                }%
+            \fi
+        }
+
+ % Heather-added packages for the fancy table
+ \usepackage{longtable}
+ \usepackage{booktabs}
+ \usepackage{pdflscape}
+ \usepackage{colortbl}%
+ \newcommand{\myrowcolour}{\rowcolor[gray]{0.925}}
+ \usepackage{wasysym}
+ 
+    \makeatother
+
+\lstset{
+  language=Python,
+  showstringspaces=false,
+  formfeed=\newpage,
+  tabsize=4,
+  commentstyle=\itshape\color{light-gray},
+  basicstyle=\ttfamily\scriptsize,
+  morekeywords={lambda, self, assert, as, cls},
+  numbers=left,
+  numberstyle=\scriptsize\color{light-gray}\textsf,
+  xleftmargin=2em,
+  stringstyle=\color{mauve}
+}
+\lstdefinestyle{Bash}{
+    language={}, 
+    numbers=left,
+    numberstyle=\footnotesize\color{light-gray}\textsf,
+    moredelim=**[is][\color{blue}\bf\ttfamily]{`}{`},
+}
+\lstdefinestyle{OpenCL}{
+	language=C++,
+	morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
+}
+
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{codelisting}{tp}{lop}
+\floatname{codelisting}{Listing}
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
+
+
+\usepackage{url}
+
+%\usepackage{todo}
+%\usepackage[subject={Todo},author={Josef}]{pdfcomment}
+%\usepackage{cooltooltips}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\usepackage{placeins}
+
+\usepackage{textpos}
+
+\renewcommand\topfraction{0.85}
+\renewcommand\bottomfraction{0.85}
+\renewcommand\textfraction{0.1}
+\renewcommand\floatpagefraction{0.85}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{bussproofs}    % Gentzen-style deduction trees *with aligned sequents!*
+\usepackage{mathpartir}	% For type-settting type checking rule figures
+\usepackage{syntax}		% For type-setting formal grammars.
+
+
+\usepackage[hidelinks]{hyperref}		% For links in citations
+
+
+\usepackage{float}			% Make figures float if [H] option is passed.
+
+\iffalse
+\usepackage{listings}		% For typesetting code listings
+\usepackage{callout}
+\usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage{upquote}
+\lstset{upquote=true}
+\fi
+
+\usepackage{textcomp}		% For \textquotesingle as used in introduction
+\usepackage{color}			% for box colors, like in TAPL.
+
+\usepackage{amsmath}		% Begin Carthage default packages
+\usepackage{makeidx}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphics}
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{epsfig}
+\usepackage{csquotes}
+\usepackage{enumitem}
+
+
+\newtheorem{thm}{Theorem}                                                       
+\declaretheoremstyle[%
+  spaceabove=-6pt,%
+  spacebelow=6pt,%
+  headfont=\normalfont\itshape,%
+  postheadspace=1em,%
+  qed=\qedsymbol%
+]{mystyle} 
+\declaretheorem[name={Proof Sketch},style=mystyle,unnumbered
+]{prf}
+\newtheorem{cor}[thm]{Corollary}                                                
+\newtheorem{lem}[thm]{Lemma}                                                    
+\newtheorem{prop}[thm]{Proposition}                                             
+\newtheorem{ax}[thm]{Axiom}                                                     
+\theoremstyle{definition}                                                       
+\newtheorem{defn}[thm]{Definition}                                              
+\newtheorem{exam}[thm]{Example}                                                 
+\newtheorem{rem}[thm]{Remark} 
+%\renewcommand*{\proofname}{Proof Sketch}
+
+%
+% For type setting inference rules with labels.
+%
+\newcommand{\inferlbl}[3]
+			{\inferrule{#3}{#2}{\textsf{\footnotesize{\sc #1}}}}
+\newcommand{\inferline}[3]
+			{\inferrule{#3}{#2} & {\textsf{\footnotesize{\sc #1}}} \\ \\}
+
+\newcommand{\Lagr}{\mathcal{L}}
+\newcommand{\lang}[1]{\Lagr\{#1\}}
+\newcommand{\stru}[2]{ {\tt string\_union}(#1,#2)}
+
+
+\newcommand{\dconvert}[2]{ {\tt dconvert}(#1,#2) }
+\newcommand{\filter}[2]{ {\tt filter}(#1,#2) }
+\newcommand{\ifilter}[2]{ {\tt ifilter}(#1,#2) }
+
+\newcommand{\reduces}{ \Rightarrow }
+\newcommand{\gvd}{\Gamma \vdash }
+\newcommand{\ovd}{\Omega \vdash }
+
+\newcommand{\trep}{{\tt rep}}
+
+\newcommand{\tstrf}[1]{`#1\textrm'} %??
+\newcommand{\strf}[1]{``#1"}
+
+
+\newcommand{\iso}{\cong}
+%%
+%% Source and Target language definitions.
+%%
+\newcommand{\lambdas}{\lambda_{RS}}
+\newcommand{\lambdap}{\lambda_P}
+
+% Source language terms.
+\newcommand{\sisubst}[3]{{\sf rreplace}[#1](#2;#3)} \newcommand{\rreplace}[3]{{\sf rreplace}[#1](#2;#3)} % lots of legacy naming around these parts...
+
+\newcommand{\rssreplace}[3]{\sisubst{#1}{#2}{#2}} % TODO-nrf fix this.
+
+\newcommand{\coerce}[2]{ {\sf rcoerce}[#1](#2)}
+\newcommand{\rcoerce}[2]{{\sf rcoerce}[#1](#2)}
+\newcommand{\sistr}[1]{{\sf rstr}[#1]}   \newcommand{\rstr}[1]{{\sf rstr}[#1]} % Lots of legacy naming around these parts...
+
+\newcommand{\val}{{\sf val}}
+
+\newcommand{\rcheck}[4]{ {\sf rcheck}[#1](#2;#3;#4) }
+
+
+\newcommand{\strin}[1]{\sistr{#1}}
+\newcommand{\rsconcat}[2]{{\sf rconcat}(#1;#2)} \newcommand{\rconcat}[2]{{\sf rconcat}(#1;#2)} % lots of legact naming around these parts..
+
+% Source language types.
+\newcommand{\stringin}[1]{{\sf stringin}[#1]}
+
+% target language terms.
+\newcommand{\tsubst}[3]{{\sf preplace}(#1;#2;#3)} \newcommand{\metareplace}[3]{{\sf replace}(#1;#2;#3)} % TODO-nrf rename the commands. Lots of legacy naming around these parts...
+
+\newcommand{\tcheck}[4]{{\sf pcheck}(#1; #2; #3; #4)}
+\renewcommand{\tstr}[1]{{{\sf str}[#1]}}
+\newcommand{\preplace}[3]{{\sf preplace}(#1;#2;#3)}
+\newcommand{\tconcat}[2]{{\sf pconcat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
+
+\newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
+\newcommand{\rx}[1]{ {\sf rx}[#1] }
+
+% Target language types
+\newcommand{\str}{{\sf string}}
+\newcommand{\regex}{{\sf regex}}
+
+% Meta-theoretic functions
+\newcommand{\lsubst}[3]{{\sf replace}(#1;#2;#3)} % This used to renderlreplace(...) so there're probably mistkes wherever this command was used now.
+\newcommand{\lreplace}[3]{{\sf lreplace}(#1; #2; #3)}
+
+\newcommand{\sctx}{\Psi} % Context for external typing
+\newcommand{\tctx}{\Theta} % Context for internal typing
+\newcommand{\ereduces}{\Downarrow}
+
+
+\newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
+
+\newcommand{\lhead}[1]{ {\sf lhead}(#1) }
+\newcommand{\ltail}[1]{ {\sf ltail}(#1) }
+
+
+% Judgements
+\newcommand{\trden}[1]{\llbracket #1 \rrbracket} % = Translation Denotation.
+
+% Relations
+\newcommand{\treduces}{ \Downarrow }
+\newcommand{\sreduces}{ \Downarrow }
+
+%%
+%% Constrain the size of full-page diagrams and rule lists
+%%
+%%\newcommand{\pagewidth}{5in}
+%%\newcommand{\rulelistwidth}{3in}
+
+% Names of type systems presented in paper
+\newcommand{\lcs}{\lambda_{S}}
+
+\setlength{\grammarindent}{2em}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[compact]{titlesec}
+\titlespacing*{\section}{0pt}{3pt}{0pt}
+\titlespacing*{\subsection}{0pt}{3pt}{0pt}
+\titlespacing{\subsubsection}{0pt}{3pt}{0pt}
+\titlespacing{\paragraph}{0pt}{3pt}{5pt}
+
+
+
+\begin{document}
+
+%dep_docclass\conferenceinfo{-}{-} 
+%dep_docclass\copyrightyear{-} 
+%dep_docclass\copyrightdata{[to be supplied]} 
+
+%\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
+%\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
+
+\newcommand{\Ace}{\textsf{Ace}}
+
+\permissiontopublish
+\conferenceinfo{PSP~'14}{October 21, 2014, Portland, OR, USA.}
+\copyrightyear{2014}
+\copyrightdata{978-1-4503-2296-6/14/10}
+\doi{2687148.2687152} 
+\title{Statically Typed String Sanitation Inside a Python}
+%\numberofauthors{3}
+%\author{
+%  \alignauthor
+%  Nathan Fulton
+%  \alignauthor
+%  Cyrus Omar
+%  \alignauthor
+%  Jonathan Aldrich
+%  \and
+%  \affaddr{Carnegie Mellon University, Pittsburgh, PA}\\
+%  %\affaddr{Pittsburgh, PA}\\
+%  \email{\{nathanfu, comar, aldrich\}@cs.cmu.edu}
+%}
+%%\authorinfo{~}{~}{~}
+\authorinfo{Nathan Fulton\and Cyrus Omar\and Jonathan Aldrich}
+          {Carnegie Mellon University \\ 
+        \{nathanfu, comar, aldrich\}@cs.cmu.edu}
+%
+
+\maketitle
+\begin{abstract}
+Web applications must ultimately command systems like web browsers and database engines using strings. Strings derived from improperly sanitized user input  can as a result be a vector for command injection attacks. 
+In this paper, we introduce \emph{regular string types}, which classify strings constrained statically to be in a regular language specified by a regular expression. Regular strings support standard string operations like concatenation and substitution, as well as safe coercions, so they  can be used to implement, in an essentially conventional manner, the pieces of a web application or framework that  handle strings arising from user input. Simple type annotations at function interfaces can be used to statically verify that sanitization has been performed correctly without introducing redundant run-time checks. We specify this type system first as a minimal typed lambda calculus, $\lambda_{RS}$.
+
+To be practical, adopting a specialized type system like this should not require the adoption of a new programming language. Instead, we advocate for extensible type systems: new type system fragments like this should be implemented as libraries atop a mechanism that guarantees that they can be safely composed.  
+We support this with two contributions. First, we specify a translation from $\lambda_{RS}$ to a calculus with only standard strings and regular expressions. Then, taking Python as a language with these constructs, we implement the type system together with the translation as a library using \texttt{typy}, an extensible static type system for Python.
+\end{abstract}
+
+
+
+%\category{D.3.2}{Programming Languages}{Language Classifications}[Extensible languages]
+\category{F.3.3}{Logics \& Meanings of Programs}{Studies of Program Constructs}[Type structure]
+%\category{F.4.3}{Logics \& Meanings of Programs}{Formal Languages}
+\keywords
+type systems, regular expressions, input sanitation, string sanitation, extensible languages, web security
+
+\section{Introduction}\label{intro}
+Command injection vulnerabilities are among the most common and severe security vulnerabilities in modern web applications \cite{OWASP}. They arise because web applications, at their boundaries, control external systems using commands represented as  strings. For example, web browsers are controlled using HTML and Javascript sent from a server as a string, and database engines execute SQL queries also sent as strings. When these commands include substrings derived from user input, care must be taken to ensure that the user cannot  subvert the intended command. For example, a  SQL query constructed using string concatenation exposes a SQL injection vulnerability: 
+\begin{lstlisting}[numbers=none]
+'SELECT * FROM users WHERE name="' + name + '"'
+\end{lstlisting}\vspace{-3px}
+If a malicious user enters the name \lstinline{'"; DROP TABLE users --'}, the entire database could be erased. 
+
+To avoid this problem, developers are cautioned to \emph{sanitize} user input. For example, in this case, the developer (or, more often, a framework) might define a function \verb|sanitize| that escapes double quotes and existing backslashes   with a backslash, which SQL treats securely. Alternatively, it might HTML-encode special characters, which would head off both SQL injection attacks and cross-site scripting attacks. \emph{Guaranteeing} that user input has already been sanitized  before it is used to construct a command is challenging, especially because  sanitization and command construction may occur in separately developed and maintained components. %is often performed in a different component of a program than where commands are ultimately constructed.% Note, for example, that \verb|sanitize| is not idempotent, so it should only be called once.
+
+We observe that many such sanitization techniques can be specified using \emph{regular languages} \cite{cinderella}. For example, for the command constructed above to be secure, \verb|name| must be a string in the language described by the regular expression \verb!([^"\\]|(\")|(\\))*! -- a sequence of characters other than quotation marks and backslashes; these can only appear escaped. This conventional syntax for regular expression patterns can be understood to desugar, in a standard way, to the syntax for regular expressions shown in Figure \ref{fig:regex}, where $r \cdot r$ is sequencing and $r + r$ is  disjunction. We will work with this ``core'' for simplicity in the remainder.
+
+In this paper, we present a static type system that tracks the regular language a string belongs to (we identify regular languages by the notation $\mathcal{L}\{r\}$). For example, the output of \verb|sanitize| will not simply be \verb|string|, but rather \verb|stringin[r]|, where \verb|r| is the regular expression above. By leveraging closure and decidability properties of regular languages, the type system will be able to closely track the language a string belongs to through uses of a number of operations, including \emph{replacement} of substrings matching a given pattern. This makes it possible to implement sanitization functions -- like the one just described -- in a conventional manner. The result is a system where the fact that a string has been {correctly} sanitized becomes manifest in its type. Missing calls to sanitization functions can thus be detected statically, and, crucially, so can \emph{incorrectly implemented sanitization functions} (i.e. these functions need not be trusted). These guarantees require run-time checks only when going from less precise to more precise types. %implementing and statically checking input sanitation techniques. Our solution suggests a more general approach to the integration of security concerns into programming language design. This approach is characterized by \emph{composable} type system extensions which \emph{complement} existing and well-understood solutions with compile-time checks.
+
+We will begin in Sec. \ref{calculus} by specifying this type system minimally, as a conservative extension of the simply typed lambda calculus called $\lambdas$. This allows us to specify the guarantees that the type system provides precisely. We also formally specify a translation from this calculus to a typed calculus with only standard strings and regular expressions, intending it as a guide to language implementors interested in building this feature into their own languages. This also demonstrates that no additional space overhead is required.
+
+Waiting for a language designer to build this feature in is unsatisfying in practice. %Moreover, we also face a ``chicken-and-egg problem'': justifying its inclusion into a commonly used language benefits from empirical case studies, but these are  difficult to conduct if developers have no way to use the abstraction in real-world code. 
+We take the position that a better path forward for the community is to work within a programming language where such type system fragments can be introduced modularly and orthogonally, as libraries. 
+
+In Sec. \ref{typy}, we show how to implement the type system and translation from Sec. \ref{calculus} using \texttt{typy}, an extensible static type system implemented as a library inside Python. \texttt{typy} leverages local type inference to control the semantics of literal forms, so regular string types can be introduced using string literals without any run-time overhead. Coercions that are known to be  safe due to a sublanguage relationship are performed implicitly, also without run-time overhead. This results in a \emph{usably secure} system: working with regular strings differs little from working with standard strings in a language that web developers have already widely adopted.
+
+We conclude after discussing related work in Sec. \ref{related}.
+
+\section{Regular String Types, Minimally}\label{calculus}
+\noindent
+%This will serve as the source language for our translation to a calculus with only standard strings and regular expressions, defined in Section~\ref{sec:tr}. 
+This section is organized as follows:
+\begin{itemize}
+\item Sec. \ref{sec:rs} describes $\lambda_{RS}$ and its metatheory.% We also give proof outlines of  type safety and correctness theorems and relevant propositions about regular languages.
+\item Sec. \ref{sec:p} describes a simple target language, $\lambdap$, with a minimal regular expression library. In Section \ref{typy}, we will take Python to be such a language.
+\item Sec. \ref{sec:tr} describes the translation from $\lambdas$ to $\lambdap$ and ensures the correctness result from Sec. \ref{sec:rs} is preserved under this translation. 
+\end{itemize}
+
+The accompanying technical report \cite{psptr} contains more detailed proofs and further discussion of  design choices.% Figures \ref{fig:glambdas}-\ref{fig:tr} for the reader's convenience.
+
+\subsection{The Language of Regular Strings}\label{sec:rs}
+In this section, we define a typed lambda calculus with regular string types called $\lambda_{RS}$. Its syntax is specified in Figure \ref{fig:glambdas}, its static semantics in Figure \ref{fig:slambdas} and its evaluation semantics, given here in big-step style, in Figure \ref{fig:dlambdas}.
+
+There are two type constructors in $\lambdas$: $\rightarrow$ and $\textsf{stringin}$. Arrow types classify functions, which are introduced via lambda abstraction, $\lambda x.e$, and can be applied, written $e(e)$, in the usual way \cite{pfpl}. Regular string types are of the form $\stringin{r}$, where $r$ is a regular expression. Values of such regular string types take the form $\strin{s}$, where $s$ is a string (i.e. $s \in \Sigma^\star$, where the Kleene star is defined in the usual way). The rule \textsc{S-T-Stringin-I} requires that $s \in \lang{r}$.
+ %The remaining operations on terms of type $\stringin{r}$ preserve this property. %The remaining operators operate on regular strings.
+
+
+$\lambdas$ provides several familiar operations on strings. The type system  relates these operations over strings to corresponding operations over the  regular languages they belong to. 
+Since these operations over regular languages are known to be closed and decidable, we can use these operations as a basis for implementing and reasoning about sanitation protocols, as we will discuss below.
+
+%This section describes our approach, culminating in a Security Theorem. The main technical result of this paper shows that this Security Theorem is preserved when $\lambdas$ is translated to a more traditional language. Throughout this section, we refer to \textsc{Inference Rules} defined in the figures contained in this section.
+%\todo{remove tranditional, most and improve description}
+
+%In this section, we define $\lambdas$, describe each operation, and finally prove both type safety and a correctness result for the language.
+%The grammar for $\lambdas$ is defined in Figure \ref{fig:glambdas}. Typing rules \textsc{S-T-} are defined in Figure \ref{fig:slambdas} and a big-step semantics
+%is defined in Figure \ref{fig:dlambdas}
+
+
+
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+\begin{figure}[t]
+\footnotesize
+  \begin{grammar}
+<$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+
+\caption{Regular expressions over the alphabet $\Sigma$.}
+\label{fig:regex}
+\end{grammar}
+\end{figure}
+\begin{figure}[t]
+\footnotesize
+  \begin{grammar}
+<$\sigma$> ::=  $\sigma \rightarrow \sigma$ | $\stringin{r}$    \hfill  source types
+\vspace{-8px}
+
+<$v$> ::= $\lambda x . e$ | $\strin{s}$ \hfill source values ($s \in \Sigma^{*}$) 
+\vspace{-8px}
+
+<$e$> ::= 
+      $v$ | $x$ | $e(e)$   \hfill source terms \alt 
+      $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \alt
+      $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$ | $\sisubst{r}{e}{e}$  
+      \caption{Syntax of $\lambda_{RS}$.}
+\label{fig:glambdas}
+\end{grammar}
+\end{figure}
+
+
+
+
+
+\subsubsection{Concatenation}
+
+The \textsc{S-T-Concat} rule is the simplest example of our approach. The rule is sound because the result of concatenating two strings, the first in $\lang{r_1}$ and the second in $\lang{r_2}$, will always be in the language $\lang{r_1\cdot r_2}$. The rule therefore relates string concatenation to sequential composition of regular expressions.
+
+\subsubsection{String Decomposition}
+Whereas concatenation allows the construction of large strings from smaller strings,  $\strcase{e}{e_0}{x,y.e_1}$  allows the decomposition, or elimination, of large strings into smaller strings. Intuitively, this operation branches based on whether a string is empty or not, exactly analagous to case analysis on lists in a functional language. The branch for a non-empty string ``peels off" the first character, binding it and the remainder of the string to specified variables. The evaluation rules \textsc{S-E-Case-$\epsilon$} and \textsc{S-E-Case-Concat} express this semantics. This construct can be used to implement a standard string indexing operation as a function, given a suitable definition of natural numbers (omitted).
+
+The typing rule \textsc{S-T-Case} must determine a suitable type for the head and tail of the string. The regular expression recognizing any one-character prefix of the strings in $\lang{r}$ is easily defined.
+
+\begin{figure}[t]
+\footnotesize
+$\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
+~~~~$\sctx ::= \emptyset \pipe \sctx, x : \sigma$
+\begin{mathpar}
+\inferrule[S-T-Var]
+{ x:\sigma \in \sctx }
+{ \sctx \vdash x:\sigma}
+
+\inferrule[S-T-Abs]
+{\sctx, x : \sigma_1 \vdash e : \sigma_2}
+{\sctx \vdash \lambda x.e : \sigma_1 \rightarrow \sigma_2}
+
+\inferrule[S-T-App]
+{\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma \\ \sctx \vdash e_2 : \sigma_2}
+{\sctx \vdash e_1(e_2) : \sigma}
+  
+\inferrule[S-T-Stringin-I]
+{s \in \lang{r}}
+{\sctx \vdash \strin{s} : \stringin{r}}
+
+\inferrule[S-T-Concat]
+{\sctx \vdash e_1 : \stringin{r_1} \\ \sctx \vdash e_2 : \stringin{r_2}}
+{\sctx \vdash \rsconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}}
+
+\inferrule[S-T-Case]
+{ \sctx \vdash e_1 : \stringin{r} \\
+  \sctx \vdash e_2 : \sigma \\
+  \sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma
+}
+{
+  \sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma
+}
+
+\inferrule[S-T-SafeCoerce]
+{\sctx \vdash e : \stringin{r'} \\ \lang{r'} \subseteq \lang{r}}
+{\sctx \vdash \coerce{r}{e} : \stringin{r}}
+
+\inferrule[S-T-Check]
+{\sctx \vdash e_0 : \stringin{r_0} \\ \sctx, x:\stringin{r} \vdash e_1 : \sigma \\ \sctx \vdash e_2 : \sigma}
+{\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
+
+\inferrule[S-T-Replace]
+{ \sctx \vdash e_1 : \stringin{r_1}} 
+{\sctx \vdash \sisubst{r}{e_1}{e_2} : \stringin{ \lreplace{r}{r_1}{r_2} }}
+\end{mathpar}
+\vspace{-10px}
+\caption{Typing rules for $\lambdas$. 
+The typing context $\sctx$ is standard.}
+\label{fig:slambdas}
+\end{figure}
+
+\begin{defn}[Definition of $\lhead{r}$] 
+{\footnotesize
+\begin{align*}
+\lhead{r}                 &= \lhead{r, \epsilon}
+\end{align*}}We use a two-argument auxiliary $\lhead{r, r'}$ in the definition of $\lhead{r}$ because when $r = q^*\cdot r'$,
+$\lhead{r}$ needs to ``remember" $r'$ in case $q$ is iterated zero times:
+{\footnotesize
+\begin{align*}
+\lhead{\epsilon, r'}      &= \epsilon \\                                        
+\lhead{a, r'}             &= a \\                                               
+\lhead{r_1\cdot r_2, r'}  &= \lhead{r_1, r_2} \\                                
+\lhead{r_1 + r_2, r'}     &= \lhead{r_1, r'} + \lhead{r_2, r'} \\               
+\lhead{r^*, r'}           &= \lhead{r', \epsilon} + \lhead{r, \epsilon}         
+\end{align*}} 
+\end{defn}
+
+Given this definition of $\lhead{r}$, regular expression derivatives \cite{bowzer} provide a useful tool for defining $\ltail{r}$.
+\begin{defn}[Brzozowski's Derivative]\label{def:derivative}
+  The \emph{derivative of $r$ with respect to $s$} 
+  is $\delta_s(r) = \{t | st \in \lang{r}\}$.
+\end{defn}
+
+Definition~\ref{def:derivative} is equivalent to the definition given in \cite{bowzer},
+although we refer the unfamiliar reader to \cite{owens}.
+Definition~\ref{def:derivative} is equivalent to Definition 3.1 in both papers.
+We now define $\ltail{r}$ using derivatives with respect to $\lhead{r}$.
+
+\begin{defn}[Definition of $\ltail{r}$]
+$\ltail{r}$ is defined in terms of $\lhead{r}$.
+Note that $\lhead{r} = a_1 + a_2 + ... + a_i$.
+We define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r) + \epsilon$.
+\end{defn}
+
+The \textsc{S-T-Case} rule, which is defined in terms of these operations, thus relates the result of ``peeling off" the first character of a string to regular expression derivatives. 
+
+
+
+
+
+
+\begin{figure}
+  \footnotesize
+$\fbox{\inferrule{}{e \sreduces v}}$
+\begin{mathpar}
+\inferrule[S-E-Abs]                                                             
+{ \ }                                                                           
+{\lambda x.e \sreduces \lambda x.e}                                             
+
+\inferrule[S-E-App]
+{ e_1 \sreduces \lambda x . e_3 \\ e_2 \sreduces v_2 \\ [ v_2 / x ] e_3 \sreduces v }
+{ e_1(e_2) \sreduces v }
+
+\inferrule[S-E-RStr]
+{ \ }
+{\strin{s} \sreduces \strin{s}}
+
+\inferrule[S-E-Concat]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
+{\rsconcat{e_1}{e_2} \sreduces \strin{s_1 s_2}} % ???
+
+\inferrule[S-E-Case-$\epsilon$]
+{
+  e_1 \sreduces \strin{\epsilon} \\
+  e_2 \sreduces v_2
+}
+{
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_2
+}
+
+\inferrule[S-E-Case-Concat]
+{
+  e_1 \sreduces \strin{a s} \\
+  [\rstr{a},\rstr{s} / x,y]e_3 \sreduces v_3
+}
+{
+  \strcase{e_1}{e_2}{x,y.e_3} \sreduces v_3
+}
+
+\inferrule[S-E-SafeCoerce]
+{e \sreduces \strin{s}}
+{\coerce{r}{e} \sreduces \strin{s}}
+
+\inferrule[S-E-Check-Ok]
+{e \sreduces \strin{s} \\ s \in \lang{r} \\ [\strin{s} / x]e_1 \sreduces v}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
+}
+
+\inferrule[S-E-Check-NotOk]
+{
+  e \sreduces \strin{s} \\ s \not \in \lang{r} \\
+  e_2 \sreduces v
+}
+{
+  \rcheck{r}{e}{x.e_1}{e_2} \sreduces v
+}
+
+\inferrule[S-E-Replace]
+{e_1 \sreduces \strin{s_1} \\ e_2 \sreduces \strin{s_2}} 
+{\sisubst{r}{e_1}{e_2} \sreduces \sistr{ \lsubst{r}{s_1}{s_2} }}
+\end{mathpar}
+\vspace{-10px}
+\caption{Big step semantics for $\lambdas$}.
+\label{fig:dlambdas}
+\end{figure}
+
+
+
+\subsubsection{Coercion}
+
+The $\lambdas$ language supports two forms of coercion. Safe coercions, written $\rcoerce{r}{e}$, allow passage to a ``smaller'' regular language. Such coercions will always succeed. 
+% This form of coercion is useful because the replacement operation (introduced below in Section~\ref{sec:replace}) is often more conservative than absolutely necessary.
+Conversely, checked coercions, $\rcheck{r}{e_0}{x.e_1}{e_2}$, 
+allow for passage to regular languages that are not necessarily smaller. Checked coercions branch based on whether the coercion succeeded or not.
+
+The rule 
+ \textsc{S-T-SafeCoerce} checks for language inclusion, which we write $\lang{r_1} \subseteq \lang{r_2}$. Language inclusion is decidable. As a result, the rule \textsc{S-E-SafeCoerce} does not need to perform any dynamic checks. The rule 
+\textsc{S-T-Check}, conversely, does not perform any static checks on the two languages involved, only checking that the two branches have the same type. The checks are performed dynamically, by rules \textsc{S-E-Check-Ok} and \textsc{S-E-Check-NotOk}. 
+
+In our calculus, both forms of coercion are explicit. For safe coercions, it is often useful for the coercion to be performed implicitly. This can be seen as a form of subtyping for regular string types \cite{gunter, fulton13, xhaskell2}. 
+In practice, subtyping will be crucial to the usability of our system due to the nature of the replacement operator.
+For simplicity, we do not specify subtyping in our core calculus; however, subtyping for regular strings is present in previous treatments of our work \cite{fulton13}. The implementation discussed in Section \ref{typy} also provides subtyping between regular string types.
+
+\subsubsection{Replacement}\label{sec:replace}
+The premier operation for working with regular strings in $\lambdas$ is  replacement, written $\sisubst{r}{e_1}{e_2}$. 
+It behaves analogously to \lstinline{str_replace} in PHP and \lstinline{String.replace} in Java, differing in that the replacement pattern $r$ must be statically given. The evaluation rule \textsc{S-E-replace} is defined in terms of the metafunction $\lsubst{r}{s_1}{s_2}$.
+
+\begin{defn}[$\sf{replace}$]
+$\lsubst{r}{s_1}{s_2} = s$ such that all substrings of $s_1$ in $\lang{r}$ are replaced with $s_2$.
+\end{defn}
+The typing rule \textsc{S-T-Replace} thus requires computing the regular language of the string resulting from this operation given knowledge of the languages of $s_1$ and $s_2$, written as $\lreplace{r}{r_1}{r_2}={r'}$. 
+
+
+Given an automata-oriented interpretation of regular languages, it may be helpful to think in terms of replacing sub-automata. A complete definition of ${\sf lreplace}$ would consist of a rewrite system based on this intuition, with correctness and termination proofs, which is beyond the scope of this paper. Instead, we provide an abstract definition of the operation and state necessary properties. 
+
+\begin{defn}[$\sf{lreplace}$]
+  $\lreplace{r}{r_1}{r_2}$ relates $r, r_1,$ and $r_2$ to
+  a language $r'$ containing all strings of $r_1$ except that any substring $s_{pre} s s_{post} \in \lang{r_1}$ where $s \in \lang{r}$
+  is replaced by the set of strings $s_{pre} s_2 s_{post}$ for all $s_2 \in \lang{r_2}$ (the prefix and postfix positions may be empty). This procedure saturates the string.
+\end{defn}
+
+% \begin{prop}[Closure] \label{thm:total}
+%   If $\lang{r}, \lang{r_1}$ and $\lang{r_2}$ are regular languages, then $\lang{\lreplace{r}{r_1}{r_2}}$ is also a regular language.
+% \end{prop}
+% \begin{prf}
+% Algorithms for the inclusion problem may be adopted to identify any sublanguage $x \subseteq r$ of $r_1$.
+% The language $x_{pre}$ can be computed by taking total derivatives until the remaining language
+% equals $x$; $x_{post}$ can be computed in a similar way after reversal.
+% Then $r'$ is $x_{pre}r_2x_{post}$.
+% \end{prf}
+
+\begin{prop}[Replacement Correspondence] \label{thm:substcorrespondence}
+  Given strings $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ we have $$\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$$
+\end{prop}
+
+\subsubsection{Metatheory of $\lambdas$}
+
+In this section, we establish some basic metatheoretic properties of $\lambdas$.
+These rely upon the definitions and propositions given above and some basic properties of regular languages. 
+
+\begin{lem}[Properties of Regular Languages.] \label{thm:regexprops}
+~
+\begin{enumerate}
+\item 
+If $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$ then $s_1s_2 \in \lang{r_1\cdot r_2}$.
+\item 
+For all strings $s$ and regular expressions $r$, either $s \in \lang{r}$ or $s \not \in \lang{r}$.
+%\item 
+%Regular languages are closed under reversal.
+\end{enumerate}
+\end{lem}
+
+If any of these properties are unfamiliar, the reader may refer to a standard text on the subject \cite{cinderella}.
+
+% We also need to establish a well-formedness lemma, which simply expresses the totality of the operations over regular expressions used as premises in the rules in Figure \ref{fig:slambdas}. 
+% \begin{lem}
+%   If $\sctx \vdash e : \stringin{r}$ then $r$ is a well-formed regular expression.
+% \end{lem}
+
+Type preservation for $\lambdas$ requires validating that the statics are consistent with the dynamics. We give a full proof of type safety for a variant of the calculus with a small step semantics in \cite{psptr}, but for concision, it is more straightforward to explain the semantics with a big step semantics here.
+
+% We avoid the most significant issues inherent to proofs related to big-step semantics by avoiding non-termination in our specification.
+% The simply typed lambda calculus terminates, and our conservative extension clearly
+% terminates because new binding structures are not introduced and termination (i.e. decidability) of ${\sf subst}$ and ${\sf lreplace}$ is known. Even in a non-terminating calculus, type safety would hold, but a more careful treatment or treatment for a language with non-termination would need to proceed by either a coinductive argument \cite{coinductionoo} or  with a small-step semantics.
+
+\begin{thm}[Type Preservation.] \label{thm:typesafety}
+  If $\emptyset \vdash e : \sigma$ 
+  and $e \sreduces v$ then $\emptyset \vdash v : \sigma$.
+\end{thm}
+\begin{prf}
+By induction on the typing relation.
+The \textsc{S-T-Concat} case requires Lemma \ref{thm:regexprops}.1, the \textsc{S-T-Check} case requires Lemma \ref{thm:regexprops}.2 
+and the S-T-Replace case appeals to Proposition \ref{thm:substcorrespondence}.
+\end{prf}
+
+We can also define a canonical forms lemma for regular strings. 
+
+\begin{lem}[Canonical Forms for Regular Strings]\label{thm:cfs}
+  If $\emptyset \vdash v : \stringin{r}$ then $v=\rstr{s}$ and $s \in \lang{r}$. 
+\end{lem}
+\begin{prf}
+The only typing rule that applies is \textsc{S-T-Stringin-I}. The conclusion is the first premise.
+\end{prf}
+\subsubsection{The Security Theorem}\label{sec:securitythm}
+
+The chief benefit of $\lambdas$ is its security theorem, which states that any term of
+a regular string type that evaluates to a value will evaluate to a regular string recognized by the regular language corresponding to the regular expression the type is indexed by.
+This is beneficial because this ensure that membership in a regular language known to be secure becomes manifest in the type of the string, rather than being a property that must be established extralinguistically. 
+
+\begin{thm}[Correctness of Input Sanitation for $\lambdas$]\label{thm:scorrect}
+  If  $\emptyset \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $s \in \lang{r}$.
+\end{thm}
+\begin{prf}
+  The theorem follows directly from type preservation and canonical forms above.
+\end{prf}
+
+\subsection{Target Language}\label{sec:p}
+\begin{figure}[t]
+\footnotesize
+  \begin{grammar}
+
+<$\tau$> ::= $\tau \rightarrow \tau$ | $\str$ | $\regex$ \hfill target types
+\vspace{-8px}
+
+<$\dot{v}$> ::= $\lambda x . \iota$ | $\tstr{s}$ | $\rx{r}$ \hfill target values ($s \in \Sigma^{*}$)
+\vspace{-8px}
+
+<$\iota$> ::= $\dot{v}$ | $x$ | $\iota(\iota)$ \hfill target terms \alt
+   $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
+   $\tcheck{\iota}{\iota}{\iota}{\iota}$ | $\preplace{\iota}{\iota}{\iota}$
+\end{grammar}
+\vspace{-5px}
+\caption{Syntax of the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
+\label{fig:lcsSyntax}
+\end{figure}
+Our next major technical result, stated in Sec. \ref{sec:tr}, establishes that the security property
+is preserved under translation into $\lambdap$. The system $\lambdap$ is another straight-forward extension of a simply typed lambda calculus
+with a $\str$ type and a $\regex$ type, as well as 
+some operations -- such as concatenation and replacement -- found in the standard libraries of many programming languages.
+The operations of $\lambdap $ correspond to ``run-time'' versions of the operations performed statically in $\lambdas$ in a way made precise by the translation rules described in the next section. 
+%Unlike $\lambdas$, $\lambdap$ does not statically track the effects of string operations.
+The language $\lambdap$ is so-called because it is reminscent of popular web programming languages,
+such as \textbf{P}ython or \textbf{P}HP, albeit statically typed. We will discuss an implementation within the former in the next section.
+
+The grammar of $\lambdap$ is defined in Figure~\ref{fig:lcsSyntax}.
+The typing rules \textsc{P-T-} are defined in Figure~\ref{fig:slambdap}
+and a big-step semantics is defined by the rules \textsc{P-E-} in Figure~\ref{fig:dlambdap}. The semantics are straightforward given the discussion of the corresponding operations in the previous section.
+
+\renewcommand{\grammarlabel}[2]{#1\hfill#2}
+
+
+
+
+
+
+\subsubsection{Safety}
+
+\begin{figure}[t]\label{fig:lambdap}
+\footnotesize
+$\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
+~~~~$\tctx ::= \emptyset \pipe \tctx, x : \tau$
+\begin{mathpar} 
+\inferrule[P-T-Var]
+{ x:\tau \in \tctx }
+{ \tctx \vdash x:\tau }
+
+\inferrule[P-T-Abs]
+{\tctx, x : \tau_1 \vdash \iota_2 : \tau_2}
+{\tctx \vdash \lambda x.\iota_2 : \tau_1 \rightarrow \tau_2}
+
+\inferrule[P-T-App]
+{\tctx \vdash \iota_1 : \tau_2 \rightarrow \tau \\ \tctx \vdash \iota_2 : \tau_2}
+{\tctx \vdash \iota_1(\iota_2) : \iota}
+
+\inferrule[P-T-String]
+{ \ }
+{\tctx \vdash \tstr{s} : \str}
+
+\inferrule[P-T-Regex]
+{ \ }
+{\tctx \vdash \rx{r} : \regex}
+
+\inferrule[P-T-Concat]
+{\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \str}
+{\tctx \vdash \tconcat{\iota_1}{\iota_2} : \str}
+
+\inferrule[P-T-Case]
+{\tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx, x:\str, y:\str \vdash \iota_3:\tau}
+{\tctx \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau}
+
+\inferrule[P-T-Replace]
+{\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \str }
+{\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
+
+\inferrule[P-T-Check]
+{\tctx \vdash \iota_r : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \sigma \\ \tctx \vdash \iota_3 : \sigma}
+{\tctx \vdash \tcheck{\iota_r}{\iota_1}{\iota_2}{\iota_3} : \sigma}
+\end{mathpar}
+\vspace{-10pt}
+\caption{Typing rules for $\lambdap$.
+The typing context $\tctx$ is standard.}
+\label{fig:slambdap}
+\end{figure}
+Type preservation for $\lambdap$ is essentially trivial, but is necessary in order to establish the 
+correctness of our translation.
+Again, we give a small step semantics and address type safety more completely in \cite{psptr}.
+
+\begin{thm}[Safety for $\lambdap$] If $\emptyset \vdash \iota : \tau$ 
+  and $\iota \sreduces \dot v$ then $\emptyset \vdash \dot v : \tau$.
+\end{thm}
+
+We can also define canonical forms for regular expressions and strings in the usual way:
+
+
+\begin{lem}[Canonical Forms for Target Language]
+If $\emptyset \vdash \dot{v} : \tau$ then 
+\begin{enumerate}
+\item 
+If $\tau=\regex$ then $\dot{v}= \rx{r}$ such that $r$ is a well-formed regular expression. 
+\item 
+If $\tau=\str$ then $\dot{v} = \tstr{s}$.
+\end{enumerate}
+\end{lem}
+
+\subsection{Translation from $\lambdas$ to $\lambdap$}\label{sec:tr}
+
+
+The translation from $\lambdas$ to $\lambdap$ is defined in Figure \ref{fig:tr}.
+The coercion cases are most interesting. If the safety of coercion in manifest in the
+types of the expressions, then no runtime check is inserted (\textsc{Tr-SafeCoerce}).
+If the safety of coercion is not manifest in the type, then a check is inserted (\textsc{Tr-Check}). Note that regular strings translate to strings directly; there is no space overhead.
+
+The translation correctness theorem guarantees that the translation is type preserving and that semantics of the original code and translation coincide, following the treatment of compilation pioneered by the TIL compiler for SML \cite{tarditi+:til-OLD}. Note that we apply the translation inline in judgements for concision when convenient. 
+
+\begin{thm}[Translation Correctness]\label{thm:trcorrect}
+  If $\tctx \vdash e : \sigma$ then 
+  there exists an $\iota$ such that $\trden{e} = \iota$
+  and $\trden{\tctx} \vdash \iota : \trden{\sigma}$.
+  Furthermore, if $e \sreduces v$ then
+  $\iota \treduces \dot{v}$ such that
+  $\trden{v} = \dot{v}$.
+\end{thm}
+\begin{prf}
+The proof proceeds by induction on the typing relation for $e$. We choose an $\iota$ based on the syntactic form in $\lambdap$ corresponding to the form under consideration (e.g. we  choose {\sf replace} when considering {\sf sreplace}).
+The proof proceeds by our type safety theorems and an appeal to the induction hypothesis.
+\end{prf}
+
+
+
+
+
+\begin{figure}[t]
+\footnotesize
+$\fbox{\inferrule{}{\iota \treduces \dot{v}}}$\vspace{-20px}
+\begin{mathpar}
+\hspace{30px}\inferrule[P-E-Abs]
+{ \ }
+{\lambda x.\iota \sreduces \lambda x.\iota}
+~~~~~~
+\inferrule[P-E-App]
+{ \iota_1 \sreduces \lambda x . \iota_3 \\  \iota_2 \sreduces \dot{v}_2 \\ [\dot{v}_2 / x] \iota_3 \sreduces \dot{v}_3}
+{ \iota_1(\iota_2) \sreduces \dot{v}_3}
+
+\inferrule[P-E-Str]
+{ \ }
+{\tstr{s} \treduces \tstr{s}}
+
+\inferrule[P-E-Rx]
+{ \ }
+{\rx{r} \treduces \rx{r}}
+
+\inferrule[P-E-Concat]
+{\iota_1 \treduces \tstr{s_1} \\ \iota_2 \treduces \tstr{s_2}} 
+{\tconcat{\iota_1}{\iota_2} \treduces \tstr{s_1 s_2}} % ???
+
+\inferrule[P-E-Case-$\epsilon$]
+{
+  \iota_1 \treduces \tstr{ \epsilon } \\
+  \iota_2 \treduces \dot{v_2} \\
+}
+{
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v_2}
+}
+
+\inferrule[P-E-Case-Concat]
+{
+  \iota_1 \treduces \tstr{as} \\
+  [\tstr{a},\tstr{s}/x,y] \iota_3 \treduces \dot{v} 
+}
+{
+  \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \treduces \dot{v}
+}
+
+\inferrule[P-E-Replace]
+{\iota_1 \treduces \rx{r} \\ \iota_2 \treduces \tstr{s_2} \\ \iota_3 \treduces \tstr{s_3} \\ \lsubst{r}{s_2}{s_3} = s} 
+{\preplace{\iota_1}{\iota_2}{\iota_3} \treduces \tstr{s}}
+
+\inferrule[P-E-Check-OK]
+{
+  \iota_r \treduces \rx{r} \\
+  \iota \treduces \tstr{s} \\ 
+s \in \lang{r} \\ 
+\iota_1 \treduces \dot{v_1} 
+}
+{
+  \tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_1}
+}
+
+\inferrule[P-E-Check-NotOK]
+{\iota_r \treduces \rx{r} \\ \iota \treduces \tstr{s} \\ s \not \in \lang{r} \\ \iota_2 \treduces \dot{v_2}}
+{\tcheck{\iota_r}{\iota}{\iota_1}{\iota_2} \treduces \dot{v_2}}
+\end{mathpar}
+\vspace{-10px}
+\caption{Big step semantics for $\lambdap$}.
+\label{fig:dlambdap}
+\end{figure}
+
+
+
+\subsubsection{Preservation of Security}
+
+Finally, our main result establishes that correctness of $\lambdas$ is preserved under the translation into $\lambdap$. \renewcommand*{\proofname}{Proof}
+
+\begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
+  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ and $e \sreduces \rstr{s}$ then $\iota \sreduces \tstr{s}$
+  for $s \in \lang{r}$.
+\end{thm}
+\begin{prf}
+  By Theorem \ref{thm:trcorrect}, we have our first conclusion. By Theorem \ref{thm:scorrect} together with the assumption that $e$ is well-typed we have that $s \in \lang{r}$.
+\end{prf}
+
+%\begin{figure}
+%\begin{lstlisting}
+%output of successful compilation
+%\end{lstlisting}
+%\caption{Output of successful compilation.}
+%\end{figure}
+%
+%\begin{figure}
+%\begin{lstlisting}
+%output of failed compilation
+%\end{lstlisting}
+%\caption{Output of failed compilation.}
+%\end{figure}
+%
+
+%\subsection{An Example}\label{whatev}
+
+
+\begin{figure}[ht]
+\footnotesize
+$\fbox{\inferrule{}{\trden{\sigma}=\tau}}$
+\vspace{-20px}\begin{mathpar}\hspace{20px}
+\inferrule[Tr-T-String]
+{ }
+{ \trden{\stringin{r}} = \str }
+~~~~~~
+\inferrule[Tr-T-Arrow]
+{ \trden{\sigma_1} = \tau_1 \\ \trden{\sigma_2} = \tau_2 }
+{ \trden{\sigma_1 \rightarrow \sigma_2} = \tau_1 \rightarrow \tau_2 }
+\end{mathpar}
+$\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
+\vspace{-20px}\begin{mathpar}\hspace{20px}
+\inferrule[Tr-T-Context-Emp]
+{ }{\trden{\emptyset} = \emptyset}
+~~~~~~
+\inferrule[Tr-T-Context-Ext]
+{\trden{\Psi}=\Theta\\ \trden{\sigma} = \tau}
+{\trden{\Psi, x : \sigma} = \Theta, x : \tau}
+\end{mathpar}
+  $\fbox{\inferrule{}{ \trden{e} = \iota }}$\vspace{-5px}
+\begin{mathpar}
+\inferrule[Tr-Var]
+{ }
+{ \trden{x} = x}
+
+\inferrule[Tr-Abs]
+{  \trden{e} = \iota }
+{ \trden{ \lambda x.e } = \lambda x . \iota}
+
+\inferrule[Tr-App]
+{ \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{ \trden{e_1(e_2)} = \iota_1(\iota_2)}
+
+\inferrule[Tr-string]
+{ \ }
+{   \trden{\strin{s}} = \tstr{s}}
+
+\inferrule[Tr-Concat]
+{  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
+{  \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
+
+\inferrule[Tr-Case]
+{ \trden{e_1} = \iota_1 \\
+   \trden{e_2} = \iota_2 \\
+   \trden{e_3} = \iota_3
+}
+{ \trden{ \strcase{e_1}{e_2}{x,y.e_3} } = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} }
+
+\inferrule[Tr-Replace]
+{   \trden{e_1} = \iota_1 \\   \trden{e_2} = \iota_2 }
+{   \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
+
+\inferrule[Tr-SafeCoerce]
+{  \trden{e} = \iota }
+{   \trden{ \coerce{r'}{e} } = \iota }
+
+\inferrule[Tr-Check]
+{  
+  \trden{e} = \iota \\  
+   \trden{e_1} = \iota_1 \\  
+   \trden{e_2} = \iota_2
+} 
+{ 
+  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
+} 
+\end{mathpar}
+\caption{Translation from source to target.}
+\label{fig:tr}
+\end{figure}
+
+
+
+\section{Implementation in \tt{typy}}\label{typy}
+In the previous section, we specified a type system and a translation semantics to a language containing only strings and regular expressions. In this section, we take Python to be such a target language. Python does not have a static type system, however, so to implement these semantics, we will use \verb|typy|, an extensible type system for Python (being developed by the authors). By using \verb|typy|, which leverages Python's quotations and reflection facilities, we can implement these semantics as a library, rather than as a new dialect of the language. 
+
+\subsection{Example Usage}
+
+\newcommand{\lstinlinep}[1]{\lstinline[language=Python,basicstyle=\ttfamily\footnotesize]{#1}}
+
+Figure \ref{fig:atexample} demonstrates the use of two type constructors, \verb|fn| and \verb|stringin|, corresponding to the two type constructors of $\lambda_{RS}$. We show these as being imported from \verb|typy.std|, the standard library for \verb|typy| (it benefits from no special support from the language itself). 
+
+The \verb|fn| type constructor can be used to annotate functions that should be statically checked by \verb|typy|.\footnote{Here, we use argument annotation syntax only available in versions 3.0+ of Python. Syntax supporting Python 2.7+ is available, not shown.} The function \verb|sanitize| on lines 3-7, for example,  specifies one argument, \verb|s|, of type \lstinlinep{stringin[r'.*']}. Here, the index is a regular expression, written using Python's \emph{raw string notation} as is conventional (in this particular instance, the \verb|r| is not strictly necessary). The sanitize function takes an arbitrary string and returns a string without
+double quotes or left and right brackets. Note that the return type need not be specified: \verb|typy| uses a form of \emph{local type inference} \cite{Pierce:2000:LTI:345099.345100}. 
+
+In this example, we use an HTML encoding so that the same sanitization function can be used to generate both SQL commands and HTML securely. The sanitized string is generated by invoking the \verb|replace| operator, which has the same semantics as $\textsf{rreplace}$ in $\lambda_{RS}$. Unlike in the core calculus, it is invoked like a method on \verb|s|. The regular expression determining the substrings to be replaced is given as the first argument (as in $\lambda_{RS}$, the only restriction here is that the regular expression must be specified statically.)
+
+\begin{figure}[t]\footnotesize\begin{lstlisting}
+from typy.std import fn, stringin
+
+@fn
+def sanitize(s : stringin[r'.*']):
+  return (s.replace(r'"', '&quot;') 
+           .replace(r'<', '&lt;')
+           .replace(r'>', '&gt;'))
+
+@fn
+def results_query(s : stringin[r'[^"]*']):
+  return 'SELECT * FROM users WHERE name="' + s + '"'
+
+@fn
+def results_div(s : stringin[r'[^<>]*']):
+  return '<div>Results for ' + s + '</div>'
+
+@fn
+def main():
+  input = sanitize(user_input())
+  results = db_execute(results_query(input))
+  return results_div(input) + format(results)
+\end{lstlisting}
+%\vspace{-10px}
+\caption{Regular string types in {\tt typy}}\label{fig:atexample}
+\end{figure}
+
+\begin{figure}
+\begin{lstlisting}
+import re
+
+def sanitize(s):
+   return re.sub(r'"', re.sub(r'<', re.sub(r'>', 
+     s, '&gt;'), '&lt;'), '&quot;')
+
+def results_query(s): 
+  return 'SELECT * FROM users WHERE name="' + s + '"'
+
+def results_div(s):
+  return '<div>Results for ' + s + '</div>'
+
+def main():
+  input = sanitize(user_input())
+  results = db_execute(results_query(input))
+  return results_div(input) + format(results)
+\end{lstlisting}
+%\vspace{-10px}
+\caption{The output of compilation of Figure \ref{fig:atexample} (at the terminal, \texttt{typy figure9.py}, or just-in-time).}
+\label{fig:atexample-out}
+\end{figure} 
+
+The functions \verb|results_query| and \verb|results_div| construct a SQL query and an HTML snippet, respectively, by regular string concatenation. The argument type annotations serve as a check that sanitation was properly performed. In the case of \textsf{results_query}, this specification ensures that user input cannot prematurely be terminated. 
+In the case of \textsf{results_div}, this specification ensures that user input does 
+not contain any HTML tags, which is a conservative but effective policy for preventing XSS attacks. Note that the type of the surrounding string literals are determined by the type constructor of the function they appear in, \verb|fn| in both cases, which we assume simply chooses \lstinlinep{stringin[r'.*']} (an alternative strategy would be to use the most specific type for the literal, rather than the most general, but this choice is immaterial for this example). The addition operator here corresponds to the $\textsf{rconcat}$ operator in $\lambda_{RS}$.
+
+
+
+The \verb|main| function invokes the functions just described. It begins by passing  user input to \verb|sanitize|, then executing a database query and returning HTML based on this sanitized input. The helper functions \verb|user_input| and \verb|db_execute| are not shown but can be assumed standard. Importantly, had we mistakenly forgotten to call \verb|sanitize|, the function would not type check (in this case, it is obvious that we did, but lines 14 and 15 would in practice be separated more drastically in the code). Moreover, had \verb|sanitize| itself not been implemented correctly (e.g. we forgot to strip out quotation marks), then \verb|main| would also not typecheck either.
+
+One somewhat subtle issue here is that the return type of \verb|sanitize| is equivalent to \lstinlinep{stringin[r'[^\"<>]*']}, which is a distinct type from the argument types to \verb|results_query| and \verb|results_div|. More specifically, however, it is a ``smaller'' type, in that it could be coerced to these argument types using an operator like $\textsf{rcoerce}$ in $\lambda_{RS}$. In our implementation, safe coercions are performed implicitly rather than explicitly. Because all regular strings are implemented as strings, this coercion induces no run-time change in representation. 
+
+%The result of applying sanitize to input is appended in two functions which
+%construct a safe query (avoiding command injection) and safe HTML output (avoiding Cross-Site Scripting (XSS) attacks).
+%The arguments to the result and output construction functions constitute \emph{specifications}.
+
+
+%Note that ${\sf input}$ does not actually meet these specifications without additional machinery.
+%The type of ${\sf input}$ is quite large
+%and does not actually equal the specified domains of the query or output construction
+%methods. This mismatch is common -- in fact, nearly universal. Therefore, 
+%our implementation includes a simple subtyping relation between regular expression
+%types. 
+
+%This subtyping relation is justified theoretically by the fact that language inclusion is
+%decidable; see \cite{fulton12} for a formal definition of the subtyping relation.
+%Additionally, our extension remains composable because subtyping is defined on a type-by-type basis;
+%see \cite{fulton13} for a discussion of subtyping in Atlang (referred to there as Ace).
+Figure \ref{fig:atexample-out} shows the output of typechecking and translating this code (this can occur either in batch mode at the terminal, generating a new file, or ``just-in-time'' at the first callsite of each function in the dynamically typed portion of the program, not shown). 
+
+\subsection{Implementation}
+
+
+\begin{figure}
+\begin{lstlisting}
+class stringin(typy.Type):
+  def __init__(self, rx):
+    typy.Type.__init__(idx=rx)
+
+  def ana_Str(self, ctx, node):
+    if not in_lang(node.s, self.idx):
+      raise typy.TypeError("...", node)
+
+  def trans_Str(self, ctx, node):
+    return astx.copy(node)
+
+  def syn_BinOp_Add(self, ctx, node):
+    left_t = ctx.syn(node.left)
+    right_t = ctx.syn(node.right)
+    if isinstance(left_t, stringin):
+      left_rx = left_t.idx
+      if isinstance(right_t, stringin):
+        right_rx = right_t.idx
+        return stringin[lconcat(left_rx, right_rx)]
+    raise typy.TypeError("...", node)
+
+  def trans_BinOp_Add(self, ctx, node):
+    return astx.copy(node)
+
+  def syn_Method_replace(self, ctx, node):
+    [rx, exp] = node.args
+    if not isinstance(rx, ast.Str):
+        raise typy.TypeError("...", node)
+    rx = rx.s
+    exp_t = ctx.syn(exp)
+    if not isinstance(exp_t, stringin):
+      raise typy.TypeError("...", node)
+    exp_rx = exp_t.idx
+    return stringin[lreplace(self.idx, rx, exp_rx)]
+
+  def trans_Method_replace(self, ctx, node):
+    return astx.quote(
+        """__import__(re); re.sub(%0, %1, %2)""",
+        astx.Str(s=node.args[0]),
+        astx.copy(node.func.value),
+        astx.copy(node.args[1]))
+
+  # check and strcase omitted
+
+  def check_Coerce(self, ctx, node, other_t):
+    # coercions can only be defined between 
+    # types with the same type constructor, 
+    if rx_sublang(other_t.idx, self.idx):
+      return other_t
+    else: raise typy.TypeError("...", node)
+\end{lstlisting}
+%\vspace{-10px}
+\caption{Implementation of \texttt{stringin} in {\tt typy}.}
+\label{fig:impl}
+
+\label{fig:atimpl}\end{figure}
+The primary unit of extension in \verb|typy| is the \emph{active type constructor}, rather than the abstract syntax as in other work on language extensibility. This allows us to implement the entire system as a library in Python and avoid needing to develop new tooling, and also makes it more difficult to create ambiguities between extensions. Active type constructors are subclasses of \verb|typy.Type|, and types are instances of these classes. The methods of active type constructors control how typechecking and translation proceed for associated operations. 
+In Figure \ref{fig:impl}, we show key portions of the implementation of the \verb|stringin| type used in the example above. Although a detailed description of the extension mechanism is beyond the scope of this work, we describe the intuitions behind the various methods below.
+
+The constructor, \verb|__init__| in Python, is called when a type is constructed. It simply stores the provided regular expression as the type index by calling the superclass.
+
+When a string literal is being checked against a regular string type, the method \verb|ana_Str| is called. It checks that the string is in the language of the regular expression provided as the type index, corresponding to rule \textsc{S-T-Stringin-I} in Section 2. The method \verb|trans_Str| is called after typechecking to produce a translation. Here, we just copy the original string literal -- regular strings are implemented as strings.
+
+The method \verb|syn_BinOp_Add| synthesizes a type for the string concatenation operation if both arguments are regular strings, consistent with rule \textsc{S-T-Concat}. The corresponding method \verb|trans_BinOp_Add| again simply translates the operation directly to string concatenation, consistent with our translation semantics.
+
+The method \verb|syn_Method_replace| synthesizes a type for the ``method-like'' operator \verb|replace|, seen used in our example. It ensures that the first argument is a statically known string, using Python's built-in \verb|ast| module, and leverages an implementation of \verb|lreplace|, which computes the appropriate regular expression for the string following replacement, again consistent with our description in Section 2. Translation proceeds by using the \verb|re| library built into Python, as can be seen in Figure \ref{fig:atexample-out}. 
+
+Code for checked conversions and string decomposition is omitted, but is again consistent with our specification in the previous section. Safe coercions are controlled by the \verb|check_Coerce| function, which checks for a sublanguage relationship. Here, as in the other methods, failure is indicated by raising an \verb|typy.TypeError| with an appropriate error message and location.
+
+Taken together, we see that the mechanics of extending \verb|typy| with a new type constructor are fairly straightforward: we determine which syntactic forms the operators we specified in our core calculus should correspond to, then directly implement a decision procedure for type synthesis (or, in the case of literal forms, type analysis) in Python. The \verb|typy| compiler invokes this logic when working with regular strings. The result is a library-based embedding of our semantics into Python. 
+
+
+% We implemented a variation on the type system presented in this paper with two
+% significant differences. first, we only support replacements where $s_2$ is the empty
+% string. Therefore, our implementation respects the system presented in section 2
+% only modulo the definition of \textsf{lreplace}. Seocnd, we use subtyping instead of
+% \textsc{S-*-SafeCoerce}, which decreases inessential verbosity of the language.
+
+% Atlang translates programs using type definitions, which may extend both the
+% static and dynamic semantics of the language. New types are defined as Python
+% classes; figure \ref{fig:impl} contains the source code of our implementation.
+
+% The \textsf{stringin} type has an indexing regular expression \texttt{idx}.
+% Our translation is defined by the \textsf{trans_} methods while the \textsf{syn_}
+% methods define our type checker. Atlang defers type checking and translation
+% to these methods whenever an expression of type \textsf{stringin} is encountered.
+
+
+\section{Related Work}\label{related}
+
+
+
+The input sanitation problem is well-studied. There exist a large number of techniques, proposed by both practitioners and researchers, for preventing injection attacks. In this section, we explain how our approach to the input sanitation problem differs from each of these approaches. Equally important  is our assertion that language extensibility is the right approach for  consideration of language-oriented security mechanisms like the one we described here.
+
+Unlike {frameworks and libraries} provided by languages such as Haskell and Ruby, our type system provides a \emph{static} guarantee that input is always properly sanitized before use. Doing so requires reasoning about the operations on regular languages corresponding to standard operations on strings; we are unaware of any production system which contains this form of reasoning. Therefore, even where frameworks and libraries provide a viable interface or wrapper around input sanitation (e.g. prepared SQL statements), our approach is complementary because it can be used to ensure the correctness of that framework or library itself. Furthermore, our approach is more general than database abstraction layers because our mechanism is applicable to all forms of command injection (e.g. shell injection or remote file inclusion).
+
+A number of research languages provide static guarantees that a program is free of input sanitation vulnerabilities by never using a string representation at all, but rather desugaring SQL syntax to a safe representation immediately \cite{UrFlowOSDI10}. The Wyvern programming language introduced a general framework for writing syntax extensions like this \cite{tsl}.
+Unlike this work, our solution to the input sanitation problem retains a string representation and thus has a very low barrier to adoption. Our implementation conservatively extends Python -- a popular language among web developers -- rather than requiring the adoption of a new language entirely.
+We also believe our semantic extensibility approach (as opposed to only syntactic extensibility in Wyvern) is better-positioned for security, where continuously evolving threats might require frequent addition of new semantic  analyses. \verb|typy| is particularly well-suited to type system based analyses. 
+
+%\begin{itemize}
+%  \item Our system is a light-weight solution to a single class of sanitation vulnerabilities (e.g. we do not address Cross-Site Scripting).
+%  \item Our system is defined as a library in terms of an extensible type system, as opposed to a stand-alone language. Instead of introducing new technologies and methodologies for addressing security problems, we provide a light-weight static analysis which complements approaches developers already understand well.
+%  \item Our implementation of the translation is implemented in Python and shares its grammar. Since Python is a popular programming language among web developers, the barrier between our research and adopted technologies is lower than for greenfield security-oriented languages.
+%\end{itemize}
+
+% HosoyaPierce2002? 
+Incorporating regular expressions into the type system is not novel. The XDuce system \cite{HosoyaVouillonPierce2000ICFP} checks XML documents against schema using regular expressions. 
+2Similarly, XHaskell \cite{xhaskell} focuses on XML documents.
+We differ from this and related work in at least three ways:
+\begin{itemize}
+  \item Although our static replacement operation is definable in some languages with regular expression types, we are the first to expose this operation and connect the semantics of regular language replacement with the semantics of string replacement via a type theoretic argument.
+  \item The underlying representation of regular strings is guaranteed to be a string, rather than a heavier implementation based on an encoding using functional datatypes.
+  \item We demonstrate that regular expression types are applicable to the web security domain, whereas previous work on regular expression types focused on XML.
+%  \item We work within an extensible type system.
+\end{itemize}
+
+%In conclusion, our contribution is a type system, implemented within an extensible type system, for checking the correctness of input sanitation algorithms.
+
+\section{Future Work}
+
+We believe that this type system extension serves as a useful basis for web-oriented static analysis;
+frameworks and regular expression libraries could be annotated, along with use-sites. We hope to empirically evaluate the feasability of this approach in the future using \verb|typy|. 
+%The use sites of arbitrary strings are usually constrained to a few sections of the application. Assuming
+%regular expressions are used for input sanitation, annotations at these use sites could be sufficient input to a sound and complete static analysis.
+%
+We also believe that extensible programming languages are a promising approach toward incorporating other security
+ analyses into programming languages. Construing such analyses as type systems, specifying them rigorously and implementing them within an extensible type system appears to be a promising general technique that the community may wish to emulate.
+%languages might provide developers with a way to incorporate domain-specific security and privacy analyses into their
+%daily development activities. In future work, we hope to bolster this hypothesis by extending our approach in this paper
+%to more realistic settings and by developing new type extensions addressing security and privacy concerns.
+%
+% \section{Conclusion}
+
+
+% Composable analyses which complement existing approaches constitute a promising approach toward the integration of security concerns into programming languages.
+% In this paper, we presented a system with both of these properties and defined a security-preserving transformation.
+% Unlike other approaches, our solution complements existing, familiar solutions while providing a strong guarantee that traditional library and framework-based approaches are implemented and utilized correctly.
+
+\section*{Acknowledgements}
+We thank the anonymous referees.
+This work was supported by the National Security Agency
+lablet contract \#H98230-14-C-0140 and the National Science Foundation under NSF CNS-1035800.
+%The views and conclusions contained in this document are those of the author and should not be inter- preted as representing the official policies, either expressed or implied, of any sponsoring institution or government. 
+Any opinions, findings, and conclusions or recommendations expressed in this publication are those of the author(s) and do not necessarily reflect the views of any sponsoring institution or government.
+\vspace{5px}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% END SECTION TWO -- THIS IS THE CONFLICT LINE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%\newcommand{\F}[1]{\textsf{#1}~}
+%\newcommand{\FF}[1]{\textsf{#1}}
+%\newcommand{\Q}{\FF{Arg}}
+%\newcommand{\xlA}[1]{\lfloor #1 \rfloor_{\lambda}}
+%\newcommand{\xA}[1]{$\lfloor #1 \rfloor_{\text{Ace}}$}
+%\newcommand{\rtotau}[1]{\lfloor #1 \rfloor}
+%
+%\newcommand{\tremp}{{\tt tremp}}
+%\newcommand{\trdot}{{\tt trdot}}
+%\newcommand{\trchar}[1]{{\tt trchar}[#1]}
+%\newcommand{\trseq}[2]{{\tt trseq}(#1; #2)}
+%\newcommand{\tror}[2]{{\tt tror}(#1; #2)}
+%\newcommand{\tlstr}[1]{{\tt tstr}[#1]}
+%\begin{table*}[t]
+%\centering
+%\begin{tabular}{ l l l }
+%$r$ & $\xlA{r}$ & \xA{r}\\
+%\hline
+%$\epsilon$ & $\tremp$ & \verb|""|\\
+%$.$ & $\trdot$ & \verb|"."|\\
+%$a$ & $\trchar{a}$ & \verb|"|$a$\verb|"|\\
+%$r_1 \cdot r_2$ & $\trseq{\xlA{r_1}}{\xlA{r_2}}$ & \xA{r_1}\verb| + |\xA{r_2}\\
+%$r_1 + r_2$ & $\tror{\xlA{r_1}}{\xlA{r_2}}$ & \verb|"(" + |\xA{r_1}\verb! + "|" + !\xA{r_2}\verb| + ")"|\\
+%\\
+%$\sigma$ & $\xlA{\sigma}$ & \xA{\sigma}\\
+%\hline
+%${\tt string\_in}[r]$ & $\fvar{stringin}[\xlA{r}]$ & \verb|stringin[|\xA{r}\verb|]|\\
+%\\
+%  $S$ & $\xlA{S}$ & \xA{S} \\
+%  \hline
+%  ${\tt str\_in}[s]$ & $\FF{intro}[\FF{str}[s]]()$ & \verb|"|$s$\verb|"|\\
+%  ${\tt concat}(S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{concat}](\xlA{S_2})$ & \xA{S_1}\verb| + |\xA{S_2} \\
+%  ${\tt subst}[r](S_1; S_2)$  & $\xlA{S_1}\cdot\FF{elim}[\tvar{subst}~\xlA{r}](\xlA{S_2})$ & \xA{S_1}\verb|.subst(|\xA{r}\verb|, |\xA{S_2}\verb|)|\\
+%  ${\tt coerce}[r](S)$  & $\xlA{S}\cdot\FF{elim}[\tvar{coerce}~\xlA{r}]()$ & \xA{S}\verb|.coerce(|\xA{r}\verb|)|
+%\end{tabular}
+%\caption{Embeddings of the ${\tt string\_in}$ fragment into $\lamAce$ and Ace.}
+%\end{table*}
+%%
+%\newcommand{\atjsynX}[3]{\Gamma \vdash_\fvalCtx #1 \Rightarrow #2 \leadsto #3}
+%\newcommand{\atjanaX}[3]{\Gamma \vdash_\fvalCtx #1 \Leftarrow #2 \leadsto #3}
+%\newcommand{\atjerrX}[1]{\Gamma \vdash_\fvalCtx #1~ \mathtt{error}}
+%\begin{figure*}[t]
+%\small
+%$\fbox{\inferrule{}{\atjsynX{e}{\tau}{i}}}$~~~~
+%$\fbox{\inferrule{}{\atjanaX{e}{\tau}{i}}}$~~~~
+%%$\fbox{\inferrule{}{\atjerrX{e}}}$
+%\begin{mathpar}
+%\inferrule[att-flip]{
+%	\atjsynX{e}{\tau}{i}
+%}{
+%	\atjanaX{e}{\tau}{i}
+%}
+%
+%%\inferrule[att-var]{
+%%	x \Rightarrow \tau \in \Gamma
+%%}{
+%%	\atjsynX{x}{\tau}{x}
+%%}
+%%
+%%\inferrule[att-asc]{
+%%    \tau \Downarrow_\fvalCtx \tau'\\
+%%	\atjanaX{e}{\tau'}{i}
+%%}{
+%%	\atjsynX{e : \tau}{\tau'}{i}
+%%}
+%%
+%%\inferrule[att-let-syn]{
+%%	\atjsynX{e_1}{\tau_1}{i_1}\\
+%%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e_2 \Rightarrow \tau_2 \leadsto i_2\\
+%%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%%}{
+%%	\atjsynX{\F{let}x = e_1~\F{in}e_2}{\tau_2}{(\ilam{x}{\sigma_1}{i_2})~i_1}
+%%}
+%%
+%%\inferrule[att-lam-ana]{
+%%	\Gamma, x \Rightarrow \tau_1 \vdash_\fvalCtx e \Leftarrow \tau_2 \leadsto i\\
+%%	\trepof{\tau_1} \Downarrow_\fvalCtx \titype{\sigma_1}
+%%}{
+%%	\atjanaX{\lambda x.e}{\ttype{arrow}{(\tau_1, \tau_2)}}{\ilam{x}{\sigma_1}{i}}
+%%}
+%%
+%%\inferrule[att-lam]{
+%%	\tau_1 \Downarrow_\fvalCtx \tau_1'\\
+%%		\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\\\
+%%	\Gamma, x \Rightarrow \tau_1' \vdash_\fvalCtx e \Rightarrow \tau_2 \leadsto i
+%%%	i \hookrightarrow_\fvalCtx i'\\
+%%%		\sigma \hookrightarrow_\fvalCtx \sigma'
+%%%	\ddbar{\fvar{Arrow}}{\fvalCtx}{\trepof{\tau_1'}}{\sbar_1}\\
+%%	%\delfromtau{$\Xi_0$}{\fvalCtx}{\tau_1'}{\sabs}\\\\
+%%}{
+%%	\atjsynX{\elam{x}{\tau_1}{e}}{\ttype{arrow}{(\tau_1', \tau_2)}}{\ilam{x}{\sigma'}{i}}
+%%}
+%%
+%\inferrule[att-intro-ana]{
+%	\vdash_\fvalCtx \FF{iana}(\fvar{tycon})=\taudef\\
+%	\taudef~\taut{opidx}~\taut{tyidx}~((\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx \titerm{i}\\\\
+%%	\trepof{\ttype{tycon}{\tauidx'}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\trepof{\ttype{tycon}{\taut{tyidx}}} \Downarrow_\fvalCtx \titype{\sigma}\\
+%		\Gamma \vdash_\fvalCtx i : \sigma
+%}{
+%	\atjanaX{\FF{intro}[\taut{opidx}](e_1; \ldots; e_n)}{\ttype{tycon}{\taut{tyidx}}}{i}
+%}
+%
+%%\inferrule[att-i-asc-ty]{
+%%	\atjanaX{I}{\tau}{i}
+%%}{
+%%	\atjsynX{I : \tau}{\tau}{i}
+%%}
+%%
+%%\inferrule[att-i-asc-tycon]{
+%%	\vdash_\fvalCtx \FF{isyn}(\fvar{tycon})=\taudef\\\\
+%%	\taudef~\tauidx~((\Gamma; e_1)? {::}{\ldots}{::}(\Gamma; e_n)? {::} []) \Downarrow_\fvalCtx \tden{\titerm{i}}{\ttype{tycon}{\tauidx'}}\\
+%%			\trepof{\tau_1'} \Downarrow_\fvalCtx \titype{\sigma}\\
+%%	\Gamma \vdash_\fvalCtx i : \sigma
+%%}{
+%%	\atjsynX{\FF{intro}[\tauidx](e_1; \ldots; e_n)] :: \fvar{tycon}}{\ttype{tycon}{\tauidx'}}{i'}
+%%}
+%%
+%\inferrule[att-elim-syn]{
+%	\atjsynX{e}{\ttype{tycon}{\taut{tyidx}}}{i}\\
+%	\vdash_\fvalCtx \FF{esyn}(\fvar{tycon})=\taudef\\\\
+%	\taudef~\taut{opidx}~\taut{tyidx}~\titerm{i}~((\Gamma; e)? :: (\Gamma; e_1)? :: \ldots :: (\Gamma; e_n)? :: []) \Downarrow_\fvalCtx (\tau, \titerm{i'})\\\\
+%			\trepof{\tau} \Downarrow_\fvalCtx \titype{\sigma}\\
+%	\Gamma \vdash_\fvalCtx i' : \sigma
+%}{
+%	\atjsynX{e\cdot\FF{elim}[\taut{opidx}](e_1; \ldots; e_n)}{\tau}{i'}
+%}
+%\end{mathpar}
+%%\vspace{-10px}
+%\caption{The bidirectional active typechecking and translation judgements.}
+%\label{atj}
+%\end{figure*}
+%\newcommand{\tlevalX}[2]{#1 \Downarrow_\fvalCtx #2}
+%\begin{figure*}[t]
+%\small
+%$\fbox{\inferrule{}{\tau \Downarrow_\fvalCtx \tau'}}$~~~~
+%\begin{mathpar}
+%\inferrule[trstr-eval]{ }{\tlevalX{\tlstr{s}}{\tlstr{s}}}
+%
+%\inferrule[tremp-eval]{ }{\tremp \Downarrow_\fvalCtx \tremp}
+%
+%\cdots
+%
+%\inferrule[tror-eval]{
+%	\tlevalX{\tau_1}{\tau_1'}\\
+%	\tlevalX{\tau_2}{\tau_2'}
+%}{
+%	\tlevalX{\tror{\tau_1}{\tau_2}}{\tror{\tau_1'}{\tau_2'}}
+%}
+%
+%trmatch
+%
+%trlsubst
+%
+%trsublang
+%
+%
+%%\inferrule[repof]{
+%%	\tau \Downarrow_\fvalCtx \ttype{tycon}{\tauidx}\\
+%%	\vdash_\fvalCtx \FF{rep}(\fvar{tycon}) = \taurep\\
+%%	\taurep~\tauidx \Downarrow_\fvalCtx \titype{\sigma}
+%%}{
+%%	\FF{repof}(\tau) \Downarrow_\fvalCtx \titype{\sigma}
+%%}
+%%
+%\inferrule[syn]{
+%    \tau \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\atjsynX{e}{\tau}{\iota}\\\\
+%    [\tau/\tvar{t}_{ty}, \titerm{\iota}/\tvar{t}_{trans}]\tau_2 \Downarrow_\fvalCtx \tau_2'
+%}{
+%	\FF{syn}(\tau_1; \tvar{t}_{ty}, \tvar{t}_{trans}.\tau_2) \Downarrow_\fvalCtx \tau_2'
+%}
+%
+%\inferrule[ana]{
+%	\tau_1 \Downarrow_\fvalCtx (\Gamma; e)?\\
+%	\tau_2 \Downarrow_\fvalCtx \tau_2'\\
+%	\atjanaX{e}{\tau_2'}{\iota}\\\\
+%	[\titerm{\iota}/\tvar{t}_{trans}]\tau_3 \Downarrow_\fvalCtx \tau_3'
+%}{
+%	\FF{ana}(\tau_1; \tau_2; \tvar{t}_{trans}.\tau_3) \Downarrow_\fvalCtx \tau_3'
+%}
+%
+%TODO: add rx, str stuff
+%\end{mathpar}
+%\caption{\small Normalization semantics for the type-level language. Missing rules (including error propagation rules and normalization of quoted internal terms and types) are unsurprising and will be given later.}
+%\label{tleval}
+%\end{figure*}
+%\begin{figure}[t]
+%\small\begin{flalign}
+%& \F{tycon}\fvar{stringin}~\F{of}\FF{R}~\{\\
+%& \quad \F{iana}\{\tlam{opidx}{\FF{String}}{
+%	\tlam{tyidx}{\FF{R}}{
+%	\tlam{a}{\klist{\Q}}{\\
+%& \quad\quad \tvar{arity0}~\tvar{a}~(\tvar{check}~\tvar{opidx}~\tvar{tyidx}~\titerm{\iup{\tvar{opidx}}})
+%	}}
+%}\}\\
+%& \quad \F{esyn}\{\tlam{opidx}{\kunit+(\FF{R}+\FF{R})}{
+%	\tlam{a}{\klist{\Q}}{\\
+%& \quad\quad \tsumcase{\tvar{opidx}}{\_}{\\
+%& \quad\quad\quad \tvar{arity2}~\tvar{a}~\tlam{a1}{\Q}{\tlam{a2}{\Q}{\\
+%& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a1}~\tlam{r1}{\FF{R}}{\tlam{i1}{\kITerm}{~}}\\
+%& \quad\quad\quad\quad \tvar{rsyn}~\tvar{a2}~\tlam{r2}{\FF{R}}{\tlam{i2}{\kITerm}{~}}\\
+%& \quad\quad\quad\quad\quad (\ttype{stringin}{\FF{rseq}(\tvar{r1}; \tvar{r2})}, \\
+%& \quad\quad\quad\quad\quad\titerm{{\tt iconcat}(\iup{\tvar{i1}}; \iup{\tvar{i2}})})
+%}}\\
+%& \quad\quad}{opidx'}{d}}
+%}\}
+%\};\\
+%& \F{def}\tvar{concat} = \tinl{\kunit, \FF{R}+\FF{R}}{\tunit};\\
+%& \F{def}\tvar{subst} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}};\\
+%& \F{def}\tvar{coerce} = \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}
+%\end{flalign}
+%\caption{Definition of $\phi_S$, which enables the embedding of fragment $S$ into $\lamAce$.}
+%\end{figure}
+%%\begin{figure}
+%%\[
+%%\begin{array}{lcl}
+%%% & & Definition & Kind\\
+%%\tvar{concat} & := & \tinl{\kunit, \FF{R}+\FF{R}}{\tunit}\\%& \kunit + (R + R)\\
+%%\tvar{replace} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinl{\FF{R},\FF{R}}{\tvar{r}}}}\\% & \karrow{a}{b}\\
+%%\tvar{coerce} & := & \tlam{r}{\FF{R}}{\tinr{\kunit, \FF{R}+\FF{R}}{\tinr{\FF{R},\FF{R}}{\tvar{r}}}}\\
+%%\end{array}
+%%\]
+%%\caption{Definitions}
+%%\end{figure}
+%
+%\subsection{Background: Ace}
+%TODO: Make a TR out of the OOPSLA submission.
+%\subsection{Explicit Conversions}
+%\subsection{Adding Subtyping to Ace}
+%\subsection{Theory}
+%
+%\section{Related Work}
+%
+%\section{Discussion}
+%
+%
+\bibliographystyle{abbrv}
+%\renewcommand*{\bibfont}{\small}
+\setlength{\bibsep}{0pt plus .20pt minus .25pt}
+{
+\vspace*{-1.5mm}
+\bibliography{research}
+}
+% The bibliography should be embedded for final submission.
+
+
+%\begin{thebibliography}
+%
+%\bibitem{lamport94}
+%Leslie Lamport,
+%\emph{\LaTeX: a document preparation system}.
+%Addison Wesley, Massachusetts,
+%2nd edition,
+%1994.
+%
+%\end{thebibliography}
+\end{document}
