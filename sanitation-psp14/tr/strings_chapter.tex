@@ -1043,10 +1043,6 @@ This section follows the same structure as the safety proof for $\lambdas$ --
 we prove type safety for a small-step semantics, prove a semantic correspondence,
 and then transfer the safety result to the big-step semantics in the paper.
 
-Our proofs here are more sketchy than in the $\lambdas$ section both because the
-proof method is already demonstrated, and becaues $\lambdap$ is a fairly straightforward
-extension of $\lambda$ for which these results are already estbalished.
-
 \begin{lem}[Canonical Forms for Target Language]
 ~
 \begin{itemize}
@@ -1062,14 +1058,8 @@ If $\emptyset \vdash \iota : \str$ then $\iota \treduces \tstr{s}$.
 If $\emptyset\vdash \iota : \tau$ either $\iota = \dot{v}$ or $\iota \mapsto \iota'$ for some $\iota'$.
 \end{thm}
 \begin{proof}
-The proof proceeds by induction on the typing assumption. We elide contexts where context has obviously not changed.
-
+The proof proceeds by induction on the typing assumption. 
 Consider only the string and regex (non-$\lambda$) fragments of $\lambdap$.
-
-Regular expressions are always values.
-
-For strings, the concatenation cases are trivial.
-
 \begin{itemize}[label=$ $,itemsep=1ex]
 
 \item \textbf{P-T-Case}.
@@ -1116,30 +1106,62 @@ We treat only the non-lambda fragment.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
 
-\item \textbf{Case SP-E-ConcatLeft}.
+\item \textbf{Case PS-E-ConcatLeft}.
 Suppose:
 \begin{align*}
-  \iota &= \concat{\iota_1}{\iota_2} \mapsto \concat{\iota_1'}{\iota_2} \\
+  \iota &= \rconcat{\iota_1}{\iota_2} \mapsto \rconcat{\iota_1'}{\iota_2} \\
   \emptyset &\vdash \iota : \str \\
   \iota &\mapsto \iota' 
 \end{align*}
 
-The only appliable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
 and $\emptyset \vdash \iota_2 : \str$ where $\tau = \str$. 
 By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \concat{\iota_1'}{\iota_2} : \str$.
+so $\emptyset \vdash \rconcat{\iota_1'}{\iota_2} : \str$.
 
-\item \textbf{Case SP-E-ConcatRight}
+\item \textbf{Case PS-E-ConcatRight}
 \begin{align*}
-  e &= \concat{e_1}{e_2} \mapsto \concat{e_1}{e_2'} \\
+  e &= \rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'} \\
   \emptyset &\vdash e : \str \\
   \iota &\mapsto \iota' 
 \end{align*}
 
-The only appliable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
 and $\emptyset \vdash \iota_2 : \str$ where $\tau = \str$. 
 By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \concat{\iota_1'}{\iota_2} : \str$.
+so $\emptyset \vdash \rconcat{\iota_1}{\iota_2'} : \str$.
+
+\todo{Everything above in this proof was sleep deprived plane work -- need to check}
+
+\item \textbf{Case PS-E-Concat}
+Let $e = \rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$. 
+The only rule that applies is P-T-Concat, so $\theta \vdash e : \str$.
+By canonical forms, $\theta \rstr{s_1s_2} : \str$.
+
+\item \textbf{Case PS-E-CaseLeft}
+Let $\iota = \strcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1'}{\iota_2}{x,y.\iota_3}$
+when $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Case, so $\theta \vdash \iota : \tau$ where:
+\begin{align*}
+  \theta &\vdash \iota_1 : \str 
+  \theta &\vdash \iota_2 : \tau
+  \theta, x : \str, y : \str &\vdash \iota_3 : \tau
+\end{align*}
+By induction, $\theta \vdash \iota_1' : \str$.
+By P-T-Case, $\thet \vdash \strcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau$.
+
+\item \textbf{Case PS-E-CaseRight}
+Let $\iota = \strcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1}{\iota_2}{x,y.\iota_3}$
+when $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Case, so $\theta \vdash \iota : \tau$ where:
+\begin{align*}
+  \theta &\vdash \iota_1 : \str 
+  \theta &\vdash \iota_2 : \tau
+  \theta, x : \str, y : \str &\vdash \iota_3 : \tau
+\end{align*}
+By induction, $\theta \vdash \iota_1' : \str$.
+By P-T-Case, $\thet \vdash \strcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau$.
+
 
 
 \end{itemize}
@@ -1685,64 +1707,64 @@ s \in \lang{r} \\
 
 \begin{figure}[t]
 \small
-$\fbox{\inferrule{}{\iota \treduces \dot{v}}}$
+$\fbox{\inferrule{}{\iota \mapsto \iota}}$
 
 \begin{mathpar}
-\inferrule[PP-E-ConcatLeft]
+\inferrule[PS-E-ConcatLeft]
 {\iota_1 \mapsto \iota_1'}
 {\tconcat{\iota_1}{\iota_2} \treduces \tconcat{\iota_1'}{\iota_2}}
 
-\inferrule[PP-E-ConcatRight]
+\inferrule[PS-E-ConcatRight]
 {\iota_2 \mapsto \iota_2'}
 {\tconcat{\iota_1}{\iota_2} \treduces \tconcat{\iota_1}{\iota_2'}}
 
-\inferrule[PP-E-Concat]
+\inferrule[PS-E-Concat]
 {\ }
 {\tconcat{\tstr{s_1}}{\tstr{s_2}} \treduces \tstr{s_1s_2}}
 
-\inferrule[PP-E-CaseLeft]
+\inferrule[PS-E-CaseLeft]
 { \iota_1 \mapsto \iota_1' }
 { \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \pstrcase{\iota_1'}{\iota_2}{x,y.\iota_3} }
 
 
-\inferrule[PP-E-CaseRight]
-{ \iota_2 \mapsto \iota_2' }
-{ \pstrcase{\dot{v}}{\iota_2}{x,y.\iota_3} \mapsto \pstrcase{\dot{v}}{\iota_2'}{x,y.\iota_3} }
+\inferrule[PS-E-Case-Epsilon]
+{  }
+{ \pstrcase{\epsilon}{\iota_2}{x,y.\iota_3} \mapsto \iota_2}
 
-\inferrule[PP-E-Case]
+\inferrule[PS-E-Case]
 { }
-{ \pstrcase{\tstr{s_1}}{\tstr{s_2}}{x,y.\iota_3} \mapsto \tstr{s_1s_2}}
+{ \pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto \tstr{as}}
 
 
-\inferrule[PP-E-ReplaceLeft]
+\inferrule[PS-E-ReplaceLeft]
 {\iota_1 \mapsto \iota_1'}
 { \preplace{\iota_1}{\iota_2}{\iota_3} \mapsto \preplace{\iota_1'}{\iota_2}{\iota_3} }
 
-\inferrule[PP-E-ReplaceMid]
+\inferrule[PS-E-ReplaceMid]
 {\iota_2 \mapsto \iota_2'}
 { \preplace{\rx{r}}{\iota_2}{\iota_3} \mapsto \preplace{\rx{r}}{\iota_2'}{\iota_3} }
 
-\inferrule[PP-E-ReplaceRight]
+\inferrule[PS-E-ReplaceRight]
 {\iota_3 \mapsto \iota_3'}
 { \preplace{\rx{r}}{\tstr{s_2}}{\iota_3} \mapsto \preplace{\rx{r}}{\tstr{s_2}}{\iota_3'} }
 
-\inferrule[PP-E-Replace]
+\inferrule[PS-E-Replace]
 {\ }
 { \preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}} }
 
-\inferrule[PP-E-Check-Left]
+\inferrule[PS-E-Check-Left]
 { \iota_x \mapsto \iota_x' }
 { \check{\iota_x}{\iota}{\iota_1}{\iota_2} \mapsto \check{\iota_x}{\iota}{\iota_1}{\iota_2} }
 
-\inferrule[PP-E-Check-Right]
+\inferrule[PS-E-Check-Right]
 { \iota \mapsto \iota' }
 { \check{\rx{r}}{\iota}{\iota_1}{\iota_2} \mapsto \check{\rx{r}}{\iota'}{\iota_1}{\iota_2} }
 
-\inferrule[PP-E-Check-OK]
+\inferrule[PS-E-Check-OK]
 { s \in \lang{r} }
 { \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_1}
 
-\inferrule[PP-E-Check-OK]
+\inferrule[PS-E-Check-NotOK]
 { s \not\in \lang{r} }
 { \check{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_2}
 
