@@ -212,7 +212,6 @@ The syntax of $\lambdas$ is specified in Figure \ref{fig:glambdas}. The static s
 \subsection{Head and Tail Operations}
 The following correctness conditions must hold for any definition of $\lhead{r}$ and $\ltail{r}$.
 
-
 \begin{condition}[Correctness of Head] \label{trlemmax}
 If $c_1  s' \in \lang{r}$, then
 $c_1 \in \lang{\lhead{r}}$.
@@ -237,18 +236,76 @@ We first define an auxiliary relation that determines the set of characters that
 We define $\lhead{r} = a_1 + a_2 + ... + a_i$ iff $\lhead{r, \epsilon} = \{a_1, a_2, ..., a_i\}$.
 \end{defn}
 
-
-
 \begin{defn}[Brzozowski's Derivative]\label{def:derivative}
   The \emph{derivative of $r$ with respect to $s$} is denoted by $\delta_s(r)$
   and is $\delta_s(r) = \{t | st \in \lang{r}\}$.
 \end{defn}
 
-
 \begin{defn}[Definition of $\ltail{r}$]
 If $\lhead{r, \epsilon} = \{a_1, a_2, ..., a_i\}$, then  
 we define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)$.
 \end{defn}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Correctness.
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% \begin{trthm}[Correctness of \textsf{ltail}]
+% If $s \in \lang{r}$ then $s \in \lang{\lhead{r} \cdot \ltail{r}}$.
+% \end{trthm}
+% \begin{proof}
+% The proof proceeds by structural induction on $r$.
+% In each case, we identify sublanguages of the head and tail of $r$ such that 
+% $s$ is in the concatenation of the the sublanguages.
+% Throughout the proof, we use the fact that $\lang{r'} \subseteq \lang{r}$ and $\lang{q'} \subseteq \lang{q}$
+% implies $\lang{r' \cdot q'} \subseteq \lang{r \cdot q}$.
+
+% \begin{itemize}[label=$ $,itemsep=1ex]
+
+% \item \textbf{Case $r = c$ for $c \in Sigma$}.
+% By definition, if $s \in \lang{c}$ then $s = c$.
+% By definition of lhead and ltail, $\lhead{c} = \lhead{c, \epsilon} = c$
+% and $\lang{\epsilon} \subseteq \lang{\ltail{r}}$.
+% Therefore, $c \in \lang{c \cdot \epsilon} \subseteq \lang{\lhead{r} + \ltail{r}}$.
+
+% \item \textbf{Case $r = r_1 \cdot r_2$}.
+% Suppose $s \in \lang{r}$.
+% We may decompose $s$ as $s_1  \cdots s_n$ such that $s_1 = c_1 s_1' \in \lang{r_1}$.
+% Note that $c_1 \in \lhead{r_1}$ by \ref{trlemmax}.
+% Therefore, $c_1 \in \lhead{r_1 \cdot r_2}$ by definition of lhead.
+% It suffices to show that $s_1' s_2 \in \lang{\delta_{c_1}(r)}$.
+% Since $s = c_1 s_1' s_2\in \lang{r}$, it follows by the definition of derivative that $s_1' s_2 \in \delta_{c_1}(r)$.
+% Therefore, $s = c_1 s_1' s_2 \in \lang{ c_1 \cdot \delta_{c_1} } \subseteq \lang{ \lhead{r} \cdot \ltail{r}}$.
+
+
+% \item \textbf{Case $r = r_1 + r_2$}.
+% Suppose $s \in \lang{r_1 + r_2}$
+% so that $s \in \lang{r_1}$ or $s \in \lang{r_2}$.
+% Consider without loss of generality the case where $s \in \lang{r_1}$.
+% By induction, $s \in \lang{\lhead{r_1} \cdot \ltail{r_1}}$
+% Note that $\lhead{r_1} \subseteq \lhead{r}$
+% and $\ltail{r_1} \subseteq \ltail{r}$.
+% Therefore, $\lhead{r_1} \cdot \ltail{r_2} \subseteq \lhead{r_1} \cdot \ltail{r_1}$.
+
+
+% \item \textbf{Case $r = q^*$}.
+% Either $s$ is the empty string or else the $k^{th}$ unwinding (i.e., $s = s_1 \cdots s_k$ where $k > 0$ and $s_i \in \lang{q}$).
+
+% Suppose $s = \epsilon$.
+% By definition of lhead, $\lhead{r} = \lhead{q^*} = \lhead{q^*, \epsilon} = \lhead{\epsilon, \epsilon} + \cdots = \epsilon + \cdots$.
+% By definition of ltail, $\ltail{r} = \epsilon \cdots$.
+% From these facts we conclude that $s = \epsilon \in \lang{\epsilon \cdot \epsilon} \subseteq \lang{\lhead{r} \cdot \ltail{r}}$.
+
+% Suppose instead that $s = s_1 \cdots s_k$ for $k < 0$ where $s_i \in \lang{q}$.
+% If $q = \epsilon$ then $s = \epsilon$ and the conclusion follows for the same reason as the epsilon subcase of the character case.
+% Otherwise, $s$ is not the empty string and so $s = c_1 s_1 s_2$ where $s_1$ and $s_2$ might be empty.
+% By the lemma above, $c_1 \in \lhead{s}$.
+% By the definition of derivative, $s_1s_2 \in \delta_{c_1}(s)$.
+% Therefore, $s \in \lang{\lhead{s} \cdot \delta_{c_1}(s)} \subseteq \lang{\lhead{r} \cdot \ltail{r}}$, where the set inclusion follows by the definition
+% of lhead and ltail.
+% \end{itemize}
+% \end{proof}
+
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Substitution.
@@ -1198,10 +1255,20 @@ $\trden{\tctx} \vdash \tstr{s} : \str$ by weakening.
 Summarily, $\tstr{s}$ is a term of $\lambdap$ such that $\trden{\tctx} \vdash \tstr{s} : \trden{\sigma}$
 
 It remains to be shown that there exist $v, \dot{v}$ such that $\rstr{s} \mapsto^* v$,
-$\str{s} \mapsto* \dot{v}$, and $\trden{v} = \dot{v}$. But this is immediate because
-each term evaluates to itself and we have already established the equality.
+$\tstr{s} \mapsto^* \dot{v}$, and $\trden{v} = \dot{v}$. But this is immediate because
+each term is already a value and $s=s$.
 
-\item \textbf{Case $e = \rconcat{e_1}{e_2}$}. \todo{hand wave lots and lots of symbol pushing.} By induction.
+\item \textbf{Case $e = \rconcat{e_1}{e_2}$}.
+The applicable typing rule is S-T-Concat, so $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1\cdot r_2}$
+where $\sctx \vdash e_1 : \stringin{r_1}$ and $\sctx \vdash e_2 : \stringin{r_2}$.
+
+By induction, $e_1 \leadsto \iota_1$ and $e_2 \leadsto \iota_2$.
+Therefore, $\trden{\sctx} \vdash \tconcat{\iota_1}{\iota_2}$ by P-T-Concat.
+
+By canonical forms, $e_1 \mapsto^* \rstr{s_1}$ where by induction $\iota_1 \mapsto^* \tstr{s_1}$.
+Similarly, $e_2 \mapsto^* \rstr{s_2}$ and $\iota_2 \mapsto^* \tstr{s_2}$.
+Therefore, $e \mapsto^* \rstr{s_1s_2}$ by S-E-Concat at last, and $\tconcat{\iota_1}{\iota_2} \mapsto^* \tstr{s_1s_2}$ by P-E-Concat at last.
+Note that $\trden{\rstr{s_1s_2}} = \tstr{s_1s_2}$.
 
 \item \textbf{Case $e = \strcase{e_1}{e_2}{x,y.e_3}$}. This case relies on our definition
 of context translation.
@@ -1210,38 +1277,43 @@ Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
 By inversion of the typing relation it follows that
 $\sctx \vdash e_1 : \stringin{r}$, $\sctx \vdash e_2 : \sigma$ and $\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma$.
 
-By induction, there exists an $\iota_1$ such that $\trden{e_1} = \iota_1$,
-$\trden{\sctx} \vdash \iota_1 : \trden{\sigma}$, and $e_1 \leadsto \iota_1$.
-Similarly for $e_2$ and some $\iota_2$.
+By induction, there exists an $\iota_1$ 
+such that $e_1 \mapsto \iota_1$.
+%such that $\trden{e_1} = \iota_1$ and
+%$\trden{\sctx} \vdash \iota_1 : \trden{\sigma}$.
+%, and $e_1 \leadsto \iota_1$. Similarly for $e_2$ and some $\iota_2$.
 
-By canonical forms, $e_1 \mapsto* \rstr{s}$ and so $\iota_1 \mapsto* \tstr{s}$ by $\leadsto$.
+By canonical forms, $e_1 \mapsto^* \rstr{s}$. Therefore, $\iota_1 \mapsto* \tstr{s}$ because $e_1 \leadsto \iota_1$.
 
-Choose $\iota = \tconcat{\iota_1}{\iota_2}{x,y.\iota_3}$ and note that by the properties established via induction,
+Choose $\iota = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3}$ and note that by the properties established via induction,
 $\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.
 
-Suppose $s = \epsilon$. Then $e \mapsto* v$ where $e_2 \mapsto* v$
-and $\iota \treduces \dot{v}$ where $\iota_2 \treduces \dot{v}$.
+To prove the evaluation correspondence, we consider two cases for the value of $s$.
+
+Suppose $s = \epsilon$. Then $e \mapsto^* v$ where $e_2 \mapsto^* v$,
+from which it follows that 
+$\iota \mapsto^* \dot{v}$ where $\iota_2 \mapsto^* \dot{v}$.
 But recall that $e_2 \leadsto v_2$ and so $\trden{v} = \dot{v}$.
 
 Suppose otherwise that $s = at$ for some character $a$ and string $t$.
-Then $e \mapsto* v$ where $[a, t / x, y] e_3 \mapsto* v$.
-Similarly, $\iota \treduces \dot{v}$ where $[a, t / x, y] \iota_3 \treduces \dot{v}$
+Then $e \mapsto^* v$ where $[a, t / x, y] e_3 \mapsto^* v$.
+Similarly, $\iota \mapsto^* \dot{v}$ where $[a, t / x, y] \iota_3 \mapsto^* \dot{v}$
 
 \item \textbf{Case $e = \rreplace{r}{e_1}{e_2}$}.
 There is only one applicable typing rule, so suppose
 $\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{e_1}{e_2}}$.
-Let $\psi = \trden{\sctx}$.
+Let $\tctx = \trden{\sctx}$.
 Note that $\trden{\rreplace{r}{e_1}{e_2}} = \treplace{\rx{r}}{\iota_1}{\iota_2}$
-when by induction $\trden{e_1} = \iota_1$ and $\trden{e_2} = \iota_2$
-such that $\psi \vdash \iota_1$ and $\psi \vdash \iota_2$.
-It follows by P-T-Replace that $\psi \vdash \treplace{\rx{r}}{\iota_1}{\iota_2} : \str$.
+where by induction $\trden{e_1} = \iota_1$ and $\trden{e_2} = \iota_2$
+such that $\tctx \vdash \iota_1$ and $\tctx \vdash \iota_2$.
+It follows by P-T-Replace that $\tctx \vdash \treplace{\rx{r}}{\iota_1}{\iota_2} : \str$.
 Finally, note that $\trden{\stringin{\lreplace{r}{e_1}{e_2}}} = \str$.
 
 For evaluation correspondence, note that $\trden{ \rstr{\lreplace{r}{s_1}{s_2}} } = \rstr{ \lreplace{r}{s_1}{s_2} }$ and
-so it suffices to show that $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto* \rstr{r}{s_1}{s_2}$.
-Note that $\lreplace{r}{e_1}{e_2} \mapsto* \rstr{\lreplace{r}{s_1}{s_2}}$ 
-where $e_1 \mapsto* \rstr{s_1}$, $e_2 \mapsto* \rstr{s_2}$, $r \mapsto* r$.
-By induction, $\iota_1 \mapsto* \rstr{s_1}, \iota_2 \mapsto* \rstr{s_2}$, and $\rx{r} \mapsto* \rx{r}$.
+so it suffices to show that $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto^* \rstr{r}{s_1}{s_2}$.
+Note that $\lreplace{r}{e_1}{e_2} \mapsto^* \rstr{\lreplace{r}{s_1}{s_2}}$ 
+where $e_1 \mapsto^* \rstr{s_1}$, $e_2 \mapsto^* \rstr{s_2}$, $r \mapsto^* r$.
+By induction, $\iota_1 \mapsto^* \rstr{s_1}, \iota_2 \mapsto^* \rstr{s_2}$, and $\rx{r} \mapsto^* \rx{r}$.
 So by S-E-Replace, the sufficient condition holds.
 
 \item \textbf{Case $e = \rcoerce{r}{e'}$}.
@@ -1251,18 +1323,18 @@ $\sctx \vdash e' : \stringin{r'}$ and $\lang{r'} \subseteq \lang{r}$.
 By induction, $e' \leadsto \iota$ for some $\iota$.
 Therefore, $\trden{\coerce{r}{e'}} = \iota$ by Tr-SafeCoerce.
 
-For evaluation correspondence, note that $e \mapsto* v$ where
-$e' \mapsto* v$. The result follows by induction because $e' \leadsto \iota$. 
+For evaluation correspondence, note that $e \mapsto^* v$ where
+$e' \mapsto^* v$. The result follows by induction because $e' \leadsto \iota$. 
 
 \item \textbf{Case $e = \rcheck{r}{e_1}{x.e_2}{e_3}$}.
 The applicable typing rule is S-T-Check,
-so $\psi \vdash e : \sigma$ where 
-$\psi \vdash e_1 : \stringin{r}$,
-$\psi, x : \stringin{r} \vdash e_2 : \sigma$,
-and $\psi \vdash e_3 : \sigma$.
+so $\sctx \vdash e : \sigma$ where 
+$\sctx \vdash e_1 : \stringin{r}$,
+$\sctx, x : \stringin{r} \vdash e_2 : \sigma$,
+and $\sctx \vdash e_3 : \sigma$.
 By induction and a corresponding substitution principle there exists $\iota_1, \iota_2, \iota_3$ such that
 $e_1 \leadsto \iota_1$, 
-$e_2 \leadsto \iota_2$ in context $\psi, s : \stringin{r}$, and
+$e_2 \leadsto \iota_2$ in context $\sctx, s : \stringin{r}$, and
 $e_3 \leadsto \iota_3$.
 Choose $\iota = \tcheck{\rx{r}}{\iota_1}{\lambda x . \iota_2}{\iota_3}$.
 The result follows by induction.
@@ -1271,12 +1343,14 @@ The result follows by induction.
 \end{proof}
 
 \begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
-  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ then $\iota \mapsto* \tstr{s}$
+  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ then $\iota \mapsto^* \tstr{s}$
   for $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
-  By Theorem \ref{thm:trcorrect} and the rules given, $\iota \mapsto* \tstr{s}$ implies that $e \sreduces \strin{s}$.
-  Theorem \ref{thm:scorrect} together with the assumption that $e$ is well-typed implies that $s \in \lang{r}$.
+  By \ref{thm:scorrect}, $e \mapsto^* \rstr{s}$ where $\emptyset \vdash \rstr{s} : \stringin{r}$. 
+  Therefore, $s \in \lang{r}$.
+  Note that $\trden{\cdot}$ is a function and $\trden{\rstr{s}} = \tstr{s}$; 
+  therefore, by theorem \ref{thm:trcorrect}, $\iota \mapsto^* \tstr{s}$.
 \end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
