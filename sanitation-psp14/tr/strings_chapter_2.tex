@@ -155,7 +155,7 @@
 % 
 % ie lreplace(a,b,c) reads "replace all instances of a in b with c" and
 % correspondes to Python's b.replace(a,c). 
-\renewcommand{\lreplace}[3]{{\tt lreplace}(#1, #2, #3)}
+\renewcommand{\lreplace}[3]{{\sf lreplace}(#1, #2, #3)}
 \newcommand{\freplace}[3]{{\tt freplace}(#1, #2, #3)}
 \newcommand{\freplacep}[4]{{\tt freplace}(#1,#2,#3,#4)}
 
@@ -207,9 +207,12 @@ We assume the following properties:
 \end{ass}
 
 \section{$\lambdas$}
-The syntax of $\lambdas$ is specified in Figure \ref{fig:glambdas}. The static semantics is specified in Figure \ref{fig:slambdas}.
+The syntax of $\lambdas$ is specified in Figure \ref{fig:glambdas}.
 
-\subsection{Head and Tail Operations}
+\subsection{Static Semantics}
+The static semantics of $\lambdas$ is specified in Figure \ref{fig:slambdas}.  The typing context obeys the standard structural properties of weakening, exchange and contraction. 
+
+\subsubsection{Case Analysis}
 The following correctness conditions must hold for any definition of $\lhead{r}$ and $\ltail{r}$.
 
 \begin{condition}[Correctness of Head] \label{trlemmax}
@@ -311,7 +314,7 @@ we define $\ltail{r} = \delta_{a_1}(r) + \delta_{a_2}(r) + ... + \delta_{a_i}(r)
 % % Substitution.
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Replacement}
+\subsubsection{Replacement}
 The following correctness condition must hold for any definition of $\lreplace{r}{r_1}{r_2}$.
 
 \begin{condition}[Replacement Correctness] \label{thm:substcorrespondence}
@@ -323,9 +326,10 @@ We do not give a particular definition for $\lreplace{r}{r_1}{r_2}$ here.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Type Safety and Security.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Small Step Semantics of $\lambdas$}
+\subsection{Dynamic Semantics}
 Figure~\ref{fig:sdlambdas} specifies a small-step operational semantics for $\lambdas$. 
 
+\subsubsection{Canonical Forms}
 \begin{trlem}[Canonical Forms]\label{cfgen}
 If $\emptyset \vdash v : \sigma$ then:
 \begin{enumerate}
@@ -338,8 +342,9 @@ If $\emptyset \vdash v : \sigma$ then:
 By inspection of the static and dynamic semantics.
 \end{proof}
 
+\subsubsection{Type Safety}
 \begin{trlem}[Progress]
-If $\emptyset\vdash e : \sigma$ either $e = v$ for some $v$ or $e \mapsto e'$ for some $e'$.
+If $\emptyset\vdash e : \sigma$ either $e = v$ or $e \mapsto e'$.
 \end{trlem}
 \begin{proof}
 The proof proceeds by rule induction on the derivation of $\emptyset\vdash e : \sigma$.
@@ -396,7 +401,7 @@ Therefore, $e \mapsto \rstr{\lsubst{r}{s_1}{s_2}}$ by SS-E-Replace.
 Suppose that $\emptyset\vdash \rcoerce{r}{e_1} : \stringin{r}$.
 and
 %\begin{align}
-$\emptyset\vdash e_1 : \stringin{r'}$ for $\lang{r'} \subseteq \lang{r}$.% \\
+$\emptyset\vdash e_1 : \stringin{r'}$ for $\lang{r'} \subseteq \lang{r}$. % \\
 %&\lang{r'} \subseteq \lang{r}
 %\end{align}
 By induction, $e_1 =v_1$ or $e_1 \mapsto e_1'$ for some $e_1'$.
@@ -507,7 +512,7 @@ Therefore, $a \in \lang{\lhead{r}}$ by Condition \ref{trlemmax} and $s \in \lang
 
 From these facts about $a$ and $s$ we know by S-T-Rstr that $\emptyset\vdash \rstr{a} : \stringin{\lhead{r}}$
 and $\emptyset\vdash \rstr{s} : \stringin{\ltail{r}}$.
-It follows by Assumption \ref{lem:subst} that  $\emptyset\vdash [\rstr{a}, \rstr{s} / x,y] e_3 : \sigma$.\todo{Cyrus stopped here}
+It follows by Assumption \ref{lem:subst} that  $\emptyset\vdash [\rstr{a}, \rstr{s} / x,y] e_3 : \sigma$.
 
 \item \textbf{Case S-E-Replace-Left}.
 Suppose that $e = \rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1'}{e_2}$ when $e_1 \mapsto e_1'$.
@@ -592,28 +597,27 @@ S-T-Replace, so
 \end{align*}
 By conanical forms,
 $s_1 \in \lang{r_1}$ and $s_2 \in \lang{r_2}$.
-Therefore, $\lreplace{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$ by Theorem~\ref{thm:substcorrespondence}.
+Therefore, $$\lsubst{r}{s_1}{s_2} \in \lang{\lreplace{r}{r_1}{r_2}}$$ by Condition~\ref{thm:substcorrespondence}.
 It is finally derivable by S-T-Rstr that:
 
-$\emptyset \vdash \rstr{\lreplace{r}{s_1}{s_2}} : \stringin{\lreplace{r}{r_1}{r_2}}$.
+$\emptyset \vdash \rstr{\lsubst{r}{s_1}{s_2}} : \stringin{\lreplace{r}{r_1}{r_2}}$.
 
 
 \item \textbf{Case S-E-SafeCoerce}.
 Suppose that $\rcoerce{r}{\rstr{s_1}} \mapsto \rstr{s_1}$.
 The only applicable rule is S-T-SafeCoerce, so 
-$\emptyset\vdash \rcoerce{r}{s_1} : \stringin{r}$.
-By Canonical Forms, $s \in \lang{r}$. Therefore, $\emptyset\vdash \rstr{s} : \stringin{r}$.
+$\emptyset\vdash \rcoerce{r}{s_1} : \stringin{r}$ and $\emptyset \vdash \rstr{s_1} : \stringin{r'}$ and $\lang{r'} \subset \lang{r}$. 
+By Canonical Forms, $s' \in \lang{r'}$. By the definition of subset, $s' \in \lang{r}$. Therefore, by S-T-Rstr, we have that $\emptyset\vdash \rstr{s'} : \stringin{r}$.
 
 \item \textbf{Case S-E-Check-Ok}.
-Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto \subst{\rstr{s}}{x}{e_1}$,
+Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto \subst{\rstr{s}}{x}{e_1}$ and 
 $s \in \lang{r}$, and $\emptyset \vdash \rcheck{r}{\rstr{s}}{x.e_1}{e_2} : \sigma$.
-By inversion of S-T-Check, $x : \stringin{r} \vdash e_1 : \sigma$.
-Note that $s \in \lang{r}$ implies that $s : \stringin{r}$ by S-T-RStr.
-Therefore, $\emptyset \vdash \subst{\rstr{s}}{x}{e_1} : \sigma$.
+The only rule that applies is S-T-Check, so $\emptyset, x : \stringin{r} \vdash e_1 : \sigma$.
+By S-T-Rstr, we have that $\emptyset \vdash \rstr{s} : \stringin{r}$. By Substitution, we have that $\emptyset \vdash \subst{\rstr{s}}{x}{e_1} : \sigma$.
 
 \item \textbf{Case S-E-Check-NotOk}.
-Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto e_2$,
-$s \not \in \lang{r}$, and $\emptyset \vdash \rcheck{r}{\rstr{s}}{x.e_1}{e_2} : \sigma$.
+Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto e_2$ and 
+$s \not \in \lang{r}$ and \\$\emptyset \vdash \rcheck{r}{\rstr{s}}{x.e_1}{e_2} : \sigma$.
 The only applicable rule is S-T-Check, so $\emptyset \vdash e_2 : \sigma$.
 
 \end{itemize}
@@ -624,7 +628,7 @@ The only applicable rule is S-T-Check, so $\emptyset \vdash e_2 : \sigma$.
 If $\emptyset\vdash e : \sigma$ then either $e \ \val$ or $e \mapsto^* e'$ and $\emptyset\vdash e' : \sigma$.
 \end{trthm}
 \begin{proof}
-Follows directly from progress and preservation.
+Follows from applying progress and preservation transitively over the multistep judgement.
 \end{proof}
 
 
@@ -991,8 +995,7 @@ Follows directly from progress and preservation.
   If  $\emptyset \vdash e : \stringin{r}$ and $e \mapsto^* \rstr{s}$ then $s \in \lang{r}$.
 \end{thm}
 \begin{proof}
-By type sfaetly, $\emptyset \vdash \rstr{s} : \stringin{r}$.
-Therefore, $s \in \lang{r}$.
+By type safety, $\emptyset \vdash \rstr{s} : \stringin{r}$. By canonical forms, $s \in \lang{r}$.
 \end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1000,136 +1003,113 @@ Therefore, $s \in \lang{r}$.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % LAMBDAP SECTION
 
-\section{Proofs of Lemmas and Theorems About $\lambdap$}
+\section{$\lambdap$}
+We will define a translation to a language with only standard strings and regular expressions. The syntax of $\lambdap$ is shown in Figure \ref{fig:lcsSyntax}.
 
-This section follows the same structure as the safety proof for $\lambdas$ --
-we prove type safety for a small-step semantics, prove a semantic correspondence,
-and then transfer the safety result to the big-step semantics in the paper.
 
-\begin{lem}[Canonical Forms for Target Language]
-~
+\subsection{Static Semantics}
+The static semantics of $\lambdap$ is shown in Figure \ref{fig:slambdap}. The typing context of $\lambdap$ obeys the standard structural properties of weakening, exchange and contraction.
+
+\subsection{Dynamic Semantics}
+The dynamic semantics of $\lambdap$ is shown in Figure \ref{fig:sdlambdap}.
+
+\subsubsection{Canonical Forms}
+\begin{lem}[Canonical Forms]
+If $\emptyset \vdash \dot{v} : \tau$ then:
 \begin{itemize}
-\item 
-If $\emptyset \vdash \iota : \regex$ then $\iota \mapsto^* \rx{r}$ such that $r$ is a well-formed regular expression. 
-\item 
-If $\emptyset \vdash \iota : \str$ then $\iota \mapsto^* \tstr{s}$.
+\item If $\tau=\tau_1 \rightarrow \tau_2$ then $\dot{v}=\lambda x : \tau.\iota$.
+\item If $\tau = \regex$ then $\dot{v}=\rx{r}$.
+\item If $\tau = \str$ then $\dot{v}=\tstr{s}$.
 \end{itemize}
 \end{lem}
+\begin{proof} By inspection of the static and dynamic semantics. \end{proof}
 
-
+\subsubsection{Type Safety}
 \begin{thm}[Progress]
-If $\emptyset\vdash \iota : \tau$ either $\iota = \dot{v}$ or $\iota \mapsto \iota'$ for some $\iota'$.
+If $\emptyset\vdash \iota : \tau$ either $\iota = \dot{v}$ or $\iota \mapsto \iota'$.
 \end{thm}
 \begin{proof}
 The proof proceeds by induction on the typing assumption. 
-Consider only the string and regex (non-$\lambda$) fragments of $\lambdap$.
 \begin{itemize}[label=$ $,itemsep=1ex]
+\item \textbf{$\lambda$ fragment}. Cases P-T-Var, P-T-Abs, and P-T-App are exactly as in a proof of progress for
+the simply typed lambda calculus.
+
+\item \textbf{P-T-String}. In this case, $\iota = \tstr{s}$, which is a value.
+
+\item \textbf{P-T-Regex}. In this case, $\iota = \rx{r}$, which is a value.
+
+\item \textbf{P-T-Concat}. In this case, we have that $\emptyset \vdash \tconcat{\iota_1}{\iota_2} : \str$ and $\emptyset \vdash \iota_1 : \str$ and $\emptyset \vdash \iota_2 : \str$. By the IH, we have that either $\iota_1 \leadsto \iota_1'$ or $\iota_1 = \dot{v}_1$, and similarly $\iota_2 \leadsto \iota_2'$ or $\iota_2 = \dot{v}_2$. If $\iota_1$ steps, then we can make progress via PS-E-ConcatLeft. If $\iota_2$ steps, then we can make progress via PS-E-ConcatRight. If both are values, then by canonical forms $\iota_1 = \tstr{s_1}$ and $\iota_2 = \tstr{s_2}$ so we can make progress by PS-E-Concat.
 
 \item \textbf{P-T-Case}.
-Suppose $\emptyset \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3}$.
-By inversion, $\iota_1 : \str$ and so either $\iota_1 \mapsto \iota_1'$
-or by canonical forms, $\iota_1 = \tstr{s_1}$.
-Similarly, $\iota_2 \mapsto \iota_2'$ or else $\iota_2 = \tstr{s_2}$.
-In the former cases, progress occurs via the compatibility rules.
-in the case where both are string values, progress occurs via the case concatenation rule.
+Suppose $\emptyset \vdash \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau$ and $\emptyset \vdash \iota_1 : \str$. By induction and canonical forms, either $\iota_1 \mapsto \iota_1'$
+or $\iota_1 = \tstr{s_1}$. 
+If $\iota_1$ steps then we can make progress by PS-E-CaseLeft. If it is a value, then by the definition of strings, either $s_1 = \epsilon$ or $s_1 = as$ for some string $s$. If $s_1$ is empty, then we can make progress by PS-E-Case-Epsilon. Otherwise, we can make progress by PS-E-Case-Cons.
 
 \item \textbf{P-T-Replace}.
-Suppose $\emptyset \vdash \preplace{\iota_1}{\iota_2}{\iota_3}$.
-By inversion, $\iota_1 : \regex$ and so by canonical forms $\iota_1 = \rx{r}$.
-By inversion, $\iota_2 : \str$ and so by induction either $\iota_2 \mapsto \iota_2'$
-or else $\iota_2 = \tstr{s_2}$ for some string $s_2$.
-Similarly, either $\iota_3$ steps or else $\iota_3 = \tstr{s_3}$.
-In case any steps occur, progress occurs. In the remaining case,
-PP-E-Replace applies and so progress occurs.
+Suppose $\emptyset \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str$ and $\emptyset \vdash \iota_1 : \regex$ and $\emptyset \vdash \iota_2 : \str$ and $\emptyset \vdash \iota_3 : \str$. By induction and canonical forms, either $\iota_1 \mapsto \iota_1'$ or $\iota_1 = \rx{r}$. Similarly, $\iota_2 \mapsto \iota_2'$ or $\iota_2 = \tstr{s_2}$, and $\iota_3 \mapsto \iota_3'$ or $\iota_3 = \tstr{s_3}$. If $\iota_1$ steps, then we can make progress by PS-E-ReplaceLeft. If $\iota_2$ steps then we can make progress by PS-E-ReplaceMid. If $\iota_3$ steps, then we can make progress by PS-E-ReplaceRight. If all three are values, we can make progress by PS-E-Replace.
 
 \item \textbf{P-T-Check}.
-Finally, suppose $\emptyset \vdash \check{\iota_x}{\iota_1}{\iota_2}{\iota_3}$.
-In case any of these step, then progress occurs.
-In the remaining cases, applications of inversion and canonical forms for each
-$\iota_x$ and $\iota_1$ implies that the term at hand equals $\check{\rx{r}}{\tstr{s}}{\iota_2}{\iota_3}$,
-which evaluates to either $\iota_2$ or $\iota_3$.
-
+Suppose $\emptyset \vdash \tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4}$ and $\emptyset \vdash \iota_1 : \regex$ and $\emptyset \vdash \iota_2 : \str$. By induction and canonical forms, either $\iota_1 \mapsto \iota_1'$ or $\iota_1 = \rx{r}$. Similarly, $\iota_2 \mapsto \iota_2'$ or $\iota_2 = \tstr{s}$. If $\iota_1$ steps, then we can make progress by PS-E-CheckLeft. If $\iota_2$ steps, then we can make progress by PS-E-CheckRight. If both are values, then by Assumption \ref{thm:regexprops}.2, either $s \in \lang{r}$ or $s\notin\lang{r}$. In the former case, we can make progress by PS-E-Check-OK. In the latter case, we can make progress by PS-E-Check-NotOK.
 \end{itemize}
 \end{proof}
 
-\begin{trlem}[Substitution Lemma] \label{lem:psubst}
-If $\theta, x : \tau \vdash \iota : \tau'$ and $\theta \vdash \iota' : \tau$
-then $\theta \vdash [\iota' / x]\iota : \tau'$.
-\end{trlem}
+\begin{ass}[Substitution] \label{lem:psubst}
+If $\Theta, x : \tau' \vdash \iota : \tau$ and $\Theta \vdash \iota' : \tau'$
+then $\Theta \vdash [\iota' / x]\iota : \tau$.
+\end{ass}
 
 \begin{thm}[Preservation]
 If $\emptyset \vdash \iota : \tau$ and $\iota \mapsto \iota'$ then $\emptyset \vdash \iota' : \tau$.
 \end{thm}
 \begin{proof}
 
-The proof proceeds by induction of the derivations of $\emptyset \vdash \iota : \tau$
-and $\iota \mapsto \iota'$.
-
-We treat only the non-lambda fragment.
+The proof proceeds by rule induction on $\iota \mapsto \iota'$ and $\emptyset \vdash \iota : \tau$.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
+\item \textbf{$\lambda$ fragment}. Cases PS-E-AppLeft, PS-E-AppRight, and PS-E-AppAbs are exactly as in a proof of type safety for
+the simply typed lambda calculus.
 
 \item \textbf{Case PS-E-ConcatLeft}.
-Suppose:
-\begin{align*}
-  \iota &= \rconcat{\iota_1}{\iota_2} \mapsto \rconcat{\iota_1'}{\iota_2} \\
-  \emptyset &\vdash \iota : \str \\
-  \iota &\mapsto \iota' 
-\end{align*}
-
-The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+Suppose $\tconcat{\iota_1}{\iota_2} \mapsto \tconcat{\iota_1'}{\iota_2}$ and $\iota_1 \mapsto \iota_1'$. The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
 and $\emptyset \vdash \iota_2 : \str$. 
 By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \rconcat{\iota_1'}{\iota_2} : \str$.
+so $\emptyset \vdash \rconcat{\iota_1'}{\iota_2} : \str$ by P-T-Concat.
 
-\item \textbf{Case PS-E-ConcatRight}
-\begin{align*}
-  e &= \rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'} \\
-  \emptyset &\vdash e : \str \\
-  \iota &\mapsto \iota' 
-\end{align*}
-
-The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+\item \textbf{Case PS-E-ConcatRight}. Suppose $\tconcat{\tstr{s_1}}{\iota_2} \mapsto \tconcat{\tstr{s_1}}{\iota_2'}$ and $\iota_2 \mapsto \iota_2'$. The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \tstr{s_1} : \str$
 and $\emptyset \vdash \iota_2 : \str$. 
-By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \rconcat{\iota_1}{\iota_2'} : \str$.
+By induction, $\emptyset \vdash \iota_2' : \str$,
+so $\emptyset \vdash \rconcat{\tstr{s_1}}{\iota_2'} : \str$ by P-T-Concat.
 
-\item \textbf{Case PS-E-Concat}
-Let $e = \rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$. 
-The only rule that applies is P-T-Concat, so $\emptyset \vdash e : \str$.
-By canonical forms, $\emptyset \rstr{s_1s_2} : \str$.
+\item \textbf{Case PS-E-Concat}. Suppose $\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{s_1s_2}$. By P-T-String, $\emptyset \vdash \tstr{s_1s_2} : \str$.
 
-\item \textbf{Case PS-E-CaseLeft}
-Let $\iota = \strcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1'}{\iota_2}{x,y.\iota_3}$
-when $\iota_1 \mapsto \iota_1'$.
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CaseLeft}. Suppose $\pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1'}{\iota_2}{x,y.\iota_3}$ and $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Case, so:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \str  \\
   \emptyset &\vdash \iota_2 : \tau \\
   \emptyset, x : \str, y : \str &\vdash \iota_3 : \tau 
 \end{align*}
 By induction, $\emptyset \vdash \iota_1' : \str$.
-By P-T-Case, $\emptyset \vdash \strcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau$.
+By P-T-Case, $\emptyset \vdash \pstrcase{\iota_1'}{\iota_2}{x,y.\iota_3} : \tau$.
 
-\item \textbf{Case PS-E-CaseEpsilon}
-Let $\iota = \strcase{\rstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2$.
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where
-$\iota_2 : \tau$.
+\item \textbf{Case PS-E-CaseEpsilon}. 
+Suppose $\pstrcase{\tstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2$.
+The only rule that applies is P-T-Case, so $\emptyset \vdash \iota_2 : \tau$.
 
-\item \textbf{Case PS-E-Case}
-Let $\iota = \strcase{\rstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\rstr{a}, \rstr{s} / x,y] \iota_3$
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-Case-Cons}.
+Suppose $\pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\tstr{a}, \tstr{s} / x,y] \iota_3$
+The only rule that applies is P-T-Case, so:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \str \\
   \emptyset &\vdash \iota_2 : \tau \\
   \emptyset, x : \str, y : \str &\vdash \iota_3 : \tau
 \end{align*}
-The result follows by the substitution lemma.
+By P-T-String, we have that $\emptyset \vdash \tstr{a} : \str$ and $\emptyset \vdash \tstr{s} : \str$. By weakening and Substitution applied twice, we have that $\emptyset \vdash [\tstr{a}, \tstr{s} / x,y] \iota_3 : \tau$.
 
-\item \textbf{Case PS-E-ReplaceLeft}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1'}{\iota_2}{\iota_3}$
-where $\iota_1 \mapsto \iota_1'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceLeft}. 
+Suppose $\preplace{\iota_1}{\iota_2}{\iota_3} \mapsto \preplace{\iota_1'}{\iota_2}{\iota_3}$
+and $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \regex \\
   \emptyset &\vdash \iota_2 : \str \\
@@ -1137,75 +1117,69 @@ The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ wh
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_1' : \regex$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1'}{\iota_2}{\iota_3}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\iota_1'}{\iota_2}{\iota_3}$.
 
-\item \textbf{Case PS-E-ReplaceMid}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1}{\iota_2'}{\iota_3}$
-where $\iota_2 \mapsto \iota_2'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceMid}. 
+Suppose $\preplace{\rx{r}}{\iota_2}{\iota_3} \mapsto \preplace{\rx{r}}{\iota_2'}{\iota_3}$
+and $\iota_2 \mapsto \iota_2'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
-  \emptyset &\vdash \iota_1 : \regex \\
+  \emptyset &\vdash \rx{r} : \regex \\
   \emptyset &\vdash \iota_2 : \str \\
   \emptyset &\vdash \iota_3 : \str
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_2' : \str$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1}{\iota_2'}{\iota_3}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\rx{r}}{\iota_2'}{\iota_3}$.
 
-\item \textbf{Case PS-E-ReplaceRight}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1}{\iota_2}{\iota_3'}$
-where $\iota_3 \mapsto \iota_3'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceRight}. 
+Suppose $\preplace{\rx{r}}{\tstr{s}}{\iota_3} \mapsto \preplace{\rx{r}}{\tstr{s}}{\iota_3'}$
+and $\iota_3 \mapsto \iota_3'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
-  \emptyset &\vdash \iota_1 : \regex \\
-  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \rx{r} : \regex \\
+  \emptyset &\vdash \tstr{s} : \str \\
   \emptyset &\vdash \iota_3 : \str
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_3' : \str$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1}{\iota_2}{\iota_3'}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\rx{r}}{\tstr{s}}{\iota_3'}$.
 
-\item \textbf{Case PS-E-Replace}
-Let $\iota = \rreplace{\rx{r}}{\rstr{s_2}}{\rstr{s_3}} \mapsto \rstr{\lreplace{r}{s_2}{s_3}}$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$.
-The result follows by canonical forms.
+\item \textbf{Case PS-E-Replace}. 
+Suppose $\preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}}$. The only applicalbe rule is P-T-Replace, so $\tau=\str$. By P-T-String, $\emptyset \vdash \tstr{\lsubst{r}{s_2}{s_3}} : \str$.
 
-\item \textbf{Case PS-E-CheckLeft}
-Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3}$
-where $\iota_x \mapsto \iota_x'$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CheckLeft}. 
+Suppose $\tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4}$ and $\iota_1\mapsto\iota_1'$.
+The only applicable typing rule is P-T-Check, so:
 \begin{align*}
-  \emptyset &\vdash \iota_x : \regex \\
-  \emptyset &\vdash \iota_1 : \str \\
-  \emptyset &\vdash \iota_2 : \tau \\
-  \emptyset &\vdash \iota_3 : \tau
+  \emptyset &\vdash \iota_1 : \regex \\
+  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \iota_3 : \tau \\
+  \emptyset &\vdash \iota_4 : \tau
 \end{align*}
-By induction, $\iota_x : \regex$. Therefore,
-$\emptyset \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3} : \tau$.
+By induction, $\emptyset \vdash \iota_1' : \regex$. Therefore, by P-T-Check 
+$\emptyset \vdash \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4} : \tau$.
 
 
-\item \textbf{Case PS-E-CheckRight}
-Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3}$
-where $\iota_1 \mapsto \iota_1'$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CheckRight}. 
+Suppose $\tcheck{\rx{r}}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4}$ and $\iota_2\mapsto\iota_2'$.
+The only applicable typing rule is P-T-Check, so:
 \begin{align*}
-  \emptyset &\vdash \iota_x : \regex \\
-  \emptyset &\vdash \iota_1 : \str \\
-  \emptyset &\vdash \iota_2 : \tau \\
-  \emptyset &\vdash \iota_3 : \tau
+  \emptyset &\vdash \rx{r} : \regex \\
+  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \iota_3 : \tau \\
+  \emptyset &\vdash \iota_4 : \tau
 \end{align*}
-By induction, $\iota_1' : \str$. Therefore,
-$\emptyset \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3} : \tau$.
+By induction, $\emptyset \vdash \iota_2' : \str$. Therefore, by P-T-Check 
+$\emptyset \vdash \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4} : \tau$.
 
-\item \textbf{Case PS-E-Check-Ok} 
-Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_2$ and $s \in \lang{r}$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
-$\emptyset \vdash \iota_2 : \tau$.
+\item \textbf{Case PS-E-Check-Ok}.
+Suppose $\tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_3$. 
+The only applicable typing rule is P-T-Check, so $\emptyset \vdash \iota_3 : \tau$.
 
-\item \textbf{Case PS-E-Check-NotOk} 
-Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_3$ where $s \not \in \lang{r}$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
-$\emptyset \vdash \iota_3 : \tau$.
+\item \textbf{Case PS-E-Check-Ok}.
+Suppose $\tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_4$. 
+The only applicable typing rule is P-T-Check, so $\emptyset \vdash \iota_4 : \tau$.
 
 \end{itemize}
 
@@ -1215,7 +1189,7 @@ $\emptyset \vdash \iota_3 : \tau$.
 
 
 
-\section{Proofs and Lemmas and Theorems About Translation}
+\section{Translation from $\lambdas$ to $\lambdap$}
 
 \begin{thm}[Type-Preserving Compilation]\label{thm:tpc}
 If $\sctx \vdash e: \sigma$ then 
@@ -1455,9 +1429,9 @@ The result follows by induction.
 \begin{figure}[b]
 \small
   \begin{grammar}
-<$r$> ::= $\epsilon$ | $.$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
+<$r$> ::= $\epsilon$ | $a$ | $r \cdot r$ | $r + r$ | $r*$ \hfill $a \in \Sigma$
 
-\caption{Regular expressions over the alphabet $\Sigma$.}
+\caption[Syntax of Regular Expressions]{Syntax of regular expressions over the alphabet $\Sigma$.}
 \label{fig:regex}
 \end{grammar}
 \end{figure}
@@ -1472,7 +1446,7 @@ The result follows by induction.
       $\sisubst{r}{e}{e}$ | $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
 <$v$> ::= $\lambda x . e$ | $\strin{s}$ \hfill source values 
-\caption{Syntax of $\lambda_{RS}$.}
+\caption{Syntax of $\lambda_{RS}$}
 \label{fig:glambdas}
 \end{grammar}
 \end{figure}
@@ -1493,7 +1467,7 @@ $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
   <$\dot{v}$> ::= $\lambda x . \iota$ | $\tstr{s}$ | $\rx{r}$ \hfill target values
 
 \end{grammar}
-\caption{Syntax for the target language, $\lambdap$, containing strings and statically constructed regular expressions.}
+\caption{Syntax of $\lambdap$}
 \label{fig:lcsSyntax}
 \end{figure}
 
@@ -1545,7 +1519,7 @@ $\fbox{\inferrule{}{\sctx \vdash e : \sigma}}$
 {\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma}
 \end{mathpar}
 
-\caption{Typing rules for $\lambdas$. 
+\caption[Static Semantics of $\lambdas$]{Typing rules for $\lambdas$. 
 The typing context $\sctx$ is standard.}
 \label{fig:slambdas}
 \end{figure}
@@ -1617,49 +1591,61 @@ The typing context $\sctx$ is standard.}
 %\end{figure}
 
 
+% \begin{figure}
+%   \small
+% $\fbox{\inferrule{}{e \mapsto e}}$
+
+% \begin{mathpar}
+
+% \inferrule[SS-E-AppLeft]
+% {e_1 \mapsto e_1'}
+% {e_1(e_2) \mapsto e_1'(e_2)}
+
+% \inferrule[SS-E-AppRight]
+% {e_2 \mapsto e_2'}
+% {v_1(e_2) \mapsto v_1(e_2')}
+
+% \inferrule[SS-E-AppAbs]
+% { \ }
+% {(\lambda x : \tau . e) v_2 \mapsto [v_2 / x]e}
+
+% \end{mathpar}
+
+% \fbox{\inferrule{}{e \mapsto^* e}}
+
+% \begin{mathpar}
+
+% \inferrule[RT-Refl]
+% { \ }
+% {e \mapsto^* e}
+
+% \inferrule[RT-Trans]
+% { e \mapsto^* e' \\ e' \mapsto e'' }
+% { e \mapsto^* e'' }
+
+% \end{mathpar}
+
+% \label{fig:lambda}
+% \caption[Dynamic Semantics of $\lambdas$ (1 of 2)]{Call-by-name small step semantics for $\lambdas$ and its reflexive, transitive closure.} \label{fig:lambda}
+% \end{figure}
+
 \begin{figure}
   \small
-$\fbox{\inferrule{}{e \mapsto e}}$
-
+$\fbox{\inferrule{}{e \mapsto e}}$ 
+%$\fbox{\inferrule{}{e \mapsto e}} \  \fbox{ \inferrule{}{v \ \val}}$
 \begin{mathpar}
-
 \inferrule[SS-E-AppLeft]
 {e_1 \mapsto e_1'}
 {e_1(e_2) \mapsto e_1'(e_2)}
 
 \inferrule[SS-E-AppRight]
 {e_2 \mapsto e_2'}
-{v_1 \mapsto v_1}
+{v_1(e_2) \mapsto v_1(e_2')}
 
 \inferrule[SS-E-AppAbs]
 { \ }
-{(\lambda x : \tau_{11} . t_{12}) v_2 \mapsto [v_2 / x]t_{12}}
+{(\lambda x : \sigma . e) v_2 \mapsto [v_2 / x]e}
 
-\end{mathpar}
-
-\fbox{\inferrule{}{e \mapsto^* e}}
-
-\begin{mathpar}
-
-\inferrule[RT-Refl]
-{ \ }
-{e \mapsto^* e}
-
-\inferrule[RT-Trans]
-{ e \mapsto^* e' \\ e' \mapsto e'' }
-{ e \mapsto^* e'' }
-
-\end{mathpar}
-
-\label{fig:lambda}
-\caption{Call-by-name small step Semantics for $\lambda$ and its reflexive, transitive closure.} \label{fig:lambda}
-\end{figure}
-
-\begin{figure}
-  \small
-$\fbox{\inferrule{}{e \mapsto e}}$ (Contiues figure 6)
-%$\fbox{\inferrule{}{e \mapsto e}} \  \fbox{ \inferrule{}{v \ \val}}$
-\begin{mathpar}
 \inferrule[SS-E-Concat-Left]
 {e_1 \mapsto e_1'}
 {\rsconcat{e_1}{e_2} \mapsto \rsconcat{e_1'}{e_2}}
@@ -1730,7 +1716,7 @@ $\fbox{\inferrule{}{e \mapsto e}}$ (Contiues figure 6)
 {\rcheck{r}{\strin{s}}{x.e_1}{e_2} \mapsto e_2} 
 
 \end{mathpar}
-\caption{Small step semantics for $\lambdas$. Extends \ref{fig:lambda}.}
+\caption[Dynamic Semantics of $\lambdas$]{Small step semantics for $\lambdas$.}
 \label{fig:sdlambdas}
 \end{figure}
 
@@ -1779,7 +1765,7 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \iota_x : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx \vdash \iota_3 : \tau}
 {\tctx \vdash \tcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} : \tau}
 \end{mathpar}
-\caption{Typing rules for $\lambdap$.
+\caption[Static Semantics of $\lambdap$]{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
 \label{fig:slambdap}
 \end{figure}
@@ -1857,13 +1843,25 @@ The typing context $\tctx$ is standard.}
 $\fbox{\inferrule{}{\iota \mapsto \iota}}$
 
 \begin{mathpar}
+\inferrule[PS-E-AppLeft]
+{\iota_1 \mapsto \iota_1'}
+{\iota_1(\iota_2) \mapsto \iota_1'(\iota_2)}
+
+\inferrule[PS-E-AppRight]
+{\iota_2 \mapsto \iota_2'}
+{\dot{v}_1(\iota_2) \mapsto \dot{v}_1(\iota_2')}
+
+\inferrule[PS-E-AppAbs]
+{ \ }
+{(\lambda x : \tau . \iota) \dot{v}_2 \mapsto [\dot{v}_2 / x]\iota}
+
 \inferrule[PS-E-ConcatLeft]
 {\iota_1 \mapsto \iota_1'}
 {\tconcat{\iota_1}{\iota_2} \mapsto \tconcat{\iota_1'}{\iota_2}}
 
 \inferrule[PS-E-ConcatRight]
 {\iota_2 \mapsto \iota_2'}
-{\tconcat{\iota_1}{\iota_2} \mapsto \tconcat{\iota_1}{\iota_2'}}
+{\tconcat{\tstr{s_1}}{\iota_2} \mapsto \tconcat{\tstr{s_1}}{\iota_2'}}
 
 \inferrule[PS-E-Concat]
 {\ }
@@ -1876,11 +1874,11 @@ $\fbox{\inferrule{}{\iota \mapsto \iota}}$
 
 \inferrule[PS-E-Case-Epsilon]
 {  }
-{ \pstrcase{\epsilon}{\iota_2}{x,y.\iota_3} \mapsto \iota_2}
+{ \pstrcase{\tstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2}
 
-\inferrule[PS-E-Case]
+\inferrule[PS-E-Case-Cons]
 { }
-{ \pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto \tstr{as}}
+{ \pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\tstr{a}, \tstr{s}/x, y]\iota_3}
 
 
 \inferrule[PS-E-ReplaceLeft]
@@ -1900,23 +1898,22 @@ $\fbox{\inferrule{}{\iota \mapsto \iota}}$
 { \preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}} }
 
 \inferrule[PS-E-CheckLeft]
-{ \iota_x \mapsto \iota_x' }
-{ \rcheck{\iota_x}{\iota}{\iota_1}{\iota_2} \mapsto \rcheck{\iota_x}{\iota}{\iota_1}{\iota_2} }
+{ \iota_1 \mapsto \iota_1' }
+{ \tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4} }
 
 \inferrule[PS-E-CheckRight]
-{ \iota \mapsto \iota' }
-{ \rcheck{\rx{r}}{\iota}{\iota_1}{\iota_2} \mapsto \rcheck{\rx{r}}{\iota'}{\iota_1}{\iota_2} }
+{ \iota_2 \mapsto \iota_2' }
+{ \tcheck{\rx{r}}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4} }
 
 \inferrule[PS-E-Check-OK]
 { s \in \lang{r} }
-{ \rcheck{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_1}
+{ \tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_3}
 
 \inferrule[PS-E-Check-NotOK]
 { s \not\in \lang{r} }
-{ \rcheck{\rx{r}}{\tstr{s}}{\iota_1}{\iota_2} \mapsto \iota_2}
-
+{ \tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_4}
 \end{mathpar}
-\caption{Small step semantics for $\lambdap$ (extends L-E rules)}.
+\caption[Dynamic Semantics of $\lambdap$]{Small step semantics for $\lambdap$}.
 \label{fig:sdlambdap}
 \end{figure}
 
@@ -1990,7 +1987,7 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
   \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
 } 
 \end{mathpar}
-\caption{Translation from source terms ($e$) to target terms ($\iota$).}
+\caption{Translation from $\lambdas$ to $\lambdap$}
 \label{fig:tr}
 \end{figure}
 \end{document}
