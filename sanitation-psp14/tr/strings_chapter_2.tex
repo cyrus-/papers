@@ -1217,6 +1217,88 @@ $\emptyset \vdash \iota_3 : \tau$.
 
 \section{Proofs and Lemmas and Theorems About Translation}
 
+\begin{thm}[Type-Preserving Compilation]\label{thm:tpc}
+If $\sctx \vdash e: \sigma$ then 
+$\trden{\sctx} \vdash \iota : \trden{\sigma}$
+\end{thm}
+\begin{proof}
+By induction on the typing relation.
+
+\begin{itemize}[label=$ $,itemsep=1ex]
+\item \textbf{Case S-T-Abs}
+Suppose $\sctx \vdash \lambda x . e' : \sigma_1 \rightarrow \sigma_2$.
+By induction, $\trden{\sctx x : \sigma_1} \vdash \trden{e'} : \trden{\sigma_1}$.
+By P-T-Abs, $\trden{\sctx} \vdash \trden{\lambda x . e'} : \trden{\sigma_1 \rightarrow \sigma_2}$.
+
+\item \textbf{Case S-T-App}
+Suppose $\sctx \vdash e_1(e_2) : \sigma$.
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\sigma_2 \rightarrow \sigma}$ and
+$\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma_2}$.
+By the definition of type translation, $\trden{\sigma_2 \rightarrow \sigma} = \trden{\sigma_2} \rightarrow \trden{\sigma}$.
+Therefore, $\trden{\sctx} \vdash \trden{e_1(e_2)} : \trden{\sigma}$.
+
+\item \textbf{Case S-T-StringIn-I}.
+Suppose $\sctx \vdash \rstr{s} : \stringin{r}$ where $s \in \lang{r}$.
+By the definition of term translation, $\trden{\rstr{s}} = \tstr{s}$ and $\trden{\stringin{r}} = \str$.
+By P-T-String, $\tctx \vdash \tstr{s} : \str$.
+
+\item \textbf{Case S-T-Concat}.
+Suppose $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}$.
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\stringin{r_1}}$ and $\trden{\sctx} \vdash \trden{e_2} : \trden{\stringin{r_2}}$.
+The result follows by P-T-Concat and the definition of term and type translation.
+
+\item \textbf{Case S-T-Case}.
+Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\stringin{r}}$,
+$\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma}$, and
+$\trden{\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}}} \vdash \trden{e_3} : \trden{\sigma}$.
+By the definition of context and type translation, 
+$\trden{\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}}} = \trden{\sctx}, x : \str, y : \str$.
+The result follows by P-T-Case.
+
+\item \textbf{Case S-T-Replace}.
+Suppoes $\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{r_1}{r_2}}$.
+Note that $\trden{ \rreplace{r}{e_1}{e_2} } = \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}}$.
+Let $\tctx = \trden{\sctx}$.
+By induction, 
+  $\tctx \vdash \trden{e_1} : \trden{\stringin{r_1}}$ and
+  $\tctx \vdash \trden{e_2} : \trden{\stringin{r_2}}$
+from which it follows by the definition of type translation that
+$\tctx \vdash \trden{e_1} : \str$ and $\tctx \vdash \trden{e_2} : \str$.
+So P-T-Replace, $\tctx \vdash \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} : \str$
+
+\item \textbf{Case S-T-SafeCoerce}.
+Suppose $\sctx \vdash \rcoerce{r}{e} : \stringin{r}$ where $\sctx \vdash e : \stringin{r'}$ and $\lang{r'} \subseteq \lang{r}$.
+Let $\trden{\sctx} = \tctx$.
+Note that $\trden{ \rcoerce{r}{e} } = \trden{e}$.
+By induction, $\tctx \vdash \trden{e} : \trden{\stringin{r'}}$.
+
+\item \textbf{Case S-T-Check}.
+Suppose $\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma$ where
+$\sctx \vdash e_0 : \stringin{r}$,
+$\sctx, x : \stringin{r} \vdash e_1 : \sigma$, and
+$\sctx \vdash e_2 : \sigma$.
+
+Note that $\trden{\ \rcheck{r}{e_0}{x.e_1}{e_2} } = \tcheck{\rx{r}{\trden{e_0}}{\lambda x.\trden{e_1}(\trden{e_0})}{\trden{e_2}}}$.
+Let $\trden{\sctx} = \tctx$.
+Note that $\trden{r} = \rx{r}$ and by canonical forms $\tctx \vdash \rx{r} : \regex$.
+By induction, $\tctx \vdash \trden{e_0} : \trden{\stringin{r}}$ and so $\tctx \vdash \trden{e_0} : \str$.
+By context translation, $\trden{\sctx, x : \stringin{r}} = \tctx, x : \str$ and so by induction $\tctx, x : \str \vdash \trden{e_1} : \trden{\sigma}$.
+Therefore, $\tctx \vdash \lambda x.\trden{e_1}(\trden{e_0}) : \trden{\sigma}$.
+By induction, $\tctx \vdash \trden{e_0} : \trden{\sigma}$.
+From these three facts, it follows that $\tctx \vdash \tcheck{\rx{r}{\trden{e_0}}{\lambda x.\trden{e_1}(\trden{e_0})}{\trden{e_2}}} : \trden{\sigma}$.
+\end{itemize}
+
+
+
+\end{proof}
+
+\begin{thm}[Translation Correctness]
+If $\sctx \vdash e : \sigma$ and $e \mapsto e'$ then $\trden{e} \mapsto^* \trden{e'}$.
+\end{thm}
+\begin{proof}
+By induction on the typing and evaluation derivations.
+\end{proof}
 
 \begin{thm}[Translation Correctness]\label{thm:trcorrect}
   If $\sctx \vdash e : \sigma$ then 
