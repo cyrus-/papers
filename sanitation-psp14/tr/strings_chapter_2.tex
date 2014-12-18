@@ -104,11 +104,12 @@
 % target language terms.
 \newcommand{\tsubst}[3]{{\sf replace}(#1;#2;#3)} \newcommand{\metareplace}[3]{{\sf replace}(#1;#2;#3)} % TODO-nrf rename the commands. Lots of legacy naming around these parts...
 
-\newcommand{\tcheck}[4]{{\sf check}(#1; #2; #3; #4)}
+\newcommand{\tcheck}[4]{{\sf pcheck}(#1; #2; #3; #4)}
 \renewcommand{\tstr}[1]{{{\sf str}[#1]}}
-\newcommand{\preplace}[3]{{\sf replace}(#1;#2;#3)}
-\newcommand{\treplace}[3]{{\sf replace}(#1;#2;#3)}
-\newcommand{\tconcat}[2]{{\sf concat}(#1;#2)} \newcommand{\concat}[2]{{\sf concat}(#1;#2)} % lots of legacy naming around these parts...
+\newcommand{\preplace}[3]{{\sf preplace}(#1;#2;#3)}
+\newcommand{\treplace}[3]{{\sf preplace}(#1;#2;#3)}
+\newcommand{\pconcat}[2]{{\sf pconcat}(#1;#2)} 
+\newcommand{\tconcat}[2]{{\sf pconcat}(#1;#2)} % lots of legacy naming around these parts...
 
 \newcommand{\regext}[1]{ {\sf rx}[#1] } % TODO-nrf remove
 \newcommand{\rx}[1]{ {\sf rx}[#1] }
@@ -127,7 +128,7 @@
 
 
 \newcommand{\strcase}[3]{ {\sf rstrcase}(#1; #2; #3)}
-\newcommand{\pstrcase}[3]{ {\sf strcase}(#1; #2; #3)}
+\newcommand{\pstrcase}[3]{ {\sf pstrcase}(#1; #2; #3)}
 
 \newcommand{\lhead}[1]{ {\sf lhead}(#1) }
 \newcommand{\ltail}[1]{ {\sf ltail}(#1) }
@@ -1191,76 +1192,105 @@ The only applicable typing rule is P-T-Check, so $\emptyset \vdash \iota_4 : \ta
 
 \section{Translation from $\lambdas$ to $\lambdap$}
 
-\begin{thm}[Type-Preserving Compilation]\label{thm:tpc}
+\begin{thm}[Type-Preserving Translation]\label{thm:tpc}
 If $\sctx \vdash e: \sigma$ then 
-$\trden{\sctx} \vdash \iota : \trden{\sigma}$
+$\trden{\sctx} \vdash \trden{\iota} : \trden{\sigma}$
 \end{thm}
 \begin{proof}
 By induction on the typing relation.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
-\item \textbf{Case S-T-Abs}
-Suppose $\sctx \vdash \lambda x . e' : \sigma_1 \rightarrow \sigma_2$.
-By induction, $\trden{\sctx x : \sigma_1} \vdash \trden{e'} : \trden{\sigma_1}$.
-By P-T-Abs, $\trden{\sctx} \vdash \trden{\lambda x . e'} : \trden{\sigma_1 \rightarrow \sigma_2}$.
+\item \textbf{Case S-T-Var}. Suppose $\sctx \vdash x : \sigma$ and $x : \sigma \in \sctx$. We have by definition that $x : \trden{\sigma} \in \trden{\sctx}$ and $\trden{x} = x$. By P-T-Var, we have that $\trden{\sctx} \vdash x : \trden{\sigma}$.
 
-\item \textbf{Case S-T-App}
-Suppose $\sctx \vdash e_1(e_2) : \sigma$.
-By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\sigma_2 \rightarrow \sigma}$ and
-$\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma_2}$.
-By the definition of type translation, $\trden{\sigma_2 \rightarrow \sigma} = \trden{\sigma_2} \rightarrow \trden{\sigma}$.
-Therefore, $\trden{\sctx} \vdash \trden{e_1(e_2)} : \trden{\sigma}$.
+\item \textbf{Case S-T-Abs}. 
+Suppose $\sctx \vdash \lambda x : \sigma_1. e' : \sigma_1 \rightarrow \sigma_2$ and $\Psi, x : \sigma_1 \vdash e' : \sigma_2$. We have by definition:
+\begin{align*}
+\trden{\lambda x : \sigma_1.e'} &=\lambda x : \trden{\sigma_1}.\trden{e'}\\
+\trden{\sigma_1 \rightarrow \sigma_2} &= \trden{\sigma_1} \rightarrow \trden{\sigma_2}\\
+\trden{\Psi, x : \sigma_1} &= \trden{\Psi}, x : \trden{\sigma_1}
+\end{align*}
+
+By induction, we have that $\trden{\sctx}, x : \trden{\sigma_1} \vdash \trden{e'} : \trden{\sigma_2}$.
+
+By P-T-Abs, we have that $\trden{\sctx} \vdash \lambda x : \trden{\sigma_1}. \trden{e'} : \trden{\sigma_1} \rightarrow \trden{\sigma_2}$.
+
+\item \textbf{Case S-T-App}. 
+Suppose $\sctx \vdash e_1(e_2) : \sigma$ and $\sctx \vdash e_1 : \sigma_2 \rightarrow \sigma$ and $\sctx \vdash e_2 : \sigma_2$. We have by definition:
+\begin{align*}
+\trden{e_1(e_2)} &= \trden{e_1}(\trden{e_2})\\
+\trden{\sigma_2 \rightarrow \sigma} &= \trden{\sigma_2} \rightarrow \trden{\sigma}
+\end{align*}
+
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\sigma_2} \rightarrow \trden{\sigma}$ and
+$\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma_2}$. 
+Therefore, $\trden{\sctx} \vdash \trden{e_1}(\trden{e_2}) : \trden{\sigma}$ by P-T-App.
 
 \item \textbf{Case S-T-StringIn-I}.
-Suppose $\sctx \vdash \rstr{s} : \stringin{r}$ where $s \in \lang{r}$.
-By the definition of term translation, $\trden{\rstr{s}} = \tstr{s}$ and $\trden{\stringin{r}} = \str$.
+Suppose $\sctx \vdash \rstr{s} : \stringin{r}$.
+By definition, $\trden{\rstr{s}} = \tstr{s}$ and $\trden{\stringin{r}} = \str$.
 By P-T-String, $\tctx \vdash \tstr{s} : \str$.
 
 \item \textbf{Case S-T-Concat}.
-Suppose $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}$.
-By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\stringin{r_1}}$ and $\trden{\sctx} \vdash \trden{e_2} : \trden{\stringin{r_2}}$.
-The result follows by P-T-Concat and the definition of term and type translation.
+Suppose $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1 \cdot r_2}$ and $\sctx \vdash e_1 : \stringin{r_1}$ and $\sctx \vdash e_2 : \stringin{r_2}$. We have by definition:
+\begin{align*}
+\trden{\rconcat{e_1}{e_2}} &= \tconcat{\trden{e_1}}{\trden{e_2}}\\
+\trden{\stringin{r_1}} &= \str\\
+\trden{\stringin{r_2}} &= \str\\
+\trden{\stringin{r_1 \cdot r_2}} &= \str
+\end{align*}
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \str$ and $\trden{\sctx} \vdash \trden{e_2} : \str$.
+Thus, $\trden{\sctx} \vdash \tconcat{\trden{e_1}}{\trden{e_2}} : \str$ by P-T-Concat.
 
 \item \textbf{Case S-T-Case}.
-Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
-By induction, $\trden{\sctx} \vdash \trden{e_1} : \trden{\stringin{r}}$,
+Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$ and $\sctx \vdash e_1 : \stringin{r}$ and $\sctx \vdash e_2 : \sigma$ and $\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma$. We have by definition:
+\begin{align*}
+\trden{\strcase{e_1}{e_2}{x, y.e_3}} &= \pstrcase{\trden{e_1}}{\trden{e_2}}{x, y.\trden{e_3}}\\
+\trden{\stringin{r}} &= \str\\
+\trden{\stringin{\lhead{r}}} &= \str\\
+\trden{\stringin{\ltail{r}}} &= \str\\
+\trden{\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}}} &= \trden{\sctx}, x : \str, y : \str
+\end{align*}
+
+By induction, $\trden{\sctx} \vdash \trden{e_1} : \str$ and 
 $\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma}$, and
-$\trden{\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}}} \vdash \trden{e_3} : \trden{\sigma}$.
-By the definition of context and type translation, 
-$\trden{\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}}} = \trden{\sctx}, x : \str, y : \str$.
-The result follows by P-T-Case.
+$\trden{\sctx}, x : \str, y : \str \vdash \trden{e_3} : \trden{\sigma}$.
+By P-T-Case, we have that $\trden{\sctx} \vdash \pstrcase{\trden{e_1}}{\trden{e_2}}{x, y.\trden{e_3}} : \trden{\sigma}$.
 
 \item \textbf{Case S-T-Replace}.
-Suppoes $\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{r_1}{r_2}}$.
-Note that $\trden{ \rreplace{r}{e_1}{e_2} } = \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}}$.
-Let $\tctx = \trden{\sctx}$.
-By induction, 
-  $\tctx \vdash \trden{e_1} : \trden{\stringin{r_1}}$ and
-  $\tctx \vdash \trden{e_2} : \trden{\stringin{r_2}}$
-from which it follows by the definition of type translation that
-$\tctx \vdash \trden{e_1} : \str$ and $\tctx \vdash \trden{e_2} : \str$.
-So P-T-Replace, $\tctx \vdash \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} : \str$
+Suppose $\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{r_1}{r_2}}$ and $\sctx \vdash e_1 : \stringin{r_1}$ and $\sctx \vdash e_2 : \stringin{r_2}$. We have by definition:
+\begin{align*}
+\trden{\rreplace{r}{e_1}{e_2}} &= \preplace{\rx{r}}{\trden{e_1}}{\trden{e_2}}\\
+\trden{\stringin{r_1}} &= \str\\
+\trden{\stringin{r_2}} &= \str\\
+\trden{\stringin{\lreplace{r}{r_1}{r_2}}} &= \str
+\end{align*}
+
+By induction, we have that $\trden{\sctx} \vdash \trden{e_1} : \str$ and $\trden{\sctx} \vdash \trden{e_2} : \str$. By P-T-Regex, we have that $\trden{\sctx} \vdash \rx{r} : \regex$. By P-T-Replace, we have that $\trden{\sctx} \vdash \preplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} : \str$.
 
 \item \textbf{Case S-T-SafeCoerce}.
-Suppose $\sctx \vdash \rcoerce{r}{e} : \stringin{r}$ where $\sctx \vdash e : \stringin{r'}$ and $\lang{r'} \subseteq \lang{r}$.
-Let $\trden{\sctx} = \tctx$.
-Note that $\trden{ \rcoerce{r}{e} } = \trden{e}$.
-By induction, $\tctx \vdash \trden{e} : \trden{\stringin{r'}}$.
+Suppose $\sctx \vdash \rcoerce{r}{e} : \stringin{r}$ and $\sctx \vdash e : \stringin{r'}$. By definition, $\trden{ \rcoerce{r}{e} } = \trden{e}$.
+By induction, $\trden{\sctx} \vdash \trden{e} : \trden{\stringin{r'}}$.
 
 \item \textbf{Case S-T-Check}.
 Suppose $\sctx \vdash \rcheck{r}{e_0}{x.e_1}{e_2} : \sigma$ where
-$\sctx \vdash e_0 : \stringin{r}$,
-$\sctx, x : \stringin{r} \vdash e_1 : \sigma$, and
-$\sctx \vdash e_2 : \sigma$.
+$\sctx \vdash e_0 : \stringin{r'}$ and 
+$\sctx, x : \stringin{r} \vdash e_1 : \sigma$ and
+$\sctx \vdash e_2 : \sigma$. We have by definition:
+\begin{align*}
+\trden{\rcheck{r}{e_0}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e_0}}{(\lambda x : \str.\trden{e_1}) \trden{e_0}}{\trden{e_2}}\\
+\trden{\stringin{r'}} &= \str\\
+\trden{\stringin{r}} &= \str\\
+\trden{\sctx, x : \stringin{r}} &= \trden{\sctx}, x : \str
+\end{align*}
 
-Note that $\trden{\ \rcheck{r}{e_0}{x.e_1}{e_2} } = \tcheck{\rx{r}{\trden{e_0}}{\lambda x.\trden{e_1}(\trden{e_0})}{\trden{e_2}}}$.
-Let $\trden{\sctx} = \tctx$.
-Note that $\trden{r} = \rx{r}$ and by canonical forms $\tctx \vdash \rx{r} : \regex$.
-By induction, $\tctx \vdash \trden{e_0} : \trden{\stringin{r}}$ and so $\tctx \vdash \trden{e_0} : \str$.
-By context translation, $\trden{\sctx, x : \stringin{r}} = \tctx, x : \str$ and so by induction $\tctx, x : \str \vdash \trden{e_1} : \trden{\sigma}$.
-Therefore, $\tctx \vdash \lambda x.\trden{e_1}(\trden{e_0}) : \trden{\sigma}$.
-By induction, $\tctx \vdash \trden{e_0} : \trden{\sigma}$.
-From these three facts, it follows that $\tctx \vdash \tcheck{\rx{r}{\trden{e_0}}{\lambda x.\trden{e_1}(\trden{e_0})}{\trden{e_2}}} : \trden{\sigma}$.
+By induction, we have that $\trden{\sctx} \vdash \trden{e_0} : \str$ and $\trden{\sctx}, x : \str \vdash \trden{e_1} : \trden{\sigma}$ and $\trden{\sctx} \vdash \trden{e_2} : \trden{\sigma}$.
+
+By P-T-Regex, we have that $\trden{\sctx} \vdash \rx{r} : \regex$.
+
+By P-T-Abs and P-T-App, we have that $\trden{\sctx} \vdash (\lambda x : \str.\trden{e_1})(\trden{e_0}) : \trden{\sigma}$.
+
+By P-T-Check, we have that $\trden{\sctx} \vdash \tcheck{\rx{r}}{\trden{e_0}}{(\lambda x : \str.\trden{e_1})(\trden{e_0})}{\trden{e_2}} : \trden{\sigma}$.
+
 \end{itemize}
 
 
@@ -1441,7 +1471,7 @@ The result follows by induction.
 <$\sigma$> ::=  $\sigma \rightarrow \sigma$ | $\stringin{r}$    \hfill  source types
 
 <$e$> ::= 
-      $x$ | $v$ \hfill source terms \alt 
+      $x$ | $v$ | $e(e)$ \hfill source terms \alt 
       $\rsconcat{e}{e}$ | $\strcase{e}{e}{x,y.e}$ \hfill $s \in \Sigma^{*}$ \alt
       $\sisubst{r}{e}{e}$ | $\rcoerce{r}{e}$ | $\rcheck{r}{e}{x.e}{e}$
 
@@ -1460,9 +1490,9 @@ The result follows by induction.
 
 <$\tau$> ::= $\tau \rightarrow \tau$ | $\str$ | $\regex$ \hfill target types
 
-<$\iota$> ::= $x$ | $\dot{v}$ \hfill target terms \alt
+<$\iota$> ::= $x$ | $\dot{v}$ | $\iota(\iota)$ \hfill target terms \alt
 $\tconcat{\iota}{\iota}$ | $\pstrcase{\iota}{\iota}{x,y.\iota}$ \alt
-  $\rx{r}$ | $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
+  $\preplace{\iota}{\iota}{\iota}$ | $\tcheck{\iota}{\iota}{\iota}{\iota}$ 
 
   <$\dot{v}$> ::= $\lambda x . \iota$ | $\tstr{s}$ | $\rx{r}$ \hfill target values
 
@@ -1762,8 +1792,8 @@ $\fbox{\inferrule{}{\tctx \vdash \iota : \tau}}$
 {\tctx \vdash \preplace{\iota_1}{\iota_2}{\iota_3} : \str}
 
 \inferrule[P-T-Check]
-{\tctx \vdash \iota_x : \regex \\ \tctx \vdash \iota_1 : \str \\ \tctx \vdash \iota_2 : \tau \\ \tctx \vdash \iota_3 : \tau}
-{\tctx \vdash \tcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} : \tau}
+{\tctx \vdash \iota_1 : \regex \\ \tctx \vdash \iota_2 : \str \\ \tctx \vdash \iota_3 : \tau \\ \tctx \vdash \iota_4 : \tau}
+{\tctx \vdash \tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4} : \tau}
 \end{mathpar}
 \caption[Static Semantics of $\lambdap$]{Typing rules for $\lambdap$.
 The typing context $\tctx$ is standard.}
@@ -1969,9 +1999,9 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
 {  \trden{e_1} = \iota_1 \\  \trden{e_2} = \iota_2}
 {  \trden{\rsconcat{e_1}{e_2}} = \tconcat{\iota_1}{\iota_2} }
 
-\inferrule[Tr-Subst]
+\inferrule[Tr-Replace]
 {   \trden{e_1} = \iota_1 \\   \trden{e_2} = \iota_2 }
-{   \trden{ \sisubst{r}{e_1}{e_2} } = \tsubst{\rx{r}}{\iota_1}{\iota_2} }
+{   \trden{ \sisubst{r}{e_1}{e_2} } = \preplace{\rx{r}}{\iota_1}{\iota_2} }
 
 \inferrule[Tr-SafeCoerce]
 {  \trden{e} = \iota }
@@ -1984,7 +2014,7 @@ $\fbox{\inferrule{}{\trden{\Psi}=\Theta}}$
    \trden{e_2} = \iota_2
 } 
 { 
-  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x . \iota_1)(\iota)}{\iota_2} 
+  \trden{ \rcheck{r}{e}{x.e_1}{e_2} } = \tcheck{\rx{r}}{\iota}{(\lambda x : \str. \iota_1)(\iota)}{\iota_2} 
 } 
 \end{mathpar}
 \caption{Translation from $\lambdas$ to $\lambdap$}
