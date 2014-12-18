@@ -1064,74 +1064,53 @@ If $\emptyset \vdash \iota : \tau$ and $\iota \mapsto \iota'$ then $\emptyset \v
 \end{thm}
 \begin{proof}
 
-The proof proceeds by induction of the derivations of $\emptyset \vdash \iota : \tau$
-and $\iota \mapsto \iota'$.
-
-We treat only the non-lambda fragment.
+The proof proceeds by rule induction on $\iota \mapsto \iota'$ and $\emptyset \vdash \iota : \tau$.
 
 \begin{itemize}[label=$ $,itemsep=1ex]
+\item \textbf{$\lambda$ fragment}. Cases PS-E-AppLeft, PS-E-AppRight, and PS-E-AppAbs are exactly as in a proof of type safety for
+the simply typed lambda calculus.
 
 \item \textbf{Case PS-E-ConcatLeft}.
-Suppose:
-\begin{align*}
-  \iota &= \rconcat{\iota_1}{\iota_2} \mapsto \rconcat{\iota_1'}{\iota_2} \\
-  \emptyset &\vdash \iota : \str \\
-  \iota &\mapsto \iota' 
-\end{align*}
-
-The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+Suppose $\tconcat{\iota_1}{\iota_2} \mapsto \tconcat{\iota_1'}{\iota_2}$ and $\iota_1 \mapsto \iota_1'$. The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
 and $\emptyset \vdash \iota_2 : \str$. 
 By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \rconcat{\iota_1'}{\iota_2} : \str$.
+so $\emptyset \vdash \rconcat{\iota_1'}{\iota_2} : \str$ by P-T-Concat.
 
-\item \textbf{Case PS-E-ConcatRight}
-\begin{align*}
-  e &= \rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'} \\
-  \emptyset &\vdash e : \str \\
-  \iota &\mapsto \iota' 
-\end{align*}
-
-The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \iota_1 : \str$
+\item \textbf{Case PS-E-ConcatRight}. Suppose $\tconcat{\tstr{s_1}}{\iota_2} \mapsto \tconcat{\tstr{s_1}}{\iota_2'}$ and $\iota_2 \mapsto \iota_2'$. The only applicable typing rule is P-T-Concat, so $\emptyset \vdash \tstr{s_1} : \str$
 and $\emptyset \vdash \iota_2 : \str$. 
-By induction, $\emptyset \vdash \iota_1' : \str$,
-so $\emptyset \vdash \rconcat{\iota_1}{\iota_2'} : \str$.
+By induction, $\emptyset \vdash \iota_2' : \str$,
+so $\emptyset \vdash \rconcat{\tstr{s_1}}{\iota_2'} : \str$ by P-T-Concat.
 
-\item \textbf{Case PS-E-Concat}
-Let $e = \rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$. 
-The only rule that applies is P-T-Concat, so $\emptyset \vdash e : \str$.
-By canonical forms, $\emptyset \rstr{s_1s_2} : \str$.
+\item \textbf{Case PS-E-Concat}. Suppose $\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{s_1s_2}$. By P-T-String, $\emptyset \vdash \tstr{s_1s_2} : \str$.
 
-\item \textbf{Case PS-E-CaseLeft}
-Let $\iota = \strcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1'}{\iota_2}{x,y.\iota_3}$
-when $\iota_1 \mapsto \iota_1'$.
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CaseLeft}. Suppose $\pstrcase{\iota_1}{\iota_2}{x,y.\iota_3} \mapsto \strcase{\iota_1'}{\iota_2}{x,y.\iota_3}$ and $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Case, so:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \str  \\
   \emptyset &\vdash \iota_2 : \tau \\
   \emptyset, x : \str, y : \str &\vdash \iota_3 : \tau 
 \end{align*}
 By induction, $\emptyset \vdash \iota_1' : \str$.
-By P-T-Case, $\emptyset \vdash \strcase{\iota_1}{\iota_2}{x,y.\iota_3} : \tau$.
+By P-T-Case, $\emptyset \vdash \pstrcase{\iota_1'}{\iota_2}{x,y.\iota_3} : \tau$.
 
-\item \textbf{Case PS-E-CaseEpsilon}
-Let $\iota = \strcase{\rstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2$.
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where
-$\iota_2 : \tau$.
+\item \textbf{Case PS-E-CaseEpsilon}. 
+Suppose $\pstrcase{\tstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2$.
+The only rule that applies is P-T-Case, so $\emptyset \vdash \iota_2 : \tau$.
 
-\item \textbf{Case PS-E-Case}
-Let $\iota = \strcase{\rstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\rstr{a}, \rstr{s} / x,y] \iota_3$
-The only rule that applies is P-T-Case, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-Case-Cons}.
+Suppose $\pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\tstr{a}, \tstr{s} / x,y] \iota_3$
+The only rule that applies is P-T-Case, so:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \str \\
   \emptyset &\vdash \iota_2 : \tau \\
   \emptyset, x : \str, y : \str &\vdash \iota_3 : \tau
 \end{align*}
-The result follows by the substitution lemma.
+By P-T-String, we have that $\emptyset \vdash \tstr{a} : \str$ and $\emptyset \vdash \tstr{s} : \str$. By weakening and Substitution applied twice, we have that $\emptyset \vdash [\tstr{a}, \tstr{s} / x,y] \iota_3 : \tau$.
 
-\item \textbf{Case PS-E-ReplaceLeft}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1'}{\iota_2}{\iota_3}$
-where $\iota_1 \mapsto \iota_1'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceLeft}. 
+Suppose $\preplace{\iota_1}{\iota_2}{\iota_3} \mapsto \preplace{\iota_1'}{\iota_2}{\iota_3}$
+and $\iota_1 \mapsto \iota_1'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
   \emptyset &\vdash \iota_1 : \regex \\
   \emptyset &\vdash \iota_2 : \str \\
@@ -1139,75 +1118,69 @@ The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ wh
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_1' : \regex$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1'}{\iota_2}{\iota_3}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\iota_1'}{\iota_2}{\iota_3}$.
 
-\item \textbf{Case PS-E-ReplaceMid}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1}{\iota_2'}{\iota_3}$
-where $\iota_2 \mapsto \iota_2'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceMid}. 
+Suppose $\preplace{\rx{r}}{\iota_2}{\iota_3} \mapsto \preplace{\rx{r}}{\iota_2'}{\iota_3}$
+and $\iota_2 \mapsto \iota_2'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
-  \emptyset &\vdash \iota_1 : \regex \\
+  \emptyset &\vdash \rx{r} : \regex \\
   \emptyset &\vdash \iota_2 : \str \\
   \emptyset &\vdash \iota_3 : \str
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_2' : \str$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1}{\iota_2'}{\iota_3}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\rx{r}}{\iota_2'}{\iota_3}$.
 
-\item \textbf{Case PS-E-ReplaceRight}
-Let $\iota = \rreplace{\iota_1}{\iota_2}{\iota_3} \mapsto \rreplace{\iota_1}{\iota_2}{\iota_3'}$
-where $\iota_3 \mapsto \iota_3'$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$ where:
+\item \textbf{Case PS-E-ReplaceRight}. 
+Suppose $\preplace{\rx{r}}{\tstr{s}}{\iota_3} \mapsto \preplace{\rx{r}}{\tstr{s}}{\iota_3'}$
+and $\iota_3 \mapsto \iota_3'$.
+The only rule that applies is P-T-Replace, so $\tau=\str$ and:
 \begin{align*}
-  \emptyset &\vdash \iota_1 : \regex \\
-  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \rx{r} : \regex \\
+  \emptyset &\vdash \tstr{s} : \str \\
   \emptyset &\vdash \iota_3 : \str
 \end{align*}
 
 By induction, $\emptyset \vdash \iota_3' : \str$.
-Therefore, $\emptyset \vdash \rreplace{\iota_1}{\iota_2}{\iota_3'}$.
+Therefore, by P-T-Replace $\emptyset \vdash \preplace{\rx{r}}{\tstr{s}}{\iota_3'}$.
 
-\item \textbf{Case PS-E-Replace}
-Let $\iota = \rreplace{\rx{r}}{\rstr{s_2}}{\rstr{s_3}} \mapsto \rstr{\lreplace{r}{s_2}{s_3}}$.
-The applicable typing rule is P-T-Replace, so $\emptyset \vdash \iota : \str$.
-The result follows by canonical forms.
+\item \textbf{Case PS-E-Replace}. 
+Suppose $\preplace{\rx{r}}{\tstr{s_2}}{\tstr{s_3}} \mapsto \tstr{\lsubst{r}{s_2}{s_3}}$. The only applicalbe rule is P-T-Replace, so $\tau=\str$. By P-T-String, $\emptyset \vdash \tstr{\lsubst{r}{s_2}{s_3}} : \str$.
 
-\item \textbf{Case PS-E-CheckLeft}
-Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3}$
-where $\iota_x \mapsto \iota_x'$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CheckLeft}. 
+Suppose $\tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4}$ and $\iota_1\mapsto\iota_1'$.
+The only applicable typing rule is P-T-Check, so:
 \begin{align*}
-  \emptyset &\vdash \iota_x : \regex \\
-  \emptyset &\vdash \iota_1 : \str \\
-  \emptyset &\vdash \iota_2 : \tau \\
-  \emptyset &\vdash \iota_3 : \tau
+  \emptyset &\vdash \iota_1 : \regex \\
+  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \iota_3 : \tau \\
+  \emptyset &\vdash \iota_4 : \tau
 \end{align*}
-By induction, $\iota_x : \regex$. Therefore,
-$\emptyset \rcheck{\iota_x'}{\iota_1}{\iota_2}{\iota_3} : \tau$.
+By induction, $\emptyset \vdash \iota_1' : \regex$. Therefore, by P-T-Check 
+$\emptyset \vdash \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4} : \tau$.
 
 
-\item \textbf{Case PS-E-CheckRight}
-Let $\iota = \rcheck{\iota_x}{\iota_1}{\iota_2}{\iota_3} \mapsto \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3}$
-where $\iota_1 \mapsto \iota_1'$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where:
+\item \textbf{Case PS-E-CheckRight}. 
+Suppose $\tcheck{\rx{r}}{\iota_2}{\iota_3}{\iota_4} \mapsto \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4}$ and $\iota_2\mapsto\iota_2'$.
+The only applicable typing rule is P-T-Check, so:
 \begin{align*}
-  \emptyset &\vdash \iota_x : \regex \\
-  \emptyset &\vdash \iota_1 : \str \\
-  \emptyset &\vdash \iota_2 : \tau \\
-  \emptyset &\vdash \iota_3 : \tau
+  \emptyset &\vdash \rx{r} : \regex \\
+  \emptyset &\vdash \iota_2 : \str \\
+  \emptyset &\vdash \iota_3 : \tau \\
+  \emptyset &\vdash \iota_4 : \tau
 \end{align*}
-By induction, $\iota_1' : \str$. Therefore,
-$\emptyset \rcheck{\iota_x}{\iota_1'}{\iota_2}{\iota_3} : \tau$.
+By induction, $\emptyset \vdash \iota_2' : \str$. Therefore, by P-T-Check 
+$\emptyset \vdash \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4} : \tau$.
 
-\item \textbf{Case PS-E-Check-Ok} 
-Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_2$ and $s \in \lang{r}$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
-$\emptyset \vdash \iota_2 : \tau$.
+\item \textbf{Case PS-E-Check-Ok}.
+Suppose $\tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_3$. 
+The only applicable typing rule is P-T-Check, so $\emptyset \vdash \iota_3 : \tau$.
 
-\item \textbf{Case PS-E-Check-NotOk} 
-Let $\iota = \rcheck{\rx{r}}{\rstr{s}}{\iota_2}{\iota_3} \mapsto \iota_3$ where $s \not \in \lang{r}$.
-The applicable typing rule is P-T-Check, so $\emptyset \vdash \iota : \tau$ where
-$\emptyset \vdash \iota_3 : \tau$.
+\item \textbf{Case PS-E-Check-Ok}.
+Suppose $\tcheck{\rx{r}}{\tstr{s}}{\iota_3}{\iota_4} \mapsto \iota_4$. 
+The only applicable typing rule is P-T-Check, so $\emptyset \vdash \iota_4 : \tau$.
 
 \end{itemize}
 
@@ -1217,7 +1190,7 @@ $\emptyset \vdash \iota_3 : \tau$.
 
 
 
-\section{Proofs and Lemmas and Theorems About Translation}
+\section{Translation from $\lambdas$ to $\lambdap$}
 
 
 \begin{thm}[Translation Correctness]\label{thm:trcorrect}
@@ -1822,7 +1795,7 @@ $\fbox{\inferrule{}{\iota \mapsto \iota}}$
 {  }
 { \pstrcase{\tstr{\epsilon}}{\iota_2}{x,y.\iota_3} \mapsto \iota_2}
 
-\inferrule[PS-E-Case]
+\inferrule[PS-E-Case-Cons]
 { }
 { \pstrcase{\tstr{as}}{\iota_2}{x,y.\iota_3} \mapsto [\tstr{a}, \tstr{s}/x, y]\iota_3}
 
