@@ -1295,11 +1295,42 @@ By P-T-Check, we have that $\trden{\sctx} \vdash \tcheck{\rx{r}}{\trden{e_0}}{(\
 \end{itemize}
 \end{proof}
 
+% bkassume
 \begin{ass}[Multistep Closure]\label{ass:closure} The following closure properties hold:
 \begin{enumerate}
 \item If $\iota_1 \mapsto^{*} \iota_1'$ then $\iota_1(\iota_2) \mapsto^{*} \iota_1'(\iota_2)$.
 \item If $\iota_2 \mapsto^{*} \iota_2'$ then $\dot{v}_1(\iota_2) \mapsto^{*} \dot{v}_1(\iota_2')$.
-\item \todo{remaining cases}
+
+\item $(\lambda x . \dot{v})(\dot{v}_1) = [\dot{v}_1 / x]\dot{v}$.
+
+\item $\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto^* \tstr{s_1s_2}$
+
+\item If $\iota_1 \mapsto^* \iota_1'$
+then $\pstrcase{\iota_1}{\iota_2}{\lambda x. \lambda y . \iota_3} \mapsto^* \pstrcase{\iota_1'}{\iota_2}{\lambda x. \lambda y . \iota_3}$
+
+\item $\pstrcase{\tstr{\epsilon}}{\dot{v}_2}{\lambda x . \lambda y . \dot{v}_3} \mapsto^* \dot{v}_2$.
+
+\item $\pstrcase{\tstr{as}}{\iota_2}{\lambda x.\lambda y.\iota_3} \mapsto^*
+[a,s / x,y]\iota_3$.
+
+\item If $\iota_1 \mapsto \iota_1'$ then $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto^* \treplace{\rx{r}}{\iota_1'}{\iota_2}$.
+
+\item If $\iota_2 \mapsto \iota_2'$ then $\treplace{\rx{r}}{\dot{v}}{\iota_2} \mapsto^* \treplace{\rx{r}}{\dot{v}}{\iota_2'}$.
+
+\item $\preplace{\rx{r}}{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{\lreplace{r}{s_1}{s_2}}$.
+
+\item
+If $\iota \mapsto^* \iota'$ then
+$\tcheck{\rx{r}}{\iota}{(\lambda x . \trden{\iota_1})(\iota)}{\trden{\iota_2}} \mapsto^* 
+\tcheck{\rx{r}}{\iota'}{(\lambda x . \trden{\iota_1})(\iota')}{\trden{\iota_2}}$ 
+
+\item
+If $s \in \lang{r}$ then
+$ \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\iota_1)(\tstr{s})}{\iota_2} \mapsto^*  [ \tstr{s} / x ] \iota_1$.
+\item
+If $s \not \in \lang{r}$ then 
+$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \iota_1)(\tstr{s})}{\iota_2} \mapsto^* \iota_2$.
+ 
 \end{enumerate}
 \end{ass}
 
@@ -1324,6 +1355,217 @@ Inductively, we have that $\trden{e_1} \mapsto^{*} \trden{e_1'}$.
 
 By Assumption \ref{ass:closure}.1, we have that $\trden{e_1}(\trden{e_2}) \mapsto^{*} \trden{e_1'}(\trden{e_2})$.
 \end{itemize}
+
+\item \textbf{Case SS-E-AppRight}.
+Suppose $v_1(e_2) \mapsto v_1(e_2')$ and $e_2 \mapsto e_2'$. We know by definition that
+\begin{align*}
+  \trden{v_1(e_2)} &= \trden{v_1}(\tden{e_2})\\
+  \trden{v_1(e_2')} &= \trden{v_1}(\trden{e_2'})
+\end{align*}
+
+The only typing rule that applies is S-T-App, so $\emptyset \vdash v_1 : \sigma_2 \rightarrow \sigma$.
+
+Inductively, we have that $\trden{e_2} \mapsto^* \trden{e_2'}$.
+
+By assumption \ref{ass:closure}.2, we have that $\trden{v_1}(\trden{e_2}) \mapsto^* \trden{v_1}(\trden{e_2'})$.
+
+\item \textbf{Case SS-E-AppAbs}.
+Suppose $(\lambda x . e)(v_2) \mapsto [v_2/x]e$.
+We know by definition that
+\begin{align*}
+  \trden{(\lambda . e)(v_2)} &= \trden{\lambda x . e}\trden{v_2} &= (\lambda x . \trden{e})(\trden{v_2}) \\
+\end{align*}
+
+By Assumption~\ref{ass:closure}, 
+$(\lambda x . \trden{e})(\trden{v_2}) = [\trden{v_2} / x]\trden{e}$.
+
+
+
+\item \textbf{Case SS-E-Concat-Left}
+Suppose $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1'}{e_2}$
+We have by definition that
+\begin{align*}
+  \trden{\rconcat{e_1}{e_2}} &= \tconcat{\trden{e_1}}{\trden{e_2}} \\
+  \trden{\rconcat{e_1'}{e_2}} &= \tconcat{\trden{e_1'}}{\trden{e_2}}
+\end{align*}
+
+The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_1 : \stringin{r_1}$
+and $\emptyset \vdash e_2 : \stringin{r_2}$.
+
+Inductively, we have that $\trden{e_1} \mapsto^* \trden{e_1'}$.
+
+By assupmtion \ref{ass:closure}, we have that 
+$\tconcat{\trden{e_1}}{\trden{e_2}} \mapsto^* \tconcat{\trden{e_1'}}{\trden{e_2}}$.
+
+\item \textbf{Case SS-E-Concat-Right}
+Suppose $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'}$
+We have by definition that
+\begin{align*}
+  \trden{\rconcat{e_1}{e_2}} &= \tconcat{\trden{e_1}}{\trden{e_2}} \\
+  \trden{\rconcat{e_1}{e_2'}} &= \tconcat{\trden{e_1}}{\trden{e_2'}}
+\end{align*}
+
+The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_1 : \stringin{r_1}$
+and $\emptyset \vdash e_2 : \stringin{r_2}$.
+
+Inductively, we have that $\trden{e_2} \mapsto^* \trden{e_2'}$.
+
+By assupmtion \ref{ass:closure}, we have that 
+$\tconcat{\trden{e_1}}{\trden{e_2}} \mapsto^* \tconcat{\trden{e_1}}{\trden{e_2'}}$.
+
+\item \textbf{Case SS-E-Concat}
+Suppose $\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
+We have by definition that
+\begin{align*}
+  \trden{\rconcat{\rstr{s_1}}{\rstr{s_2}}} &= \tconcat{\tstr{s_1}}{\tstr{s_2}} \\ 
+  \trden{\rstr{s_1s_2}} &= \tstr{s_1s_2}
+\end{align*}
+By Assumption~\ref{ass:closure},
+$\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto^* \tstr{s_1s_2}$.
+
+\item \textbf{Case SS-E-Case-Left}
+Suppose $\strcase{e_1}{e_2}{x,y.e_3} \mapsto \strcase{e_1'}{e_2}{x,y.e_3}$.
+The only typing rule that applies is S-T-Case, so $\emptyset \vdash e_1 : \stringin{r}$.
+We have by definition that:
+\begin{align*}
+  \trden{\strcase{e_1}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1}}{\trden{e_2}}{\lambda x . \lambda y . \trden{e_3}} \\
+  \trden{\strcase{e_1'}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1'}}{\trden{e_2}}{\lambda x . \lambda y . \trden{e_3}} 
+\end{align*}
+
+Inductively, $\trden{e_1} \mapsto^* \trden{e_1'}$.
+
+By Assumption~\ref{ass:closure}, we have that 
+$\pstrcase{\trden{e_1}}{\trden{e_2}}{\lambda x. \lambda y . \trden{e_3}} \mapsto^* \pstrcase{e_1'}{e_2}{\lambda x . \lambda y . \trden{e_3}}$.
+
+\item \textbf{Case SS-E-Case-$\epsilon$-Val}
+Suppose $\strcase{\rstr{\epsilon}}{e_2}{x,y.e_3} \mapsto e_2$.
+The only typing rule that applies is S-T-Case, so $\emptyset \vdash e_2 : \sigma$.
+We have by definition that:
+\begin{align*}
+\trden{\strcase{\rstr{\epsilon}}{v_2}{x,y.e_3}} &= \pstrcase{\tstr{\epsilon}}{\trden{v_2}}{\lambda x . \lambda y . \trden{e_3}} \\
+\trden{v_2} &= \trden{v_2}
+\end{align*}
+
+Note that $\trden{v_2} \mapsto^* \trden{v_2}$.
+
+By Assumption~\ref{ass:closure}, we have that
+$\pstrcase{\tstr{\epsilon}}{\trden{v_2}}{\lambda x . \lambda y . \trden{e_3}} \mapsto^* \trden{v_2}$.
+
+\item \textbf{Case SS-E-Case-Concat}
+Suppose $\strcase{\rstr{as}}{e_2}{x,y.e_3} \mapsto [a,s/x,y]e_3$.
+By definition,
+\begin{align*}
+\trden{e} &= \pstrcase{\tstr{as}}{\trden{e_2}}{\lambda x.\lambda y.\trden{e_3}} \\
+\trden{[a,s/x,y]e_3} &= [a,s/x,y]\trden{e_3}
+\end{align*}
+
+By Assumption~\ref{ass:closure},
+$\pstrcase{\tstr{as}}{\trden{e_2}}{\lambda x.\lambda y.\trden{e_3}} \mapsto^*
+[a,s / x,y]\trden{e_3}$.
+
+\item \textbf{Case SS-E-Replace-Left}
+Suppose $\rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1'}{e_2}$
+and $e_1 \mapsto e_1'$.
+The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_1 : \stringin{r_1}$.
+By definition,
+\begin{align*}
+\trden{\rreplace{r}{e_1}{e_2}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \\
+\trden{\rreplace{r}{e_1'}{e_2}} &= \treplace{\rx{r}}{\trden{e_1'}}{\trden{e_2}}
+\end{align*}
+
+Inductively, we have that $\trden{e_1} \mapsto \trden{e_1'}$.
+
+By Assumption~\ref{ass:closure}, $\treplace{\rx{r}}{e_1}{e_2} \mapsto^* \treplace{\rx{r}}{e_1'}{e_2}$.
+
+
+\item \textbf{Case SS-E-Replace-Right}
+Suppose $\rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1}{e_22}$
+and $e_e \mapsto e_e'$.
+The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_2 : \stringin{r_2}$.
+By definition,
+\begin{align*}
+\trden{\rreplace{r}{e_1}{e_2}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \\
+\trden{\rreplace{r}{e_1}{e_2'}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2'}}
+\end{align*}
+
+Inductively, we have that $\trden{e_2} \mapsto \trden{e_2'}$.
+
+By Assumption~\ref{ass:closure}, 
+$\treplace{\rx{r}}{e_1}{e_2} \mapsto^* \treplace{\rx{r}}{e_1}{e_2'}$
+
+\item \textbf{Case SS-E-Replace}
+Suppose $\rreplace{r}{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{\lreplace{r}{s_1}{s_2}}$.
+By definition,
+\begin{align*}
+\trden{\rreplace{r}{\rstr{s_1}}{\rstr{s_2}}} &= \preplace{\rx{r}}{\tstr{s_1}}{\tstr{s_2}} \\
+\trden{\rstr{\lreplace{r}{s_1}{s_2}}} &= \tstr{\lreplace{r}{s_1}{s_2}}
+\end{align*}
+
+By assumption~\ref{ass:closure}, 
+$\preplace{\rx{r}}{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{\lreplace{r}{s_1}{s_2}}$.
+
+\item \textbf{Case SS-E-SafeCoerce-Step}
+Supose $\rcoerce{r}{e} \mapsto \rcoerce{r}{e'}$ and $e \mapsto^* r'$.
+By definition,
+\begin{align*}
+\trden{\rcoerce{r}{e}} &= \trden{e} \\
+\trden{\rcoerce{r}{e'}} &= \trden{e'}
+\end{align*}
+
+The only rule that applies is S-T-SafeCoerce, so $\emptyset \vdash e' : \stringin{r}$.
+
+Inductively, $\trden{e} \mapsto^* \trden{e'}$.
+
+\item\textbf{Case SS-E-SafeCoerce}
+Suppose $\rcoerce{r}{\rstr{s}} \mapsto \rstr{s}$.
+By definition, 
+\begin{align*}
+\trden{\rcoerce{r}{\rstr{s}}} &= \tstr{s} \\
+\rstr{s} &= \tstr{s}
+\end{align*}
+
+Note that $\mapsto^*$ is reflexive.
+
+\item\textbf{Case SS-E-Check-StepLeft}
+Suppose $\rcheck{r}{e}{x.e_1}{e_2} \mapsto \rcheck{r}{e'}{x.e_1}{e_2}$
+and $e \mapsto e'$.
+By definition,
+\begin{align*}
+\trden{\rcheck{r}{e}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}} \\
+\trden{\rcheck{r}{e'}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e'}}{(\lambda x . \trden{e_1})(\trden{e'})}{\trden{e_2}}
+\end{align*}
+
+Inductively, $e \mapsto^* e'$.
+By Assumption~\ref{ass:closure}, 
+$\tcheck{\rx{r}}{\trden{e}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}} \mapsto^* \tcheck{\rx{r}}{\trden{e'}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}}$
+
+% bkcase
+
+\item \textbf{Case SS-E-Check-Ok}
+Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto [\rstr{s} / x]e_1$
+and $s \in \lang{r}$.
+By definition,
+\begin{align*}
+\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\trden{e_1})(\tstr{s})}{\trden{e_2}} \\
+\trden{ [\rstr{s} / x] e_1 } &= [ \tstr{s} / x ] \trden{e_1}
+\end{align*}
+
+By Assumption~\ref{ass:closure},
+$ \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto^*  [ \tstr{s} / x ] \trden{e_1}$.
+
+\item \textbf{Case SS-E-Check-NotOk}
+Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto e_2$ and $s \not \in \lang{r}$.
+By definition,
+\begin{align*}
+\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \trden{e_1})(\tstr{s})}{\trden{e_2}}
+\end{align*}
+
+By Assumption~\ref{ass:closure}, 
+$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto^* \trden{e_2}$.
+
+
+
+
 \end{proof}
 
 \begin{thm}[Translation Correctness]\label{thm:trcorrect}
@@ -1335,119 +1577,121 @@ By Assumption \ref{ass:closure}.1, we have that $\trden{e_1}(\trden{e_2}) \mapst
   $\trden{v} = \dot{v}$.
 \end{thm}
 \begin{proof}
-\todo{This proof needs to be changed to use only the small-step semantics.}
-We present a proof by induction on the structure of $e$.
-We write $e \leadsto \iota$ as shorthand for the final property.
-
-\begin{itemize}[label=$ $, itemsep=1ex]
-\item \textbf{Case $e = \rstr{s}$}. Suppose $\tctx \vdash \rstr{s} : \sigma$.
-
-By examination the syntactic structure of conclusions in the relation S-T, 
-we know this is true just in case $\sigma = \stringin{r}$ for some $r$ such that
-$s \in \lang{r}$; and of course, there is always such an $r$.
-
-There are no free variables in $\rstr{s}$, so we might as well proceed from the
-fact that $\emptyset \vdash \rstr{s} : \stringin{r}$.
-
-By definition of the translation ($\trden{\cdot}$) the following statements hold:
-\begin{align}
-\trden{\rstr{s}} &= \tstr{s} \\
-\trden{\stringin{r}} &= \str \\
-\trden{\emptyset} &= \emptyset
-\end{align}
-Note that $\emptyset \vdash \tstr{s} : \str$ by P-T-Str.
-Recall that contexts are standard and, in particular, can be weakened.
-So since $\trden{\tctx}$ is either a weakening of $\emptyset$ or $\emptyset$ itself,
-$\trden{\tctx} \vdash \tstr{s} : \str$ by weakening.
-
-Summarily, $\tstr{s}$ is a term of $\lambdap$ such that $\trden{\tctx} \vdash \tstr{s} : \trden{\sigma}$
-
-It remains to be shown that there exist $v, \dot{v}$ such that $\rstr{s} \mapsto^* v$,
-$\tstr{s} \mapsto^* \dot{v}$, and $\trden{v} = \dot{v}$. But this is immediate because
-each term is already a value and $s=s$.
-
-\item \textbf{Case $e = \rconcat{e_1}{e_2}$}.
-The applicable typing rule is S-T-Concat, so $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1\cdot r_2}$
-where $\sctx \vdash e_1 : \stringin{r_1}$ and $\sctx \vdash e_2 : \stringin{r_2}$.
-
-By induction, $e_1 \leadsto \iota_1$ and $e_2 \leadsto \iota_2$.
-Therefore, $\trden{\sctx} \vdash \tconcat{\iota_1}{\iota_2}$ by P-T-Concat.
-
-By canonical forms, $e_1 \mapsto^* \rstr{s_1}$ where by induction $\iota_1 \mapsto^* \tstr{s_1}$.
-Similarly, $e_2 \mapsto^* \rstr{s_2}$ and $\iota_2 \mapsto^* \tstr{s_2}$.
-Therefore, $e \mapsto^* \rstr{s_1s_2}$ by S-E-Concat at last, and $\tconcat{\iota_1}{\iota_2} \mapsto^* \tstr{s_1s_2}$ by P-E-Concat at last.
-Note that $\trden{\rstr{s_1s_2}} = \tstr{s_1s_2}$.
-
-\item \textbf{Case $e = \strcase{e_1}{e_2}{x,y.e_3}$}. This case relies on our definition
-of context translation.
-
-Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
-By inversion of the typing relation it follows that
-$\sctx \vdash e_1 : \stringin{r}$, $\sctx \vdash e_2 : \sigma$ and $\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma$.
-
-By induction, there exists an $\iota_1$ 
-such that $e_1 \mapsto \iota_1$.
-%such that $\trden{e_1} = \iota_1$ and
-%$\trden{\sctx} \vdash \iota_1 : \trden{\sigma}$.
-%, and $e_1 \leadsto \iota_1$. Similarly for $e_2$ and some $\iota_2$.
-
-By canonical forms, $e_1 \mapsto^* \rstr{s}$. Therefore, $\iota_1 \mapsto* \tstr{s}$ because $e_1 \leadsto \iota_1$.
-
-Choose $\iota = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3}$ and note that by the properties established via induction,
-$\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.
-
-To prove the evaluation correspondence, we consider two cases for the value of $s$.
-
-Suppose $s = \epsilon$. Then $e \mapsto^* v$ where $e_2 \mapsto^* v$,
-from which it follows that 
-$\iota \mapsto^* \dot{v}$ where $\iota_2 \mapsto^* \dot{v}$.
-But recall that $e_2 \leadsto v_2$ and so $\trden{v} = \dot{v}$.
-
-Suppose otherwise that $s = at$ for some character $a$ and string $t$.
-Then $e \mapsto^* v$ where $[a, t / x, y] e_3 \mapsto^* v$.
-Similarly, $\iota \mapsto^* \dot{v}$ where $[a, t / x, y] \iota_3 \mapsto^* \dot{v}$
-
-\item \textbf{Case $e = \rreplace{r}{e_1}{e_2}$}.
-There is only one applicable typing rule, so suppose
-$\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{e_1}{e_2}}$.
-Let $\tctx = \trden{\sctx}$.
-Note that $\trden{\rreplace{r}{e_1}{e_2}} = \treplace{\rx{r}}{\iota_1}{\iota_2}$
-where by induction $\trden{e_1} = \iota_1$ and $\trden{e_2} = \iota_2$
-such that $\tctx \vdash \iota_1$ and $\tctx \vdash \iota_2$.
-It follows by P-T-Replace that $\tctx \vdash \treplace{\rx{r}}{\iota_1}{\iota_2} : \str$.
-Finally, note that $\trden{\stringin{\lreplace{r}{e_1}{e_2}}} = \str$.
-
-For evaluation correspondence, note that $\trden{ \rstr{\lreplace{r}{s_1}{s_2}} } = \rstr{ \lreplace{r}{s_1}{s_2} }$ and
-so it suffices to show that $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto^* \rstr{r}{s_1}{s_2}$.
-Note that $\lreplace{r}{e_1}{e_2} \mapsto^* \rstr{\lreplace{r}{s_1}{s_2}}$ 
-where $e_1 \mapsto^* \rstr{s_1}$, $e_2 \mapsto^* \rstr{s_2}$, $r \mapsto^* r$.
-By induction, $\iota_1 \mapsto^* \rstr{s_1}, \iota_2 \mapsto^* \rstr{s_2}$, and $\rx{r} \mapsto^* \rx{r}$.
-So by S-E-Replace, the sufficient condition holds.
-
-\item \textbf{Case $e = \rcoerce{r}{e'}$}.
-The only applicable tpying rule is S-T-SafeCoerce, so suppose
-$\sctx \vdash \rcoerce{r}{e'} : \stringin{r}$ where
-$\sctx \vdash e' : \stringin{r'}$ and $\lang{r'} \subseteq \lang{r}$.
-By induction, $e' \leadsto \iota$ for some $\iota$.
-Therefore, $\trden{\coerce{r}{e'}} = \iota$ by Tr-SafeCoerce.
-
-For evaluation correspondence, note that $e \mapsto^* v$ where
-$e' \mapsto^* v$. The result follows by induction because $e' \leadsto \iota$. 
-
-\item \textbf{Case $e = \rcheck{r}{e_1}{x.e_2}{e_3}$}.
-The applicable typing rule is S-T-Check,
-so $\sctx \vdash e : \sigma$ where 
-$\sctx \vdash e_1 : \stringin{r}$,
-$\sctx, x : \stringin{r} \vdash e_2 : \sigma$,
-and $\sctx \vdash e_3 : \sigma$.
-By induction and a corresponding substitution principle there exists $\iota_1, \iota_2, \iota_3$ such that
-$e_1 \leadsto \iota_1$, 
-$e_2 \leadsto \iota_2$ in context $\sctx, s : \stringin{r}$, and
-$e_3 \leadsto \iota_3$.
-Choose $\iota = \tcheck{\rx{r}}{\iota_1}{\lambda x . \iota_2}{\iota_3}$.
-The result follows by induction.
-
-\end{itemize}
+By the preceeding two theorems and induction on the length of the reduction of $\iota$.
+%
+%\todo{This proof needs to be changed to use only the small-step semantics.}
+%We present a proof by induction on the structure of $e$.
+%We write $e \leadsto \iota$ as shorthand for the final property.
+%
+%\begin{itemize}[label=$ $, itemsep=1ex]
+%\item \textbf{Case $e = \rstr{s}$}. Suppose $\tctx \vdash \rstr{s} : \sigma$.
+%
+%By examination the syntactic structure of conclusions in the relation S-T, 
+%we know this is true just in case $\sigma = \stringin{r}$ for some $r$ such that
+%$s \in \lang{r}$; and of course, there is always such an $r$.
+%
+%There are no free variables in $\rstr{s}$, so we might as well proceed from the
+%fact that $\emptyset \vdash \rstr{s} : \stringin{r}$.
+%
+%By definition of the translation ($\trden{\cdot}$) the following statements hold:
+%\begin{align}
+%\trden{\rstr{s}} &= \tstr{s} \\
+%\trden{\stringin{r}} &= \str \\
+%\trden{\emptyset} &= \emptyset
+%\end{align}
+%Note that $\emptyset \vdash \tstr{s} : \str$ by P-T-Str.
+%Recall that contexts are standard and, in particular, can be weakened.
+%So since $\trden{\tctx}$ is either a weakening of $\emptyset$ or $\emptyset$ itself,
+%$\trden{\tctx} \vdash \tstr{s} : \str$ by weakening.
+%
+%Summarily, $\tstr{s}$ is a term of $\lambdap$ such that $\trden{\tctx} \vdash \tstr{s} : \trden{\sigma}$
+%
+%It remains to be shown that there exist $v, \dot{v}$ such that $\rstr{s} \mapsto^* v$,
+%$\tstr{s} \mapsto^* \dot{v}$, and $\trden{v} = \dot{v}$. But this is immediate because
+%each term is already a value and $s=s$.
+%
+%\item \textbf{Case $e = \rconcat{e_1}{e_2}$}.
+%The applicable typing rule is S-T-Concat, so $\sctx \vdash \rconcat{e_1}{e_2} : \stringin{r_1\cdot r_2}$
+%where $\sctx \vdash e_1 : \stringin{r_1}$ and $\sctx \vdash e_2 : \stringin{r_2}$.
+%
+%By induction, $e_1 \leadsto \iota_1$ and $e_2 \leadsto \iota_2$.
+%Therefore, $\trden{\sctx} \vdash \tconcat{\iota_1}{\iota_2}$ by P-T-Concat.
+%
+%By canonical forms, $e_1 \mapsto^* \rstr{s_1}$ where by induction $\iota_1 \mapsto^* \tstr{s_1}$.
+%Similarly, $e_2 \mapsto^* \rstr{s_2}$ and $\iota_2 \mapsto^* \tstr{s_2}$.
+%Therefore, $e \mapsto^* \rstr{s_1s_2}$ by S-E-Concat at last, and $\tconcat{\iota_1}{\iota_2} \mapsto^* \tstr{s_1s_2}$ by P-E-Concat at last.
+%Note that $\trden{\rstr{s_1s_2}} = \tstr{s_1s_2}$.
+%
+%\item \textbf{Case $e = \strcase{e_1}{e_2}{x,y.e_3}$}. This case relies on our definition
+%of context translation.
+%
+%Suppose $\sctx \vdash \strcase{e_1}{e_2}{x,y.e_3} : \sigma$.
+%By inversion of the typing relation it follows that
+%$\sctx \vdash e_1 : \stringin{r}$, $\sctx \vdash e_2 : \sigma$ and $\sctx, x : \stringin{\lhead{r}}, y : \stringin{\ltail{r}} \vdash e_3 : \sigma$.
+%
+%By induction, there exists an $\iota_1$ 
+%such that $e_1 \mapsto \iota_1$.
+%%such that $\trden{e_1} = \iota_1$ and
+%%$\trden{\sctx} \vdash \iota_1 : \trden{\sigma}$.
+%%, and $e_1 \leadsto \iota_1$. Similarly for $e_2$ and some $\iota_2$.
+%
+%By canonical forms, $e_1 \mapsto^* \rstr{s}$. Therefore, $\iota_1 \mapsto* \tstr{s}$ because $e_1 \leadsto \iota_1$.
+%
+%Choose $\iota = \pstrcase{\iota_1}{\iota_2}{x,y.\iota_3}$ and note that by the properties established via induction,
+%$\trden{e} = \iota$ and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.
+%
+%To prove the evaluation correspondence, we consider two cases for the value of $s$.
+%
+%Suppose $s = \epsilon$. Then $e \mapsto^* v$ where $e_2 \mapsto^* v$,
+%from which it follows that 
+%$\iota \mapsto^* \dot{v}$ where $\iota_2 \mapsto^* \dot{v}$.
+%But recall that $e_2 \leadsto v_2$ and so $\trden{v} = \dot{v}$.
+%
+%Suppose otherwise that $s = at$ for some character $a$ and string $t$.
+%Then $e \mapsto^* v$ where $[a, t / x, y] e_3 \mapsto^* v$.
+%Similarly, $\iota \mapsto^* \dot{v}$ where $[a, t / x, y] \iota_3 \mapsto^* \dot{v}$
+%
+%\item \textbf{Case $e = \rreplace{r}{e_1}{e_2}$}.
+%There is only one applicable typing rule, so suppose
+%$\sctx \vdash \rreplace{r}{e_1}{e_2} : \stringin{\lreplace{r}{e_1}{e_2}}$.
+%Let $\tctx = \trden{\sctx}$.
+%Note that $\trden{\rreplace{r}{e_1}{e_2}} = \treplace{\rx{r}}{\iota_1}{\iota_2}$
+%where by induction $\trden{e_1} = \iota_1$ and $\trden{e_2} = \iota_2$
+%such that $\tctx \vdash \iota_1$ and $\tctx \vdash \iota_2$.
+%It follows by P-T-Replace that $\tctx \vdash \treplace{\rx{r}}{\iota_1}{\iota_2} : \str$.
+%Finally, note that $\trden{\stringin{\lreplace{r}{e_1}{e_2}}} = \str$.
+%
+%For evaluation correspondence, note that $\trden{ \rstr{\lreplace{r}{s_1}{s_2}} } = \rstr{ \lreplace{r}{s_1}{s_2} }$ and
+%so it suffices to show that $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto^* \rstr{r}{s_1}{s_2}$.
+%Note that $\lreplace{r}{e_1}{e_2} \mapsto^* \rstr{\lreplace{r}{s_1}{s_2}}$ 
+%where $e_1 \mapsto^* \rstr{s_1}$, $e_2 \mapsto^* \rstr{s_2}$, $r \mapsto^* r$.
+%By induction, $\iota_1 \mapsto^* \rstr{s_1}, \iota_2 \mapsto^* \rstr{s_2}$, and $\rx{r} \mapsto^* \rx{r}$.
+%So by S-E-Replace, the sufficient condition holds.
+%
+%\item \textbf{Case $e = \rcoerce{r}{e'}$}.
+%The only applicable tpying rule is S-T-SafeCoerce, so suppose
+%$\sctx \vdash \rcoerce{r}{e'} : \stringin{r}$ where
+%$\sctx \vdash e' : \stringin{r'}$ and $\lang{r'} \subseteq \lang{r}$.
+%By induction, $e' \leadsto \iota$ for some $\iota$.
+%Therefore, $\trden{\coerce{r}{e'}} = \iota$ by Tr-SafeCoerce.
+%
+%For evaluation correspondence, note that $e \mapsto^* v$ where
+%$e' \mapsto^* v$. The result follows by induction because $e' \leadsto \iota$. 
+%
+%\item \textbf{Case $e = \rcheck{r}{e_1}{x.e_2}{e_3}$}.
+%The applicable typing rule is S-T-Check,
+%so $\sctx \vdash e : \sigma$ where 
+%$\sctx \vdash e_1 : \stringin{r}$,
+%$\sctx, x : \stringin{r} \vdash e_2 : \sigma$,
+%and $\sctx \vdash e_3 : \sigma$.
+%By induction and a corresponding substitution principle there exists $\iota_1, \iota_2, \iota_3$ such that
+%$e_1 \leadsto \iota_1$, 
+%$e_2 \leadsto \iota_2$ in context $\sctx, s : \stringin{r}$, and
+%$e_3 \leadsto \iota_3$.
+%Choose $\iota = \tcheck{\rx{r}}{\iota_1}{\lambda x . \iota_2}{\iota_3}$.
+%The result follows by induction.
+%
+%\end{itemize}
 \end{proof}
 
 \begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
