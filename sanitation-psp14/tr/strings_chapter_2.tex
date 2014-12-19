@@ -168,7 +168,7 @@
 \trnumber{CMU-ISR-14-112}
 \keywords{type systems; regular languages; input sanitation; string sanitation}
 \support{This work was supported by the National Security Agency lablet contract \#H98230-14-C-0140.}
-\abstract{This report contains supporting evidence for claims put forth and explained in the paper ``Statically Typed String Sanitation Inside a Python'' \cite{fulton2014}, including proofs of lemmas
+\abstract{This report contains supporting evidence for claims put forth and explained in the paper ``Statically Typed String Sanitation Inside a Python'' \cite{fulton2014}\todo{fix this}, including proofs of lemmas
 and theorems asserted in the paper, examples, additional discussion of the paper's technical content, and errata.}
 \begin{document}
 \maketitle
@@ -1295,42 +1295,32 @@ By P-T-Check, we have that $\trden{\sctx} \vdash \tcheck{\rx{r}}{\trden{e_0}}{(\
 \end{itemize}
 \end{proof}
 
+\begin{ass}[Substitution Translation]\label{ass:subs-trans} 
+$\trden{[v/x]e}=[\trden{v}/x]\trden{e}$.
+\end{ass}
+
 % bkassume
 \begin{ass}[Multistep Closure]\label{ass:closure} The following closure properties hold:
 \begin{enumerate}
 \item If $\iota_1 \mapsto^{*} \iota_1'$ then $\iota_1(\iota_2) \mapsto^{*} \iota_1'(\iota_2)$.
 \item If $\iota_2 \mapsto^{*} \iota_2'$ then $\dot{v}_1(\iota_2) \mapsto^{*} \dot{v}_1(\iota_2')$.
 
-\item $(\lambda x . \dot{v})(\dot{v}_1) = [\dot{v}_1 / x]\dot{v}$.
+\item If $\iota_1 \mapsto^{*} \iota_1'$ then $\tconcat{\iota_1}{\iota_2} \mapsto^* \tconcat{\iota_1'}{\iota_2}$.
 
-\item $\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto^* \tstr{s_1s_2}$
+\item If $\iota_2 \mapsto^{*} \iota_2'$ then $\tconcat{\tstr{s_1}}{\iota_2} \mapsto^* \tconcat{\tstr{s_1}}{\iota_2'}$.
 
 \item If $\iota_1 \mapsto^* \iota_1'$
-then $\pstrcase{\iota_1}{\iota_2}{\lambda x. \lambda y . \iota_3} \mapsto^* \pstrcase{\iota_1'}{\iota_2}{\lambda x. \lambda y . \iota_3}$
+then $\pstrcase{\iota_1}{\iota_2}{x, y . \iota_3} \mapsto^* \pstrcase{\iota_1'}{\iota_2}{x, y. \iota_3}$
 
-\item $\pstrcase{\tstr{\epsilon}}{\dot{v}_2}{\lambda x . \lambda y . \dot{v}_3} \mapsto^* \dot{v}_2$.
+\item If $\iota_1 \mapsto^{*} \iota_1'$ then $\treplace{\iota_1}{\iota_2}{\iota_3} \mapsto^* \treplace{\iota_1'}{\iota_2}{\iota_3}$.
 
-\item $\pstrcase{\tstr{as}}{\iota_2}{\lambda x.\lambda y.\iota_3} \mapsto^*
-[a,s / x,y]\iota_3$.
+\item If $\iota_2 \mapsto^{*} \iota_2'$ then $\treplace{\rx{r}}{\iota_2}{\iota_3} \mapsto^* \treplace{\rx{r}}{\iota_2'}{\iota_3}$.
 
-\item If $\iota_1 \mapsto \iota_1'$ then $\treplace{\rx{r}}{\iota_1}{\iota_2} \mapsto^* \treplace{\rx{r}}{\iota_1'}{\iota_2}$.
+\item If $\iota_3 \mapsto^{*} \iota_3'$ then $\treplace{\rx{r}}{\tstr{s}}{\iota_3} \mapsto^* \treplace{\rx{r}}{\tstr{s}}{\iota_3'}$.
 
-\item If $\iota_2 \mapsto \iota_2'$ then $\treplace{\rx{r}}{\dot{v}}{\iota_2} \mapsto^* \treplace{\rx{r}}{\dot{v}}{\iota_2'}$.
+\item If $\iota_1 \mapsto^{*} \iota_1'$ then $\tcheck{\iota_1}{\iota_2}{\iota_3}{\iota_4} \mapsto^* \tcheck{\iota_1'}{\iota_2}{\iota_3}{\iota_4}$. 
 
-\item $\preplace{\rx{r}}{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{\lreplace{r}{s_1}{s_2}}$.
-
-\item
-If $\iota \mapsto^* \iota'$ then
-$\tcheck{\rx{r}}{\iota}{(\lambda x . \trden{\iota_1})(\iota)}{\trden{\iota_2}} \mapsto^* 
-\tcheck{\rx{r}}{\iota'}{(\lambda x . \trden{\iota_1})(\iota')}{\trden{\iota_2}}$ 
-
-\item
-If $s \in \lang{r}$ then
-$ \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\iota_1)(\tstr{s})}{\iota_2} \mapsto^*  [ \tstr{s} / x ] \iota_1$.
-\item
-If $s \not \in \lang{r}$ then 
-$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \iota_1)(\tstr{s})}{\iota_2} \mapsto^* \iota_2$.
- 
+\item If $\iota_2 \mapsto^{*} \iota_2'$ then $\tcheck{\rx{r}}{\iota_2}{\iota_3}{\iota_4} \mapsto^* \tcheck{\rx{r}}{\iota_2'}{\iota_3}{\iota_4}$.
 \end{enumerate}
 \end{ass}
 
@@ -1354,146 +1344,139 @@ The only typing rule that applies is S-T--App, so $\emptyset \vdash e_1 : \sigma
 Inductively, we have that $\trden{e_1} \mapsto^{*} \trden{e_1'}$.
 
 By Assumption \ref{ass:closure}.1, we have that $\trden{e_1}(\trden{e_2}) \mapsto^{*} \trden{e_1'}(\trden{e_2})$.
-\end{itemize}
 
 \item \textbf{Case SS-E-AppRight}.
-Suppose $v_1(e_2) \mapsto v_1(e_2')$ and $e_2 \mapsto e_2'$. We know by definition that
+Suppose $v_1(e_2) \mapsto v_1(e_2')$ and $e_2 \mapsto e_2'$. We have by definition that
 \begin{align*}
-  \trden{v_1(e_2)} &= \trden{v_1}(\tden{e_2})\\
+  \trden{v_1(e_2)} &= \trden{v_1}(\trden{e_2})\\
   \trden{v_1(e_2')} &= \trden{v_1}(\trden{e_2'})
 \end{align*}
 
-The only typing rule that applies is S-T-App, so $\emptyset \vdash v_1 : \sigma_2 \rightarrow \sigma$.
+The only typing rule that applies is S-T-App, so $\emptyset \vdash e_2 : \sigma_2$.
 
 Inductively, we have that $\trden{e_2} \mapsto^* \trden{e_2'}$.
 
-By assumption \ref{ass:closure}.2, we have that $\trden{v_1}(\trden{e_2}) \mapsto^* \trden{v_1}(\trden{e_2'})$.
+By Assumption \ref{ass:closure}.2, we have that $\trden{v_1}(\trden{e_2}) \mapsto^* \trden{v_1}(\trden{e_2'})$.
 
 \item \textbf{Case SS-E-AppAbs}.
-Suppose $(\lambda x . e)(v_2) \mapsto [v_2/x]e$.
-We know by definition that
+Suppose $(\lambda x : \sigma_2 . e')(v_2) \mapsto [v_2/x]e'$.
+We have by definition and Assumption \ref{ass:subs-trans} that
 \begin{align*}
-  \trden{(\lambda . e)(v_2)} &= \trden{\lambda x . e}\trden{v_2} &= (\lambda x . \trden{e})(\trden{v_2}) \\
+  \trden{(\lambda x : \sigma_2. e')(v_2)} &= (\lambda x : \trden{\sigma_2}. \trden{e'})\trden{v_2}\\
+  \trden{[v_2/x]e'}&= [\trden{v_2}/x]\trden{e'}
 \end{align*}
 
-By Assumption~\ref{ass:closure}, 
-$(\lambda x . \trden{e})(\trden{v_2}) = [\trden{v_2} / x]\trden{e}$.
+By PS-E-AppAbs, we have that $(\lambda x : \trden{\sigma}. \trden{e'})\trden{v_2} \mapsto [\trden{v_2}/x]\trden{e'}$.\todo{define multistep semantics}
 
-
-
-\item \textbf{Case SS-E-Concat-Left}
-Suppose $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1'}{e_2}$
+\item \textbf{Case SS-E-Concat-Left}.
+Suppose $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1'}{e_2}$ and $e_1 \mapsto e_1'$. 
 We have by definition that
 \begin{align*}
   \trden{\rconcat{e_1}{e_2}} &= \tconcat{\trden{e_1}}{\trden{e_2}} \\
   \trden{\rconcat{e_1'}{e_2}} &= \tconcat{\trden{e_1'}}{\trden{e_2}}
 \end{align*}
 
-The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_1 : \stringin{r_1}$
-and $\emptyset \vdash e_2 : \stringin{r_2}$.
+The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_1 : \stringin{r_1}$.
 
 Inductively, we have that $\trden{e_1} \mapsto^* \trden{e_1'}$.
 
-By assupmtion \ref{ass:closure}, we have that 
+By Assumption \ref{ass:closure}.3, we have that 
 $\tconcat{\trden{e_1}}{\trden{e_2}} \mapsto^* \tconcat{\trden{e_1'}}{\trden{e_2}}$.
 
-\item \textbf{Case SS-E-Concat-Right}
-Suppose $\rconcat{e_1}{e_2} \mapsto \rconcat{e_1}{e_2'}$
+\item \textbf{Case SS-E-Concat-Right}. 
+Suppose $\rconcat{\rstr{s}}{e_2} \mapsto \rconcat{\rstr{s}}{e_2'}$ and $e_2 \mapsto e_2'$. 
 We have by definition that
 \begin{align*}
-  \trden{\rconcat{e_1}{e_2}} &= \tconcat{\trden{e_1}}{\trden{e_2}} \\
-  \trden{\rconcat{e_1}{e_2'}} &= \tconcat{\trden{e_1}}{\trden{e_2'}}
+  \trden{\rconcat{\rstr{s}}{e_2}} &= \tconcat{\tstr{s}}{\trden{e_2}} \\
+  \trden{\rconcat{\rstr{s}}{e_2'}} &= \tconcat{\tstr{s}}{\trden{e_2'}}
 \end{align*}
 
-The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_1 : \stringin{r_1}$
-and $\emptyset \vdash e_2 : \stringin{r_2}$.
+The only typing rule that applies is S-T-Concat, so $\emptyset \vdash e_2 : \stringin{r_2}$.
 
 Inductively, we have that $\trden{e_2} \mapsto^* \trden{e_2'}$.
 
-By assupmtion \ref{ass:closure}, we have that 
-$\tconcat{\trden{e_1}}{\trden{e_2}} \mapsto^* \tconcat{\trden{e_1}}{\trden{e_2'}}$.
+By Assumption \ref{ass:closure}.4, we have that 
+$\tconcat{\tstr{s}}{\trden{e_2}} \mapsto^* \tconcat{\tstr{s}}{\trden{e_2'}}$.
 
-\item \textbf{Case SS-E-Concat}
+\item \textbf{Case SS-E-Concat}. 
 Suppose $\rconcat{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{s_1s_2}$.
 We have by definition that
 \begin{align*}
   \trden{\rconcat{\rstr{s_1}}{\rstr{s_2}}} &= \tconcat{\tstr{s_1}}{\tstr{s_2}} \\ 
   \trden{\rstr{s_1s_2}} &= \tstr{s_1s_2}
 \end{align*}
-By Assumption~\ref{ass:closure},
-$\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto^* \tstr{s_1s_2}$.
+By PS-E-Concat, we have 
+$\tconcat{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{s_1s_2}$.
 
 \item \textbf{Case SS-E-Case-Left}
-Suppose $\strcase{e_1}{e_2}{x,y.e_3} \mapsto \strcase{e_1'}{e_2}{x,y.e_3}$.
-The only typing rule that applies is S-T-Case, so $\emptyset \vdash e_1 : \stringin{r}$.
+Suppose $\strcase{e_1}{e_2}{x,y.e_3} \mapsto \strcase{e_1'}{e_2}{x,y.e_3}$ and $e_1 \mapsto e_1'$. 
 We have by definition that:
 \begin{align*}
-  \trden{\strcase{e_1}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1}}{\trden{e_2}}{\lambda x . \lambda y . \trden{e_3}} \\
-  \trden{\strcase{e_1'}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1'}}{\trden{e_2}}{\lambda x . \lambda y . \trden{e_3}} 
+  \trden{\strcase{e_1}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1}}{\trden{e_2}}{x, y. \trden{e_3}} \\
+  \trden{\strcase{e_1'}{e_2}{x,y.e_3}} &= \pstrcase{\trden{e_1'}}{\trden{e_2}}{x, y . \trden{e_3}} 
 \end{align*}
+
+The only typing rule that applies is S-T-Case, so $\emptyset \vdash e_1 : \stringin{r}$.
 
 Inductively, $\trden{e_1} \mapsto^* \trden{e_1'}$.
 
-By Assumption~\ref{ass:closure}, we have that 
-$\pstrcase{\trden{e_1}}{\trden{e_2}}{\lambda x. \lambda y . \trden{e_3}} \mapsto^* \pstrcase{e_1'}{e_2}{\lambda x . \lambda y . \trden{e_3}}$.
+By Assumption~\ref{ass:closure}.5, we have that 
+$\pstrcase{\trden{e_1}}{\trden{e_2}}{x. y . \trden{e_3}} \mapsto^* \pstrcase{\trden{e_1'}}{\trden{e_2}}{x, y . \trden{e_3}}$.
 
-\item \textbf{Case SS-E-Case-$\epsilon$-Val}
+\item \textbf{Case SS-E-Case-$\epsilon$-Val}.\todo{rename this rule}
 Suppose $\strcase{\rstr{\epsilon}}{e_2}{x,y.e_3} \mapsto e_2$.
-The only typing rule that applies is S-T-Case, so $\emptyset \vdash e_2 : \sigma$.
 We have by definition that:
 \begin{align*}
-\trden{\strcase{\rstr{\epsilon}}{v_2}{x,y.e_3}} &= \pstrcase{\tstr{\epsilon}}{\trden{v_2}}{\lambda x . \lambda y . \trden{e_3}} \\
-\trden{v_2} &= \trden{v_2}
+\trden{\strcase{\rstr{\epsilon}}{e_2}{x,y.e_3}} &= \pstrcase{\tstr{\epsilon}}{\trden{e_2}}{x, y. \trden{e_3}}
 \end{align*}
 
-Note that $\trden{v_2} \mapsto^* \trden{v_2}$.
+By PS-E-Case-Epsilon, we have that
+$\pstrcase{\tstr{\epsilon}}{\trden{e_2}}{x, y. \trden{e_3}} \mapsto \trden{e_2}$.
 
-By Assumption~\ref{ass:closure}, we have that
-$\pstrcase{\tstr{\epsilon}}{\trden{v_2}}{\lambda x . \lambda y . \trden{e_3}} \mapsto^* \trden{v_2}$.
-
-\item \textbf{Case SS-E-Case-Concat}
-Suppose $\strcase{\rstr{as}}{e_2}{x,y.e_3} \mapsto [a,s/x,y]e_3$.
-By definition,
+\item \textbf{Case SS-E-Case-Concat}.\todo{rename this rule}
+Suppose $\strcase{\rstr{as}}{e_2}{x,y.e_3} \mapsto [\rstr{a},\rstr{s}/x,y]e_3$.
+We have by Assumption \ref{ass:subs-trans} and definition that 
 \begin{align*}
-\trden{e} &= \pstrcase{\tstr{as}}{\trden{e_2}}{\lambda x.\lambda y.\trden{e_3}} \\
-\trden{[a,s/x,y]e_3} &= [a,s/x,y]\trden{e_3}
+\trden{\strcase{\rstr{as}}{e_2}{x,y.e_3}} &= \pstrcase{\tstr{as}}{\trden{e_2}}{x, y.\trden{e_3}} \\
+\trden{[\rstr{a},\rstr{s}/x,y]e_3} &= [\tstr{a},\tstr{s}/x,y]\trden{e_3}
 \end{align*}
 
-By Assumption~\ref{ass:closure},
-$\pstrcase{\tstr{as}}{\trden{e_2}}{\lambda x.\lambda y.\trden{e_3}} \mapsto^*
-[a,s / x,y]\trden{e_3}$.
+By PS-E-Case-Cons, we have that 
+$\pstrcase{\tstr{as}}{\trden{e_2}}{x, y.\trden{e_3}} \mapsto^*
+[\tstr{a},\tstr{s} / x,y]\trden{e_3}$.
 
-\item \textbf{Case SS-E-Replace-Left}
+\item \textbf{Case SS-E-Replace-Left}.
 Suppose $\rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1'}{e_2}$
-and $e_1 \mapsto e_1'$.
-The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_1 : \stringin{r_1}$.
-By definition,
+and $e_1 \mapsto e_1'$. We have by definition that 
 \begin{align*}
 \trden{\rreplace{r}{e_1}{e_2}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \\
 \trden{\rreplace{r}{e_1'}{e_2}} &= \treplace{\rx{r}}{\trden{e_1'}}{\trden{e_2}}
 \end{align*}
 
-Inductively, we have that $\trden{e_1} \mapsto \trden{e_1'}$.
+The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_1 : \stringin{r_1}$.
 
-By Assumption~\ref{ass:closure}, $\treplace{\rx{r}}{e_1}{e_2} \mapsto^* \treplace{\rx{r}}{e_1'}{e_2}$.
+Inductively, we have that $\trden{e_1} \mapsto^* \trden{e_1'}$.
+
+By Assumption~\ref{ass:closure}.7, we have that $\treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \mapsto^* \treplace{\rx{r}}{\trden{e_1'}}{\trden{e_2}}$.
 
 
-\item \textbf{Case SS-E-Replace-Right}
-Suppose $\rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1}{e_22}$
-and $e_e \mapsto e_e'$.
-The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_2 : \stringin{r_2}$.
+\item \textbf{Case SS-E-Replace-Right}. 
+Suppose $\rreplace{r}{e_1}{e_2} \mapsto \rreplace{r}{e_1}{e_2'}$
+and $e_2 \mapsto e_2'$.
 By definition,
 \begin{align*}
 \trden{\rreplace{r}{e_1}{e_2}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \\
 \trden{\rreplace{r}{e_1}{e_2'}} &= \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2'}}
 \end{align*}
 
-Inductively, we have that $\trden{e_2} \mapsto \trden{e_2'}$.
+The only typing rule that applies is S-T-Replace, so $\emptyset \vdash e_2 : \stringin{r_2}$.
 
-By Assumption~\ref{ass:closure}, 
-$\treplace{\rx{r}}{e_1}{e_2} \mapsto^* \treplace{\rx{r}}{e_1}{e_2'}$
+Inductively, we have that $\trden{e_2} \mapsto^* \trden{e_2'}$.
 
-\item \textbf{Case SS-E-Replace}
+By Assumption~\ref{ass:closure}.8, we have that 
+$\treplace{\rx{r}}{\trden{e_1}}{\trden{e_2}} \mapsto^* \treplace{\rx{r}}{\trden{e_1}}{\trden{e_2'}}$.
+
+\item \textbf{Case SS-E-Replace}. 
 Suppose $\rreplace{r}{\rstr{s_1}}{\rstr{s_2}} \mapsto \rstr{\lreplace{r}{s_1}{s_2}}$.
 By definition,
 \begin{align*}
@@ -1501,22 +1484,22 @@ By definition,
 \trden{\rstr{\lreplace{r}{s_1}{s_2}}} &= \tstr{\lreplace{r}{s_1}{s_2}}
 \end{align*}
 
-By assumption~\ref{ass:closure}, 
+By PS-E-Replace, we have that 
 $\preplace{\rx{r}}{\tstr{s_1}}{\tstr{s_2}} \mapsto \tstr{\lreplace{r}{s_1}{s_2}}$.
 
-\item \textbf{Case SS-E-SafeCoerce-Step}
-Supose $\rcoerce{r}{e} \mapsto \rcoerce{r}{e'}$ and $e \mapsto^* r'$.
+\item \textbf{Case SS-E-SafeCoerce-Step}. 
+Suppose $\rcoerce{r}{e} \mapsto \rcoerce{r}{e'}$ and $e \mapsto^* e'$.
 By definition,
 \begin{align*}
 \trden{\rcoerce{r}{e}} &= \trden{e} \\
 \trden{\rcoerce{r}{e'}} &= \trden{e'}
 \end{align*}
 
-The only rule that applies is S-T-SafeCoerce, so $\emptyset \vdash e' : \stringin{r}$.
+The only typing rule that applies is S-T-SafeCoerce, so $\emptyset \vdash e' : \stringin{r'}$.
 
 Inductively, $\trden{e} \mapsto^* \trden{e'}$.
 
-\item\textbf{Case SS-E-SafeCoerce}
+\item\textbf{Case SS-E-SafeCoerce}. 
 Suppose $\rcoerce{r}{\rstr{s}} \mapsto \rstr{s}$.
 By definition, 
 \begin{align*}
@@ -1524,60 +1507,63 @@ By definition,
 \rstr{s} &= \tstr{s}
 \end{align*}
 
-Note that $\mapsto^*$ is reflexive.
+We have that $\tstr{s} \mapsto^* \tstr{s}$ because the multistep judgement is reflexive.
 
-\item\textbf{Case SS-E-Check-StepLeft}
-Suppose $\rcheck{r}{e}{x.e_1}{e_2} \mapsto \rcheck{r}{e'}{x.e_1}{e_2}$
-and $e \mapsto e'$.
-By definition,
+\item\textbf{Case SS-E-Check-StepLeft}. 
+Suppose $\rcheck{r}{e_0}{x.e_1}{e_2} \mapsto \rcheck{r}{e_0'}{x.e_1}{e_2}$
+and $e_0 \mapsto e_0'$. We have by definition that 
 \begin{align*}
-\trden{\rcheck{r}{e}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}} \\
-\trden{\rcheck{r}{e'}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e'}}{(\lambda x . \trden{e_1})(\trden{e'})}{\trden{e_2}}
+\trden{\rcheck{r}{e_0}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e_0}}{(\lambda x : \str. \trden{e_1})(\trden{e_0})}{\trden{e_2}} \\
+\trden{\rcheck{r}{e'}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\trden{e_0'}}{(\lambda x : \str. \trden{e_1})(\trden{e_0'})}{\trden{e_2}}
 \end{align*}
 
-Inductively, $e \mapsto^* e'$.
-By Assumption~\ref{ass:closure}, 
-$\tcheck{\rx{r}}{\trden{e}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}} \mapsto^* \tcheck{\rx{r}}{\trden{e'}}{(\lambda x . \trden{e_1})(\trden{e})}{\trden{e_2}}$
+Inductively, $e_0 \mapsto^* e_0'$.
+
+By Assumption~\ref{ass:closure}.10, we have that 
+\begin{align*}
+    & \tcheck{\rx{r}}{\trden{e_0}}{(\lambda x : \str. \trden{e_1})(\trden{e_0})}{\trden{e_2}}\\
+    \mapsto^* & \tcheck{\rx{r}}{\trden{e_0'}}{(\lambda x : \str. \trden{e_1})(\trden{e_0})}{\trden{e_2}}
+\end{align*}
 
 % bkcase
 
 \item \textbf{Case SS-E-Check-Ok}
-Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto [\rstr{s} / x]e_1$
-and $s \in \lang{r}$.
-By definition,
+Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto [\rstr{s} / x]e_1$ and $s \in \lang{r}$.
+We have by definition that 
 \begin{align*}
-\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\trden{e_1})(\tstr{s})}{\trden{e_2}} \\
+\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x : \str.\trden{e_1})(\tstr{s})}{\trden{e_2}} \\
 \trden{ [\rstr{s} / x] e_1 } &= [ \tstr{s} / x ] \trden{e_1}
 \end{align*}
 
-By Assumption~\ref{ass:closure},
-$ \tcheck{\rx{r}}{\tstr{s}}{(\lambda x.\trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto^*  [ \tstr{s} / x ] \trden{e_1}$.
+By PS-E-Check-OK, we have that 
+$$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x : \str.\trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto (\lambda x : \str.\trden{e_1})(\tstr{s})$$
+
+By PS-E-AppAbs, we have that 
+$$(\lambda x : \str.\trden{e_1})(\tstr{s}) \mapsto [\tstr{s}/x]\trden{e_1}$$
 
 \item \textbf{Case SS-E-Check-NotOk}
 Suppose $\rcheck{r}{\rstr{s}}{x.e_1}{e_2} \mapsto e_2$ and $s \not \in \lang{r}$.
 By definition,
 \begin{align*}
-\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \trden{e_1})(\tstr{s})}{\trden{e_2}}
+\trden{\rcheck{r}{\rstr{s}}{x.e_1}{e_2}} &= \tcheck{\rx{r}}{\tstr{s}}{(\lambda x : \str. \trden{e_1})(\tstr{s})}{\trden{e_2}}
 \end{align*}
 
-By Assumption~\ref{ass:closure}, 
-$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x . \trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto^* \trden{e_2}$.
+By PS-E-Check-NotOK, we have that 
+$$\tcheck{\rx{r}}{\tstr{s}}{(\lambda x : \str. \trden{e_1})(\tstr{s})}{\trden{e_2}} \mapsto \trden{e_2}$$
 
 
 
-
+\end{itemize}
 \end{proof}
 
-\begin{thm}[Translation Correctness]\label{thm:trcorrect}
-  If $\sctx \vdash e : \sigma$ then 
-  there exists an $\iota$ such that $\trden{e} = \iota$
-  and $\trden{\sctx} \vdash \iota : \trden{\sigma}$.
-  Furthermore, if $e \mapsto^* v$ then
-  $\iota \mapsto^* \dot{v}$ such that
-  $\trden{v} = \dot{v}$.
-\end{thm}
-\begin{proof}
-By the preceeding two theorems and induction on the length of the reduction of $\iota$.
+% \begin{thm}[Translation Correctness]\label{thm:trcorrect}
+%   If $\sctx \vdash e : \sigma$ then 
+%   $\trden{\sctx} \vdash \trden{e} : \trden{\sigma}$.
+%   Furthermore, if $e \mapsto^* v$ then
+%   $\trden{e} \mapsto^* \trden{v}$.
+% \end{thm}
+% \begin{proof}
+% By Theorem 8 and iterated application of Theorem 9.
 %
 %\todo{This proof needs to be changed to use only the small-step semantics.}
 %We present a proof by induction on the structure of $e$.
@@ -1692,18 +1678,18 @@ By the preceeding two theorems and induction on the length of the reduction of $
 %The result follows by induction.
 %
 %\end{itemize}
-\end{proof}
+%\end{proof}
 
-\begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
-  If $\trden{e} = \iota$ and $\emptyset \vdash e : \stringin{r}$ then $\iota \mapsto^* \tstr{s}$
-  for $s \in \lang{r}$.
-\end{thm}
-\begin{proof}
-  By \ref{thm:scorrect}, $e \mapsto^* \rstr{s}$ where $\emptyset \vdash \rstr{s} : \stringin{r}$. 
-  Therefore, $s \in \lang{r}$.
-  Note that $\trden{\cdot}$ is a function and $\trden{\rstr{s}} = \tstr{s}$; 
-  therefore, by theorem \ref{thm:trcorrect}, $\iota \mapsto^* \tstr{s}$.
-\end{proof}
+% \begin{thm}[Correctness of Input Sanitation for Translated Terms]\label{thm:main}
+%   If $\emptyset \vdash e : \stringin{r}$ and $e \mapsto^* \rstr{s}$ then $\trden{e} \mapsto^* \tstr{s}$
+%   and $s \in \lang{r}$.
+% \end{thm}
+% \begin{proof}
+%   By \ref{thm:scorrect}, $e \mapsto^* \rstr{s}$ where $\emptyset \vdash \rstr{s} : \stringin{r}$. 
+%   Therefore, $s \in \lang{r}$.
+%   Note that $\trden{\cdot}$ is a function and $\trden{\rstr{s}} = \tstr{s}$; 
+%   therefore, by theorem \ref{thm:trcorrect}, $\iota \mapsto^* \tstr{s}$.
+% \end{proof}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
