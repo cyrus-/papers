@@ -1,37 +1,68 @@
 % !TEX root = omar-thesis-proposal.tex
-\vspace{-25pt}
+%\vspace{-25pt}
 \section{Introduction}\label{motivation}
 % \begin{quote}\textit{The recent development of programming languages suggests that the simul\-taneous achievement of simplicity 
 % and generality in language design is a serious unsolved 
 % problem.} -- John Reynolds, 1970 \cite{Reynolds70}\end{quote}
 %%One might exp ``generality''
-Well-designed general-purpose programming languages are remarkably stable: they rarely need to be revised or forked into dialects, because programmers can express the constructs that they need just as well in orthogonal libraries. %Instead, . . %Indeed, a preponderence of new dialects is clear evidence against claims of generality.  %Not all useful abstractions can be  realized, when considered comprehensively, as libraries.% The problem of achieving both simplicity and generality simultaneously with a single system remains unsolved. 
-Abstraction mechanisms informed by type theory, like  the ML module system \cite{MacQueen:1984:MSM:800055.802036}, have put this ideal within reach. 
-Yet despite their expressive power, new {dialects} of languages like ML continue to arise. Why is this?
+Ideally, a general-purpose programming language should only rarely need to be  extended or forked to form a dialect. Instead, programmers should be able to  express the constructs that they need in  libraries, as modes of use of existing constructs, and reason about their behavior modularly. %Instead, . . %Indeed, a preponderence of new dialects is clear evidence against claims of generality.  %Not all useful abstractions can be  realized, when considered comprehensively, as libraries.% The problem of achieving both simplicity and generality simultaneously with a single system remains unsolved. 
+Languages like ML, which features a powerful module system atop a core type structure rooted in the foundations of logic, appear to have put this ideal well within reach today. 
+Yet despite their expressive power, new {dialects} of languages like ML, and tools for creating such dialects, do continue to arise. What is motivating this?
 
 % Unlike libraries organized by a module system, language dialects are not trivially composable.%Constructing a software system using libraries written in different dialects is difficult because they cannot always be composed. %This suggests that library-based mechanisms are still not general enough to encompass many desirable modes of expression.   %Library implementations are not yet satisfying.
 %Why would a well-informed programmer consider forming a new dialect? 
-Perhaps the most common justification is that the \emph{syntactic cost} of a desirable construct is not  preserved when it is expressed using general-purpose mechanisms. %Syntactic cost is often assessed qualitatively \cite{green1996usability} (though quantitative metrics can also be defined). 
-For example, the semantics of regular expressions can be expressed using abstract data types (which in ML are a mode of use of the module system), but as we will detail in Sec. \ref{sec:syntax}, this presents some syntactic difficulties. For programmers in problem domains  where regular expressions are common, e.g. bioinformatics, it is tempting to design a ``domain-specific'' dialect that differs only in that it includes derived syntax (i.e. ``syntactic sugar'') for regular expression patterns. There is no shortage of tools that aid in the construction of such syntactic dialects (e.g. Camlp4 \cite{ocaml-manual}, SugarJ \cite{erdweg2011sugarj}, SugarHaskell \cite{erdweg2012layout} and many others).%Put another way, such embeddings may not preserve the cognitive cost associated with a construct (qualitative criteria are generally used to establish this \cite{green1996usability}). 
+Perhaps the most common motivation is a concern about the \emph{syntactic cost} of expressing a construct of interest using general-purpose mechanisms (often assessed qualitatively \cite{green1996usability}, though quantitative metrics can be defined). For example, we consider regular expression patterns expressed using abstract data types (in ML,  a mode of use of the module system) in Sec. \ref{sec:syntax}. There is no semantic issue with this approach, but syntactically, it leaves much to be desired. In response to situations like this, it is not uncommon for providers to consider a \emph{syntactic dialect} of the language, i.e. one that specifies new concrete syntax by context-free elaboration to the existing language. For example, Ur/Web is a dialect of Ur (itself descended from ML) that builds in concrete syntax for SQL queries, HTML documents and other datatypes common in web programming \cite{conf/popl/Chlipala15}. Indeed, nearly all languages include some derived syntax for constructs that are otherwise expressed in the standard library, e.g. list syntax in Standard ML. Tools like Camlp4 \cite{ocaml-manual} and Sugar* \cite{erdweg2011sugarj,erdweg2013framework} are designed to lower the engineering costs of constructing syntactic dialects. 
 
-Somewhat more rarely, dialects are motivated by the need to extend a general-purpose language with new derived semantic constructs, i.e. constructs that cannot be expressed as purely syntactic sugar, but where the general-purpose language is a suitable translation target. As a minimal example, consider System \textbf{F}, i.e. the polymorphic lambda calculus (perhaps the simplest general-purpose language) \cite{pfpl}. If we wanted to express record types in \textbf{F}, we could not do so simply with derived syntax. We could, however, develop a dialect that included the type and term operators relevant to records, specifying their static semantics directly but their dynamic semantics by translation to the polymorphic lambda calculus (using a standard Church-style encoding).\todo{couple more sentences} %Constructs specified by a type-directed translation like this can be considered \emph{derived semantic constructs}.
+%Many other data structures can similarly benefit from a decrease in syntactic cost. For example, we  will consider {regular expression patterns} encoded using abstract data types in Sec. \ref{sec:syntax}. 
+%The syntactic cost of  such encodings, considered in several ways, can be reduced by using a dialect that builds in {syntactic sugar}  for regular expression patterns, and there are many tools that make constructing such syntactic dialects simple, e.g. Camlp4 \cite{ocaml-manual} and Sugar* \cite{erdweg2011sugarj,erdweg2013framework} (though as we will see, they come with costs of their own).   %Put another way, such embeddings may not preserve the cognitive cost associated with a construct (qualitative criteria are generally used to establish this \cite{green1996usability}). 
 
+More advanced dialects build in constructs that cannot simply be defined by a context-free elaboration to an existing language. For example, dialects of ML variously provide ``record-like'' constructs that support functional update and extension operators, mutable rows, width and depth coercions (often implicit) \cite{Cardelli:1984:SMI:1096.1098}, methods (i.e. function members that receive a self-reference implicitly), prototypic dispatch and various other embellishments. Ocaml builds in a class-based object system as well as various conveniences, e.g. logic for typechecking operations that use format strings, like $\mathtt{sprintf}$. ReactiveML builds in constructs for functional reactive programming \cite{mandel2005reactiveml}.  ML5 builds in constructs for distributed programming \cite{Murphy:2007:TDP:1793574.1793585}. Manticore builds in parallel arrays \cite{conf/popl/FluetRRSX07}. Alice ML builds in futures and promises \todo{citation}. MLj builds in essentially the entire Java programming language, to support typesafe interoperation with existing Java code \cite{Benton:1999:IWW:317636.317791}. Indeed, perusal of the proceedings of any major programming languages conference will typically yield several more examples. Tools like proof assistants and logical frameworks are designed to support specifying and reasoning about dialects like these, and tools like compiler generators and language workbenches simplify the task of implementing them. 
+
+%We will also discuss labeled products, which unlike records maintain a row ordering (this makes it possible to introduce them without explicit labels, but eliminate them using labels). 
 
 % express record types as syntactic sugar over the simply-typed lambda calculus with  binary product types.\footnote{Pairs can of course be expressed as syntactic sugar atop records, though one could argue that using binary products as the more primitive concept is simpler.} The static semantics need to be extended with new type and term operators. However, the simplest way to express the dynamic semantics of the newly introduced term operators is by translation to nested binary products, so we can leave the operational semantics alone. \todo{fill this out} %For example, there are dozens of constructs that go by the name of ``records'' in various languages, each defined by a slightly different collection of primitive operations. \todo{examples} %, encouraged  historically  by the availability of tools like compiler generators and,  more recently, language workbenches \cite{workbenches} and DSL frameworks \cite{dsl}. Unfortunately, taking this approach makes it substantially more difficult for clients to import high-level abstractions orthogonally. 
 
-The problem with designing new language dialects in these situations is that a program written in one dialect cannot safely and idiomatically interface with libraries written in a different dialect. %At best, one can hope that the compilers for the two languages target a common intermediate language,  
-To do so would require combining the two dialects into a single language, but there is no systematic method to do so, much less one that guarantees that important metatheoretic properties established about each dialect in isolation will be conserved. As a simple example, two dialects might be known to have an unambiguous concrete syntax in isolation, but if the syntax is na\"ively combined, ambiguities could easily arise. %the ideas housed in one dialect are often only available to programmers willing to do without ideas housed in other dialects. 
+The problem with this practice of using language dialects as vehicles for new syntactic and semantic constructs is that it is, in an important sense,  anti-modular: a program written in one dialect cannot, in general, safely and idiomatically interface with libraries written in a different dialect. %At best, one can hope that the compilers for the decidedlytwo languages target a common intermediate language,  
+This would require constructing a language where the constructs of both dialects are identically expressible, and where all the metatheoretic properties relevant to reasoning about program behavior are conserved. There can be no guarantee that such a language exists in general. As a very simple example, consider two dialects, one building in derived syntax for JSON (a popular data interchange format), the other using a similar syntax for finite mappings of some other type. Each is known to have an unambiguous concrete syntax in isolation, but when their syntax is na\"ively  combined, ambiguities arise. Combining the semantics of two languages, particularly when they are specified in very different ways, is even more of an art than a science, and subject to often subtle failures. %the ideas housed in one dialect are often only available to programmers willing to do without ideas housed in other dialects. 
 %It is thus infeasible to simply allow different contributors to a software system to choose their own favorite dialect for each component they are responsible for. %A complex software system written in multiple distinct language dialects is far too unwieldy for it to be viable. 
-Without strong modular reasoning principles to rely upon, it is difficult to construct large software systems and ecosystems. 
-%This means that it is difficult to construct large software systems and ecosystems from components written in different dialects. 
-The only reasonable approach for software engineers who must program ``in the large'' is to eschew constructs housed in dialects and settle on a single common language, where they can  rely on the guarantees provided by its type and module system. %The designers of these languages may slowly adopt the most generally useful new ideas. 
-This has left many useful constructs for programming ``in the small'' obscure.% It is safe to say that in contemporary times, language dialects should be considered harmful. % It is little wonder that many programmers eschew esoteric language dialects in favor of languages that stopped evolving decades ago.
+
+%It it clear that dialects are better rhetorical devices than practical engineering artifacts. 
+Given this, there are two approaches that the language design community can consider to put the ideas in dialects like those above into the hands of software engineers. One, exemplified by languages like Scala and Ocaml, is to progressively borrow new ideas from dialects as they emerge, integrating them into backwards compatible revisions. In taking this approach, power as well as responsibility to maintain metatheoretic guarantees is concentrated around a small group of language designers. This results in a large core language, yet because of a ``long tail'' effect, constructs that are situationally useful (or where there is disagreement) can still end up marginalized. Moreover, constructs that are included but turn out to be  flawed remain entrenched (and monopolize finite ``syntactic resources'', as we will discuss below). %This approach is antithetical to the ideal of a truly \emph{general-purpose language} described at the beginning of this section.
+
+% The ability to reason separately about libraries and import them freely is critical when constructing large software systems and participating in modern software ecosystems. If using a library requires a developer to directly modify the programming language they are using, detecting and resolving conflicts between constructs manually, then reestablish critical metatheoretic properties about the language followed by important invariants throughout their own code, the library will be essentially useless to them. 
+% %This means that it is difficult to construct large software systems and ecosystems from components written in different dialects. 
+% From this perspective, it is hardly surprising when software engineers avoid dialects and settle on a single common language, where they can rely on the guarantees provided by its module system to program ``in the large''. %The designers of these languages may slowly adopt the most generally useful new ideas. 
+% Unfortunately, this has left many useful constructs for programming ``in the small''  languishing in ``toy dialects''.% It is safe to say that in contemporary times, language dialects should be considered harmful. % It is little wonder that many programmers eschew esoteric language dialects in favor of languages that stopped evolving decades ago.
+
+% It is nearly always the case, however, that the dynamic semantics of these dialects can be defined by type-directed translation to the existing language. For example, ReactiveML builds in support for functional reactive programming, but its dynamic semantics can be implemented by type-directed translation to Standard ML \cite{mandel2005reactiveml}. In some cases, the semantics of the dialect are directly specified in this way. For example, F\# \cite{syme2012expert} introduces functional datatypes and the other constructs of the ML core language, defining them in terms of constructs available in the Common Intermediate Language (CIL), a class-based object-oriented language. Ocaml includes a class-based object system that can be defined by type-directed translation to Caml, a language building in little more than recursive product and sum types. 
+
+{\Verse} aims to explore the polar opposite approach: a core language that builds in only minimal syntax and type structure \emph{a priori}. Instead, the core language is organized around metaprogramming mechanisms that give library providers the ability to introduce new concrete syntax and type structure of many designs, while imposing enough structure to ensure that the language maintains strong safety and modularity-related guarantees. This is far from a trivial matter.
+%\footnote{This is why languages  like Verse are often called \emph{extensible languages}, though this is somewhat of a misnomer. The chief characteristic of an extensible language is that it \emph{doesn't} need to be extended in situations where other languages would need to be extended. We have found that the relativity inherent in this definition is a point of confusion, so we will avoid this terminology and simply consider {\Verse} to be a (particularly expressive) programming language of the usual sort.}
+For example, if we simply conceived of the core language's semantics as being specified by a ``bag of rules'' (like ``paper'' specifications of languages often appear) and let library providers introduce new rules, one could easily define rules that violated type safety, interfered with invariants being maintained by rules defined in other libraries, or introduced non-determinism. There is also the question of how to allocate finite syntactic resources. For example, as noted above, the design space around record types is large. If we allow libraries to explore this design space, which library gets to determine the meaning of a form like \lstinlinep{\{label1=e1, label2=e2\}}? 
+
+
+%This suggests a need for language-integrated mechanisms that allow library providers to modularly express syntactic and semantic constructs of the sort that today require new dialects, allowing for perhaps some low-cost syntactic compromises.
+Before we discuss how we address these problems, it is useful to acknowledge that completely eliminating the need for dialects would indeed be asking for too much: certain design decisions are fundamentally incompatible with others or require coordination across a language design. For example, constructs that require that the type system support subtyping could not be introduced uncompromisingly into a language that has no such semantic notion. Our interest is only in a subset of all constructs that can be specified in a mutually orthogonal manner by a semantics of a certain prototypic ``shape''. We will make this more specific below. %For example, it should be possible to express different record systems within a language specified like ML (or the simply typed lambda calculus). The challenge  is to give formal shape to these intuitions. %Our broad aim in this thesis is to design language mechanisms that take significant steps toward achieving this goal.
 
 \section{Contributions}
-Our aim in this thesis is to make dialect formation less frequently necessary by designing language mechanisms that give library providers the ability to express derived syntactic and semantic constructs from within the language, in a manner that ensures that these constructs can be reasoned about separately and composed arbitrarily. 
+\subsection{Verse}
+To provide a coherent vehicle for our contributions, we introduce a new programming language called Verse. Let us briefly review its organization. Syntactically, Verse has a layout-sensitive textual concrete syntax (i.e. newlines and indentation are meaningful). This choice is not fundamental to our proposed mechanisms, but it will be useful for cleanly expressing a class of examples that we will discuss later.  Semantically, Verse is organized into a \emph{module language} and a \emph{core language}. The module language is based directly on the Standard ML module language, with which we assume familiarity for the purposes of this proposal \cite{harper1997programming}. We will use it in an example in Section \ref{sec:syntax}. The core language, i.e. the language of types and expressions, is split into an \emph{external language} (EL) and an \emph{internal language} (IL). The EL  is specified by a type-directed translation semantics targeting the much simpler IL. Notionally, this can be thought of as simply shifting the first stage of a type-directed compiler directly into the language specification \cite{tarditi+:til-OLD}. More specifically, we specify a {bidirectionally typed translation semantics}, i.e. one where a distinction is made between \emph{type analysis} (the type is an ``input'') and \emph{type synthesis} (the type is an ``output''), for reasons that we will return to later.
 
+The mechanisms we introduce are relatively insensitive to the particular choice of IL. Choosing the semantics of the IL is the primary decision that a language designer leveraging these mechanisms would need to make. The only strict requirements are that the IL is type safe and supports parametric type abstraction. For our purposes, we will keep things simple by using the strictly evaluated polymorphic lambda calculus with nullary and binary product and sum types and recursive types, which we assume the reader has familiarity with and for which all the necessary metatheorems are already well-established \cite{pfpl}. Features like state, exceptions, concurrency primitives, scalars, arrays and other constructs characteristic of a first-stage compiler IL would also be included in practice, but we omit them when their inclusion would not meaningfully affect our discussion.
+
+\subsection{Modularly Metaprogrammable Concrete Syntax}
+There are three main mechanisms that we propose in this thesis. The first two have to do with concrete syntax, and are closely related, while the final one has to do with the type structure of the core language. 
+\begin{itemize}
+\item \textbf{Typed Syntax Macros}. TODO: description + example (and a variant of them that further lowers syntactic cost in certain circumstances, \emph{type-specific languages}), introduced in Sec. \ref{sec:syntax}.
+\item \textbf{Tycon Structures}, introduced in Sec. \ref{sec:extensible-semantics}. 
+\end{itemize}
+For each mechanism that we introduce, we will first demonstrate its expressive power by showing how constructs that are, or would need to be, built directly in to contemporary languages can in Verse be expressed in libraries. To demonstrate that these mechanisms are theoretically sound, we will then develop a formal specification and proofs of various important metatheoretic properties. The most interesting of these will be various \emph{modular reasoning principles} that guarantee that user-defined constructs can be reasoned about separately and then used together in any combination, without the possibility of syntactic or semantic conflict. 
+
+
+ %Only constructs for which the dynamic semantics can ultimately be defined by translation to the IL chosen can be expressed using the mechanisms we introduce (in practice, this would be exactly the same constraint necessary to guarantee that a compiler could implement a dialect specification). %Again, we will make these statements more precise as we continue.%The external language provides local type inference \cite{Pierce:2000:LTI:345099.345100}. % (for the purposes of this work).
 %Such mechanisms are colloquially known as \emph{extension mechanisms} because the sorts of constructs they are used to express are those that would otherwise require extensions to the language itself. %Defining a new construct then corresponds to the usual notion of language extension. We will make this intuition more precise later.
 
+% Rather than building derived syntax for certain privileged data structures, e.g. list syntax, as is nearly ubiquitious in dialects of ML, Verse allows users to express new derived syntax on their own, associating it with their own data structures. To guarantee that syntactic ambiguities cannot arise, Verse controls which delimiters can be used around derived syntax, but otherwise imposes no 
 
 %in languages without such mechanisms, expressing such constructs would require extensions to the language itself (a better qualifier might thus be \emph{extension-mitigating}). %We will make these notions more precise as we continue. %Thus, these mechanisms precisely capture the notions of language extension and language composition.
 
@@ -39,15 +70,14 @@ Our aim in this thesis is to make dialect formation less frequently necessary by
 
 %The mechanisms we propose are designed to decrease the number of constructs that need to be built in \emph{a priori} by a language designer. However, there are still some basic syntactic and semantic decisions that must unavoidably be made. 
 
-To provide a coherent vehicle for these mechanisms, we will introduce a new general-purpose language called Wyvern. Let us briefly summarize its organization. Syntactically, Wyvern has a layout-sensitive textual concrete syntax (i.e. indentation is meaningful). This choice is not fundamental to our proposed mechanisms, but it will be useful for a class of examples that we will discuss later.  Semantically, Wyvern consists of a \emph{module language} and a \emph{core language}. The module language is based directly on the Standard ML module language, with which we assume familiarity for the purposes of this proposal \cite{harper1997programming}. The core language (i.e. the language of types and expressions) is split into an \emph{external language} (EL) and an \emph{internal language} (IL). The semantics of EL constructs are specified by a type-directed translation to the much simpler IL. Notionally, this can be thought of as simply a shifting of the first stage of a type-directed compiler into the language specification \cite{tarditi+:til-OLD}. The internal language we will use is the polymorphic lambda calculus with binary product and sum types and recursive types (features like state and exceptions could also be included, but for simplicity, we will omit them) \cite{pfpl}. %Again, we will make these statements more precise as we continue.%The external language provides local type inference \cite{Pierce:2000:LTI:345099.345100}. % (for the purposes of this work).
-
-We will begin by describing Wyvern's mechanisms for expressing new forms of derived concrete syntax, assuming for the moment that the EL is otherwise specified in a standard way, in Section \ref{sec:syntax}. We then turn in Section \ref{sec:semantics} to a mechanism for introducing new semantic constructs -- in particular, new base types and operators -- into the EL. Constructs that are built in to languages like ML, like $n$-ary tuples/records, labeled sums and others, can in Wyvern be realized as modes of use of this mechanism. In both cases, the mechanisms can be broadly understood as novel forms of \emph{static metaprogramming}. Users define each new syntactic and semantic construct by writing code that generates terms and types. This code is  evaluated statically, in the course of typechecking EL terms.
-
-
+ %Constructs that are built in to languages like ML, like $n$-ary tuples/records, labeled sums and others, can in Verse be realized as modes of use of this mechanism. 
 %Languages that are organized around mechanisms like these are colloquially known as \emph{extensible languages}. 
 
-
-For each mechanism that we introduce, we will first demonstrate its expressive power by showing how constructs that are, or would need to be, built directly in to contemporary languages can in Wyvern be expressed in libraries. To demonstrate that these mechanisms are theoretically sound, we will then develop a formal specification and proofs of various important metatheoretic properties. The most interesting of these will be various \emph{modular reasoning principles} that guarantee that user-defined syntactic and semantic constructs can be reasoned about separately and then used together in any combination. These justify our classification of Wyvern as a \emph{modularly extensible programming language}.
+\subsection{Thesis Statement}
+In summary, we propose a thesis defending the following statement:
+\begin{quote}
+A programming language specified by a type-directed translation semantics can give library providers the ability to introduce derived concrete syntax and new external type structure, housed in constructs that can be reasoned about separately and used together in any combination.
+\end{quote}
 
 
 
@@ -68,20 +98,20 @@ For each mechanism that we introduce, we will first demonstrate its expressive p
 
 %To realize a new abstraction or system behavior, such experts can consider either a \emph{language-internal approach}, where they work within an existing language and distribute their solutions as libraries, or a \emph{language-external approach}, where they create a new, distinct programming system (often centered around what has come to be called a new \emph{domain-specific language} \cite{dsl}) or extend an existing system by some mechanism that is not part of the language itself, such as an extension mechanism supported by a {particular} compiler, editor or other tool.
 
-%The result of this work will be the design of a \emph{modularly extensible programming language} called Wyvern.   and end with a brief foray into editor services in Sec. \ref{sec:editor-services}.\todo{fix sections}
+%The result of this work will be the design of a \emph{modularly extensible programming language} called Verse.   and end with a brief foray into editor services in Sec. \ref{sec:editor-services}.\todo{fix sections}
 
 \section{Modular Derived Syntax}\label{sec:syntax}
 Most contemporary computer programming languages specify a textual concrete syntax. Because it serves as the language's human-facing user interface, it is common practice to include  derived syntactic forms (colloquially, \emph{syntactic sugar}) that capture common idioms more concisely or naturally. % (i.e. considering cognitive dimensions \cite{green1996usability}). 
 For example,  list syntax is built in to most dialects of ML, so that instead of having to write \lstinline{Cons(1, Cons(2, Cons(3, Nil)))}, a programmer can equivalently write \lstinline{[1, 2, 3]}. Many languages go further, building in syntax associated with other types of values, like vectors (SML), arrays (Ocaml), commands (Haskell) and syntax trees (Scala).  %The desugaring from the latter to the former is specified by the language itself. %Typically, the language designer controls what forms of derived syntax are built in to the language.
 
-Rather than privileging  particular data structures, Wyvern instead exposes mechanisms that allow library providers to introduce new derived syntactic constructs on their own. %Lists need no special consideration from the language specification.
-%The purpose of this section is to motivate and then introduce Wyvern's syntax extension mechanisms. %For forms with a clear analogy to a form in Standard ML, we will assume the  semantics are analagous without providing details.
+Rather than privileging  particular data structures, Verse instead exposes mechanisms that allow library providers to introduce new derived syntactic constructs on their own. %Lists need no special consideration from the language specification.
+%The purpose of this section is to motivate and then introduce Verse's syntax extension mechanisms. %For forms with a clear analogy to a form in Standard ML, we will assume the  semantics are analagous without providing details.
 To motivate our desire for this level of syntactic control, we begin in Sec. \ref{sec:examples} with the example of regular expression patterns expressed using abstract types, showing how the usual workaround of using strings to introduce patterns is not ideal. We then survey existing syntax extension mechanisms in Sec. \ref{sec:syntax-existing}, finding that they involve an unacceptable loss of modularity and other undesirable trade-offs. In Sec. \ref{sec:syntax-contributions}, we outline our proposed mechanisms and discuss how they resolve these issues. We conclude in Sec. \ref{sec:syntax-timeline} with a timeline for remaining work.
 
 
 \subsection{Motivating Example: Regular Expression Syntax}\label{sec:examples}
 Let us begin by taking the perspective of a \emph{regular expression} library provider. Recall that regular expressions are a common way to capture patterns in strings \cite{Thompson:1968:PTR:363347.363387}. We will assume that the abstract syntax of {patterns}, $p$, over strings, $s$, is specified as below:\[p ::= \textbf{empty} ~|~ \textbf{str}(s) ~|~ \textbf{seq}(p; p) ~|~ \textbf{or}(p; p) ~|~ \textbf{star}(p) ~|~ \textbf{group}(p)\]
-The most direct way to express this abstract syntax is by defining a recursive sum type \cite{pfpl}. Wyvern supports these as case types, which are analagous to datatypes in ML:
+The most direct way to express this abstract syntax is by defining a recursive sum type \cite{pfpl}. Verse supports these as case types, which are analagous to datatypes in ML:
 
 \begin{lstlisting}[numbers=none]
 casetype Pattern
@@ -252,7 +282,7 @@ The problem is that it is difficult to enforce this discipline mechanically. Bot
 
 
 
-% \paragraph{Patterns as Recursive Sums} A more semantically justifiable strategy is to define \lstinline{Pattern} as a recursive sum type  \cite{pfpl}. Wyvern supports these in the form of case types, which are analagous to datatypes in ML:
+% \paragraph{Patterns as Recursive Sums} A more semantically justifiable strategy is to define \lstinline{Pattern} as a recursive sum type  \cite{pfpl}. Verse supports these in the form of case types, which are analagous to datatypes in ML:
 
 % \begin{lstlisting}[numbers=none]
 % casetype Pattern
@@ -290,7 +320,7 @@ The problem is that it is difficult to enforce this discipline mechanically. Bot
 
 %The first one might not be found incorrect without rigorous testing with unexpected inputs. Goal 3 expresses the ideal of designing a language where security does not require considering such subtle issues extralinguistically.%This is precisely why injection attacks are so difficult to detect.
 
-% The dialect of Standard ML implemented by SML/NJ, recognizing that directly using constructors is often less than ideal, provides a facility for quotation/antiquotation \cite{SML/Quote}, which if introduced into Wyvern could be used as follows:
+% The dialect of Standard ML implemented by SML/NJ, recognizing that directly using constructors is often less than ideal, provides a facility for quotation/antiquotation \cite{SML/Quote}, which if introduced into Verse could be used as follows:
 % \begin{lstlisting}[numbers=none,escapechar=|,mathescape=|]
 % fun example(p : string)
 %   let twoDigits = P.qparse `SQT\d\dEQT`
@@ -347,7 +377,7 @@ The TSM is defined as shown below:
 syntax pattern[P : PATTERN] for P.t
   fn (ps : ParseStream) => (* pattern parser here *)
 \end{lstlisting}
-We declare a module parameter (calling it \lstinline{P} here is unimportant, i.e. the TSM can be used with \emph{any} module satisfying module type \lstinline{PATTERN}), and the type clause \lstinline{for P.t}, which guarantees that any use of this TSM will either be ill-typed or elaborate to a term of type \lstinline{P.t}. The elaboration is computed by the compile-time action of the parse function defined in the indented block above. This function must be of type \lstinline{ParseStream -> Exp}, where the type \lstinline{ParseStream} gives the function access to the \emph{body} of the delimited form (in blue above) and the type \lstinline{Exp}  encodes the abstract syntax of the base language. Both types are defined in the Wyvern prelude, which is a set of definitions available ambiently.
+We declare a module parameter (calling it \lstinline{P} here is unimportant, i.e. the TSM can be used with \emph{any} module satisfying module type \lstinline{PATTERN}), and the type clause \lstinline{for P.t}, which guarantees that any use of this TSM will either be ill-typed or elaborate to a term of type \lstinline{P.t}. The elaboration is computed by the compile-time action of the parse function defined in the indented block above. This function must be of type \lstinline{ParseStream -> Exp}, where the type \lstinline{ParseStream} gives the function access to the \emph{body} of the delimited form (in blue above) and the type \lstinline{Exp}  encodes the abstract syntax of the base language. Both types are defined in the Verse prelude, which is a set of definitions available ambiently.
 
 When the type of the term is known, e.g. due to a type annotation on the let binding, the module parameter \lstinline{P} can be inferred:
 \begin{lstlisting}[numbers=none]
@@ -369,7 +399,7 @@ A hygiene mechanism ensures that only those portions of the elaboration derived 
 
 Strings are never involved, so the attendant security issues described previously are easily avoidable. That is, the following 
 
-\item To support an even more concise usage profile, Wyvern also  supports \emph{type-specific languages} (TSLs), which allow library providers to associate a TSM directly with a declared type. For example, the module \lstinline{P} above can associate \lstinline{pattern} with \lstinline{P.t}. Local type inference then determines which TSM is applied implicitly to handle a form not prefixed by a TSM name. For example, the following is equivalent to the above:
+\item To support an even more concise usage profile, Verse also  supports \emph{type-specific languages} (TSLs), which allow library providers to associate a TSM directly with a declared type. For example, the module \lstinline{P} above can associate \lstinline{pattern} with \lstinline{P.t}. Local type inference then determines which TSM is applied implicitly to handle a form not prefixed by a TSM name. For example, the following is equivalent to the above:
 \begin{lstlisting}[numbers=none]
 let N : P.t = /SURLA|T|G|CEURL/
 \end{lstlisting}
@@ -379,7 +409,7 @@ For simplicitly, let us begin with a typed syntax macro providing pattern syntax
 \begin{lstlisting}[numbers=none]
 syntax pattern => Pattern = e_parser
 \end{lstlisting}
-The term \lstinline{e_parser}, elided here, must have type \lstinline{ParseStream -> Exp}, where \lstinline{ParseStream} classifies a sequence of characters and \lstinline{Exp} classifies a reified Wyvern expression. 
+The term \lstinline{e_parser}, elided here, must have type \lstinline{ParseStream -> Exp}, where \lstinline{ParseStream} classifies a sequence of characters and \lstinline{Exp} classifies a reified Verse expression. 
 
 \subsubsection{Type-Specific Languages (TSLs)}\label{sec:tsls}
 
@@ -389,6 +419,36 @@ SAC, ECOOP.
 TODO: module-parameterized TSMs
 
 \section{Extensible Semantics}\label{sec:extensible-semantics}
+As a minimal example, consider System \textbf{F}, a.k.a. the polymorphic lambda calculus (perhaps the simplest general-purpose language) \cite{girard1971extension,Reynolds94anintroduction,pfpl}. It specifies type variables and two type constructors, written abstractly $\mathtt{arr}$ and $\mathtt{all}$:
+
+\[
+\begin{array}{llllll}
+\textbf{Sort} & & & \textbf{Abstract Form} & \textbf{Typeset Form} & \textbf{Description}\\
+\mathsf{Type} & \tau & ::= & t & t & \text{type variable}\\
+& & & \mathtt{arr}(\tau; \tau) & \tau \rightarrow \tau & \text{function type}\\
+& & & \mathtt{all}(t.\tau) & \forall t.\tau & \text{type quantification}
+\end{array}
+\]
+and value variables and four term constructors:
+\[
+\begin{array}{llllll}
+\textbf{Sort} & & & \textbf{Abstract Form} & \textbf{Typeset Form} & \textbf{Description}\\
+\mathsf{Exp} & \iota & ::= & x & x & \text{value variable}\\
+& & & \mathtt{lam}[\tau](x.\iota) & \lambda x{:}\tau.\iota & \text{value abstraction}\\
+& & & \mathtt{ap}(\iota; \iota) & \iota(\iota) & \text{application}\\
+& & & \mathtt{Lam}(t.\iota) & \Lambda t.\iota & \text{type abstraction}\\
+& & & \mathtt{Ap}[\tau](\iota) & \iota\mathtt{[}\tau\mathtt{]} & \text{type application}
+\end{array}
+\]
+
+If we wanted to express record types in \textbf{F}, derived syntax would not be enough (the static semantics of \textbf{F} provide no way to express row labels, amongst other issues). We could, however, develop a dialect that built in the type and term operators relevant to records, specifying its static and dynamic semantics as a type-directed translation to the polymorphic lambda calculus (using the standard Church-style encoding for records). More formally, assuming that metavariables $e$, $\sigma$ and $\Upsilon$ range over terms, types and typing contexts of our dialect, and $\iota$, $\tau$ and $\Gamma$  range over the terms, types and typing contexts of \textbf{F}, the main judgements in the specification of our dialect would take the following form:
+\[\begin{array}{ll}
+\textbf{Judgement} & \textbf{Pronunciation}\\
+\Upsilon \vdash e : \sigma \leadsto \iota & \text{Under typing context $\Upsilon$, term $e$ has type $\sigma$ and translation $\iota$.}\\
+\Upsilon \vdash \sigma \leadsto \tau & \text{Under typing context $\Upsilon$, type $\sigma$ is valid and has translation $\tau$.}\\
+\vdash \Upsilon \leadsto \Gamma & \text{Typing context $\Upsilon$ is valid and has translation $\Gamma$.}
+\end{array}\]
+\todo{couple more sentences} %Constructs specified by a type-directed translation like this can be considered \emph{derived semantic constructs}.
 
 
 \subsubsection{Example 2: Regular Strings}\label{sec:rstr}
@@ -457,6 +517,10 @@ fun with_author(p : Paper, a : rstring /SURL.+EURL/) = p.ext(author=a)
 \end{lstlisting}
 % \subsection{Language-External Approaches}\label{external-approaches}
 
+
+An important point, however, is that records, as well as all of these ``record-like'' constructs, can  be expressed by a \emph{type-directed translation} targeting an intermediate language that builds in only functions, nullary and binary products, recursive types and reference cells  \cite{pfpl} (and indeed, many compilers take advantage of facts like this to simplify the number of cases that must be considered downstream). %it is inaccurate to state that they are merely syntactic sugar over such a language. %Object systems are perhaps even more diverse across languages\todo{citation}. 
+%Other dialects are justified by a desire to provide more special-purpose semantic constructs. For example, 
+Substantially more sophisticated examples require at most only a very slightly more capable intermediate language (the IL of popular virtual machines, even those with flaws like ubiquitous \texttt{null} references, e.g. JVM or CIL bytecode, are also sufficient if used strictly as translation targets).  %Once again, these languages could all be specified by type-directed translation to a common intermediate language with comparatively few constructs , but generally not by a purely syntactic desugaring. 
 
 % In situations like these where a library-based approach is not satisfactory, providers must today take a \emph{language-external approach}, specifying a new system dialect, reasoning about its metatheory monolithically and implementing it using a {compiler generator} \cite{brooker1963compiler}, {language workbench} \cite{erdweg2013state}, {DSL framework} \cite{fowler2010domain}, an extension mechanism for a {particular} compiler\footnote{Compilers that modify, or allow modification of, the semantics of their base language, rather than simply permitting semantics-preserving optimizations, should be considered a pernicious means for creating dialects. 
 % %That is, some programs that purport to be written in C, Haskell or Standard ML are actually written in compiler-specific dialects of these languages.
