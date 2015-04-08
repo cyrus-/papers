@@ -15,58 +15,70 @@
 %all major contemporary languages seem to leave room for improvement. 
 %General-purpose programming languages are a dime a. 
 %Among the chief goals in the design of a general-purpose programming languages must achieve \emph{stability}: they  very rarely needs to be extended or forked into dialects by the user community surrounding it. Instead, its users are able to modularly  express a wide variety of useful constructs in libraries, using the comparatively small set of primitives that the language builds in. 
-Over the past several decades, researchers have developed a substantial understanding of  the theoretical issues relevant to the design of programming languages, in large part by constructing and studying the metatheoretic properties of minimal typed lambda calculi. These minimal calculi are clearly not directly suitable for real-world software development, so language designers must expose a syntax and type structure of a more elaborate design to programmers. %syntactic and semantic primitives that capture common idioms naturally and precisely.
-Language designers have many viable choices at this level, as evidenced by the diverse array of dialects that continue to proliferate around all major languages. For example, let us consider the many dialects of ML. Though they generally agree on the importance of a powerful module system atop a core language based conceptually on the   polymorphic lambda calculus with recursive sum and product types, they all introduce various primitive syntactic and semantic extensions and tweaks of their own novel design (we cover several examples below). 
+Functional programming languages like Standard ML (SML) and Haskell descend directly from elegant typed lambda calculi, diverging mainly in that they strive to present a more pragmatic concrete syntax and type structure to programmers. In other words, their design considers important human factors in addition to fundamental metatheoretic issues. For example, both languages build in record types, generalizing the nullary and binary product types more common in simpler calculi, because labels are cognitively useful.
+%Minimal typed lambda calculi play a central role in the study of programming languages, and serve as direct inspiration for  functional programming languages like ML. to be useful in practice, it must present a decidedly more elaborate concrete syntax and type structure to programmers, designed considering various human factors in addition to fundamental metatheoretic issues. For example, while it is quite common to study minimal calculi that build in only nullary and binary product types, Standard ML (SML) builds in record types, because labels are cognitively useful. %syntactic and semantic primitives that capture common idioms naturally and precisely.
+
+Ideally, transitioning from a minimal calculus to a pragmatic programming language would require introducing only a limited number of primitive ``embellishments'' like this. The community around the language would then be able to redirect its efforts exclusively toward the development of a wide variety of useful libraries. Alas, a language design that achieves this ideal has proven elusive, as evidenced by the diverse array of {dialects} that continue to proliferate around all major languages, functional languages included. % For example, let us consider the many dialects of ML. Though they generally agree on the importance of a powerful module system atop a core language based conceptually on the   polymorphic lambda calculus with recursive sum and product types, they all introduce various primitive syntactic and semantic extensions and tweaks of their own design (we cover several examples below). 
 %Tools for  constructing new ``domain-specific'' dialects also continue to proliferate. % The situation is similar across all major language lineages. 
-Tools for  constructing ``domain-specific'' dialects contribute further to this proliferation of language primitives. This is alarming: why is it that well-informed programmers and researchers are so often unable to express the constructs that they need in libraries, as modes of use of a small number of ``general-purpose'' language primitives?
+In fact, tools for constructing new ``domain-specific'' dialects seem only to be increasingly popular. 
+{This calls for an investigation}: why is it that well-informed programmers and researchers are so often unsatisfied with expressing the constructs that they need in libraries, as modes of use of the ``general-purpose'' functional primitives available today?
 %Let us investigate why this is.
 %What kinds of constructs are not expressible in languages like SML?
 
 % Unlike libraries organized by a module system, language dialects are not trivially composable.%Constructing a software system using libraries written in different dialects is difficult because they cannot always be composed. %This suggests that library-based mechanisms are still not general enough to encompass many desirable modes of expression.   %Library implementations are not yet satisfying.
 
-Perhaps the most common  reason is simply that, for human {programmers}, the \emph{syntactic cost} of expressing a construct of interest using general-purpose primitives is not always ideal. %Syntactic cost is often assessed qualitatively \cite{green1996usability}, though quantitative metrics can be defined. 
-For example,  we will consider regular expression patterns expressed using abstract data types (in ML, a mode of use of the module system) in Section \ref{sec:syntax}. This will give  us precisely the semantics that we need, but the syntactic cost will not be ideal. In situations like this, library providers are often tempted to construct a \emph{derived syntactic dialect}, i.e. a dialect specified by context-free elaboration to the existing language, that introduces derived syntax specific to their library. For example, Ur/Web is a derived syntactic dialect of Ur (itself descended from ML) that builds in derived syntax for SQL queries, HTML elements and other datatypes common in web programming \cite{conf/popl/Chlipala15}. In fact, nearly all major languages primitively build in derived syntax for constructs that are otherwise expressed in the standard library, e.g. derived list syntax in Standard ML (SML) \cite{harper1997programming,mthm97-for-dart}. Tools like Camlp4 \cite{ocaml-manual} and Sugar* \cite{erdweg2011sugarj,erdweg2013framework}, which we will return to later, help lower the engineering costs of constructing derived syntactic dialects, contributing to their proliferation.% contributing to their proliferation. 
+Perhaps the most common  reason may simply be that the \emph{syntactic cost} of expressing a construct of interest using contemporary general-purpose primitives is not always ideal. %Syntactic cost is often assessed qualitatively \cite{green1996usability}, though quantitative metrics can be defined. 
+For example,  we will consider regular expression patterns expressed using abstract data types (in ML, a mode of use of the module system) in Section \ref{sec:syntax}. This  will give  us precisely the semantics that we need, but syntactically, it will leave something to be desired. To avoid this syntactic cost, library providers are frequently tempted to construct a \emph{derived syntactic dialect}, i.e. a dialect specified by context-free elaboration to the existing language, that introduces derived syntax specific to their library. For example, Ur/Web is a  derived syntactic dialect of Ur (itself descended from ML) that builds in derived syntax for SQL queries, HTML elements and other datatypes common in web programming \cite{conf/popl/Chlipala15}. In fact, nearly all major programming languages primitively build in derived syntax for constructs that can otherwise be expressed in the standard library, e.g. derived list syntax in SML \cite{harper1997programming,mthm97-for-dart}. Tools like Camlp4 \cite{ocaml-manual} and Sugar* \cite{erdweg2011sugarj,erdweg2013framework} (which we will return to later) help lower the engineering costs of constructing such dialects, contributing to their proliferation.% contributing to their proliferation. 
 
 %Many other data structures can similarly benefit from a decrease in syntactic cost. For example, we  will consider {regular expression patterns} encoded using abstract data types in Sec. \ref{sec:syntax}. 
 %The syntactic cost of  such encodings, considered in several ways, can be reduced by using a dialect that builds in {syntactic sugar}  for regular expression patterns, and there are many tools that make constructing such syntactic dialects simple, e.g. Camlp4 \cite{ocaml-manual} and Sugar* \cite{erdweg2011sugarj,erdweg2013framework} (though as we will see, they come with costs of their own).   %Put another way, such embeddings may not preserve the cognitive cost associated with a construct (qualitative criteria are generally used to establish this \cite{green1996usability}). 
 
-More advanced dialects introduce  new type structure, going beyond what is possible by a context-free elaboration to an existing language. For example, SML goes beyond the simple nullary and binary product types common in simpler calculi, instead exposing record types. Other dialects have explored ``record-like'' primitives that support functional update and extension operators, width and depth coercions (sometimes implicit)%\cite{Cardelli:1984:SMI:1096.1098}
-, mutable rows, methods, prototypic dispatch and various other embellishments. Ocaml builds in a more  sophisticated object system, polymorphic variants and  conveniences like logic for typechecking operations that use format strings, e.g. $\mathtt{sprintf}$ \cite{ocaml-manual}. ReactiveML builds in primitives for functional reactive programming \cite{mandel2005reactiveml}.  ML5 builds in primitives for distributed programming \cite{Murphy:2007:TDP:1793574.1793585}. Manticore builds in parallel arrays \cite{conf/popl/FluetRRSX07}. Alice ML builds in futures and promises \cite{AliceLookingGlass}. MLj builds in essentially the entire Java programming language, to support typesafe interoperation with existing Java code \cite{Benton:1999:IWW:317636.317791}. Indeed, perusal of the proceedings of any major programming languages conference will typically yield several more examples. Tools like proof assistants and logical frameworks are designed to support specifying and reasoning about dialects like these, and tools like compiler generators and language workbenches lower the engineering cost of implementing them. 
+More advanced dialects introduce  new type structure, going beyond what is possible by context-free elaboration to the existing language. For example, as  mentioned above, Standard ML goes beyond the nullary and binary product types found in simpler calculi, instead exposing record types. Other dialects have explored  ``record-like'' primitives that support functional update and extension operators, width and depth coercions (sometimes implicit)%\cite{Cardelli:1984:SMI:1096.1098}
+, mutable rows, methods, prototypic dispatch and various other embellishments. Ocaml builds in a  sophisticated object system, polymorphic variants and  conveniences like logic for typechecking operations that use format strings, e.g. $\mathtt{sprintf}$ \cite{ocaml-manual}. ReactiveML builds in primitives for functional reactive programming \cite{mandel2005reactiveml}.  ML5 builds in primitives for distributed programming \cite{Murphy:2007:TDP:1793574.1793585}. Manticore builds in parallel arrays \cite{conf/popl/FluetRRSX07}. Alice ML builds in futures and promises \cite{AliceLookingGlass}. MLj builds in essentially the entire Java programming language, to support typesafe interoperation with existing Java programs \cite{Benton:1999:IWW:317636.317791}. Indeed, perusal of the proceedings of any major programming languages conference will typically yield several more examples. Tools like proof assistants and logical frameworks support specifying and reasoning metatheoretically about dialects like these, and tools like compiler generators and language workbenches lower the implementation cost, again contributing to their increasing proliferation. 
 
 %We will also discuss labeled products, which unlike records maintain a row ordering (this makes it possible to introduce them without explicit labels, but eliminate them using labels). 
 
 % express record types as syntactic sugar over the simply-typed lambda calculus with  binary product types.\footnote{Pairs can of course be expressed as syntactic sugar atop records, though one could argue that using binary products as the more primitive concept is simpler.} The static semantics need to be extended with new type and term operators. However, the simplest way to express the dynamic semantics of the newly introduced term operators is by translation to nested binary products, so we can leave the operational semantics alone. \todo{fill this out} %For example, there are dozens of constructs that go by the name of ``records'' in various languages, each defined by a slightly different collection of primitive operations. \todo{examples} %, encouraged  historically  by the availability of tools like compiler generators and,  more recently, language workbenches \cite{workbenches} and DSL frameworks \cite{dsl}. Unfortunately, taking this approach makes it substantially more difficult for clients to import high-level abstractions orthogonally. 
 
-The reason why this practice of using dialects as vehicles for new syntactic and semantic primitives is alarming is that it is, in an important sense,  anti-modular: a program written in one dialect cannot, in general, safely and idiomatically interface with libraries written in a different dialect. %At best, one can hope that the compilers for the decidedlytwo languages target a common intermediate language,  
-This would fundamentally require combining the two dialects into a single language. Left unconstrained, this is an ill-posed problem, i.e. given two dialects that are specified by judgements of arbitrary form, it is not clear what it would even mean to combine them. Even when the dialects are specified using a formalism that does provide some way to na\"ively combine two languages, there is generally no guarantee that the composition will conserve important syntactic and semantic properties. %There is no well-defined mechanism for constructing such a ``combined language'' in general. 
+The reason why this proliferation of language dialects should be considered alarming is that it is, in an important sense,  anti-modular: a program written in one dialect cannot, in general, safely and idiomatically interface with libraries written in a different dialect. %At best, one can hope that the compilers for the decidedlytwo languages target a common intermediate language,  
+To do so would fundamentally require combining the two dialects into a single language. Left unconstrained, this is an ill-posed problem, i.e. given two dialects that are specified by judgements of arbitrary form, it is not clear what it would even mean to combine them. Even when the dialects are specified using a formalism that does provide some way to na\"ively combine two dialects, there is generally no guarantee that the composition will conserve important syntactic and semantic properties. %There is no well-defined mechanism for constructing such a ``combined language'' in general. 
 For example, consider two derived syntactic dialects, one building in derived syntax for JSON (a popular data interchange format), the other using a similar syntax for finite mappings of some other type. Though each is known to have an unambiguous concrete syntax in isolation, when their syntax is na\"ively  combined (e.g. by Camlp4), ambiguities arise.  Any putative ``combined language'' must formally be considered a  distinct system for which one must derive all metatheorems of interest anew, guided only informally by those derived for the dialects individually. % would generally attempt to combine their semantics, particularly when they are specified in very different ways. %the ideas housed in one dialect are often only available to programmers willing to do without ideas housed in other dialects. 
 %It is thus infeasible to simply allow different contributors to a software system to choose their own favorite dialect for each component they are responsible for. %A complex software system written in multiple distinct language dialects is far too unwieldy for it to be viable. 
 %It it clear that dialects are better rhetorical devices than practical engineering artifacts. 
 Due to this paucity of modular reasoning principles, language dialects are not practical artifacts for software development ``in the large''. %Large software projects and software ecosystems must pick a single language that does provide powerful modular reasoning principles and, to benefit from them, stay inside it.
 
-Dialects can, however, have an indirect impact on large-scale software development because the language designers that control comparatively popular languages, like Ocaml and Scala, can occasionally be convinced to incorporate  ideas from dialects  into backwards compatible language revisions. %These decisions are increasingly influenced by community processes, e.g. the Scala Improvement Process.  %This approach concentrates power as well as responsibility over maintaining metatheoretic guarantees in the hands of a small group of language designers, though increasingly influenced by various community processes (e.g. the Scala Improvement Process). 
+Dialects can have an indirect impact on large-scale software development because the language designers that control comparatively popular languages, like Ocaml and Scala, can be convinced to incorporate  ideas from dialects  into backwards compatible language revisions. %These decisions are increasingly influenced by community processes, e.g. the Scala Improvement Process.  %This approach concentrates power as well as responsibility over maintaining metatheoretic guarantees in the hands of a small group of language designers, though increasingly influenced by various community processes (e.g. the Scala Improvement Process). 
 %Dialects thus serve the role of rhetorical vehicles for new ideas, rather than direct artifacts. 
-These major languages have thus become more expressive over time. However, this has come at a cost: they have also ballooned in size. Moreover, because there appears to be a ``long tail'' of potentially useful primitives (for derived syntactic primitives, our group has gathered initial data speaking to this \cite{TSLs}),  primitives that are only situationally useful, or that trigger aesthetic disagreements between different factions of the community, are still often left languishing in ``toy'' dialects. 
-A conservative approach to incorporating new primitives is sensible because once a primitive is introduced, it becomes entrenched as-is and monopolizes ``syntactic resources'', as we will discuss below.Recalling the words of  Reynolds, which are clearly as relevant today as they were nearly half a century ago \cite{Reynolds70}:%Because there is no data about how useful a construct is in practice until it is included in a language like this, decisions about which constructs to include are often informed by little more than intuition. %This approach is antithetical to the ideal of a truly \emph{general-purpose language} described at the beginning of this section.
+These languages have, in this way, become more expressive over time. However, this expressiveness has come at a cost: they have also ballooned in size. Yet because there appears to be a ``long tail'' of potentially useful primitives (for derived syntax, our group has  gathered initial data speaking to this \cite{TSLs}),  primitives that are only situationally useful, or that trigger aesthetic disagreements between different factions of the community, are still often left languishing in ``toy'' dialects. 
+Recalling the words of  Reynolds, which are as relevant today as they were nearly half a century ago \cite{Reynolds70}:%Because there is no data about how useful a construct is in practice until it is included in a language like this, decisions about which constructs to include are often informed by little more than intuition. %This approach is antithetical to the ideal of a truly \emph{general-purpose language} described at the beginning of this section.
   
 \begin{quote}\textit{The recent development of programming languages suggests that the simul\-taneous achievement of simplicity 
 and generality in language design is a serious unsolved 
-problem.}%\begin{flushright}-- John Reynolds (1970)\end{flushright}
+problem.}\begin{flushright}--- John Reynolds (1970)\end{flushright}
 \end{quote}
 
-\newpage There are two possible paths forward for the subset of the language design community interested in keeping general-purpose languages small and free of \emph{ad hoc} primitives. One, exemplified (arguably) by Standard ML, is to generally eschew the introduction of new primitives and settle on a set of primitives that sit at a ``sweet spot'' in the overall language design space, accepting that in some circumstances, these primitives trade away expressive power or have high syntactic cost. % that this implies.  
-The other path forward is to press on in the search for even more general language primitives, i.e. primitives that are so expressive that they allow us to degrade a broad class of existing primitives, including those found in dialects, into modularly composable library constructs, where they can be evaluated on their individual merits by programmers. % This should render the construction of new dialects increasingly unnecessary. 
-Such primitives do sometimes arise. For example, Ocaml recently introduced  ``generalized algebraic data types'' (GADTs), based on research on guarded recursive datatype constructors \cite{XiCheChe03}. Using GADTs, Ocaml was able to move some machinery for typechecking operations that use format strings, like \texttt{printf}, out of the language and into the standard library (though some machinery remains built in). Our broad aim will be to introduce a new general-purpose programming language called Verse\footnote{We distinguish Verse from Wyvern, which is the language referred to in prior publications about some of the work being proposed here, because Wyvern is a group effort evolving independently in some important ways.} that takes even more dramatic steps down this second path. %Similarly, it recently introduced ``open datatypes'', which subsume its previous more specialized exception type, and captures many use cases for .
+\newpage %A measured approach to incorporating new primitives into a general-purpose programming language is  sensible because once a primitive is introduced, it becomes entrenched as-is and monopolizes ``syntactic resources'', as we will discuss below. 
+This leaves the language design community with two possible paths forward if we wish to keep general-purpose languages small and free of \emph{ad hoc} primitives. One, exemplified (arguably) by SML, is to generally eschew the introduction of new primitives and settle on a set of primitives that sit at a ``sweet spot'' in the overall language design space, accepting that in some circumstances, this trades away expressive power or leads to  high syntactic cost. % that this implies.  
+The other path forward is to continue on in the search for even more general language primitives, i.e. primitives that are so expressive that they permit us to degrade a broad class of existing primitives, including those found in dialects, to modularly composable library constructs, where they can be evaluated on their individual merits by programmers and used together without the possibility of conflict. % This should render the construction of new dialects increasingly unnecessary. 
+Encouragingly, such new primitives do occasionally arise. For example, Ocaml recently added support for  ``generalized algebraic data types'' (GADTs), based on research on guarded recursive datatype constructors \cite{XiCheChe03}. Using GADTs, Ocaml was able to move some of the machinery for typechecking operations that use format strings, like \texttt{sprintf}, out of the language and into the standard library (unfortunately, some machinery remains built in). 
+
+Our broad aim is to introduce a new functional programming language called Verse\footnote{We distinguish Verse from Wyvern, which is the language referred to in prior publications about some of the work being proposed here, because Wyvern is a group effort evolving independently in some important ways.} that takes even more dramatic steps down this second path. %Similarly, it recently introduced ``open datatypes'', which subsume its previous more specialized exception type, and captures many use cases for .
 
 %Viewed ``dually'', one might equivalently ask for a language that builds in a core that is as small as possible, but provides expressive power comparable to languages with much larger cores. This is our goal in the work being proposed. 
 
+%\vspace{-10px}
 \section{Proposed Contributions}
 
 
 
-Verse has a module system taken directly from SML, but its core language is organized in a novel manner around a minimal typed lambda calculus, called the Verse \emph{internal language}, introduced in Section \ref{sec:verse}. In lieu of typical {external} (i.e. programmer-facing) derived syntax and  type structure, Verse introduces two novel primitive constructs: \textbf{typed syntax macros} (TSMs),  in Section \ref{sec:syntax}, and \textbf{metamodules},  in Section \ref{sec:metamodules}. Briefly summarized, TSMs subsume the need for derived syntax specific to library constructs (e.g. list syntax in SML) by giving library providers static control over the parsing and elaboration of delimited segments of textual concrete syntax. Metamodules give library providers static hooks directly into the semantics of the Verse EL, allowing  library providers to, for example, define the type structure of records (and various ``record-like'' constructs, as discussed above) by type-directed translation to the internal language (which builds in only nullary and binary products). Both TSMs and metamodules can be understood as novel \emph{metaprogramming} primitives, because they involve static code generation. We will  also introduce a simple variant of each of these primitives that leverages Verse's support for local type inference to further reduce syntactic cost in certain common situations. 
+Verse has a module system taken directly from SML, but its core language is organized in a novel manner around a minimal typed lambda calculus, called the Verse \emph{internal language}, discussed in Section \ref{sec:verse}. In lieu of typical {external} (i.e. programmer-facing) derived syntax and  type structure, Verse introduces two novel primitive constructs:
+\begin{itemize}
+\item \textbf{Typed syntax macros} (TSMs), which we introduce in Section \ref{sec:syntax}, subsume the need for derived syntax specific to library constructs, e.g. list syntax as built in to SML, by giving library providers static control over the parsing and elaboration of delimited segments of concrete syntax.
+\item \textbf{Metamodules}, which we introduce in Section \ref{sec:metamodules}, give library providers static hooks directly into the semantics of the Verse external language, allowing  them to define, for example, the type structure of records (and various ``record-like'' constructs, as discussed above) by type-directed translation to the more minimal internal language (which builds in nullary and binary products, but not records).
+\end{itemize} 
+Both TSMs and metamodules can be understood as \emph{metaprogramming} primitives, because they involve static code generation. %We will  also introduce a simple variant of each of these primitives that leverages Verse's support for local type inference to further reduce syntactic cost in certain common situations. 
 
-The key challenge in the design of these primitives will come in ensuring that they are metatheoretically well-behaved, given that they aim to give library providers decentralized control over aspects of the language that have typically been under the monolithic control of the language designer. If we are not careful, many of the problems mentioned above as inherent to combining distinct language dialects could simply manifest themselves in the semantics of these primitives.\footnote{This is why languages  like Verse are often called \emph{extensible languages}, though this is somewhat of a misnomer. The chief characteristic of an extensible language is that it \emph{doesn't} need to be extended in situations where other languages would need to be extended. We will avoid this somewhat confusing terminology.} Our main technical contributions will come in showing how to address these problems in a principled manner. In particular, syntactic ambiguities will be impossible by construction and  we will validate the code  statically generated by TSMs and metamodules to maintain a hygienic type discipline and, most uniquely, powerful modular reasoning principles. Library providers will be able to reason about the constructs that they have defined in isolation, and library clients will be able to use them safely in any combination, without the possibility of conflict.\footnote{We will assume that simple naming conflicts can be avoided extrinsically in some suitable manner, e.g. by using a URI-based naming scheme as in the Java ecosystem.}
+The key challenge in the design of these primitives will come in ensuring that they are metatheoretically well-behaved, given that they aim to give library providers decentralized control over aspects of the language that have typically been under the monolithic control of the language designer. If we are not careful, many of the problems discussed above as inherent to combining distinct language dialects could simply manifest themselves in the semantics of these primitives.\footnote{This is why languages  like Verse are often called \emph{extensible languages}, though this is somewhat of a misnomer. The chief characteristic of an extensible language is that it \emph{doesn't} need to be extended in situations where other languages would need to be extended. We will avoid this somewhat confusing terminology.} Our main technical contributions will come in showing how to address these problems in a principled manner. In particular, syntactic conflicts will be impossible by construction and  we will validate the code  statically generated by TSMs and metamodules to maintain a hygienic type discipline and, most uniquely, powerful modular reasoning principles -- library providers will be able to reason about the constructs that they have defined in isolation, and library clients will be able to use them safely in any combination, without the possibility of conflict.\footnote{We  assume that simple naming conflicts can be avoided extrinsically, e.g. by using a URI-based naming scheme as in the Java ecosystem.}
 
 
 
@@ -74,52 +86,52 @@ The key challenge in the design of these primitives will come in ensuring that t
 \subsection{Thesis Statement}
 In summary, we propose a thesis defending the following statement:
 \begin{quote}
-A programming language can  give library providers the power to meta\-pro\-gram\-matic\-ally express new derived syntax and external type structure atop a minimal typed internal language, using  primitives that maintain a hygienic type discipline and modular reasoning principles. These  primitives are  expressive enough to subsume the need for a variety of primitives that are, or would need to be, built in to comparable contemporary languages.
+A functional programming language can give library providers the ability to meta\-pro\-gram\-matic\-ally express new derived syntax and external type structure atop a minimal typed internal language while maintaining a hygienic type discipline and modular reasoning principles. %These  primitives are  expressive enough to subsume the need for a variety of primitives that are, or would need to be, built in to comparable contemporary languages.
 \end{quote}
 
 \subsection{Disclaimers}
 Before we continue, it may be useful to explicitly acknowledge that completely eliminating the need for dialects would indeed be asking for too much: certain design decisions are fundamentally incompatible with others or require coordination across a language design. We aim only to decrease the need for dialects.% out a larger design space within a single language, Verse.%a subset of constructs that can be specified by a semantics of a certain ``shape'' specified by Verse (we will make this more specific later). %There is nothing ``universal'' about Verse.
 
-It may also be useful to explicitly acknowledge that library providers could leverage the primitives we introduce   to define constructs that are in rather poor taste. We  expect that in practice, Verse will come with a standard library defining a carefully curated collection of standard constructs, as well as guidelines for advanced users regarding when it would be sensible to use the primitives we introduce (following the example of languages that support operator overloading or typeclasses, which also have the potential for ``abuse''). %The vast majority of programmers should not use the primitives that we introduce directly.
+It may also be useful to explicitly acknowledge that library providers could leverage the primitives we introduce   to define constructs that are in rather poor taste. We  expect that in practice, Verse will come with a standard library defining a carefully curated collection of standard constructs, as well as guidelines for advanced users regarding when it would be sensible to use the mechanisms we introduce (following the example of languages that support operator overloading or typeclasses, which also have the potential for ``abuse''). %The vast majority of programmers should not use the primitives that we introduce directly.
 
-Finally, we are not interested here in languages that feature full-spectrum dependent types, which blur the phase separation between compile-time and run-time, though we conjecture that the primitives we introduce could be introduced into languages like Gallina (the ``external language'' of the Coq proof assistant) with some modifications. Verse should be compared to languages that maintain a phase separation, like ML and Scala. %Our interest is in making sure that the standard library is no more privileged than any other library. % Our interest is not in creating a universal language, only one that is as expressive as reasonably possible. %only in a subset of all constructs that can be specified in a mutually orthogonal manner by a semantics of a certain prototypic ``shape''. We will make this more specific later. 
+Finally, we are not interested here in languages that feature full-spectrum dependent types, which blur the phase separation between compile-time and run-time, though we conjecture that the primitives we introduce could be introduced into languages like Gallina (the ``external language'' of the Coq proof assistant) with some modifications. Verse should be compared to languages that maintain a phase separation, like ML, Haskell and Scala. %Our interest is in making sure that the standard library is no more privileged than any other library. % Our interest is not in creating a universal language, only one that is as expressive as reasonably possible. %only in a subset of all constructs that can be specified in a mutually orthogonal manner by a semantics of a certain prototypic ``shape''. We will make this more specific later. 
 
 
 
-\section{Verse}\label{sec:verse}
-Let us begin by briefly summarizing how Verse is organized and specified. Verse consists of a \emph{module language} and a \emph{core language}. The module language is based directly on SML's module language,  which we assume familiarity with for the purposes of this work \cite{harper1997programming,MacQueen:1984:MSM:800055.802036}. We will give an example of its use in Section \ref{sec:syntax}, but do not plan to specify it in detail. 
+\section{Summary of Judgements}\label{sec:verse}
+To situate ourselves within a formal framework, let us begin with a brief summary of how Verse is organized and specified. Verse consists of a \emph{module language} atop a \emph{core language}. The module language is based directly on SML's module language,  which we assume working familiarity with for the purposes of this proposal \cite{harper1997programming,MacQueen:1984:MSM:800055.802036}. We will give examples of its use in both Section \ref{sec:syntax} and Section \ref{sec:metamodules}, but do not plan to specify it in detail. 
 
-The core language is organized much like the first stage of a type-directed compiler (e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD}), consisting of a user-facing \emph{typed external language} (EL) specified by type-directed translation to a minimal \emph{typed internal language} (IL). The main judgements in the specification of the EL take the following form (we omit mention of various contexts for now):
+The core language is organized much like the first stage of a type-directed compiler (e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD}), consisting of a user-facing \emph{typed external language} (EL) specified by type-directed translation to a minimal \emph{typed internal language} (IL).\footnote{Note that we will use the terms ``expression'' and ``type'' without qualification to refer to  external expressions and types, respectively. } The main judgements in the specification of the EL take the following form (omitting various contexts for now):
 \\[1ex]
 $\begin{array}{ll}
-\textbf{Judgement} & \textbf{Pronunciation}\\
-e \Rightarrow \sigma \leadsto \iota & \text{External expression $e$ synthesizes external type $\sigma$ and has translation $\iota$.}\\
-e \Leftarrow \sigma \leadsto \iota & \text{External expression $e$ analyzes against external type $\sigma$ and has translation $\iota$.}\\
-\sigma~\mathtt{type} \leadsto \tau & \text{Static expression $\sigma$ is an external type with translation $\tau$.}
+\textbf{Judgement Form} & \textbf{Pronunciation}\\
+\vdash e \Rightarrow \sigma \leadsto \iota & \text{Expression $e$ synthesizes type $\sigma$ and has translation $\iota$.}\\
+\vdash e \Leftarrow \sigma \leadsto \iota & \text{Expression $e$ analyzes against type $\sigma$ and has translation $\iota$.}\\
+\vdash \sigma~\mathtt{type} \leadsto \tau & \text{Static expression $\sigma$ is a type with translation $\tau$.}
 \end{array}
 $\\[1ex]
-Note that the typing judgements are \emph{bidirectional}, i.e. there is a distinction between \emph{type synthesis} (the type is an ``output'') and \emph{type analysis} (the type is an ``input'') \cite{Pierce:2000:LTI:345099.345100}. This is to  allow us to explicitly specify how Verse's \emph{local type inference} works, and in particular, how it interacts with the primitives that we will introduce. Like Scala, we intentionally do not aim to support global type inference, both because it is not compatible with the primitives we introduce as described and because we believe that in practice, the cognitive cost of the error messages that arise outweigh its marginal utility relative to local type inference. Note also that, for concision, we will write ``expression'' and ``type'' without qualification to refer to  external expressions and types, respectively.
+Note that the expression typing judgements are \emph{bidirectional}, i.e. we make a judgemental distinction between \emph{type synthesis} (the type is an ``output'') and \emph{type analysis} (the type is an ``input'') \cite{Pierce:2000:LTI:345099.345100}. This is to  allow us to explicitly specify how Verse's \emph{local type inference} works, and in particular, how it interacts with the primitives that we aim to introduce. Like Scala, we intentionally do not attempt to support global type inference, primarily because it is not technically possible to do so (but also because we believe that compilers for languages that support only local type inference generate clearer error messages). 
 
 % The reason why we refer to the syntactic sort $\sigma$ as a ``static expression'' will become more clear later.
 
 %The main novelty of our work is that the Verse EL builds in very little syntax or type structure \emph{a priori}. %Instead, \textbf{metamodules} and \textbf{typed syntax macros} (TSMs) are expressive enough to render this unnecessary. Although metamodules are in some sense prior to TSMs, we will describe TSMs first, temporarily assuming that the EL does build in standard type structure, for pedagogical purposes. 
 
-Our design is largely insensitive to the details of the IL. The only strict requirements are that the IL is type safe and supports parametric type abstraction. For our purposes, we will keep things simple by using the strictly evaluated polymorphic lambda calculus with nullary and binary product and sum types and recursive types, which we assume the reader has familiarity with and for which all the necessary metatheorems are well-established (we follow \cite{pfpl}). The main judgements in the static semantics of the IL (again omitting contexts for now) thus take the following form:
+Our design is largely insensitive to the details of the internal language -- the only strict requirements are that the IL be type safe and support parametric type abstraction. For our purposes, we will keep things simple by using the strictly evaluated polymorphic lambda calculus with nullary and binary product and sum types and recursive types, which we assume the reader has familiarity with and for which all the necessary metatheorems are well-established (we follow \cite{pfpl}). The main judgements in the static semantics of the IL (again omitting contexts for now) take the following essentially standard form:
 \\[1ex]
 $
 \begin{array}{ll}
-\textbf{Judgement} & \textbf{Pronunciation}\\
-\iota : \tau & \text{Internal expression $\iota$ has internal type $\tau$.}\\
-\tau~\mathtt{type} & \text{Internal type $\tau$ is valid.}
+\textbf{Judgement Form} & \textbf{Pronunciation}\\
+\vdash \iota : \tau & \text{Internal expression $\iota$ has internal type $\tau$.}\\
+\vdash \tau~\mathtt{itype} & \text{Internal type $\tau$ is valid.}
 \end{array}
 $\\
 
 \noindent
-The dynamic semantics can be specified as a transition system with  judgements of the following form:
+The dynamic semantics can be specified also in the standard manner as a transition system with  judgements of the following form:
 \\[1ex]
 $
 \begin{array}{ll}
-\textbf{Judgement} & \textbf{Pronunciation}\\
+\textbf{Judgement Form} & \textbf{Pronunciation}\\
 \iota \mapsto \iota' & \text{Internal expression $\iota$ transitions to $\iota'$.}\\
 \iota~\mathtt{val} & \text{Internal expression $\iota$ is a value.}
 \end{array}
@@ -127,24 +139,24 @@ $
 \\[1ex]
 The iterated transition judgement $\iota \mapsto^{*} \iota'$ is the reflexive, transitive closure of the transition judgement, and the evaluation judgement $\iota \Downarrow \iota'$ is derivable iff $\iota \mapsto^{*} \iota'$ and $\iota'~\mathtt{val}$.
 
-Primitive features like state, exceptions, concurrency primitives, scalars, arrays and others characteristic of a first-stage compiler IL would also be included in practice, and in some cases this would affect the shape of the internal semantics, but we omit them when their inclusion would not meaningfully affect our discussion. %Features like record types and labeled sum types, on the other hand, are not built in.
+Features like state, exceptions, simple concurrency primitives, scalars, arrays and others characteristic of a first-stage compiler intermediate language would also be included in the IL in practice, and in some cases this would affect the shape of the internal semantics, but we omit them for simplicity. %Features like record types and labeled sum types, on the other hand, are not built in.
 
 
 \section{Modularly Metaprogrammable Textual Syntax}\label{sec:syntax}
-Verse, like most major contemporary programming languages, specifies a textual concrete syntax. We have chosen to specify a layout-sensitive textual concrete syntax (i.e. newlines and indentation are not ignored). This design choice is not  fundamental to our proposed contributions, but it will be useful for cleanly expressing a class of examples that we will discuss later. We will specify key aspects of its concrete syntax with an \emph{Adams grammar} \cite{Adams:2013:PPI:2429069.2429129} (such a specification for Wyvern, which has a very similar syntax, can be found in \cite{TSLs}), but for the purposes of this proposal, we will simply introduce Verse's concrete syntax by example as we go on.
+Verse, like most major contemporary programming languages, specifies a textual concrete syntax. We have chosen to specify a layout-sensitive textual concrete syntax (i.e. newlines and indentation are not ignored). This design choice is not  fundamental to our proposed contributions, but it will be useful for cleanly expressing a class of examples that we plan to discuss later. We plan to specify some novel aspects of Verse's concrete syntax with an \emph{Adams grammar} \cite{Adams:2013:PPI:2429069.2429129} (such a specification for Wyvern, which has a very similar syntax, can be found in \cite{TSLs}), but for the purposes of this proposal, we will simply introduce Verse's concrete syntax by example as we go on. %For constructs that have an obvious analog in ML, we will omit a detailed explanation.
 
 A programming language's concrete syntax serves as its human-facing user interface, so it is common practice to build in  derived forms (colloquially, \emph{syntactic sugar}) that capture common idioms more concisely or naturally. % (i.e. considering cognitive dimensions \cite{green1996usability}). 
-For example, derived list syntax is built in to most dialects of ML, so that instead of having to write \lstinline{Cons(1, Cons(2, Cons(3, Nil)))}, a programmer can equivalently write \lstinline{[1, 2, 3]}. Many languages go further, building in syntax associated with various other types of data, like vectors (SML/NJ), arrays (Ocaml), commands (Haskell), syntax trees (Scala), XML data (Scala, Ur/Web) and SQL queries (F\#, Ur/Web). %The desugaring from the latter to the former is specified by the language itself. %Typically, the language designer controls what forms of derived syntax are built in to the language.
+For example, derived list syntax is built in to most dialects of ML, so that instead of having to write \lstinline{Cons(1, Cons(2, Cons(3, Nil)))}, a programmer can equivalently write \lstinline{[1, 2, 3]}. Many languages go further, building in syntax associated with various other types of data, like vectors (SML/NJ), arrays (Ocaml), commands (Haskell), syntax trees (Scala), XML data (Scala, Ur/Web) and SQL queries (F\#, Ur/Web). %This is a rather \emph{ad hoc} process.% discussed previously, the usual approach is to require that the language designer build in new derived syntactic forms. %The desugaring from the latter to the former is specified by the language itself. %Typically, the language designer controls what forms of derived syntax are built in to the language.
 
 Rather than privileging  particular library constructs with primitive syntactic support, Verse exposes primitives that allow library providers to introduce new derived syntax on their own. %Lists need no special consideration from the language specification.
 %The purpose of this section is to motivate and then introduce Verse's syntax extension mechanisms. %For forms with a clear analogy to a form in Standard ML, we will assume the  semantics are analagous without providing details.
-To motivate our desire for this level of syntactic control, we begin in Sec. \ref{sec:examples} with a representative example: regular expression patterns expressed using abstract data types. We show how the usual workaround of using strings to introduce patterns is not ideal. We then survey existing alternatives in Sec. \ref{sec:syntax-existing}, finding that they involve an unacceptable loss of modularity and other undesirable trade-offs. In Sec. \ref{sec:syntax-contributions}, we outline our proposed mechanisms and discuss how they resolve these issues. We conclude in Sec. \ref{sec:syntax-timeline} with a timeline for remaining work.
+To specifically motivate our desire for this level of syntactic control, we begin in Sec. \ref{sec:examples} with a representative example: regular expression patterns expressed using abstract data types. We show how the usual approach of using strings to introduce patterns is not ideal. We then survey existing alternatives in Sec. \ref{sec:syntax-existing}, finding that they involve an unacceptable loss of modularity and other undesirable trade-offs. In Sec. \ref{sec:syntax-contributions}, we outline our proposed mechanisms and discuss how they will resolve these issues. We conclude in Sec. \ref{sec:syntax-timeline} with a timeline for remaining work.
 
 
 
 
 \subsection{Motivating Example: Regular Expression Syntax}\label{sec:examples}
-Let us begin by taking the perspective of a \emph{regular expression} library provider. Recall that regular expressions are a common way to capture patterns in strings \cite{Thompson:1968:PTR:363347.363387}. We will assume that the abstract syntax of {patterns}, $p$, over strings, $s$, is specified as below:\[p ::= \textbf{empty} ~|~ \textbf{str}(s) ~|~ \textbf{seq}(p; p) ~|~ \textbf{or}(p; p) ~|~ \textbf{star}(p) ~|~ \textbf{group}(p)\]
+Let us begin from the perspective of a regular expression library provider. Recall that regular expressions are a common way to capture patterns in strings \cite{Thompson:1968:PTR:363347.363387}. We will assume that the abstract syntax of {patterns}, $p$, over strings, $s$, is specified as below:\[p ::= \textbf{empty} ~|~ \textbf{str}(s) ~|~ \textbf{seq}(p; p) ~|~ \textbf{or}(p; p) ~|~ \textbf{star}(p) ~|~ \textbf{group}(p)\]
 The most direct way to express this abstract syntax is by defining a recursive sum type \cite{pfpl}. Verse supports these as case types, which are analagous to datatypes in ML (we will see how the type structure  of case types can in fact be expressed in libraries later):
 
 \begin{lstlisting}[numbers=none]
@@ -157,7 +169,7 @@ casetype Pattern
   Group of Pattern
 \end{lstlisting}
 
-However, there are some reasons not to expose this representation of patterns directly to clients. First, patterns are usually identified up to their reduction to a normal form. For example, $\textbf{seq}(\textbf{empty}, p)$ has normal form $p$. It might be useful for patterns with the same normal form to be  indistinguishable from the perspective of client code. Second, it can be useful for performance reasons to maintain additional data alongside patterns (e.g. a corresponding finite automata) without exposing this ``implementation detail'' to clients. Indeed, there are many ways to represent regular expression patterns, each with different performance trade-offs. For these reasons, a better approach is to use \emph{abstract data types}. In Verse, as in ML, this is a mode of use of the module system. In particular, we can define the following \emph{module signature}, where the type of patterns, \lstinline{t}, is held abstract. The client of any module \lstinline{P : PATTERN} can then identify patterns as terms of type \verb|P.t|. 
+However, there are some reasons not to expose this representation of patterns directly to clients. First, such patterns are usually identified up to their reduction to a normal form. For example, $\textbf{seq}(\textbf{empty}, p)$ has normal form $p$. It might be useful for patterns with the same normal form to be  indistinguishable from the perspective of client code. Second, it can be useful for performance reasons to maintain additional data alongside patterns (e.g. a corresponding finite automata) without exposing this ``implementation detail'' to clients. Indeed, there may be many ways to represent regular expression patterns, each with different performance trade-offs. For these reasons, a better approach is to use \emph{abstract data types}, which in Verse, as in ML, are a mode of use of the module system. In particular, we can define the following \emph{module signature}, where the type of patterns, \lstinline{t}, is held abstract. The client of any module \lstinline{P : PATTERN} can then identify patterns as terms of type \verb|P.t|. 
 %Notice that it exposes an interface otherwise  to the one available using a case type:
 
 \begin{lstlisting}[deletekeywords={case},numbers=none]
@@ -201,7 +213,7 @@ P.Or(P.Str "SSTRAESTR", P.Or(P.Str "SSTRTESTR", P.Or(P.Str "SSTRGESTR", P.Str "S
 
 %In a conventional \emph{monolithic} programming system, support for each of these features would need to be built into the language and tools. 
 
-To express the concrete syntax of patterns, regular expression library providers usually provide a utility function that transforms strings to patterns. As just mentioned, there  may be many implementations of the \lstinline{PATTERN} signature, so the standard approach is to define a \emph{parameterized module} (a.k.a. \emph{functor} in SML) defining utility functions generically:
+To express the concrete syntax of patterns, regular expression library providers usually provide a utility function that transforms strings to patterns. Because, as just mentioned, there  may be many implementations of the \lstinline{PATTERN} signature, the standard approach is to define a \emph{parameterized module} (a.k.a. \emph{functor} in SML) defining utility functions generically:
 
 \begin{lstlisting}[numbers=none]
 module PatternUtil(P : PATTERN)
@@ -218,18 +230,18 @@ to construct patterns like this:
 pattern "SSTRA|T|G|CESTR"
 \end{lstlisting}
  %Again, none of our goals are comprehensively achieved.
-This approach is imperfect for several reasons:
+Unfortunately, this approach is imperfect for several reasons:
 \begin{enumerate} 
-\item Our first problem is syntactic: string escape sequences conflict syntactically with pattern escape sequences. For example, the following will not be well-formed:
+\item First, there are syntactic conflicts between string escape sequences and pattern escape sequences. For example, the following is not a well-formed term:
 \begin{lstlisting}[numbers=none,mathescape=|]
 let ssn = pattern "SSTR\d\d\d-\d\d-\d\d\d\dESTR"
 \end{lstlisting}
-When compiling an analagous expression using \verb|javac|, we encounter the error message \verb|error: illegal escape character|.\footnote{When compiling an analagous expression using SML of New Jersey (SML/NJ), we encounter the seemingly inexplicable error message \texttt{Error: unclosed string}.} In a small lab study, we observed that this error was common, and nearly always initially misinterpreted by even experienced programmers who hadn't used regular expressions recently \cite{Omar:2012:ACC:2337223.2337324}. The inelegant workaround is to  double backslashes:
+When compiling an expression like this, the programmer would see an error message like \verb|error: illegal escape character|.\footnote{This is the error message that \texttt{javac} produces. When compiling an analagous expression using SML of New Jersey (SML/NJ), we encounter the rather bizarre error message \texttt{Error: unclosed string}.} In a small lab study, we observed that this sort of error was common, and that solving the problem was nearly always initially challenging to even experienced programmers who hadn't used regular expressions recently \cite{Omar:2012:ACC:2337223.2337324}. The inelegant workaround is to  double backslashes:
 \begin{lstlisting}[numbers=none]
 let ssn = pattern "SSTR\\d\\d\\d-\\d\\d-\\d\\d\\d\\dESTR"
 \end{lstlisting}
 
-Some languages, anticipating such modes of use, build in special string forms that leave escape sequences uninterpretted. For example, Ocaml allows the following, which is perhaps more acceptable:
+Some languages, anticipating such modes of use, build in alternative string forms that leave escape sequences uninterpretted. For example, Ocaml allows the following, which is perhaps more acceptable:
 \begin{lstlisting}[numbers=none]
 let ssn = pattern {rx|SSTR\d\d\d-\d\d-\d\d\d\dESTR|rx}
 \end{lstlisting}
@@ -247,22 +259,22 @@ We might instead attempt to treat the well-formedness of patterns constructed fr
 
 Parsing patterns at run-time also incurs a performance penalty. To avoid incurring it every time the pattern is encountered (e.g. for each item in a very large dataset), one must be careful to stage the computation appropriately, or use an appropriately tuned caching strategy. %This too is difficult if a portion of the pattern is dynamically generated. % Regular expressions are often used across large datasets in scientific applications, so the absolute peformance penalty can be non-trivial.
 
-\item The final problem is that using strings to construct patterns encourages programmers to use string concatenation inappropriately to construct patterns derived from user input. For example, consider the following function:
+\item The final problem is that using strings to construct patterns encourages programmers to use  operations over strings, like concatenation, to construct patterns derived from user input that happens also to be of type \lstinline{string}. This can lead to subtle but serious bugs. For example, consider the following function:
 \begin{lstlisting}[numbers=none,escapechar=|]
 fun example_bad(name : string)
   pattern (name ^ "SSTR: \\d\\d\\d-\\d\\d-\\d\\d\\d\\dESTR")
 \end{lstlisting}
-The (unstated) intent here is to treat \lstinline{name} as a sub-pattern matching only itself, but this is not the observed behavior when \lstinline{name} contains special characters that mean something else in patterns. The correct code again resembles abstract syntax: 
+The (unstated) intent here is to treat \lstinline{name} as a sub-pattern matching only itself, but this is not the observed behavior when \lstinline{name} contains special characters that have other meanings in patterns. The correct code again resembles abstract syntax: 
 \begin{lstlisting}[numbers=none]
 fun example_fixed(name : string)
   P.Seq(P.Str(name), P.Seq(pattern "SSTR: ESTR", ssn)) (* ssn as above *)
 \end{lstlisting}
-
-In applications that query sensitive data, failures of this variety can lead to \emph{injection attacks}.  These are observed to be both common and catastrophic from the perspective of security \cite{owasp2013}. The attack vector above was, of course, the fault of the programmer using a flawed heuristic, so it could have been avoided with sufficient discipline. 
-The problem is again that it is difficult to detect violations of this discipline automatically. Both functions above have the same type and behave identically at many inputs, particularly those that would be expected during typical executions of the program (i.e. alphabetic names), so testing often misses the problem. Formally proving that such problems do not arise involves reasoning about complex run-time data flows. 
+Note that both functions have the same type and behave identically at many inputs, particularly those that would be expected during typical executions of the program (i.e. alphabetic names), so testing can miss the problem. Proving that such problems cannot arise involves reasoning about complex run-time data flows, so it is once again difficult to automate. 
+In applications that query sensitive data, mistakes like this lead to \emph{injection attacks}, which are both common and catastrophic from the perspective of software security \cite{owasp2013}. %Ultimately, of course, mistakes like this are the fault of a programmer using a flawed heuristic, and they could be avoided with discipline. The problem is once again that it is difficult to detect violations of this discipline automatically. 
 
  %Ideally, our library would be able to make it more difficult to inadvertently introduce subtle security bugs like this.
 \end{enumerate}
+
 % \begin{enumerate}
 % \item \textbf{Conventional Concrete Syntax.} Patterns must be written in exactly the conventional manner, shown in blue below. Curly braces serve as an ``unquote'' form to splice one pattern into another:
 % \begin{lstlisting}[numbers=none]
@@ -372,50 +384,55 @@ The problem is again that it is difficult to detect violations of this disciplin
 
 % Here, backticks are used to indicate a quoted term within which carets serve as an antiquote operator. This still represents a  compromise against goal 1. The most serious problem is that, once again, parsing does not occur until run-time. There are also  conflicts between quotation syntax and pattern syntax, i.e. \verb|^| conventionally means character set negation inside patterns, which conflicts with antiquotation here. This mechanism also does not support antiquotation at more than one type, so we could not define the antiquote operator to insert the \verb|Str| constructor automatically, as suggested in goal 3. %For syntax that necessary involves antiquotation at multiple types (e.g. concrete syntax for a programming language with multiple syntactic sorts, HTML which might include Javascript and CSS, and others), this 
 
-\subsection{Existing Approaches}\label{sec:syntax-existing} These difficulties with string-oriented approaches to concrete syntax are not particular to regular expression patterns, but rather arise in many similar scenarios, motivating much research on reducing the need for run-time string parsing \cite{Bravenboer:2007:PIA:1289971.1289975}. Existing approaches take one of two approaches: \emph{syntax extension} or \emph{static term rewriting}. 
+	\subsection{Existing Approaches}\label{sec:syntax-existing} The difficulties above are common whenever one uses  strings transiently to construct more richly structured data, merely for the sake of syntactic convenience. %Strings are, simply put, not ideally suited for this task. 
+	This key observation has motivated a substantial quantity of research on reducing the need for run-time string parsing \cite{Bravenboer:2007:PIA:1289971.1289975}. Existing approaches can be classified in  one of two ways: as being based on \emph{syntax extension} or \emph{static term rewriting}. 
 
-\subsubsection{Syntax Extension}
-One common approach is to use a system that allows users to directly extend the syntax of a language with new derived syntax, in this case for patterns.
+\subsubsection{Syntax Extension}\label{sec:syntax-extension}
+One approach to address the problems above would be to leverage a system that allows us to directly extend the syntax of our language with new derived syntactic forms.% for patterns.
 
-The simplest such systems are those where each new syntactic form is described by a single rewrite rule. For example, the external language of Coq (called Gallina) includes such a system \cite{Coq:manual}. A formal account of such systems has been developed by Griffin \cite{5134}. Unfortunately, these systems are not able to express pattern syntax in the conventional manner. For example, sequences of characters  can only be parsed as identifiers using these systems, rather than as characters in a pattern. Syntax extension systems based on context-free grammars like  Sugar* \cite{erdweg2013framework}, Camlp4 \cite{ocaml-manual} and many others are more expressive, and would allow us to directly introduce pattern syntax into our core language's grammar.
+The simplest such systems are those where each new syntactic form is described by a single rewrite rule. For example, Gallina, the external language of the Coq proof assistant, provides such a system \cite{Coq:manual}. A formal account of systems like these has been developed by Griffin \cite{5134}. Unfortunately, these systems are not flexible enough to allow us to express pattern syntax in the conventional manner. For example, sequences of characters  can only be parsed as identifiers using these systems, rather than as characters in a pattern. Syntax extension systems based on context-free grammars like  Sugar* \cite{erdweg2013framework}, Camlp4 \cite{ocaml-manual} and many others are more expressive, however, and thus would allow us to directly introduce pattern syntax into our core language's grammar, perhaps like this:
+\begin{lstlisting}[numbers=none]
+let ssn = /\d\d\d-\d\d-\d\d\d\d/
+\end{lstlisting}
 
-However, this is a perilous approach because none of the systems described thusfar guarantee \emph{syntactic composability}, i.e. as the Coq manual states: ``mixing different symbolic notations in [the] same text may cause serious parsing ambiguity''. If another library provider used similar syntax for a different variant of regular expressions, or for an entirely unrelated abstraction, then a client could not simultaneously use both libraries in the same scope. Properly considered, every combination of extensions introduced by one of these mechanisms creates a \emph{de facto} derived syntactic dialect of the language. % Resolving such parsing amibiguities is left to each client of the library. 
+However, this is a rather perilous approach because none of these systems guarantee freedom from \emph{syntactic conflicts}, i.e. as the Coq manual states: ``mixing different symbolic notations in [the] same text may cause serious parsing ambiguity''. So if another library provider used similar syntax for a different implementation of regular expressions, or for some other unrelated abstraction, then a client could not simultaneously use both libraries in the same scope. Properly considered, every combination of extensions introduced by one of these mechanisms creates a \emph{de facto} derived syntactic dialect of our language. % Resolving such parsing amibiguities is left to each client of the library. 
 
-In response to this problem, Schwerdfeger and Van Wyk have developed a modular analysis that accepts only grammar extensions that use a unique starting token and satisfy some subtle conditions on follow sets of base language non-terminals \cite{conf/pldi/SchwerdfegerW09}. Such extensions can be used together in any combination. However, simple starting tokens like \lstinline{pattern} cannot be guaranteed to be globally unique, so we would need to use a more verbose starting token like \lstinline{edu_cmu_verse_rx_pattern}. There is no principled way to define local abbreviations for starting tokens because this mechanism is language-external.
+In response to this problem, Schwerdfeger and Van Wyk developed a modular analysis that accepts only grammar extensions that specify a universally unique starting token and obey subtle constraints on  the follow sets of base language non-terminals \cite{conf/pldi/SchwerdfegerW09}. Extensions that satisfy these criteria can be used together in any combination without the possibility of conflict. However, note that the most natural starting tokens like \lstinline{pattern} cannot be guaranteed to be universally unique, so we would be forced to use a more verbose token like \lstinline{edu_cmu_verse_rx_pattern}. There is no principled way for clients of our extension to define local abbreviations for starting tokens because this mechanism is language-external.
 
-Putting this issue aside, we must now decide how our newly introduced derived forms elaborate to forms in our base grammar. In this case, because we are using a modular encoding of patterns, we must first decide which module the desugaring will use. Clearly, simply assuming that a module identified as \lstinline{P} satisying \lstinline{PATTERN} is in scope is a brittle solution. Indeed, we should expect that the extension mechanism actively prevents such capture of specific variable names to ensure that variables (including module variables) can be freely renamed. Such a \emph{hygiene discipline} is well-understood when performing term-to-term rewriting (discussed below) or in simple rewrite systems like those found in Coq. For more flexible mechanisms, the issue is a topic of ongoing research (none of the grammar-based mechanisms described above enforce hygiene).
+Putting this issue aside, we must now decide how our newly introduced derived forms elaborate to forms in our base grammar. This is tricky because we have defined a modular encoding of patterns -- which particular module should the elaboration logic use? Clearly, simply assuming that some module identified as \lstinline{P} satisying \lstinline{PATTERN} is in scope is a brittle solution. Indeed, we should expect that the extension mechanism actively prevents such capture of specific variable names to ensure that variables (including module variables) can be freely renamed. Such a \emph{hygiene discipline} is well-understood when performing term-to-term rewriting (discussed below) or in simple rewrite systems like those found in Coq. For more flexible mechanisms, the issue is a topic of ongoing research (none of the grammar-based mechanisms described above enforce hygiene).
 
-Putting aside the question of hygiene as well, we can address the problem by requiring that the client explicitly identify the module the desugaring should use:
+Putting aside this question of hygiene as well, we can address the problem by requiring that the client explicitly identify the module the elaboration should use:
 \begin{lstlisting}[numbers=none]
 let ssn = edu_cmu_verse_rx_pattern P /\d\d\d-\d\d-\d\d\d\d/
 \end{lstlisting}
-For patterns constructed compositionally, we can define \emph{splicing} syntax for both strings and other patterns:
+For patterns constructed compositionally, we can define \emph{splicing} syntax for both strings and other patterns, e.g. as shown below:
 \begin{lstlisting}[numbers=none,escapechar=|]
 fun example_syn(name : string)
   edu_cmu_verse_rx_pattern P /@name: %ssn/
 \end{lstlisting}
-The body of this function elaborates to the body of \lstinline{example_fixed} as shown above. Had we mistakenly used the pattern splicing prefix, \lstinline{%name}, rather than the string splicing prefix, \lstinline{@name}, we would get a static type error, rather than a silent security vulnerability.
+%The body of this function elaborates to the body of \lstinline{example_fixed} as shown above. 
+Had we mistakenly used the pattern splicing syntax, writing \lstinline{%name}, rather than the string splicing syntax, \lstinline{@name}, we would get a static type error, rather than the  silent injection  vulnerability that we discussed earlier.
 
-Such syntax extension approaches suffer from a paucity of direct reasoning principles. Given an unfamiliar piece of syntax, there is no simple method for determining what type it will have, or even for identifying which extension determines its desugaring, causing difficulties for both humans (related to code comprehension) and tools.
+A general problem with approaches like these (in addition to those already mentioned) is that they  suffer from a paucity of direct reasoning principles -- given an unfamiliar piece of syntax, there is no simple method for determining what type it will have, or even for identifying which extension determines its elaboration, causing difficulties for both humans (related to code comprehension) and tools.
 
-\subsubsection{Term Rewriting}
-An alternative approach is to leave the concrete syntax of the language fixed, but repurpose it for novel ends using a \emph{local term-rewriting system}. Among the earliest examples is the LISP macro system \cite{Hart63a}. This system was later refined, notably in Scheme and its dialects to better support reasoning compositionally about the rewriting that is performed \cite{Kohlbecker86a}. In languages with a stronger static type discipline, variations on macros that restrict rewriting to a particular type and perform the rewriting in an explicitly staged manner have also been studied \cite{Herman10:Theory,ganz2001macros} and integrated into languages, e.g. MacroML \cite{ganz2001macros} and Scala \cite{ScalaMacros2013}. 
+\subsubsection{Static Term Rewriting}
+An alternative approach is to leave the concrete syntax of the language fixed, but repurpose it for novel ends using a \emph{local term-rewriting system}. Among the earliest examples is the LISP macro system \cite{Hart63a}, later modified, notably in the Scheme language, to support reasoning hygienically about the rewriting that is performed \cite{Kohlbecker86a}. In languages with a stronger static type discipline, variations on macros that restrict rewriting to a particular type and perform the rewriting in an explicitly staged manner have also been studied \cite{Herman10:Theory,ganz2001macros} and integrated into languages, e.g. MacroML \cite{ganz2001macros} and Scala \cite{ScalaMacros2013}. 
 
 The most immediate problem with using these in our example is that we are not aware of any such statically-typed macro system that integrates cleanly with an ML-style module system. However, let us imagine a macro system that would allow us to repurpose string syntax  as follows:
 \begin{lstlisting}[numbers=none]
 let ssn = pattern P {rx|SSTR\d\d\d-\d\d-\d\d\d\dESTR|rx}
 \end{lstlisting}
 
-Here, \lstinline{pattern} is a macro parameterized by a module \lstinline{P : PATTERN}. It statically parses the provided string literal (which must still be written using an Ocaml-style literal here) to generate an elaboration, at type \lstinline{P.t}. 
+Here, \lstinline{pattern} is a macro parameterized by a module \lstinline{P : PATTERN}. It statically parses the provided string literal (which must still be written using an Ocaml-style literal here) to generate an elaboration, specified by the macro to be at type \lstinline{P.t}. 
 
-For patterns that are constructed compositionally, we need to get more creative. For example, we might repurpose the infix operators that the language provides for other purposes:
+For patterns that are constructed compositionally, we need to get more creative. For example, we might repurpose the infix operators that the language normally uses for other purposes to support string and pattern splicing as follows:
 
 \begin{lstlisting}[numbers=none,escapechar=|]
 fun example_macro(name : string)
   pattern P (name ^ "SSTR: ESTR" + ssn)
 \end{lstlisting}
 
-This does not give us syntax that is quite as clean and clear as the syntax available using syntax extensions, but it does address a number of its deficiencies: there cannot be syntactic conflicts (because the syntax is not extended), we can define macro abbreviations because macros are integrated into the language, there is a hygiene discipline that guarantees that the elaboration will not capture variables inadvertently, and there is a typing discipline (i.e. we need not determine the elaboration to know what type it will have). 
+While this does not leave us with syntax that is quite as clean as would be possible with a  na\"ive syntax extension,  it does address many of the problems we discussed above: there cannot be syntactic conflicts (because the syntax is not extended), we can define macro abbreviations because macros are integrated into the language, there is a hygiene discipline that guarantees that the elaboration will not capture variables inadvertently, and by using a typed macro system, there is a typing discipline (i.e. creativewe need not examine the elaboration directly to know what type it must have). 
 
 % \begin{enumerate}
 % \item Given an unfamiliar piece of syntax, there is no simple method for determining what type it has, or to identify which extension determines its desugaring, hindering code comprehension.
@@ -423,15 +440,15 @@ This does not give us syntax that is quite as clean and clear as the syntax avai
 % \end{enumerate}
 
 \subsection{Contributions}\label{sec:syntax-contributions}
-We propose a new primitive, the \textbf{typed syntax macro} (TSM), that combines the flexibility of syntax extensions with the reasoning guarantees of statically-typed macros, and show how to integrate it into a language with an ML-style module system, addressing all of the problems described above. We then introduce \textbf{type-specific languages} (TSLs), which leverage local type inference to control TSM dispatch. This further decreases syntactic cost (which is, of course, the entire purpose of this exercise). The result is that derived syntax defined using TSLs  approaches the cost of derived syntax built in primitively.
+We propose a new primitive, the \textbf{typed syntax macro} (TSM), that combines the flexibility of syntax extensions with the reasoning guarantees of statically-typed macros, and show how to integrate it into a language with an ML-style module system, addressing all of the problems described thusfar. We then introduce \textbf{type-specific languages} (TSLs), which leverage local type inference to control TSM dispatch, further decreasing syntactic cost (which is, of course, the entire purpose of this exercise). The result is that derived syntax defined by library providers using TSMs and TSLs  approaches the cost of derived syntax built in primitively by a language designer (using a na\"ive tool like Camlp4).
 
 \subsubsection{Typed Syntax Macros (TSMs)}
 %A typed syntax macro is invoked by applying it to a \emph{delimited form}, which can contain  arbitrary syntax in its \emph{body}.  
-As our first example, consider the following concrete term:
+Consider the following concrete external expression:
 \begin{lstlisting}[numbers=none]
 pattern P /SURLA|T|G|CEURL/
 \end{lstlisting}
-Here, a parameterized TSM \lstinline{pattern} is applied to a module parameter, \lstinline{P}, and a {delimited form}, \lstinline{/SURLA|T|G|CEURL/}. Based on the body of the delimited form, i.e. the characters between the delimiters, the TSM statically computes an elaboration to the following {base external form}:
+Here, a parameterized TSM, \lstinline{pattern}, is applied to a module parameter, \lstinline{P}, and a {delimited form}, \lstinline{/SURLA|T|G|CEURL/}. The TSM statically parses the body of the provided delimited form, i.e. the characters between the delimiters (shown here in blue), and computes an elaboration, i.e. another external expression. In this case, it is as if we wrote the following directly:
 
 % import cs.cmu.edu/~wyvern/regex as R
 % let syntax pattern = R.pattern
@@ -440,14 +457,16 @@ Here, a parameterized TSM \lstinline{pattern} is applied to a module parameter, 
 \begin{lstlisting}[numbers=none]
 P.Or(P.Str "SSTRAESTR", P.Or(P.Str "SSTRTESTR", P.Or(P.Str "SSTRGESTR", P.Str "SSTRCESTR")))
 \end{lstlisting}
-The parameterized TSM \lstinline{pattern} is defined as shown below:
+
+%The original expression, above, is statically rewritten to this expression.
+The definition of \lstinline{pattern} is shown below:
 \begin{lstlisting}[numbers=none]
 syntax pattern(P : PATTERN) at P.t
   fn (ps : ParseStream) => (* pattern parser here *)
 \end{lstlisting}
-We declare a module parameter (calling it \lstinline{P} here is unimportant, i.e. the TSM can be used with \emph{any} module satisfying module type \lstinline{PATTERN}), which is bound in the scope of the type clause \lstinline{at P.t}. This clause  guarantees that all elaborations successfully generated by this TSM will be of type \lstinline{P.t}. Elaborations are generated by the static action of the parse function defined in the indented block on the next line. The parse function must be of type \lstinline{ParseStream -> Exp}, where the type \lstinline{ParseStream} gives the function access to the \emph{body} of the delimited form (in blue above) and the type \lstinline{Exp} is a case type that encodes the abstract syntax of the base language (i.e. the Verse EL). Both types are defined in the Verse \emph{prelude}, which is a set of definitions available ambiently.
+Note that identifying the module parameter as \lstinline{P} here is unimportant, i.e. the TSM can be used with \emph{any} module matching signature \lstinline{PATTERN}. The module parameter is bound in the scope of the type clause \lstinline{at P.t}. This clause  specifies that all elaborations successfully generated by this TSM will be of type \lstinline{P.t}. Elaborations are generated by the static action of the parse function defined in the indented block on the next line. The parse function must be of type \lstinline{ParseStream -> Exp}, where the type \lstinline{ParseStream} gives the function access to the {body} of the delimited form (in blue above) and the type \lstinline{Exp} is a case type that encodes the abstract syntax of the base language (i.e. the Verse EL). Both types are defined in the Verse \emph{prelude}, which is a set of definitions available ambiently.
 
-In positions where the type is known, e.g. due to a type ascription or at the argument position of a function call, the module parameter \lstinline{P} can be inferred:
+For concision in analytic positions, i.e. those where an expected type is known due to, for example, a type ascription, the module parameter \lstinline{P} can be inferred:
 \begin{lstlisting}[numbers=none]
 let N : P.t = pattern /SURLA|T|G|CEURL/
 \end{lstlisting}
@@ -458,14 +477,14 @@ let syntax pat = pattern P
 let ssn = pat /SURL\d\d\d-\d\d-\d\d\d\dEURL/
 \end{lstlisting}
 
-TSMs can treat portions of the body of the delimited form as a spliced base language term, to support splicing syntax:
+TSMs can identify portions of the body of the delimited form that should be treated as spliced expressions, allowing us to support splicing syntax as described in Sec. \ref{sec:syntax-extension}:
 \begin{lstlisting}[numbers=none]
 fun example_tsm(name: string)
   pat /SURL@EURLnameSURL: %EURLssn/
 \end{lstlisting}
-A hygiene mechanism ensures that only those portions of the elaboration derived from such spliced terms can refer to variables in the surrounding scope, preventing inadvertent variable capture by the elaboration. In other words, the generated elaboration must be context-independent.
+The hygiene mechanism ensures that only those portions of the elaboration derived from such spliced expressions can refer to variables at the site of use, preventing inadvertent variable capture by the elaboration. Put another way, the generated elaboration must be context-independent.
 
-\paragraph{Formalization} To give a flavor of the formal specification underlying TSMs, let us look at the rule for handling TSM invocation in a synthetic position. 
+\paragraph{Formalization} To give a flavor of the formal specification underlying TSMs, let us look at the rule for handling TSM invocation in a synthetic position: 
 \begin{mathpar}
 \inferrule[syn-aptsm]{
     \Delta \vdash s ~@~ \sigma~\{\iota_\text{parser}\}\\
@@ -477,13 +496,13 @@ A hygiene mechanism ensures that only those portions of the elaboration derived 
     \Delta_\text{out}; \Gamma_\text{out}; \Delta; \Gamma \vdash \mathbf{invoketsm}(s; body) \Rightarrow \sigma \leadsto \iota
 }
 \end{mathpar}
-Note that the judgement forms are  slightly simplified in that they omit various contexts relevant only to other Verse primitives. We include only \emph{typing contexts}, $\Gamma$, which map variables to types, and \emph{type abstraction contexts}, $\Delta$, which track universally quantified type variables (both in the standard way). The premises have the following purposes:
+Note that the judgement forms are  slightly simplified here, e.g. they omit various contexts relevant only to other Verse primitives. We include only \emph{typing contexts}, $\Gamma$, which map variables to types, and \emph{type abstraction contexts}, $\Delta$, which track universally quantified type variables (both in the standard way). The premises have the following meanings:
 \begin{enumerate}
-\item The first premise can be pronounced ``Under $\Delta$, TSM expression $s$ is a TSM at type $\sigma$ with parser $\iota_\text{parser}$''. Application of a parameterized TSM to its parameters is handled by this judgement (not shown).
+\item The first premise can be pronounced ``Under $\Delta$, TSM expression $s$ is a TSM at type $\sigma$ with parser $\iota_\text{parser}$''. We elide the details of issues like module parameter application here for simplicity. % Application of a parameterized TSM to its parameters is handled by this judgement (not shown).
 \item The second premise creates a parse stream, $\iota_\text{ps}$, from the body of the delimited form.
 \item The third premise applies the parser to the parse stream to generate an encoding of the elaboration, $\iota_\text{elab}$.
 \item The fourth premise decodes $\iota_\text{elab}$, producing the elaboration $e_\text{elab}$.
-\item The fifth premise validates the elaboration by analyzing it against the type $\sigma$ under an empty context. The \emph{current} typing and kinding contexts are ``saved'' for use when a spliced term is encountered during this process by setting them as the new \emph{outer contexts}.
+\item The fifth premise validates the elaboration by analyzing it against the type $\sigma$ under empty contexts. The \emph{current} typing and type abstraction contexts are ``saved'' for use when a spliced term is encountered during this process by setting them as the new \emph{outer contexts}.
 
 Variables in the outer contexts cannot be used directly by the elaboration, e.g. they are ignored by the (syn-var) rule:
 \begin{mathpar}
@@ -505,13 +524,13 @@ The outer contexts are switched back in only when encountering a spliced express
     \Delta_\text{out}; \Gamma_\text{out}; \Delta; \Gamma \vdash \mathbf{spliced}(e) \Leftarrow \sigma \leadsto \iota
 }
 \end{mathpar}
-For example, the elaboration generated in \lstinline{example_tsm} above would be:
+For example, the elaboration generated in \lstinline{example_tsm} above would, if written concretely, be:
 \begin{lstlisting}[numbers=none]
 P.Seq(P.Str(spliced(name)), P.Seq(P.Str ": ", spliced(ssn)))
 \end{lstlisting}
 \end{enumerate}
 
-We will give a more complete account of all of these judgements later.
+%We plan to give a more complete account of all of these judgements in the dissertation.
 \subsubsection{Type-Specific Languages (TSLs)}
 To further lower the syntactic cost of using TSMs, Verse also  supports \emph{type-specific languages} (TSLs), which allow library providers to associate a TSM directly with a declared type. For example, a module \lstinline{P} can associate \lstinline{pattern} with \lstinline{P.t} as follows:
 \begin{lstlisting}[numbers=none]
@@ -520,7 +539,7 @@ module P : PATTERN with syntax pattern at t
   (* ... *)
 \end{lstlisting}
 
- Local type inference then determines which TSM is applied when analyzing a delimited form not prefixed by a TSM name. For example, the following is equivalent to the above:
+ Local type inference then determines which TSM is applied when analyzing a delimited form not prefixed by a TSM name. For example, this is equivalent to \lstinline{example_tsm}:
 \begin{lstlisting}[numbers=none]
 fun example_tsl(name : string) : P.t
   /SURL@EURLnameSURL: %EURLssn/
@@ -538,9 +557,9 @@ Together, this allows us to write a list of patterns like this:
 \begin{lstlisting}[numbers=none]
 let x : list(P.t) = [/SURL\dEURL/SHTML, EHTML/SURL\d\dEURL/SHTML, EHTML/SURL\d\d\dEURL/]
 \end{lstlisting}
-
+From the client's perspective, it is essentially as if the language had built in derived syntax for lists and regular expression patterns directly. %The only constraint is that this syntax must be used in an analytic position, which we argue is actually better for code compren when encountering unfamiliar syntax.
 \subsection{Timeline}\label{sec:syntax-timeline}
-We have described and formally specified TSMs in a recently published paper \cite{sac15}, and TSLs in a paper last year \cite{TSLs}, both in the context of the Wyvern language. In the context of Verse, there are some changes that need to be made in the formalization. In particular, neither paper covered integration with an ML-style module system. We plan to complete this in the course of writing the dissertation. 
+We have described and given a more detailed formal specification of TSMs in a recently published paper \cite{sac15}, and TSLs in a paper last year \cite{TSLs}, both in the context of the Wyvern language. At the time of publication, Wyvern did not specify a module system, so in the context of Verse, there are some changes that need to be made in the formalization to handle module parameters. We plan to complete this in the course of writing the dissertation. 
 
 % \subsection{Typed Syntax Macros (and Type-Specific Languages)}
 % Consider the following \emph{recursive case type}, which encodes the tree structure of HTML documents (we will see how case types are themselves library constructs later):
@@ -584,94 +603,247 @@ We have described and formally specified TSMs in a recently published paper \cit
 %These mechanisms are one reason why we specify Verse by a bidirectionally typed elaboration semantics.
 
 \section{Modularly Metaprogrammable Type Structure}\label{sec:metamodules}
-The Verse EL also does not build in substantial type structure. Only functions are built in directly. The type structure of case types (shown in use above), tuples, records, objects and other more esoteric constructs that we will describe later can all be expressed as modes of use of \emph{metamodules} (which are distinct from, though conceptually related to, \emph{modules}). 
+Let us now turn our attention to the type structure of the Verse external language (EL). In contrast to other languages, which build in constructs like case types (shown briefly at the beginning of Sec. \ref{sec:examples}), tuples, records, objects and so on primitively, in Verse these can all be expressed as modes of use of \emph{metamodules} (which are distinct from, though conceptually related to, \emph{modules}). In fact, only polymorphic function types are built primitively into the Verse EL.
 
-The remainder of this section is organized like Section \ref{sec:syntax}. We begin with an example of type structure that cannot be expressed in languages like ML directly in Sec. \ref{sec:metamodules-example}, then show how existing approaches are insufficient in Sec. \ref{sec:metamodules-related}. Then we outline our approach in Sec. \ref{sec:metamodules-solution} and conclude with a timeline for remaining work in Sec. \ref{sec:metamodules-timeline}. 
+This section is organized much like Section \ref{sec:syntax}. We begin with examples of type structure that we wish to express in Section \ref{sec:metamodules-example}, then discuss how existing approaches are insufficient in Section \ref{sec:metamodules-related}. Next, we show how metamodules (together with TSMs and TSLs) serve to address these problems in Section \ref{sec:metamodules-solution} and conclude with a timeline in Section \ref{sec:metamodules-timeline}. 
 
-\subsection{Motivating Example: Labeled Products and Regular Strings}\label{sec:metamodules-example}
-As a simple introductory example, let us consider \emph{labeled products} and \emph{regular strings}. In Verse, a simple labeled product type classifying conference papers can be defined like this:
+\subsection{Motivating Example: Labeled Tuples and Regular Strings}\label{sec:metamodules-example}
+As a simple introductory example, let us consider a type classifying conference papers:
 \begin{lstlisting}[numbers=none]
-let type Paper = lprodtype {SPCT
-  title : EPCTrstring /SURL.+EURL/
-   SPCTconf : EPCTrstring /SURL([A-Z]+) (\d\d\d\d)EURL/
+let type Paper = ltuple {SPCT
+   title : EPCTrstring /SURL.+EURL/
+    SPCTconf : EPCTrstring /SURL([A-Z]+) (\d\d\d\d)EURL/
 }
 \end{lstlisting}
-The first row is labeled \lstinline{title} and specifies the regular string type \lstinline{rstring /SURL.*EURL/}. Regular string types classify values that behave as strings known to be in the regular language specified by the regular expression given as the type parameter. Here, we have that paper titles must be non-empty strings. The second row is labeled \lstinline{conf} and specifies a regular string type with two parenthesized groups, corresponding to the conference abbreviation and the year.
-The \lstinline{let type} construction defines a type synonym, \lstinline{Paper}. Alternatively, we could have used the following construction to declare \lstinline{Paper} \emph{generatively}:
-\begin{lstlisting}[numbers=none]
-lprodtype Paper {
-  SPCTtitle : EPCTrstring /SURL.+EURL/
-   SPCTconf : EPCTrstring /SURL([A-Z]+) (\d\d\d\d)EURL/
-}
-\end{lstlisting}
-The difference is in how type equality is handled. Two labeled product types with the same signature are equal, unless declared generatively, in which case type equality is nominal.
+The \lstinline{let type} construction defines a synonym, \lstinline{Paper}, for a type constructed by applying the \emph{type constructor} (or more concisely, \emph{tycon}) \lstinline{ltuple} to an ordered finite mapping from labels to types, delimited here by curly braces. Its first component is labeled \lstinline{title} and specifies the regular string type \lstinline{rstring /SURL.*EURL/}. Regular string types are constructed by applying the tycon \lstinline{rstring} to a regular expression pattern,  written literally here. They classify values that behave like strings in the corresponding regular language. So in this case, we have specified that paper titles must be non-empty strings. The second component of our labeled product type is labeled \lstinline{conf} and specifies a regular string type with two parenthesized groups, corresponding to the conference abbreviation and year.
 
-In either case, we can introduce a value of type \lstinline{Paper} in an analytic position in one of two ways. We can omit the labels:
+% Alternatively, we could have used the following construction to declare \lstinline{Paper} \emph{generatively}:
+% \begin{lstlisting}[numbers=none]
+% lprodtype Paper {
+%   SPCTtitle : EPCTrstring /SURL.+EURL/
+%    SPCTconf : EPCTrstring /SURL([A-Z]+) (\d\d\d\d)EURL/
+% }
+% \end{lstlisting}
+% The difference is in how type equality is handled. Two labeled product types with the same signature are equal, unless declared generatively, in which case type equality is nominal.
+
+We can introduce a value of type \lstinline{Paper} in an analytic position in one of two ways. We can omit the labels and provide component values positionally:
 \begin{lstlisting}[numbers=none]
 let exmpl : Paper = {"SUSAn Example PaperEUS"SCSS, ECSS"SUSEXMPL 2015EUS"}
 \end{lstlisting}
-Alternatively, we can include them explicitly for clarity:
+Alternatively, we can include the component labels explicitly for readability or if we want to give the components in an alternative order:
 \begin{lstlisting}[numbers=none]
-let exmpl : Paper = {SCSStitle => ECSS"SUSAn Example PaperEUS"SCSS, conf => ECSS"SUSEXMPL 2015EUS"}
+let exmpl : Paper = {SCSSconf => ECSS"SUSEXMPL 2015EUS"SCSS, title => ECSS"SUSAn Example PaperEUS"SCSS}
 \end{lstlisting}
+%In either case, notice that we used literal syntax to introduce the component values, which are of regular string type.
 
-We can then project a row out of such a value using the row projection operator:
+Given a value of type \lstinline{Paper}, we can project out a component value by providing  a  label:% like this:
 \begin{lstlisting}[numbers=none]
-let exmpl_conf = # `SNATconfENAT exmpl 
+let exmpl_conf = # <SNATconfENAT> exmpl 
 \end{lstlisting}
-Here, \lstinline{#} is an operator parameterized by a static label, written literally \lstinline{`SNATconfENAT}, and taking one argument, \lstinline{exmpl}. 
+Here, \lstinline{#} is an \emph{operator constructor} (or \emph{opcon}) parameterized by a static label, written literally here as \lstinline{<SNATconfENAT>}. The resulting \emph{operator}, \lstinline{# <SNATconfENAT>}, takes one \emph{argument}, \lstinline{exmpl}. 
 
-We can also project captured groups out of a regular string using the \lstinline{#group} operator, which is parameterized by a group index:
+We can also project captured groups out of a regular string using the \lstinline{#group} operator constructor, which is parameterized by a natural number referring to the group index:
 \begin{lstlisting}[numbers=none]
 let exmpl_conf_name = #group 0 exmpl_conf
 \end{lstlisting}
+Note that the variable \lstinline{exmpl_conf_name} has type \lstinline{rstring /SURL[A-Z]+EURL/}.
 
-The variable \lstinline{exmpl_conf_name} has type \lstinline{rstring /SURL[A-Z]+EURL/}.
-
-Both labeled products and regular strings support a number of other operations. For example, labeled products can be concatenated (with any common rows updated with the value on the right):
+Both labeled tuples and regular strings support a number of other basic operations. For example, labeled tuples can be concatenated (with any common components updated with the value on the right) using the \lstinline{ltuple+} operator:
 \begin{lstlisting}[numbers=none]
 let a : lprodtype {SPCTauthors : EPCTlist(rstring /SURL.+EURL/)} = {["SUSHarry Q. BovikEUS"]}
-let exmpl_paper_final = lprod+ exmpl_paper a
+let exmpl_paper_final = ltuple+ exmpl_paper a
 \end{lstlisting}
-We can drop a row as well:
+We can drop a component using the operator constructor \lstinline{ltuple-}, which is parameterized by a static label:
 \begin{lstlisting}[numbers=none]
-let exmpl_paper_anon = lprod- exmpl_paper_final `SNATauthorsENAT
+let exmpl_paper_anon = ltuple- <SNATauthorsENAT> exmpl_paper_final
 \end{lstlisting}
 
 \subsection{Existing Approaches}\label{sec:metamodules-related}
-\subsubsection{Records and Tuples}
-Recall that Verse builds in only nullary and binary products into its internal language, so the type structure described above for labeled products  is not directly expressible using IL primitives. If we weaken slightly our insistence on minimalism and built in record/tuple types, as in other functional languages, we have  options that get close to (but do not  exactly achieve) this type structure. In particular, unlike labeled product types, record types are identified up to row reordering. Using a record with the same row labels would prevent us from omitting the labels and relying on positional information when introducing a value of record type in an analytic position, as we did with type \lstinline{Paper} above. %If we instead use an unlabeled product type (which in ML is actually a record type with numeric labels, which are omitted syntactically), we lose the ability to use labels in the elimination form. 
+\subsubsection{Labeled Product Types}
+Recall that Verse builds in only nullary and binary products into its internal language, so the type structure described above for labeled tuples  is not directly expressible using IL primitives. The EL does not build in even these. However, so as to separate concerns, let us assume for the moment that regular string types are available in the EL: %So to consider existing approaches, we have to at least somewhat weaken our insistence on minimalism.
+\begin{lstlisting}[numbers=none]
+ (* type synonyms for concision *)
+ let type title_t = rstring /SURL.+EURL/
+ let type conf_t = rstring /SURL([A-Z]+) (\d\d\d\d)EURL/
+\end{lstlisting}
 
-One workaround is to replace each labeled product type in the program with a record type with row labels tagged by position (recovering the type disequality we seek to express with labeled product types) and conversion functions from the corresponding unlabeled product type and untagged record type to this type. 
-This partially recovers some of the syntactic cost we seek, but introduces much additional  boilerplate as well as run-time cost. We are interested in such issues, so this is not an entirely satisfying solution. % In any case, records, tuples and labeled tuples are all library constructs in Verse. 
-Moreover, this still does not give us support for the extra operations, like concatenation,  shown above.
+\paragraph{Modules}
+One approach we might take is to attempt to express the type structure of any particular labeled tuple type using the module system.  %For simplicity below, let us slightly weaken our insistence on minimalism and build binary products into the EL (and, for now, assume that regular string types are also built in in some suitable manner).%This is not strictly necessary -- we could use a Church-style encoding -- but this simplifies our examples.%then we could try to use the module system to express the type structure of any particular labeled tuple type. For our example above:
+For example, we might define the following signature for our example above:
+\begin{lstlisting}
+signature PAPER
+  type t
+  (* introduction without labels *)
+  val intro : title_t -> conf_t -> t
+  (* introduction with explicit labels, in both orders *)
+  val intro_title_conf : title_t -> conf_t -> t
+  val intro_conf_title : conf_t -> title_t -> t
+  (* projection *)
+  val prj_title : t -> title_t
+  val prj_conf : t -> conf_t
+\end{lstlisting}
+We've simply taken all possible valid introductory and projection operators and expressed them as functions, moving label parameters into identifiers. Even with the minimal EL we are assuming, we could  implement this signature using a Church-style encoding. The details are straightforward and omitted. Alternatively, if we only slightly relax slightly our insistence on minimalism and add binary products to the EL, we could use them as well:
+\begin{lstlisting}
+ module Paper : PAPER
+   type t = title_t * conf_t
+   fun intro_tpl title conf = (title, conf)
+   fun intro_title_conf title conf = (title, conf)
+   fun intro_conf_title conf title = (title, conf)
+   fun prj_title (title, conf) = title 
+   fun prj_conf (title, conf) = conf
+   
+ type Paper = Paper.t
+ \end{lstlisting}
+%Compared to the four line type definition at the beginning of Sec.  safe to say that this is an  unacceptable departure from the four line type definition at the beginning of Sec. \ref{sec:metamodules-example}.
 
-\subsubsection{Refinement Types}
-For regular strings, one could instead use standard strings (which themselves may be lists or vectors of characters together with derived syntax), inserting run-time checks around introductory forms and into other operations (with one exception, discussed below). This would, of course,  weaken the static semantics and add both syntactic and run-time cost. To recover the static guarantees of regular strings, we could treat membership of a string in a specified regular language as a static verification condition, moving the logic governing regular string types out of the language and into an external \emph{refinement type system} \cite{Freeman91}. 
+One problem is that this requires a volume of boilerplate code quadratic in the number of components of our labeled tuple type. It is also not entirely satisfying syntactically from the client's perspective. To avoid these problems and recover the syntax used previously, we could define a TSM for every such signature, though this too involves much boilerplate.
 
-One problem with this approach is that there is no direct analog to the group projection operator described above. The static and dynamic semantics of this operator depend on information available only in the static type of the regular string (i.e. the position of the captured group). Refinement types are strictly a layer above the language, and thus cannot affect its dynamic semantics.
+More fundamentally, this encoding is limited to expressing the basic introductory and projection operators. We did not express all possible valid operators that arise from the opcon \lstinline{ltuple-} as functions, because to do so, we would need to construct an encoding of every labeled tuple type that might arise from dropping one or more components. This would require an exponential volume of boilerplate code. 
+Finally, there is no way to define \lstinline{ltuple+} as a function or a finite collection of functions, because there are infinitely many extensions of any particular labeled product type.% of this operator would need to be implemented by clients manually, defeating the purpose of the operator. %For example, there are an arbitrary 
 
-A related problem is that there is no feasible way to use refinement types to introduce type disequalities that can later affect the internal representation of a value. All standard strings are represented uniformly. The fact that some value of type \lstinline{string} can be given a refined type \lstinline{rstring /A|B/} cannot be justification to locally alter its representation (e.g. to a single bit in this case). For regular strings, there may be limited benefit to doing this, but in general, this can have significant performance ramifications. For example, it is common to justify the omission of a primitive type of ``unsigned integers representable in 32 bits'' by the fact that this is ``merely'' a refinement of arbitrary precision integers, but in so doing one loses the ability to use a machine representation more suitable to this invariant.  %Refinement types cannot be used for this purpose without the possibility of conflict.
-This is also the reason why one cannot viably do away with primitive record types by claiming that they are refinements of finite mappings.
+% \begin{lstlisting}[numbers=none]
+% signature PAPER
+%   type t
+%   val intro_tpl : rstring /.../ * rstring /.../ -> t
+%   val intro_conf_title : rstring /.../ * rstring /.../ -> t
+%   val intro_title_conf : rstring /.../ * rstring /.../ -> t
+%   val prj_conf : t -> rstring /.../
+%   val prj_title : t -> rstring /.../
+%  \end{lstlisting}
 
-Put another way, refinement types are useful when one only needs to make finer static distinctions within an existing type. When one needs to introduce new operators or type disequalities that have ``downstream'' impact, refinement types are not the right solution.%Refinement types are useful when no non-trivial operators need to be introduced into the language and the refinement has no impact on representation, but the type system itself must be extended in some way in more advanced situations.
+\paragraph{Records and Tuples}
+If, instead of settling for such a module-based encoding, we further weaken our insistence on minimalism and primitively build in record/tuple types, as SML and many other languages have done, let us consider what might be possible. We note at the outset that records and tuples too are library constructs in Verse, but because they are so commonly built in to other languages, this situation is worth considering.%we can retreat from trying to use the module system, but have only slightly better options. 
+
+The simplest approach we might consider taking is to directly map each labeled tuple type to a record type defining the same component mapping:
+\begin{lstlisting}[numbers=none]
+let type Paper_rcd = record {
+  title : title_t
+   conf : conf_t 
+}\end{lstlisting}
+Unlike labeled tuple types, record types are identified only up to component reordering. In other words, this mapping does not preserve certain type disequalities between labeled tuple types. Lacking positional information, it is not possible to omit component labels and rely on positional information when introducing a value of this type.%, because this information is not maintained by the type system.
+
+To work around this limitation if we do not otherwise care about preserving these type disequalities, we would need to define two conversion functions involving tuples:
+\begin{lstlisting}[numbers=none]
+fun Paper_of_tpl (title : title_t, conf : conf_t)
+  {title => title, conf => conf}
+fun tpl_of_Paper {title => title, conf => conf} = (title, conf)
+\end{lstlisting}
+For providers, this has syntactic cost linear in the number of components. For clients, we must explicitly invoke these functions, which incurs both a syntactic and run-time cost. We could define a TSM for every such type to reduce this cost to clients, though this is an additional cost to providers.%This also means that we cannot omit the labels and rely on positional information when introducing a value of a record type in an analytic position, as we did above with type \lstinline{Paper}. %If we instead use an unlabeled product type (which in ML is actually a record type with numeric labels, which are omitted syntactically), we lose the ability to use labels in the elimination form. 
+
+If on the other hand we do care about preserving the type disequality mentioned, the workaround is even less elegant: we first need to define a record type with component labels tagged in some sufficiently unambiguous way by position, e.g.:
+\begin{lstlisting}[numbers=none]
+let type Paper = record {
+	__0_title : title_t
+	 __1_conf : conf_t 
+}\end{lstlisting}
+To avoid exposing this directly to clients, we need two auxiliary type definitions:
+\begin{lstlisting}[numbers=none]
+let type Paper_tpl = (title_t * conf_t)
+let type Paper_rcd = (* as above *)
+\end{lstlisting}
+and four conversion functions:
+\begin{lstlisting}[numbers=none]
+fun Paper_of_tpl (title : title_t, conf : conf_t) = {
+  __0_title => title,
+  __1_conf => conf
+}
+fun tpl_of_Paper {__0_title => title, __1_conf => conf} = (title, conf)
+fun Paper_of_rcd {title => title, conf => conf} = {
+  __0_title => title,
+  __1_conf => conf
+}
+fun rcd_of_Paper {__0_title => title, __1_conf => conf} = {
+  title => title,
+  conf => conf
+}
+\end{lstlisting}
+Clients again bear the cost of applying these conversion functions ahead of every operation and providers again bear the burden of defining this boilerplate (which is again linear in the number of components, albeit with a constant factor that is again not easy to dismiss). %We are interested in all such pragmatic issues, so this is not an entirely satisfying solution. % In any case, records, tuples and labeled tuples are all library constructs in Verse. 
+
+As with our modular encoding above, neither of these workarounds provides us with any way to uniformly express the more interesting operations, like  concatenation, that we discussed earlier.
+
+\subsubsection{Regular Strings}
+Let us now turn to regular string types.
+
+\paragraph{Run-Time Checks}
+The most common alternative to regular strings in existing languages is to instead use standard strings (which themselves may be expressed as lists or vectors of characters together with derived syntax), inserting run-time checks around operations to maintain the regular string invariant dynamically. This clearly does not express the static semantics of regular strings, and incurs syntactic and run-time cost.
+
+\paragraph{Type Refinements}
+We might instead try to express the static semantics of regular strings by using standard strings and moving the logic governing regular string types into an external system of \emph{type refinements}  \cite{Freeman91}. %This treats membership of a string in a specified regular language exclusively as a static verification condition. 
+These systems typically examine refinement specifications supplied in comments:
+\begin{lstlisting}[numbers=none]
+let conf : string (* ~ rstring /([A-Z]+) (\d\d\d\d)/ *) = "EXMPL 2015"
+\end{lstlisting}
+One problem with this is that there is no way to express the group projection operator described above. We cannot define a function \lstinline{#group} that can be used like this:
+\begin{lstlisting}[numbers=none]
+let conf_venue = #group 0 conf
+\end{lstlisting}
+The reason is that this function would need information that is  available only in the type refinement of each regular string, i.e. the positions of the captured groups. %Refinement types are strictly a layer above the language, and thus cannot affect its dynamic semantics.
+
+A closely related problem is that type refinements do not introduce type disequalities. As a result, compilers cannot use the type refinements to optimize the representation of a value. For example, the fact that some value of type \lstinline{string} can be given the refined type \lstinline{rstring /A|B/} cannot be justification to locally alter its representation to, for example, a single bit, both because it could later be passed into a function expecting a standard string and because there are many other possible refinements. For regular strings, there may be limited benefit to controlling representation differentially, but in other situations, this can have significant performance ramifications. For example, it is quite common to justify the omission of a primitive type of ``non-negative integers representable in 32 bits'' by the fact that this is ``merely'' a refinement of integers, but in so doing one loses the ability to use a machine representation more suitable to this particular static invariant.%Refinement types cannot be used for this purpose without the possibility of conflict.
+%This is also the reason why one cannot viably do away with primitive record types by claiming that they are refinements of finite mappings with labels as keys.
+
+%In summary, type refinements are appropriate when one needs only to make finer static distinctions within an existing type. When one needs to introduce new operators or type disequalities that have ``downstream'' impact, refinement types are not the right solution.%Refinement types are useful when no non-trivial operators need to be introduced into the language and the refinement has no impact on representation, but the type system itself must be extended in some way in more advanced situations.
+
+
+\paragraph{Modules}
+To create type disequalities, we might consider again turning to the module system, defining a signature for each regular string type that we wish to work with. Again, this requires a non-trivial amount of boilerplate code:
+\begin{lstlisting}[numbers=none]
+signature TITLE
+  type t
+  val intro : string -> t
+  val strcase : t -> (unit -> 'a) -> (string * string -> 'a) -> 'a
+
+signature CONF
+  type t
+  val intro : string -> t
+  val strcase : t -> (unit -> 'a) -> (string * string -> 'a) -> 'a
+  val prj_group_0 : t -> string
+  val prj_group_1 : t -> string
+\end{lstlisting}
+
+To ensure that applications of the introductory operators are correct statically, we would need to couple this with a system of refinement types. 
+
+Unfortunately, this again reveals itself to be too limited a solution when we need other operators, e.g. concatenation. Expressing concatenation uniformly using a single function or a finite set of functions is impossible, for the same reason that applied to \lstinline{ltuple+} above, i.e. we would need to define one such function for every pair of possible regular string types (of which there are infinitely many).
 
 \subsection{Contributions}\label{sec:metamodules-approach}
 
-An important point is that labeled products, as well as other ``record-like'' constructs, can  be expressed by a \emph{type-directed translation} targeting our IL (and indeed, many compilers take advantage of facts like this to simplify the number of cases that must be considered downstream). %it is inaccurate to state that they are merely syntactic sugar over such a language. %Object systems are perhaps even more diverse across languages\todo{citation}. 
+%An important point is that labeled products, as well as other ``record-like'' constructs, can  be expressed by a \emph{type-directed translation} targeting our IL (and indeed, many compilers take advantage of facts like this to simplify the number of cases that must be considered downstream). %it is inaccurate to state that they are merely syntactic sugar over such a language. %Object systems are perhaps even more diverse across languages\todo{citation}. 
 %Other dialects are justified by a desire to provide more special-purpose semantic constructs. For example, 
-Substantially more sophisticated examples require at most only a very slightly more capable intermediate language (the IL of popular virtual machines, even those with flaws like ubiquitous \texttt{null} references, e.g. JVM or CIL bytecode, are also sufficient if used strictly as translation targets).
+%Substantially more sophisticated examples require at most only a very slightly more capable intermediate language (the IL of popular virtual machines, even those with flaws like ubiquitous \texttt{null} references, e.g. JVM or CIL bytecode, are also sufficient if used strictly as translation targets).
 
-Metamodules introduce type and operator constructors parameterized by arbitrary \emph{static values} and metaprogrammatically express the logic governing their typechecking and  translation to the IL using the Verse \emph{static language} (SL). Metamodules are classified by \emph{metasignatures}. For example, let us consider the following metasignature:
+Metamodules introduce type and operator constructors parameterized by arbitrary \emph{static values} and metaprogrammatically express the logic governing their typechecking and  translation to the IL. Metamodules are classified by \emph{metasignatures}. For example, let us consider the following metasignature:
 \begin{lstlisting}
-metasignature LPROD
-  tycon c of LblTyList
+metasignature LTUPLE
+  tycon c of LblTyMap
   ana opcon intro_unlabeled
   ana opcon intro_labeled of LblList
   syn opcon # of Lbl
-\end{lstlisting}\todo{reworking active tycons as metasignatures and metastructures is compelling, but I need to figure it out. will continue writing.}
+syntax ltpl(L ~ LTUPLE, idx : LblTyList) at L.c(idx)
+  ...
+metamodule LTuple ~ LTUPLE with syntax ltpl for c
+  tycon c(idx : LblTyList) ~> ...
+  ana opcon intro_unlabeled(ty : Ty, args : List(Arg)) ~> ...
+  ana opcon intro_labeled(lbls : List(Lbl), ty : Ty, args : List(Arg)) ~> ...
+  syn opcon #(lbl, args) ~> ...
+let tycon ltuple = LTuple.c
+let opcon # = LTuple.#
+\end{lstlisting}
 
-% The semantics uses internal type abstraction to guarantee that metamodule providers can reason modularly about translation invariants, just as it uses external type abstraction to guarantee that module providers can reason modularly about representation invariants.%For example, a metamodule that expresses the type structure of records would introduce a type constructor  \texttt{record} parameterized by a static mapping from labels to types, and two operators: the introductory operator \texttt{intro}, parameterized by a list of row labels, and the row projection operator \texttt{prj}, parameterized by a row label. It might then choose to internally represent records by binary products, which the IL provides. Critically, the choice of internal representation is \emph{computed} based on each record type's parameter, and it is held abstract outside the metamodule using internal type abstraction, facilitating modular reasoning about translation invariants (just as external type abstraction facilitates modular reasoning about representation invariants in the module system). Metamodules like this can express many other constructs, including variants of records that support additional operations, labeled sums, object systems, constrained strings, typechecked operations on format strings like \texttt{printf} and typechecked foreign function interfaces. By using %This simplifies the Verse core language relative to the core languages of ML,  Scala and other comparable languages.
+c is a tycon parameterized by static maps from labels to types. 
+
+intro unlabeled is a trivially parameterized opcon, i.e. just one operator.
+
+intro labeled is an opcon parameterized by a list of labels.
+
+\# is an opcon parameterized by a single label.
+
+ltpl is a TSM parameterized by a metamodule and a static value
+
+LTuple uses ltpl as a TSL
+
+\begin{lstlisting}
+\end{lstlisting}
+% The semantics uses internal type abstraction to guarantee that metamodule providers can reason modularly about translation invariants, just as it uses external type abstraction to guarantee that module providers can reason modularly about representation invariants.%For example, a metamodule that expresses the type structure of records wouldLblTyList introduce a type constructor  \texttt{record} parameterized by a static mapping from labels to types, and two operators: the introductory operator \texttt{intro}, parameterized by a list of row labels, and the row projection operator \texttt{prj}, parameterized by a row label. It might then choose to internally represent records by binary products, which the IL provides. Critically, the choice of internal representation is \emph{computed} based on each record type's parameter, and it is held abstract outside the metamodule using internal type abstraction, facilitating modular reasoning about translation invariants (just as external type abstraction facilitates modular reasoning about representation invariants in the module system). Metamodules like this can express many other constructs, including variants of records that support additional operations, labeled sums, object systems, constrained strings, typechecked operations on format strings like \texttt{printf} and typechecked foreign function interfaces. By using %This simplifies the Verse core language relative to the core languages of ML,  Scala and other comparable languages.
 
 
 % These constructs, very generally summarized, give library providers \emph{metaprogrammatic control} over aspects of the \emph{external} (i.e. user-facing) textual syntax and type structure of Verse, respectively. This \emph{external language} (EL) is given meaning by type-directed translation to a minimal \emph{typed internal language} (IL), specified in a completely standard manner. In some ways, this style of language specification is comparable to a specification for the first stage of a type-directed compiler shifted ``one level up'' into the language and modularly reorganized. By \emph{metaprogrammatic control}, we mean that Verse exposes a \emph{static language} (SL) to library providers. Functions written in the SL, which we refer to as \emph{static functions}, are invoked by the external semantics to control certain aspects of parsing, elaboration, typechecking and translation. %This IL can be specified in a completely standard manner, but the user-facing \emph{external language} (EL) must be specified in a novel manner to support these constructs. 
