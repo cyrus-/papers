@@ -862,16 +862,16 @@ Just as the Verse (i.e. ML) module system is organized around \emph{signatures} 
 \begin{lstlisting}
 metasignature LTUPLEX = metasig {
   ^\label{line:ltuplex-c-sig}^tycon c of LblTyOrdMap
-  ^\label{line:intro-unlabeled-sig}^ana opcon intro_unlabeled (*of unit*)
+  ^\label{line:intro-unlabeled-sig}^ana opcon intro_unlabeled of unit
   ^\label{line:intro-labeled-sig}^syn opcon intro_labeled of list(Lbl)
   ^\label{line:prj-sig}^syn opcon # of Lbl
-  ^\label{line:conc-sig}^syn opcon + (*of unit*)
+  ^\label{line:conc-sig}^syn opcon + of unit
   ^\label{line:drop-sig}^syn opcon - of Lbl
 }
 
 syntax ltplx(L :: LTUPLEX, param :: LblTyOrdMap) at L.c(param) {
   fn ps => (* 
-    - elaborates {e_1, ..., e_n} to L.intro_unlabeled e_1 ... e_n
+    - elaborates {e_1, ..., e_n} to L.intro_unlabeled(e_1; ...; e_n)
     - elaborates {lbl1 => e_1, ..., lbln => e_n} to 
         L.intro_labeled [lbl1, ..., lbln] e_1 ... e_n
   *)
@@ -886,7 +886,7 @@ metamodule Ltuplex :: LTUPLEX = metamod {
       (fn ((lbl, ty), cur_ty_trans) => `SCSStrans(ECSStySCSS) * %ECSScur_ty_trans`)
   }^\label{line:c-end}^
 
-  ana opcon intro_unlabeled {
+  ^\label{line:introul-start}^ana opcon intro_unlabeled {
   	(* translate intro operator to nested pairs *)
   	fn (ty :: Ty, param :: unit, args :: list(Arg)) => tycase(ty) {
         c(param) => (fold (zipExact (list_of_ltom param) args)
@@ -895,7 +895,7 @@ metamodule Ltuplex :: LTUPLEX = metamod {
         )
       | _ => raise TyErr("...")
     }
-  }
+  }^\label{line:introul-end}^
 
   syn opcon intro_labeled {
   	fn (param :: list(Lbl), args :: list(Arg)) => 
@@ -960,29 +960,23 @@ For example, the encoding of the type translation of \lstinline{Paper} determine
 \begin{lstlisting}[numbers=none]
 `SCSStrans(ECSSrstring /SURL.+EURL/SCSS) * (trans(ECSSrstring /SURL([A-Z]+) (\d\d\d\d)EURL/SCSS) * unit)ECSS`
 \end{lstlisting}
-Notice that the translations of the component regular string types are not inserted directly, but are rather treated \emph{parametrically} using the \emph{translational form} \lstinline{SCSStrans(ECSSTSCSS)}. This will be key to the modularity principle that we plan to explore in the remaining work.
+Notice that the translations of the component regular string types are not inserted directly, but are rather treated {parametrically} using the \emph{translational form} \lstinline{SCSStrans(ECSSTSCSS)}. This will be key to the modularity principle that we plan to explore in the remaining work.
 
 If we assume that all regular string types translate to standard internal strings, then the translation of \lstinline{Paper} is ultimately:
 \begin{lstlisting}[numbers=none]
 string * (string * unit)
 \end{lstlisting} 
 
-\paragraph{Operator Constructors} On line \ref{line:intro-unlabeled-sig}, the metasignature \lstinline{LTUPLEX} specifies an operator constructor \lstinline{intro_unlabeled}. No parameter kind is listed, so the trivial parameter kind, \lstinline{unit}, is assumed, as indicated by the comment.
-
-
-
-intro unlabeled is a trivially parameterized opcon, i.e. just one operator.
-
-intro labeled is an opcon parameterized by a list of labels.
-
-\# is an opcon parameterized by a single label.
-
-ltpl is a TSM parameterized by a metamodule and a static value
-
-LTuple uses ltpl as a TSL
-
-\begin{lstlisting}
+\paragraph{Operator Constructors} On line \ref{line:intro-unlabeled-sig} of Figure \ref{fig:ltuplex}, the metasignature \lstinline{LTUPLEX} specifies an operator constructor, \lstinline{intro_unlabeled} parameterized by static values of kind \lstinline{unit}. The qualifier \lstinline{ana} specifies that this opcon can only be used in analytic positions (i.e. where the expected type is known). For example, \lstinline{Ltuplex.intro_unlabeled} can be applied like this, because the return type of the function determines the expected type:
+\begin{lstlisting}[numbers=none]
+fun make_paper(conf : conf_t, title : title_t) : Paper => 
+  Ltuplex.intro_unlabeled () (conf; title)
 \end{lstlisting}
+First, a static parameter value of the appropriate kind is supplied. After that, an \emph{argument list}, \lstinline{(conf; title)}, is supplied.
+
+The metamodule \lstinline{Ltuplex} determines how this expression is typechecked and translated on lines \ref{line:introul-start}-\ref{line:introul-end}. Analytic opcons like \lstinline{intro_unlabeled} are defined with a static function that is given the type that the expression is being analyzed against, here \lstinline{Paper}, the operator parameter, here \lstinline{()}, and a list of \emph{argument interfaces}, which will allow it to ask the semantics to recursively typecheck and translate the provided arguments. The function must return an encoding of an  internal expression, which will become the translation of the external expression. Internal expressions are encoded as static values of kind \lstinline{IExp}, and again we assume a TSL has been defined so that we can use standard quasiquote syntax.
+
+
 
 \subsection{Timeline}\label{sec:metamodules-timeline}
 % The semantics uses internal type abstraction to guarantee that metamodule providers can reason modularly about translation invariants, just as it uses external type abstraction to guarantee that module providers can reason modularly about representation invariants.%For example, a metamodule that expresses the type structure of records wouldLblTyList introduce a type constructor  \texttt{record} parameterized by a static mapping from labels to types, and two operators: the introductory operator \texttt{intro}, parameterized by a list of row labels, and the row projection operator \texttt{prj}, parameterized by a row label. It might then choose to internally represent records by binary products, which the IL provides. Critically, the choice of internal representation is \emph{computed} based on each record type's parameter, and it is held abstract outside the metamodule using internal type abstraction, facilitating modular reasoning about translation invariants (just as external type abstraction facilitates modular reasoning about representation invariants in the module system). Metamodules like this can express many other constructs, including variants of records that support additional operations, labeled sums, object systems, constrained strings, typechecked operations on format strings like \texttt{printf} and typechecked foreign function interfaces. By using %This simplifies the Verse core language relative to the core languages of ML,  Scala and other comparable languages.
