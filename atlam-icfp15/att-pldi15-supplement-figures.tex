@@ -1,0 +1,2705 @@
+%!TEX root = att-pldi15-supplement.tex
+\begin{figure}[p]
+\small
+$\begin{array}{lcl}%\\
+\multicolumn{3}{>{$}l<{$}}{\textbf{internal types}}\\
+\ity & ::= & \multicolumn{1}{l}{\iparr{\ity}{\ity} ~|~ \alpha ~|~ \iforall{\alpha}{\ity} ~|~ t ~|~ \imu{t}{\ity} ~|~ \iunit ~|~ \iprod{\ity}{\ity} ~|~ \isum{\ity}{\ity}}\\
+\multicolumn{3}{>{$}l<{$}}{\textbf{internal terms}}\\
+\itm & ::= & \multicolumn{1}{l}{x ~|~ \ilam{\ity}{x}{\itm} ~|~ \iap{\itm}{\itm} ~|~ \ifix{\ity}{x}{\itm} ~|~ \iLam{\alpha}{\itm} ~|~ \iAp{\ity}{\itm}}\\
+& ~|~ & \ifold{t}{\ity}{\itm} ~|~ \iunfold{\itm} ~|~ \itriv ~|~ \ipair{\itm}{\itm} ~|~ \ifst{\itm} ~|~ \isnd{\itm} ~|~ \iinl{\ity}{\itm} ~|~ \iinr{\ity}{\itm} ~|~ \icase{\itm}{x}{\itm}{x}{\itm}\\
+\multicolumn{3}{l}{\textbf{internal term variable substitutions}~\gamma ::=  \emptyset ~|~ \gamma, \iota/x}\\
+\multicolumn{3}{l}{\textbf{internal typing contexts}~\Gamma ::= \emptyset ~|~ \Gamma, x : \tau}\\
+\multicolumn{3}{l}{\textbf{internal type variable substitutions}~\delta ::=  \emptyset ~|~ \delta, \tau/\alpha}\\\multicolumn{3}{l}{\textbf{internal type formation contexts}~\Delta ::= \emptyset ~|~ \Delta, \alpha ~|~ \Delta, t}\\
+\end{array}%\\
+$
+\caption[Syntax of Internal Language (IL)]{Syntax of {$\mathcal{L}\{{\rightharpoonup}\,{\forall}\,{\mu}\,{\iunit}\,{\times}\,{+}\}$}, our internal language (IL). Metavariable $x$ ranges over term variables and $\alpha$ and $t$ both range over type variables.}
+\label{syntax-IL}
+\end{figure}
+
+
+\begin{figure}[p]
+\small$\begin{array}{lcl}%\\
+\multicolumn{3}{>{$}l<{$}}{\textbf{kinds}}\\
+\kappa & ::= & %\\
+\karrow{\kappa}{\kappa} ~|~%\\
+\kalpha ~|~%\\
+\kforall{\kalpha}{\kappa} ~|~%\\
+\klist{\kappa} ~|~
+%\kvar ~|~%\\
+%\kmu{\kvar}{\kappa} ~|~%\\
+\kunit ~|~%\\
+\kprod{\kappa}{\kappa} ~|~%\\
+\ksum{\kappa}{\kappa} ~|~\kty ~|~%\\
+\kity ~|~%\\
+\kitm \\
+\multicolumn{3}{l}{\textbf{static terms}}\\
+\st & ::= & %\\
+\sx ~|~%\\
+\slam{\kappa}{\sx}{\st} ~|~%\\
+\sap{\st}{\st} ~|~%\\
+\sLam{\kalpha}{\st} ~|~%\\
+\skap{\kappa}{\st} ~|~
+\keyw{nil}[\kappa] ~|~
+\keyw{cons}(\st; \st) ~|~
+\keyw{listrec}(\st; \st; \svar{x}, \svar{y}.\st)\\
+& ~|~ & () ~|~
+(\st, \st) ~|~
+\sfst{\st} ~|~
+\ssnd{\st} ~|~
+\sinl{\kappa}{\st} ~|~
+\sinr{\kappa}{\st} ~|~
+\scase{\st}{\sx}{\st}{\sx}{\st} ~|~
+\sraise{\kappa} \\
+&~|~&\sty{c}{\st} ~|~%\\
+\stycase{c}{\st}{\sx}{\st}{\st}\\
+&~|~&\sqity{\qity}  ~|~%\\
+\sqitm{\qitm} ~|~%\\
+{\technical{\sana{n}{\st}}} ~|~%\\
+{\technical{\ssyn{n}}}\\
+\multicolumn{3}{l}{\textbf{translational internal types and terms}}\\
+\qity & ::= & \quqty{\st} ~|~ \srep{\st} ~|~ \iparr{\qity}{\qity} ~|~ \alpha ~|~ \iforall{\alpha}{\qity} ~|~ t ~|~ \imu{t}{\qity} ~|~ \iunit ~|~ \iprod{\qity}{\qity} ~|~ \isum{\qity}{\qity}\\
+\qitm & ::= & \quqtm{\st} ~|~ \anatrans{n}{\st} ~|~ \syntrans{n} ~|~ x ~|~ \ilam{\qity}{x}{\qitm} ~|~ \iap{\qitm}{\qitm} ~|~ \ifix{\qity}{x}{\qitm} ~|~ \iLam{\alpha}{\qitm} ~|~ \iAp{\qity}{\qitm} \\
+ & ~|~ & \ifold{t}{\qity}{\qitm} ~|~ \iunfold{\qitm} ~|~ \itriv ~|~ \ipair{\qitm}{\qitm} ~|~ \ifst{\qitm} ~|~ \isnd{\qitm} ~|~ \iinl{\qity}{\qitm} ~|~ \iinr{\qity}{\qitm} ~|~ \icase{\itm}{x}{\qitm}{x}{\qitm}\\
+\multicolumn{3}{l}{\textbf{kinding contexts}~\kGamma ::= \emptyset ~|~ \kGamma, \sx :: \kappa}\\
+\multicolumn{3}{l}{\textbf{kind formation contexts}~\kDelta ::= \emptyset ~|~ \kDelta, \kalpha}
+\end{array}%\\
+$
+\caption[Syntax of Static Language (SL)]{Syntax of the SL. Note that we have replaced inductive kinds as in the paper with the only particular example of an inductive kind, $\klist{\kappa}$, that is needed by the semantics (see text).}
+\end{figure}
+
+\begin{figure}[p]
+\small
+$\begin{array}{lrcl}
+\textbf{tycons} & c & ::= & \rightharpoonup ~|~ \tc ~|~ \keyw{other}[m; \kappa]\\
+\textbf{tycon contexts} & \Phi & ::= & \cdot ~|~ \Phi, \tcdef{\tc}{\psi}{\theta}\\
+\textbf{tycon structures} & \theta & ::= & \tcstruct{\st}{\omega} \\
+\textbf{opcon structures} & \omega & ::= & \tcstructn{\st} ~|~ \tcstructc{\omega}{op}{\st}\\
+\textbf{tycon sigs} & \psi & ::= & \tcsig{\kappa}{\chi}\\
+\textbf{opcon sigs}& \chi & ::= & \introsig{\kappa} ~|~ \opsigS{\chi}{op}{\kappa}\\
+\end{array}$
+\caption[Syntax of Tycons and Tycon Contexts]{Syntax of Tycons and Tycon Contexts. Metavariables $\tc$ and $\opname{op}$ range over user-defined tycon and opcon names, respectively, and $m$ ranges over natural numbers.}
+\label{syntax-TC}
+\end{figure}
+
+
+\begin{figure}[p]
+\small
+$\begin{array}{lcl}%\\
+\multicolumn{3}{l}{\textbf{external terms}}\\
+e & ::= & \multicolumn{1}{l}{x ~|~ \eanalam{x}{e} ~|~ \elam{\st}{x}{e} ~|~ \eap{e}{e} ~|~ \efix{x}{e} ~|~ \easc{e}{\st} ~|~ \eintro{\st}{\es} ~|~ \etarg{\opname{op}}{\st}{e}{\es}}\\
+\multicolumn{3}{l}{\textbf{argument lists}~\es ::= \cdot ~|~ \es; e}\\
+\multicolumn{3}{l}{\textbf{external typing contexts}~\Upsilon ::=  \emptyset ~|~ \Upsilon, x : \st}\\
+\multicolumn{3}{l}{\textbf{argument environments}~\argEnv ::= \es; \Upsilon; \Phi}\\
+\multicolumn{3}{l}{\textbf{type translation stores}~\memD ::= \emptyset ~|~ \memD, \st \leftrightarrow \tau/\alpha}\\
+\multicolumn{3}{l}{\textbf{term translation stores}~\memG ::= \emptyset ~|~ \memG, n : \st \leadsto \iota / x : \tau}\\
+\end{array}%\\
+$
+\caption[Syntax of External Language (EL)]{Syntax of  External Language (EL)}
+\label{syntax-EL}
+\end{figure}
+
+
+\begin{figure}
+$\small
+\begin{array}{lll}
+\textbf{Description} ~~~~& \textbf{Concrete Form}~~~~ & \textbf{Desugared Form}\\
+\text{sequences} & (e_1, \ldots, e_n) ~\text{or}~ \texttt{[}e_1, \ldots, e_n\texttt{]} & \eintro{()}{e_1; \ldots; e_n}\\
+\text{labeled collections} & \{\mathtt{lbl}_1=e_1, \ldots, \mathtt{lbl}_n=e_n\} & \eintro{\texttt{[}\mathtt{lbl}_1, \ldots, \mathtt{lbl}_n\texttt{]}}{e_1; \ldots; e_n}\\
+\text{label application} & \mathtt{lbl}\langle e_1, \ldots, e_n \rangle & \eintro{\mathtt{lbl}}{e_1, \ldots, e_n}\\
+\text{numerals} & n & \eintro{n_\text{SL}}{\cdot}\\
+\text{labeled numerals} & n\texttt{lbl} & \eintro{(n, \texttt{lbl})}{\cdot}\\
+\text{strings} & \texttt{"s"} & \eintro{\texttt{"s"}_\text{SL}}{\cdot}
+\end{array}
+$
+\caption[Example Introductory Desugarings]{Example Introductory Desugarings. We assume static desugarings as shown for labels (of kind $\klbl$), lists of labels (of kind $\klist{\klbl}$), numbers (of kind $\keyw{Num}$) and strings (of kind $\keyw{Str}$). These kinds are definable in the standard way.}
+\label{fig:example-intro-desugarings}
+\end{figure}
+
+\begin{figure}
+$\small
+\begin{array}{lll}
+\textbf{Description}& \textbf{Concrete Form}~~~~ & \textbf{Desugared Form}\\
+\text{explicit invocation}~~~~ & e_\text{targ}{\cdot}\opname{op}[\sttmidx](\es) & \etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}\\
+& e_\text{targ}{\cdot}\opname{op}(\es) & \etarg{\opname{op}}{()}{e_\text{targ}}{\es}\\
+& e_\text{targ}{\cdot}\opname{op}(\conclbl{lbl}_1{=}e_1, \ldots, \conclbl{lbl}_n{=}e_n) & \keyw{targop}[\opname{op}; \texttt{[}\conclbl{lbl}_1, \ldots, \conclbl{lbl}_n\texttt{]}](e_\text{targ}; e_1; \ldots; e_n)\\
+\text{index projection} & e_\text{targ}\texttt{\#}n & \etarg{\opname{idx}}{n}{e_\text{targ}}{\cdot}\\
+\text{label projection} & e_\text{targ}\texttt{\#}\conclbl{lbl} & \etarg{\opname{\#}}{\conclbl{lbl}}{e_\text{targ}}{\cdot}\\
+\text{concatenation} & e_\text{targ}\cdot e' & \etarg{\opname{conc}}{()}{e_\text{targ}}{e'}\\
+\text{case analysis} & e_\text{targ}{\cdot}\opname{case}[\st]\,\{ & \keyw{targop}[{\opname{case}}; (\st, {\texttt{[}\st_1, \ldots, \st_n\texttt{]}})]({e_\text{targ}}; \\
+ & ~|~~\st_1\langle x_1, \ldots, x_k \rangle \Rightarrow e_1 & \quad \eanalam{x_1}{\ldots \eanalam{x_k}{e_1}};\\
+ & ~|~~\ldots & \quad \ldots;\\ 
+ & ~|~~\st_n\langle x_1, \ldots, x_k \rangle \Rightarrow e_n\} & \quad \eanalam{x_1}{\ldots \eanalam{x_k}{e_n}})
+\end{array}
+$
+\caption[Example Targeted Desugarings]{Example Targeted Desugarings. The case analysis form makes use of unannotated lambda functions, which are included here but were not discussed in the paper. Note that because we only define synthetic targeted operators, the case analysis operator must specify the type the cases must have explicitly ($\st$). Analytic targeted operators are a natural extension to our calculus, but we do not define them here. Another natural extension is to introduce a syntactic sort for patterns, with positional binding, but again, this is beyond the scope of our present paper.}
+\label{fig:example-targeted-desugarings}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\small\fbox{$\Delta \vdash \tau$}
+\begin{mathpar}
+(standard, omitted)
+\end{mathpar}
+\caption{Internal Type Formation}
+\label{fig:internal-type-formation}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta \vdash \Gamma$} \vspace{-25px}
+\begin{mathpar}
+\inferrule[ictx-emp]{ }{\Delta \vdash \emptyset}
+
+\inferrule[ictx-ext]{\Delta \vdash \Gamma\\ \Delta \vdash \tau}{\Delta \vdash \Gamma, x : \tau}
+\end{mathpar}
+\caption{Internal Typing Context Formation}
+\label{fig:internal-typing-context-formation}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta~\Gamma \vdash \iota : \tau$}
+\begin{mathpar}
+(standard, omitted)
+\end{mathpar}
+\caption{Internal Type Assignment}
+\label{fig:internal-type-asignment}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta \vdash \delta : \Delta$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[tysub-emp]{ }{\Delta \vdash \emptyset : \emptyset}
+
+\inferrule[tysub-ext]{
+    \Delta \vdash \delta : \Delta'\\
+    \Delta \vdash \tau
+}{
+    \Delta \vdash \delta, \tau/\alpha : \Delta', \alpha
+}
+\end{mathpar}
+\caption{Internal Type Substitution Validity}
+\label{fig:internal-type-substitution-validity}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\Delta~\Gamma \vdash \gamma : \Gamma$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[tmsub-emp]{ }{\Delta~\Gamma \vdash \emptyset : \emptyset}
+
+\inferrule[tmsub-ext]{
+    \Delta~\Gamma \vdash \gamma : \Gamma'\\
+    \Delta \vdash \tau\\
+    \Delta~\Gamma \vdash \iota : \tau
+}{
+    \Delta~\Gamma \vdash \gamma, \iota/x : \Gamma', x : \tau
+}
+\end{mathpar}
+\caption{Internal Term Substitution Validity}
+\label{fig:internal-term-substitution-validity}
+\end{figure}
+
+
+
+\begin{figure}[p]
+\fbox{$\vdash \Phi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcc-emp]{ }{\vdash \cdot}
+
+\inferrule[tcc-ext]{
+    \vdash \Phi\\
+    %\tc \notin \text{dom}(\Phi)\\
+    \keq{}{\ktyidx}\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{schema}}{\ktyidx \rightarrow \kity}\\\\
+    \vdash_{\Phi,  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}} \omega \sim \tcsig{\ktyidx}{\chi}
+}{
+    \vdash \Phi, \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}
+}
+\end{mathpar}
+\caption{Tycon Context Validity}
+\label{fig:tycon-ctxs}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\vdash_\Phi \omega \sim \psi$}\vspace{-20px}
+\begin{mathpar}\small
+\inferrule[ocstruct-intro]{
+    \emptyset \vdash \klitidx\\
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow \kitm}
+}{
+    \vdash_\Phi \tcstructn{\stx{def}} \sim \tcsig{\ktyidx}{\introsig{\klitidx}}
+}
+
+\inferrule[ocstruct-targ]{
+    \vdash_\Phi \omega \sim \tcsig{\ktyidx}{\chi}\\
+    %\opname{op}\notin\text{dom}(\chi)\\
+    \emptyset \vdash \klitidx\\\\
+    \sofkn{\emptyset}{\emptyset}{\Phi}{0}{\stx{def}}{\ktyidx \rightarrow \klitidx \rightarrow \kargs \rightarrow (\kty \times \kitm)}
+}{
+    \vdash_\Phi \tcstructc{\omega}{op}{\stx{def}} \sim \tcsig{\ktyidx}{\chi; \opsig{\opname{op}}{\klitidx}}
+}
+\end{mathpar}
+\caption{Opcon Structure Validity}
+\label{ocstruct}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\vdash \psi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcsig-ok]{
+    \keq{}{\ktyidx}\\
+    \vdash \chi
+}{
+    \vdash \tcsig{\ktyidx}{\chi}
+}
+\end{mathpar}
+\fbox{$\vdash \chi$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[ocsig-intro-ok]{
+    \emptyset \vdash \kappa
+}{
+    \vdash \introsig{\kappa}
+}
+
+\inferrule[ocsig-targ-ok]{
+    \vdash \chi\\
+    \emptyset \vdash \kappa\\
+%    \opname{op} \notin \text{dom}(\chi)
+}{
+    \vdash \opsigS{\chi}{op}{\kappa}
+}
+\end{mathpar}
+\fbox{$\vdash \Phi~\mathtt{sigsok}$}\vspace{-25px}
+\begin{mathpar}
+\small
+\inferrule[tcc-sigsok-emp]{ }{
+    \vdash \emptyset~\mathtt{sigsok}
+}
+
+\inferrule[tcc-sigsok-ext]{
+    \vdash \Phi~\mathtt{sigsok}\\
+%    \tc \notin \text{dom}(\Phi)\\
+    \vdash \psi
+}{
+    \vdash \Phi, \tcdef{\tc}{\psi}{\theta}~\mathtt{sigsok}
+}
+\end{mathpar}\vspace{-10px}
+\caption{Tycon and Opcon Signature Validity}
+\label{fig:tycon-and-opcon-signature-well-formedness}
+\end{figure}
+
+
+\begin{figure}[p]
+\small\fbox{$\kDelta \vdash \kappa$}
+\begin{mathpar}
+\inferrule[kf-arrow]{
+    \kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \karrow{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-alpha]{
+    \kalpha \in \kDelta
+}{
+    \kDelta \vdash \kalpha
+}
+
+\inferrule[kf-forall]{
+    \kDelta, \kalpha \vdash \kappa
+}{
+    \kDelta \vdash \kforall{\kalpha}{\kappa}
+}
+
+\inferrule[kf-list]{
+    \kDelta \vdash \kappa
+}{
+    \kDelta \vdash \klist{\kappa}
+}
+
+\inferrule[kf-unit]{ }{
+    \kDelta \vdash \kunit
+}
+
+\inferrule[kf-prod]{
+    \kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \kprod{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-sum]{\kDelta \vdash \kappa_1\\
+    \kDelta \vdash \kappa_2
+}{
+    \kDelta \vdash \ksum{\kappa_1}{\kappa_2}
+}
+
+\inferrule[kf-ty]{ }{\kDelta \vdash \kty}
+
+\inferrule[kf-ity]{ }{\kDelta \vdash \kity}
+
+\inferrule[kf-itm]{ }{\kDelta \vdash \kitm}
+\end{mathpar}
+\caption{Kind Formation.}
+\label{fig:kind-formation}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\keq{}{\kappa}$}
+\begin{mathpar}
+\inferrule[keq-list]{
+    \keq{}{\kappa}
+}{
+    \keq{}{\klist{\kappa}}
+}
+
+\inferrule[keq-unit]{ }{\keq{}{\kunit}}
+
+\inferrule[keq-prod]{
+    \keq{}{\kappa_1}\\
+    \keq{}{\kappa_2}
+}{\keq{}{\kprod{\kappa_1}{\kappa_2}}}
+
+\inferrule[keq-sum]{
+    \keq{}{\kappa_1}\\
+    \keq{}{\kappa_2}
+}{
+    \keq{}{\ksum{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[keq-ty]{ }{\keq{}{\kty}}
+
+\inferrule[keq-ity]{ }{\keq{}{\kity}}
+\end{mathpar}
+\caption{Equality Kinds}
+\label{fig:equality-kinds}
+\end{figure}
+
+\begin{figure}[p]
+\small\fbox{$\kDelta \vdash \kGamma$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[kctx-emp]{ }{\kDelta \vdash \emptyset}
+
+\inferrule[kctx-ext]{
+    \kDelta \vdash \kGamma\\
+    \kDelta \vdash \kappa
+}{
+    \kDelta \vdash \kGamma, \sx :: \kappa
+}
+\end{mathpar}\vspace{-10px}
+\caption{Kinding Context Formation}
+\label{fig:kinding-context-formation}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continues into Figure \ref{fig:kinding-types})
+\begin{mathpar}\small
+\inferrule[k-var]{
+    \sx :: \kappa \in \kGamma
+}{
+    \sofkX{\sx}{\kappa}
+}
+
+\inferrule[k-abs]{
+    \kDelta \vdash \kappa_1\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kappa_1}{\Phi}{\st}{\kappa_2}
+}{
+    \sofkX{\slam{\kappa_1}{\sx}{\st}}{\kappa_1\rightarrow\kappa_2}
+}
+
+\inferrule[k-ap]{
+    \sofkX{\st_1}{\kappa_1\rightarrow\kappa_2}\\
+    \sofkX{\st_2}{\kappa_1}
+}{
+    \sofkX{\st_1(\st_2)}{\kappa_2}
+}
+
+\inferrule[k-kabs]{
+    \sofk{\kDelta, \kalpha}{\kGamma}{\Phi}{\st}{\kappa}
+}{
+    \sofkX{\sLam{\kalpha}{\st}}{\kforall{\kalpha}{\kappa}}
+}
+
+\inferrule[k-kap]{
+    \sofkX{\st}{\kforall{\kalpha}{\kappa'}}\\
+    \kDelta \vdash \kappa
+}{
+    \sofkX{\skap{\kappa}{\st}}{[\kappa/\kalpha]\kappa'}
+}
+
+\inferrule[k-nil]{
+    \kDelta \vdash \kappa
+}{
+    \sofkX{\keyw{nil}[\kappa]}{\klist{\kappa}}
+}
+
+\inferrule[k-cons]{
+    \sofkX{\st_1}{\kappa}\\
+    \sofkX{\st_2}{\klist{\kappa}}
+}{
+    \sofkX{\keyw{cons}(\st_1; \st_2)}{\klist{\kappa}}
+}
+
+\inferrule[k-listrec]{
+    \sofkX{\st_1}{\klist{\kappa}}\\
+    \sofkX{\st_2}{\kappa'}\\\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kappa, \sy :: \kappa'}{\Phi}{\st_3}{\kappa'}
+}{
+    \sofkX{\keyw{listrec}(\st_1; \st_2; \sx, \sy.\st_3)}{\kappa'}
+}
+
+\inferrule[k-triv]{ }{\sofkX{()}{\kunit}}
+
+\inferrule[k-pair]{
+    \sofkX{\st_1}{\kappa_1}\\
+    \sofkX{\st_2}{\kappa_2}
+}{
+    \sofkX{(\st_1, \st_2)}{\kprod{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[k-fst]{
+    \sofkX{\st}{\kprod{\kappa_1}{\kappa_2}}
+}{
+    \sofkX{\sfst{\st}}{\kappa_1}
+}
+
+\inferrule[k-snd]{
+    \sofkX{\st}{\kprod{\kappa_1}{\kappa_2}}
+}{
+    \sofkX{\ssnd{\st}}{\kappa_2}
+}
+
+\inferrule[k-inl]{
+    \kDelta \vdash \ksum{\kappa_1}{\kappa_2}\\
+    \sofkX{\st}{\kappa_1}
+}{
+    \sofkX{\sinl{\ksum{\kappa_1}{\kappa_2}}{\st}}{\ksum{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[k-inr]{
+    \kDelta \vdash \ksum{\kappa_1}{\kappa_2}\\
+    \sofkX{\st}{\kappa_2}
+}{
+    \sofkX{\sinr{\ksum{\kappa_1}{\kappa_2}}{\st}}{\ksum{\kappa_1}{\kappa_2}}
+}
+
+\inferrule[k-case]{
+    \sofkX{\st_1}{\ksum{\kappa_1}{\kappa_2}}\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kappa_1}{\Phi}{\st_1}{\kappa}\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kappa_2}{\Phi}{\st_2}{\kappa}
+}{
+    \sofkX{\scase{\st_1}{\sx}{\st_2}{\sx}{\st_3}}{\kappa}
+}
+
+\inferrule[k-raise]{
+    \kDelta \vdash \kappa
+}{
+    \sofkX{\sraise{\kappa}}{\kappa}
+}
+\end{mathpar}
+\caption[Kinding - Core]{Kinding - Core of Static Language. All rules directly follow from \cite{pfpl} with the addition only of $\Phi$ and $n$ to each judgement. These are not inspected by the core.}
+\label{fig:kinding-core}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-core}, continues into Figure \ref{fig:kinding-qity-new})
+\begin{mathpar}\small
+\inferrule[k-ty-parr]{
+    \sofkX{\st}{\kprod{\kty}{\kty}}
+}{
+    \sofkX{\sty{\rightharpoonup}{\st}}{\kty}
+}
+
+\inferrule[k-ty-ext]{
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\theta} \in \Phi\\\\
+    \sofkX{\st}{\ktyidx}
+}{
+    \sofkX{\sty{\tc}{\st}}{\kty}
+}
+
+\inferrule[k-ty-other]{
+    \keq{}{\kappa}\\
+    \sofkX{\sttyidx}{\kappa \times \kity}
+}{
+    \sofkX{\sty{\keyw{other}[m; \kappa]}{\sttyidx}}{\kty}
+}
+
+\inferrule[k-tycase-parr]{
+    \sofkX{\st}{\kty}\\
+    \sofk{\kDelta}{\kGamma, \sx :: \kty\times\kty}{\Phi}{\st_1}{\kappa}\\
+    \sofkX{\st_2}{\kappa}
+}{
+    \sofkX{\stycase{\rightharpoonup}{\st}{\sx}{\st_1}{\st_2}}{\kappa}
+}
+
+\inferrule[k-tycase-ext]{
+    \sofkX{\st}{\kty}\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\theta} \in \Phi\\\\
+    \sofk{\kDelta}{\kGamma, \sx :: \ktyidx}{\Phi}{\st_1}{\kappa}\\
+    \sofkX{\st_2}{\kappa}
+}{
+    \sofkX{\stycase{\tc}{\st}{\sx}{\st_1}{\st_2}}{\kappa}
+}
+
+\textit{(no rule for type case analysis where $c=\keyw{other}[m; \kappa]$)}\vspace{-10px}
+\end{mathpar}
+\caption[Kinding - Types]{Kinding - Types}
+\label{fig:kinding-types}
+\end{figure}
+
+
+\newcommand{\krqity}[1]{\sofkX{\sqity{#1}}{\kity}}
+\newcommand{\krqitm}[1]{\sofkX{\sqitm{#1}}{\kitm}}
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-types}, continues into Figure \ref{fig:kinding-qity-shared})
+\begin{mathpar}\small
+\inferrule[k-qity-unquote]{
+    \sofkX{\st}{\kity}
+}{
+    \krqity{\qtuq{\st}}
+}
+
+\inferrule[k-qity-trans]{
+    \sofkX{\st}{\kty}
+}{
+    \krqity{\srep{\st}}
+}
+\end{mathpar}\vspace{-10px}
+\caption{Kinding - Quoted Translational Internal Types (Unquote and Type Translation References)}
+\label{fig:kinding-qity-new}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-qity-new}, continues into Figure \ref{fig:kinding-qitm-new})
+\begin{mathpar}\small
+\inferrule[k-qity-parr]{
+    \krqity{\qity_1}\\
+    \krqity{\qity_2}
+}{
+    \krqity{\iparr{\qity_1}{\qity_2}}
+}
+
+\inferrule[k-qity-alpha]{ }{
+    \krqity{\alpha}
+}
+
+\inferrule[k-qity-forall]{
+    \krqity{\qity}
+}{
+    \krqity{\iforall{\alpha}{\qity}}
+}
+
+\inferrule[k-qity-t]{ }{
+    \krqity{t}
+}
+
+\inferrule[k-qity-mu]{
+    \krqity{\qity}
+}{
+    \krqity{\imu{t}{\qity}}
+}
+
+\inferrule[k-qity-unit]{ }{
+    \krqity{\iunit}
+}
+
+\inferrule[k-qity-prod]{
+    \krqity{\qity_1}\\
+    \krqity{\qity_2}
+}{
+    \krqity{\iprod{\qity_1}{\qity_2}}
+}
+
+\inferrule[k-qity-sum]{
+    \krqity{\qity_1}\\
+    \krqity{\qity_2}
+}{
+    \krqity{\isum{\qity_1}{\qity_2}}
+}
+\end{mathpar}
+\caption[Kinding - Quoted Translational Internal Types (Shared Forms)]{Kinding - Quoted Translational Internal Types (Shared Forms). All shared forms simply recursively quote and then kind check all sub-terms against $\kity$.}
+\label{fig:kinding-qity-shared}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-qity-shared}, continues into Figure \ref{fig:kinding-qitm-shared})
+\begin{mathpar}\small
+\inferrule[k-qitm-unquote]{
+    \sofkX{\st}{\kitm}
+}{
+    \krqitm{\quq{\st}}
+}
+
+\inferrule[k-qitm-anatrans]{
+    n' < n\\
+    \sofkX{\st}{\kty}
+}{
+    \krqitm{\anatrans{n'}{\st}}
+}
+
+\inferrule[k-qitm-syntrans]{
+    n' < n
+}{
+    \krqitm{\syntrans{n'}}
+}
+\end{mathpar}
+\caption{Kinding - Quoted Translational Internal Terms (Unquote and Argument Translation References)}
+\label{fig:kinding-qitm-new}
+\end{figure}
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-qitm-new}, continues into Figure \ref{fig:kinding-ana-syn})
+\begin{mathpar}\small
+\inferrule[k-qitm-var]{ }{
+    \krqitm{x}
+}
+
+\inferrule[k-qitm-abs]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\ilam{\qity}{x}{\qitm}}
+}
+
+\inferrule[k-qitm-ap]{
+    \krqitm{\qitm_1}\\
+    \krqitm{\qitm_2}
+}{
+    \krqitm{\iap{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[k-qitm-fix]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\ifix{\qity}{x}{\qitm}}
+}
+
+\inferrule[k-qitm-tabs]{
+    \krqitm{\qitm}
+}{
+    \krqitm{\iLam{\alpha}{\qitm}}
+}
+
+\inferrule[k-qitm-tap]{
+    \krqitm{\qitm}\\
+    \krqity{\qity}
+}{
+    \krqitm{\iAp{\qity}{\qitm}}
+}
+
+\inferrule[k-qitm-fold]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\ifold{t}{\qity}{\qitm}}
+}
+
+\inferrule[k-qitm-unfold]{
+    \krqitm{\qitm}
+}{
+    \krqitm{\iunfold{\qitm}}
+}
+
+\inferrule[k-qitm-triv]{ }{
+    \krqitm{()}
+}
+
+\inferrule[k-qitm-pair]{
+    \krqitm{\qitm_1}\\
+    \krqitm{\qitm_2}
+}{
+    \krqitm{(\qitm_1, \qitm_2)}
+}
+
+\inferrule[k-qitm-fst]{
+    \krqitm{\qitm}
+}{
+    \krqitm{\ifst{\qitm}}
+}
+
+\inferrule[k-qitm-snd]{
+    \krqitm{\qitm}
+}{
+    \krqitm{\isnd{\qitm}}
+}
+
+\inferrule[k-qitm-inl]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\iinl{\qity}{\qitm}}
+}
+
+\inferrule[k-qitm-inr]{
+    \krqity{\qity}\\
+    \krqitm{\qitm}
+}{
+    \krqitm{\iinr{\qity}{\qitm}}
+}
+
+\inferrule[k-qitm-case]{
+    \krqitm{\qitm_1}\\
+    \krqitm{\qitm_2}\\
+    \krqitm{\qitm_3}
+}{
+    \krqitm{\icase{\qitm_1}{x}{\qitm_2}{x}{\qitm_3}}
+}
+\end{mathpar}
+\caption[Kinding - Quoted Translational Internal Terms (Shared Forms)]{Kinding - Quoted Translational Internal Terms (Shared Forms). All shared forms simply recursively quote and then kind check all sub-terms against $\kitm$ or $\kity$ as appropriate.}
+\label{fig:kinding-qitm-shared}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sofkX{\st}{\kappa}$} ~(continued from Figure \ref{fig:kinding-qitm-shared})
+\begin{mathpar}\small
+\inferrule[k-ana]{
+    n' < n\\
+    \sofkX{\st}{\kty}
+}{
+    \sofkX{\sana{n'}{\st}}{\kitm}
+}
+
+\inferrule[k-syn]{
+    n' < n
+}{
+    \sofkX{\ssyn{n'}}{\kty\times\kitm}
+}
+\end{mathpar}
+\caption{Kinding - SL-EL Interface}
+\label{fig:kinding-ana-syn}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~~(continues into Figure \ref{fig:static-dynamics-SL-types})
+\begin{mathpar}\footnotesize
+\inferrule[n-abs-val]{ }{
+    \svalA{\slam{\kappa}{\sx}{\st}}
+}
+
+\inferrule[n-ap-step-1]{
+    \sstepA{\st_1}{\st_1'}
+}{
+    \sstepA{\st_1(\st_2)}{\st_1'(\st_2)}
+}
+
+\inferrule[n-ap-step-2]{
+    \svalA{\st_1}\\
+    \sstepA{\st_2}{\st_2'}
+}{
+    \sstepA{\st_1(\st_2)}{\st_1(\st_2')}
+}
+
+\inferrule[n-ap-elim]{
+    \svalA{\st_2}
+}{
+    \sstepA{(\slam{\kappa}{\sx}{\st_1})(\st_2)}{[\st_2/\sx]\st_1}
+}
+
+\inferrule[n-ap-err-prop-1]{
+    \serrA{\st_1}
+}{
+    \serrA{\st_1(\st_2)}
+}
+
+\inferrule[n-ap-err-prop-2]{
+    \serrA{\st_2}
+}{
+    \serrA{\st_1(\st_2)}
+}
+
+\inferrule[n-tabs-val]{ }{
+    \svalA{\sLam{\kalpha}{\st}}
+}
+
+\inferrule[n-tap-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\skap{\kappa}{\st}}{\skap{\kappa}{\st'}}
+}
+
+\inferrule[n-tap-elim]{ }{
+    \sstepA{\skap{\kappa}{(\sLam{\kalpha}{\st})}}{[\kappa/\kalpha]\st}   
+}
+
+\inferrule[n-tap-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\skap{\kappa}{\st}}
+}
+
+\inferrule[n-nil-val]{ }{
+    \svalA{\keyw{nil}[\kappa]}
+}
+
+\inferrule[n-cons-step-1]{
+    \sstepA{\st_1}{\st_1'}
+}{
+    \sstepA{\keyw{cons}(\st_1; \st_2)}{\keyw{cons}(\st_1'; \st_2)}
+}
+
+\inferrule[n-cons-step-2]{
+    \svalA{\st_1}\\
+    \sstepA{\st_2}{\st_2'}
+}{
+    \sstepA{\keyw{cons}(\st_1; \st_2)}{\keyw{cons}(\st_1; \st_2')}
+}
+
+\inferrule[n-cons-val]{
+    \svalA{\st_1}\\
+    \svalA{\st_2}
+}{
+    \svalA{\keyw{cons}(\st_1; \st_2)}
+}
+
+\inferrule[n-cons-err-prop-1]{
+    \serrA{\st_1}
+}{
+    \serrA{\keyw{cons}(\st_1; \st_2)}
+}
+
+\inferrule[n-cons-err-prop-2]{
+    \serrA{\st_2}
+}{
+    \serrA{\keyw{cons}(\st_1; \st_2)}
+}
+
+\inferrule[n-listrec-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\keyw{listrec}(\st; \st_1; \sx, \sy.\st_2)}{\keyw{listrec}(\st'; \st_1; \sx, \sy.\st_2)}
+}
+
+\inferrule[n-listrec-elim-1]{ }{
+    \sstepA{\keyw{listrec}(\keyw{nil}[\kappa]; \st_1; \sx, \sy.\st_2)}{\st_1}
+}
+
+\inferrule[n-listrec-elim-2]{
+    \svalA{\keyw{cons}(\stx{hd}; \stx{tl})}
+}{
+    \sstepA{\keyw{listrec}(\keyw{cons}(\stx{hd}; \stx{tl}); \st_1; \sx, \sy.\st_2)}{
+        [\stx{head}/\sx, \keyw{listrec}(\stx{tl}; \st_1; \sx, \sy.\st_2)/\sy]\st_2
+    }
+}
+
+\inferrule[n-listrec-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\keyw{listrec}(\st; \st_1; \sx, \sy.\st_2)}
+}
+
+\inferrule[n-triv-val]{ }{
+    \svalA{()}
+}
+
+\inferrule[n-pair-step-1]{
+    \sstepA{\st_1}{\st_1'}
+}{
+    \sstepA{(\st_1, \st_2)}{(\st_1', \st_2)}
+}
+
+\inferrule[n-pair-step-2]{
+    \svalA{\st_1}\\
+    \sstep{\st_2}{\st_2'}
+}{
+    \sstepA{(\st_1, \st_2)}{(\st_1, \st_2')}
+}
+
+\inferrule[n-pair-val]{
+    \svalA{\st_1}\\
+    \svalA{\st_2}
+}{
+    \svalA{(\st_1, \st_2)}
+}
+
+\inferrule[n-pair-err-prop-1]{
+    \serrA{\st_1}
+}{
+    \serrA{(\st_1, \st_2)}
+}
+
+\inferrule[n-pair-err-prop-2]{
+    \serrA{\st_2}
+}{
+    \serrA{(\st_1, \st_2)}
+}
+
+\inferrule[n-fst-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\sfst{\st}}{\sfst{\st'}}
+}
+
+\inferrule[n-fst-elim]{
+    \svalA{(\st_1, \st_2)}
+}{
+    \sstepA{\sfst{(\st_1, \st_2)}}{\st_1}
+}
+
+\inferrule[n-fst-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\sfst{\st}}
+}
+
+\inferrule[n-snd-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\ssnd{\st}}{\ssnd{\st'}}
+}
+
+\inferrule[n-snd-elim]{
+    \svalA{(\st_1, \st_2)}
+}{
+    \sstepA{\ssnd{(\st_1, \st_2)}}{\st_2}
+}
+
+\inferrule[n-snd-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\ssnd{\st}}
+}
+
+\inferrule[n-inl-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\sinl{\kappa}{\st}}{\sinl{\kappa}{\st'}}
+}
+
+\inferrule[n-inl-val]{
+    \svalA{\st}
+}{
+    \svalA{\sinl{\kappa}{\st}}
+}
+
+\inferrule[n-inl-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\sinl{\kappa}{\st}}
+}
+
+\inferrule[n-inr-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\sinr{\kappa}{\st}}{\sinr{\kappa}{\st'}}
+}
+
+\inferrule[n-inr-val]{
+    \svalA{\st}
+}{
+    \svalA{\sinr{\kappa}{\st}}
+}
+
+\inferrule[n-inr-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\sinr{\kappa}{\st}}
+}
+
+\inferrule[n-case-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\scase{\st}{\sx}{\st_1}{\sx}{\st_2}}{\scase{\st'}{\sx}{\st_1}{\sx}{\st_2}}
+}
+
+\inferrule[n-case-elim-1]{
+    \svalA{\sinl{\kappa}{\st}}
+}{
+    \sstepA{\scase{\sinl{\kappa}{\st}}{\sx}{\st_1}{\sx}{\st_2}}{[\st/\sx]\st_1}
+}
+
+\inferrule[n-case-elim-2]{
+    \svalA{\sinr{\kappa}{\st}}
+}{
+    \sstepA{\scase{\sinr{\kappa}{\st}}{\sx}{\st_1}{\sx}{\st_2}}{[\st/\sx]\st_2}
+}
+
+\inferrule[n-case-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\scase{\st}{\sx}{\st_1}{\sx}{\st_2}}
+}
+
+\inferrule[n-raise]{ }{
+    \serrA{\sraise{\kappa}}
+}\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Core}
+\label{fig:static-dynamics-SL-core}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-core}, continues into Figure \ref{fig:static-dynamics-SL-qity-new})
+\begin{mathpar}\small
+\inferrule[n-ty-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\sty{c}{\st}}{\argEnv}{\sty{c}{\st'}}
+}
+
+\inferrule[n-ty-val]{
+    \sval{\st}{\argEnv}
+}{
+    \sval{\sty{c}{\st}}{\argEnv}
+}
+
+\inferrule[n-ty-err-prop]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\sty{c}{\st}}{\argEnv}
+}
+
+\inferrule[n-tycase-step]{
+    \sstep{\st}{\argEnv}{\st'}
+}{
+    \sstep{\stycase{c}{\st}{\sx}{\st_1}{\st_2}}{\argEnv}{\stycase{c}{\st'}{\sx}{\st_1}{\st_2}}
+}
+
+\inferrule[n-tycase-elim-1]{
+    \sval{\sty{c}{\st}}{\argEnv}
+}{
+    \sstep{\stycase{c}{\sty{c}{\st}}{\sx}{\st_1}{\st_2}}{\argEnv}{[\st/\sx]\st_1}
+}
+~~~~
+\inferrule[n-tycase-elim-2]{
+    \svalA{\sty{c'}{\st}}\\
+    c \neq c'
+}{
+    \sstep{\stycase{c}{\sty{c'}{\st}}{\sx}{\st_1}{\st_2}}{\argEnv}{\st_2}
+}
+~~~~
+\inferrule[n-tycase-err-prop]{
+    \serr{\st}{\argEnv}
+}{
+    \serr{\stycase{c}{\st}{\sx}{\st_1}{\st_2}}{\argEnv}
+}\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Types}
+\label{fig:static-dynamics-SL-types}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-types}, continues into Figure \ref{fig:static-dynamics-SL-qity-shared})
+\begin{mathpar}\small
+\inferrule[n-q-t-unquote-step]{
+    \sstepA{\st}{\st'}
+}{
+    \qtstep{\qtuq{\st}}{\qtuq{\st'}}
+}
+
+\inferrule[n-q-t-unquote-elim]{
+    \qtval{\qity}
+}{
+    \sstepA{\sqity{\qtuq{\sqity{\qity}}}}{\sqity{\qity}}
+}
+
+\inferrule[n-q-t-unquote-err-prop]{
+    \serrA{\st}
+}{
+    \qterr{\qtuq{\st}}
+}
+
+\inferrule[n-q-tytrans-step]{
+    \sstepA{\st}{\st'}
+}{
+    \qtstep{\srep{\st}}{\srep{\st'}}
+}
+
+\inferrule[n-q-tytrans-val]{
+    \svalA{\st}
+}{
+    \qtval{\srep{\st}}
+}
+
+\inferrule[n-q-tytrans-err-prop]{
+    \serrA{\st}
+}{
+    \qterr{\srep{\st}}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Quoted Translational Internal Types (Unquote and Type Translation References)}
+\label{fig:static-dynamics-SL-qity-new}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-qity-new}, continues into \ref{fig:static-dynamics-SL-qitm-new})
+\begin{mathpar}\small
+\inferrule[n-q-parr-step-1]{
+    \qtstep{\qity_1}{\qity_1'}
+}{
+    \qtstep{\iparr{\qity_1}{\qity_2}}{\iparr{\qity_1'}{\qity_2}}
+}
+
+\inferrule[n-q-parr-step-2]{
+    \qtval{\qity_1}\\
+    \qtstep{\qity_2}{\qity_2'}
+}{
+    \qtstep{\iparr{\qity_1}{\qity_2}}{\iparr{\qity_1}{\qity_2'}}
+}
+
+\inferrule[n-q-parr-val]{
+    \qtval{\qity_1}\\
+    \qtval{\qity_2}
+}{
+    \qtval{\iparr{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-parr-err-prop-1]{
+    \qterr{\qity_1}
+}{
+    \qterr{\iparr{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-parr-err-prop-2]{
+    \qterr{\qity_2}
+}{
+    \qterr{\iparr{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-alpha-val]{ }{
+    \qtval{\alpha}
+}
+
+\inferrule[n-q-forall-step]{
+    \qtstep{\qity}{\qity'}
+}{
+    \qtstep{\iforall{\alpha}{\qity}}{\iforall{\alpha}{\qity}}
+}
+
+\inferrule[n-q-forall-val]{
+    \qtval{\qity}
+}{
+    \qtval{\iforall{\alpha}{\qity}}
+}
+
+\inferrule[n-q-forall-err-prop]{
+    \qterr{\qity}
+}{
+    \qterr{\iforall{\alpha}{\qity}}
+}
+
+\inferrule[n-q-t-val]{ }{
+    \qtval{t}
+}
+
+\inferrule[n-q-mu-step]{
+    \qtstep{\qity}{\qity'}
+}{
+    \qtstep{\imu{t}{\qity}}{\imu{t}{\qity}}
+}
+
+\inferrule[n-q-mu-val]{
+    \qtval{\qity}
+}{
+    \qtval{\imu{t}{\qity}}
+}
+
+\inferrule[n-q-mu-err]{
+    \qterr{\qity}
+}{
+    \qterr{\imu{t}{\qity}}
+}
+
+\inferrule[n-q-unit-val]{ }{
+    \qtval{()}
+}
+
+\inferrule[n-q-prod-step-1]{
+    \qtstep{\qity_1}{\qity_1'}
+}{
+    \qtstep{\iprod{\qity_1}{\qity_2}}{\iprod{\qity_1'}{\qity_2}}
+}
+
+\inferrule[n-q-prod-step-2]{
+    \qtval{\qity_1}\\
+    \qtstep{\qity_2}{\qity_2'}
+}{
+    \qtstep{\iprod{\qity_1}{\qity_2}}{\iprod{\qity_1}{\qity_2'}}
+}
+
+\inferrule[n-q-prod-val]{
+    \qtval{\qity_1}\\
+    \qtval{\qity_2}
+}{
+    \qtval{\iprod{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-prod-err-prop-1]{
+    \qterr{\qity_1}
+}{
+    \qterr{\iprod{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-prod-err-prop-2]{
+    \qterr{\qity_2}
+}{
+    \qterr{\ipair{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-sum-step-1]{
+    \qtstep{\qity_1}{\qity_1'}
+}{
+    \qtstep{\isum{\qity_1}{\qity_2}}{\isum{\qity_1'}{\qity_2}}
+}
+
+\inferrule[n-q-sum-step-2]{
+    \qtval{\qity_1}\\
+    \qtstep{\qity_2}{\qity_2'}
+}{
+    \qtstep{\isum{\qity_1}{\qity_2}}{\isum{\qity_1}{\qity_2'}}
+}
+
+\inferrule[n-q-sum-val]{
+    \qtval{\qity_1}\\
+    \qtval{\qity_2}
+}{
+    \qtval{\isum{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-sum-err-prop-1]{
+    \qterr{\qity_1}
+}{
+    \qterr{\isum{\qity_1}{\qity_2}}
+}
+
+\inferrule[n-q-sum-err-prop-2]{
+    \qterr{\qity_2}
+}{
+    \qterr{\isum{\qity_1}{\qity_2}}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption[Static Dynamics - Quoted Translational Internal Types (Shared Forms)]{Static Dynamics - Quoted Translational Internal Types (Shared Forms). All shared forms simply quote and then evaluate all sub-terms, proceeding left-to-right, and propagate errors.}
+\label{fig:static-dynamics-SL-qity-shared}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-qity-shared}, continues into Figure \ref{fig:static-dynamics-SL-qitm-shared-1})
+\begin{mathpar}\small
+\inferrule[n-q-unquote-step]{
+    \sstepA{\st}{\st'}
+}{
+    \qstep{\quq{\st}}{\quq{\st'}}
+}
+
+\inferrule[n-q-unquote-elim]{
+    \qval{\qity}
+}{
+    \sstepA{\sqitm{\quq{\sqitm{\qitm}}}}{\sqitm{\qitm}}
+}
+
+\inferrule[n-q-unquote-err-prop]{
+    \serrA{\st}
+}{
+    \qerr{\quq{\st}}
+}
+
+\inferrule[n-q-anatrans-step]{
+    \sstepA{\st}{\st'}
+}{
+    \qstep{\anatrans{n}{\st}}{\anatrans{n}{\st'}}
+}
+
+\inferrule[n-q-anatrans-val]{
+    \sval{\st}{\es;\Upsilon;\Phi}\\
+    |\es| = n\\
+    n' < n
+}{
+    \sval{\sqitm{\anatrans{n'}{\st}}}{\es;\Upsilon;\Phi}
+}
+
+\inferrule[n-q-anatrans-err-prop]{
+    \serrA{\st}
+}{
+    \qerr{\anatrans{n}{\st}}
+}
+
+\inferrule[n-q-syntrans-val]{
+    |\es| = n\\
+    n' < n
+}{
+    \qval{\syntrans{n'}}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Quoted Translational Internal Terms (Unquote and Argument Translation References)}
+\label{fig:static-dynamics-SL-qitm-new}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-qitm-new}, continues into Figure \ref{fig:static-dynamics-SL-qitm-shared-2})
+\begin{mathpar}\small
+\inferrule[n-q-x-val]{ }{\qval{x}}
+
+\inferrule[n-q-abs-step-1]{
+    \qtstep{\qity}{\qity'}
+}{
+    \qstep{\ilam{\qity}{x}{\qitm}}{\ilam{\qity'}{x}{\qitm}}
+}
+
+\inferrule[n-q-abs-step-2]{
+    \qtval{\qity}\\
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\ilam{\qity}{x}{\qitm}}{\ilam{\qity}{x}{\qitm'}}
+}
+
+\inferrule[n-q-abs-val]{
+    \qtval{\qity}\\
+    \qval{\qitm}
+}{
+    \qval{\ilam{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-abs-err-prop-1]{
+    \qterr{\qity}
+}{
+    \qerr{\ilam{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-abs-err-prop-2]{
+    \qerr{\qitm}
+}{
+    \qerr{\ilam{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-ap-step-1]{
+    \qstep{\qitm_1}{\qitm_1'}
+}{
+    \qstep{\iap{\qitm_1}{\qitm_2}}{\iap{\qitm_1'}{\qitm_2}}
+}
+
+\inferrule[n-q-ap-step-2]{
+    \qval{\qitm_1}\\
+    \qstep{\qitm_2}{\qitm_2'}
+}{
+    \qstep{\iap{\qitm_1}{\qitm_2}}{\iap{\qitm_1}{\qitm_2'}}
+}
+
+\inferrule[n-q-ap-val]{
+    \qval{\qitm_1}\\
+    \qval{\qitm_2}
+}{
+    \qval{\iap{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-ap-err-prop-1]{
+    \qerr{\qitm_1}
+}{
+    \qerr{\iap{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-ap-err-prop-2]{
+    \qerr{\qitm_2}
+}{
+    \qerr{\iap{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-fix-step-1]{
+    \qtstep{\qity}{\qity'}
+}{
+    \qstep{\ifix{\qity}{x}{\qitm}}{\ifix{\qity'}{x}{\qitm}}
+}
+
+\inferrule[n-q-fix-step-2]{
+    \qtval{\qity}\\
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\ifix{\qity}{x}{\qitm}}{\ilam{\qity}{x}{\qitm'}}
+}
+
+\inferrule[n-q-fix-val]{
+    \qtval{\qity}\\
+    \qval{\qitm}
+}{
+    \qval{\ifix{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-fix-err-prop-1]{
+    \qterr{\qity}
+}{
+    \qerr{\ifix{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-fix-err-prop-2]{
+    \qerr{\qitm}
+}{
+    \qerr{\ifix{\qity}{x}{\qitm}}
+}
+
+\inferrule[n-q-tabs-step]{
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\iLam{\alpha}{\qitm}}{\iLam{\alpha}{\qitm'}}
+}
+
+\inferrule[n-q-tabs-val]{
+    \qval{\qitm}
+}{
+    \qval{\iLam{\alpha}{\qitm}}
+}
+
+\inferrule[n-q-tabs-err-prop]{
+    \qerr{\qitm}
+}{
+    \qerr{\iLam{\alpha}{\qitm}}
+}
+
+\inferrule[n-q-tap-step-1]{
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\iAp{\qity}{\qitm}}{\iAp{\qity}{\qitm'}}
+}
+
+\inferrule[n-q-tap-step-2]{
+    \qval{\qitm}\\
+    \qtstep{\qity}{\qity'}
+}{
+    \qstep{\iAp{\qity}{\qitm}}{\iAp{\qity'}{\qitm}}
+}
+
+\inferrule[n-q-tap-val]{
+    \qval{\qitm}\\
+    \qtval{\qity}
+}{
+    \qval{\iAp{\qity}{\qitm}}
+}
+
+\inferrule[n-q-tap-err-prop-1]{
+    \qerr{\qitm}
+}{
+    \qerr{\iAp{\qity}{\qitm}}
+}
+
+\inferrule[n-q-tap-err-prop-2]{
+    \qterr{\qity}
+}{
+    \qerr{\iAp{\qity}{\qitm}}
+}
+
+\inferrule[n-q-fold-step-1]{
+    \qtstep{\qity}{\qity'}\\
+}{
+    \qstep{\ifold{t}{\qity}{\qitm}}{\ifold{t}{\qity'}{\qitm}}
+}
+
+\inferrule[n-q-fold-step-2]{
+    \qtval{\qity}\\
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\ifold{t}{\qity}{\qitm}}{\ifold{t}{\qity}{\qitm'}}
+}
+
+\inferrule[n-q-fold-val]{
+    \qtval{\qity}\\
+    \qval{\qitm}
+}{
+    \qval{\ifold{t}{\qity}{\qitm}}
+}
+
+\inferrule[n-q-fold-err-prop-1]{
+    \qterr{\qity}
+}{
+    \qerr{\ifold{t}{\qity}{\qitm}}
+}
+
+\inferrule[n-q-fold-err-prop-2]{
+    \qerr{\qitm}
+}{
+    \qerr{\ifold{t}{\qity}{\qitm}}
+}
+
+\inferrule[n-q-unfold-step]{
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\iunfold{\qitm}}{\iunfold{\qitm'}}
+}
+
+\inferrule[n-q-unfold-val]{
+    \qval{\qitm}
+}{
+    \qval{\iunfold{\qitm}}
+}
+
+\inferrule[n-q-unfold-err-prop]{
+    \qerr{\qitm}
+}{
+    \qerr{\iunfold{\qitm}}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Quoted Translational Internal Terms (Shared Forms, 1 of 2)}
+\label{fig:static-dynamics-SL-qitm-shared-1}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-qitm-shared-1}, continues into Figure \ref{fig:static-dynamics-SL-qitm-anasyn})
+\begin{mathpar}\small
+\inferrule[n-q-triv-val]{ }{
+    \qval{()}
+}
+
+\inferrule[n-q-pair-step-1]{
+    \qstep{\qitm_1}{\qitm_1'}
+}{
+    \qstep{\ipair{\qitm_1}{\qitm_2}}{\iprod{\qitm_1'}{\qitm_2}}
+}
+
+\inferrule[n-q-pair-step-2]{
+    \qval{\qitm_1}\\
+    \qstep{\qitm_2}{\qitm_2'}
+}{
+    \qstep{\ipair{\qitm_1}{\qitm_2}}{\ipair{\qitm_1}{\qitm_2'}}
+}
+
+\inferrule[n-q-pair-val]{
+    \qval{\qitm_1}\\
+    \qval{\qitm_2}
+}{
+    \qval{\ipair{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-pair-err-prop-1]{
+    \qerr{\qitm_1}
+}{
+    \qerr{\ipair{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-pair-err-prop-2]{
+    \qerr{\qitm_2}
+}{
+    \qerr{\ipair{\qitm_1}{\qitm_2}}
+}
+
+\inferrule[n-q-fst-step]{
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\ifst{\qitm}}{\ifst{\qitm'}}
+}
+
+\inferrule[n-q-fst-val]{
+    \qval{\qitm}
+}{
+    \qval{\ifst{\qitm}}
+}
+
+\inferrule[n-q-fst-err-prop]{
+    \qerr{\qitm}
+}{
+    \qerr{\ifst{\qitm}}
+}
+
+\inferrule[n-q-snd-step]{
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\isnd{\qitm}}{\isnd{\qitm'}}
+}
+
+\inferrule[n-q-snd-val]{
+    \qval{\qitm}
+}{
+    \qval{\isnd{\qitm}}
+}
+
+\inferrule[n-q-snd-err-prop]{
+    \qerr{\qitm}
+}{
+    \qerr{\isnd{\qitm}}
+}
+
+\inferrule[n-q-inl-step-1]{
+    \qtstep{\qity}{\qity'}\\
+}{
+    \qstep{\iinl{\qity}{\qitm}}{\iinl{\qity'}{\qitm}}
+}
+
+\inferrule[n-q-inl-step-2]{
+    \qtval{\qity}\\
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\iinl{\qity}{\qitm}}{\iinl{\qity}{\qitm'}}
+}
+
+\inferrule[n-q-inl-val]{
+    \qtval{\qity}\\
+    \qval{\qitm}
+}{
+    \qval{\iinl{\qity}{\qitm}}
+}
+
+\inferrule[n-q-inl-err-prop-1]{
+    \qterr{\qity}
+}{
+    \qerr{\iinl{\qity}{\qitm}}
+}
+
+\inferrule[n-q-inl-err-prop-2]{
+    \qerr{\qitm}
+}{
+    \qerr{\iinl{\qity}{\qitm}}
+}
+
+\inferrule[n-q-inr-step-1]{
+    \qtstep{\qity}{\qity'}\\
+}{
+    \qstep{\iinr{\qity}{\qitm}}{\iinr{\qity'}{\qitm}}
+}
+
+\inferrule[n-q-inr-step-2]{
+    \qtval{\qity}\\
+    \qstep{\qitm}{\qitm'}
+}{
+    \qstep{\iinr{\qity}{\qitm}}{\iinr{\qity}{\qitm'}}
+}
+
+\inferrule[n-q-inr-val]{
+    \qtval{\qity}\\
+    \qval{\qitm}
+}{
+    \qval{\iinr{\qity}{\qitm}}
+}
+
+\inferrule[n-q-inr-err-prop-1]{
+    \qterr{\qity}
+}{
+    \qerr{\iinr{\qity}{\qitm}}
+}
+
+\inferrule[n-q-inr-err-prop-2]{
+    \qerr{\qitm}
+}{
+    \qerr{\iinr{\qity}{\qitm}}
+}
+
+\inferrule[n-q-case-step-1]{
+    \qstep{\st}{\st'}
+}{
+    \qstep{\icase{\st}{x}{\st_1}{x}{\st_2}}{\icase{\st'}{x}{\st_1}{x}{\st_2}}
+}
+
+\inferrule[n-q-case-step-2]{
+    \qval{\st}\\
+    \qstep{\st_1}{\st_1'}
+}{
+    \qstep{\icase{\st}{x}{\st_1}{x}{\st_2}}{\icase{\st}{x}{\st_1'}{x}{\st_2}}
+}
+
+\inferrule[n-q-case-step-3]{
+    \qval{\st}\\
+    \qval{\st_1}\\
+    \qstep{\st_2}{\st_2'}
+}{
+    \qstep{\icase{\st}{x}{\st_1}{x}{\st_2}}{\icase{\st}{x}{\st_1}{x}{\st_2'}}
+}
+
+\inferrule[n-q-case-val]{
+    \qval{\st}\\
+    \qval{\st_1}\\
+    \qval{\st_2}
+}{
+    \qval{\icase{\st}{x}{\st_1}{x}{\st_2}}
+}
+
+\inferrule[n-q-case-err-prop-1]{
+    \qerr{\st}
+}{
+    \qerr{\icase{\st}{x}{\st_1}{x}{\st_2}}
+}
+
+\inferrule[n-q-case-err-prop-2]{
+    \qerr{\st_1}
+}{
+    \qerr{\icase{\st}{x}{\st_1}{x}{\st_2}}
+}
+
+\inferrule[n-q-case-err-prop-3]{
+    \qerr{\st_2}
+}{
+    \qerr{\icase{\st}{x}{\st_1}{x}{\st_2}}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption{Static Dynamics - Quoted Translational Internal Terms (Shared Forms, 2 of 2)}
+\label{fig:static-dynamics-SL-qitm-shared-2}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\sstep{\st}{\argEnv}{\st'}$}~
+\fbox{$\svalA{\st}$}~
+\fbox{$\serrA{\st}$}~(continued from Figure \ref{fig:static-dynamics-SL-qitm-shared-2})
+\begin{mathpar}\small
+\inferrule[n-ana-step]{
+    \sstepA{\st}{\st'}
+}{
+    \sstepA{\sana{n}{\st}}{\sana{n}{\st}}
+}
+
+\inferrule[n-ana-success]{
+    \sval{\st}{\es;\Upsilon;\Phi}\\
+    \keyw{nth}[n](\es) = e\\
+    \eana{\Upsilon}{\Phi}{e}{\st}{\iota}
+}{
+    \sstep{\sana{n}{\st}}{\es;\Upsilon;\Phi}{\sqitm{\anatrans{n}{\st}}}
+}
+
+\inferrule[n-ana-fail]{
+    \sval{\st}{\es;\Upsilon;\Phi}\\
+    \keyw{nth}[n](\es) = e\\
+    [\Upsilon \vdash_\Phi e \nLeftarrow \st]
+}{
+    \serr{\sana{n}{\st}}{\es;\Upsilon;\Phi}
+}
+
+\inferrule[n-ana-err-prop]{
+    \serrA{\st}
+}{
+    \serrA{\sana{n}{\st}}
+}
+
+\inferrule[n-syn-success]{
+    \keyw{nth}[n](\es) = e\\
+    \esyn{\Upsilon}{\Phi}{e}{\st}{\iota}
+}{
+    \sstep{\ssyn{n}}{\es;\Upsilon;\Phi}{(\st, \sqitm{\syntrans{n}})}
+}
+
+\inferrule[n-syn-fail]{
+    \keyw{nth}[n](\es) = e\\
+    [\Upsilon \vdash_\Phi e \nRightarrow]
+}{
+    \serr{\ssyn{n}}{\es;\Upsilon;\Phi}
+}
+\vspace{-10px}
+\end{mathpar}
+\caption[Static Dynamics - SL-EL Interface]{Static Dynamics - SL-EL Interface. Bracketed terms can be omitted to form a dynamics that can non-deterministically raise an error, because we do not inductively define the negations of the external analysis and synthesis judgements here (though it would be straightforward to).}
+\label{fig:static-dynamics-SL-qitm-anasyn}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\smanystep{\st}{\argEnv}{\st}$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[n-multi-refl]{ }{\smanystep{\st}{\argEnv}{\st}}
+
+\inferrule[n-multi-step]{
+    \smanystep{\st}{\argEnv}{\st''}\\
+    \sstepA{\st''}{\st'}
+}{
+    \smanystep{\st}{\argEnv}{\st'}
+}
+\end{mathpar}
+\caption{Static Multistep Dynamics}
+\label{fig:static-multistep-dynamics}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\Upsilon~\mathtt{ctx}_{\Phi}$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[tctx-ok-emp]{ }{\vdash_\Phi \emptyset}
+
+\inferrule[tctx-ok-ext]{
+    \Upsilon~\mathtt{ctx}_{\Phi}\\
+    \istype{\st}{\Phi}
+}{
+    \Upsilon, x : \st~\mathtt{ctx}_{\Phi}
+}
+\end{mathpar}
+\caption{Typing Context Validity}
+\label{fig:typing-context-well-formedness}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\keyw{args}(n)=\st$}\vspace{-25px}
+\begin{mathpar}
+\inferrule[mk-arg-interface]{
+    \keyw{args}(n, 0)=\st
+}{
+    \keyw{args}(n) = \st
+}
+\end{mathpar}
+\fbox{$\keyw{args}(n,m)=\st$}
+\begin{mathpar}
+\inferrule[mk-arg-interface-nil]{ }{
+    \keyw{args}(0, m)=\keyw{nil}[\karg]
+}
+
+\inferrule[mk-arg-interface-cons]{
+    \keyw{args}(n, m+1)=\stx{args}'
+}{
+    \keyw{args}(n+1, m)=\keyw{cons}((\slam{\svar{ty}}{\kty}{\sana{m}{\svar{ty}}}, \slam{\kunit}{\_}{\ssyn{m}}); \stx{args}')
+}
+\end{mathpar}
+\caption[Argument Interface List Generation]{Argument Interface List Generation. The auxiliary judgement counts up to $n$ to ensure that the numbers are in order.}
+\label{fig:arg-interface-list}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\tytransX{\st}{\tau}$}
+\begin{mathpar}\small
+\inferrule[ty-trans]{
+    \istype{\st}{\Phi}\\
+    \tdeabs{\Phi}{c}{\srep{\st}}{\emptyset}{\tau}{\memD}\\
+    \memD \leadsto \delta : \Delta
+}{
+    \tytransX{\st}{[\delta]\tau}
+}
+\end{mathpar}
+\caption[Type Translation]{Type Translation}
+\label{fig:type-translation}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\ctxtransX{\Upsilon}{\Gamma}$}
+\begin{mathpar}\small
+\inferrule[ctx-trans-emp]{ }{
+    \ctxtransX{\emptyset}{\emptyset}
+}
+
+\inferrule[ctx-trans-ext]{
+    \ctxtransX{\Upsilon}{\Gamma}\\
+    \tytransX{\st}{\tau}
+}{
+    \ctxtransX{\Upsilon, x : \st}{\Gamma, x : \tau}
+}
+\end{mathpar}
+\caption{Typing Context Translation}
+\label{fig:typing-context--translation}
+\end{figure}
+
+\clearpage
+\begin{figure}[p]
+\fbox{$\tdeabs{\Phi}{c}{\qity}{\memD}{\ity}{\memD}$}
+\begin{mathpar}
+\inferrule[abs-parr]{
+    \tdeabs{\Phi}{c}{\srep{\st_1}}{\memD}{\tau_1}{\memD'}\\
+    \tdeabs{\Phi}{c}{\srep{\st_2}}{\memD'}{\tau_2}{\memD''}
+}{
+    \tdeabs{\Phi}{c}{\srep{\sty{\rightharpoonup}{(\st_1, \st_2)}}}{\memD}{\iparr{\tau_1}{\tau_2}}{\memD''}
+}
+
+\inferrule[abs-ext-delegated]{
+    \tcdef{\tc}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\
+    \stx{schema}(\stx{tyidx}) \Downarrow_{\cdot;\emptyset;\Phi} \sqity{\qity}\\
+    \tdeabs{\Phi}{\tc}{\qity}{\memD}{\tau}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau
+}{
+    \tdeabs{\Phi}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\tau}{\memD'}
+}
+
+\inferrule[abs-ext-not-delegated-new]{
+    c\neq\tc\\
+    \sty{\tc}{\sttyidx} \notin \text{dom}(\memD)\\
+    \tcdef{\tc}{\psi}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\
+    \stx{schema}(\stx{tyidx}) \Downarrow_{\cdot;\emptyset;\Phi} \sqity{\qity}\\
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau
+}{
+    \tdeabs{\Phi}{c}{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\alpha}{\memD', \sty{\tc}{\sttyidx} \leftrightarrow [\delta]\tau/\alpha}
+}
+
+\inferrule[abs-other-delegated]{
+    \tdeabs{\Phi}{\otherc{m}{\kappa}}{\qity}{\memD}{\ity}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau
+}{
+    \tdeabs{\Phi}{\otherc{m}{\kappa}}{\srep{\sty{\otherc{m}{\kappa}}{(\stx{data}, \sqity{\qity})}}}{\memD}{\tau}{\memD'}
+}
+
+\inferrule[abs-other-not-delegated-new]{
+    c\neq\otherc{m}{\kappa}\\
+    \sty{\otherc{m}{\kappa}}{(\stx{data}, \sqity{\qity})} \notin \text{dom}(\memD)\\\\
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \memD' \leadsto \delta : \Delta\\
+    \Delta \vdash \tau
+}{
+    \tdeabs{\Phi}{c}{\srep{\sty{\otherc{m}{\kappa}}{(\stx{data}, \sqity{\qity})}}}{\memD}{\alpha}{\memD', \sty{\otherc{m}{\kappa}}{(\stx{data}, \sqity{\qity})} \leftrightarrow [\delta]\tau/\alpha}
+}
+
+\inferrule[abs-ty-stored]{
+    \st \leftrightarrow \tau/\alpha \in \memD
+}{
+    \tdeabs{\Phi}{c}{\srep{\st}}{\memD}{\alpha}{\memD}
+}
+
+\inferrule[abs-i-parr]{
+    \tdeabs{\Phi}{c}{\qity_1}{\memD}{\tau_1}{\memD'}\\
+    \tdeabs{\Phi}{c}{\qity_2}{\memD'}{\tau_2}{\memD''}
+}{
+    \tdeabs{\Phi}{c}{\iparr{\qity_1}{\qity_2}}{\memD}{\iparr{\tau_1}{\tau_2}}{\memD''}
+}
+
+\inferrule[abs-i-alpha]{ }{
+    \tdeabs{\Phi}{c}{\alpha}{\memD}{\alpha}{\memD}
+}
+
+\inferrule[abs-i-forall]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}
+}{
+    \tdeabs{\Phi}{c}{\iforall{\alpha}{\qity}}{\memD}{\iforall{\alpha}{\tau}}{\memD'}
+}
+
+\inferrule[abs-i-t]{ }{
+    \tdeabs{\Phi}{c}{t}{\memD}{t}{\memD}
+}
+
+\inferrule[abs-i-mu]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}
+}{
+    \tdeabs{\Phi}{c}{\imu{t}{\qity}}{\memD}{\imu{t}{\tau}}{\memD'}
+}
+
+\inferrule[abs-i-unit]{ }{
+    \tdeabs{\Phi}{c}{\kunit}{\memD}{\kunit}{\memD}
+}
+
+\inferrule[abs-i-prod]{
+    \tdeabs{\Phi}{c}{\qity_1}{\memD}{\tau_1}{\memD'}\\
+    \tdeabs{\Phi}{c}{\qity_2}{\memD'}{\tau_2}{\memD''}
+}{
+    \tdeabs{\Phi}{c}{\iprod{\qity_1}{\qity_2}}{\memD}{\iprod{\tau_1}{\tau_2}}{\memD''}
+}
+
+\inferrule[abs-i-sum]{
+    \tdeabs{\Phi}{c}{\qity_1}{\memD}{\tau_1}{\memD'}\\
+    \tdeabs{\Phi}{c}{\qity_2}{\memD'}{\tau_2}{\memD''}
+}{
+    \tdeabs{\Phi}{c}{\isum{\qity_1}{\qity_2}}{\memD}{\isum{\tau_1}{\tau_2}}{\memD''}
+}
+\end{mathpar}
+\caption{Selectively Abstracted Type Translations}
+\label{fig:selectively-abstracted-type-translations}
+\end{figure}
+
+\begin{figure}
+\fbox{$\tytsvX{\memD}$}
+\begin{mathpar}
+\inferrule[tyts-ok-emp]{ }{\tytsvX{\emptyset}}
+
+\inferrule[tyts-ok-ext]{
+    \tytsvX{\memD}\\
+    c \neq c'\\
+    \tytransX{\sty{c'}{\sttyidx}}{\tau}
+}{
+    \tytsvX{\memD, \sty{c'}{\sttyidx} \leftrightarrow \tau/\alpha}
+}
+\end{mathpar}
+\caption{Type Translation Store Validity}
+\label{fig:type-translation-store-validity}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\memD \leadsto \delta : \Delta$}
+\begin{mathpar}
+\inferrule[ty-store-int-emp]{ }{\emptyset \leadsto \emptyset : \emptyset}
+
+\inferrule[ty-store-int-ext]{
+    \memD \leadsto \delta : \Delta
+}{
+    (\memD, \st \leftrightarrow \tau/\alpha) \leadsto (\delta, \tau/\alpha) : (\Delta, \alpha)
+}
+\end{mathpar}
+\caption{Type Translation Store Internalization}
+\label{fig:type-translation-store-Internalization}
+\end{figure}
+
+\begin{figure}
+\fbox{$\tmtsv{\argEnv}{c}{\memD}{\memG}$}
+\begin{mathpar}
+\inferrule[tmts-ok-emp]{\tytsvX{\memD}}{\tmtsvX{\memD}{\emptyset}}
+
+\inferrule[tmts-ok-ext]{
+    \tytsvX{\memD}\\
+    \tdeabs{\Phi}{c}{\srep{\st}}{\memD}{\tau}{\memD}\\
+    \memD \leadsto \delta : \Delta\\
+    \tytransX{\st}{[\delta]\tau}\\
+    \keyw{nth}[n](\es)=e\\
+    \eanaX{e}{\st}{\iota}
+}{
+    \tmtsvX{\memD}{\memG, n : \st \leadsto \iota/x : \tau}
+}
+\end{mathpar}
+\caption{Term Translation Store Validity}
+\label{fig:term-translation-store-validity}
+\end{figure}
+
+\begin{figure}[p]
+\fbox{$\memG \leadsto \gamma : \Gamma$}
+\begin{mathpar}
+\inferrule[arg-store-int-emp]{ }{\emptyset \leadsto \emptyset : \emptyset}
+
+\inferrule[arg-store-int-ext]{
+    \memG \leadsto \gamma : \Gamma
+}{
+    (\memG, n : \st \leadsto \iota/x : \tau) \leadsto (\gamma, \iota/x) : (\Gamma, x : \tau)
+}
+\end{mathpar}
+\caption{Term Translation Store Internalization}
+\label{fig:term-translation-store-Internalization}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\edeabs{c}{\argEnv}{\qitm}{\memD}{\memG}{\itm}{\memD}{\memG}$}~(continues in Figure \ref{fig:selectively-abstracted-term-translations-2})
+\begin{mathpar}
+\inferrule[abs-anatrans-new]{
+    n \notin \text{dom}(\memG)\\
+    \keyw{nth}[n](\es)=e\\
+    \eanaX{e}{\st}{\iota}\\
+    \tdeabs{\Phi}{c}{\srep{\st}}{\memD}{\tau}{\memD'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\anatrans{n}{\st}}{\memD}{\memG}{x}{\memD'}{\memG, n : \st \leadsto \iota/x : \tau}
+}
+
+\inferrule[abs-anatrans-stored]{
+    n : \st \leadsto \iota/x : \tau \in \memG
+}{
+    \edeabs{c}{\argEnv}{\anatrans{n}{\st}}{\memD}{\memG}{x}{\memD}{\memG}
+}
+
+\inferrule[abs-syntrans-new]{
+    n \notin \text{dom}(\memG)\\
+    \keyw{nth}[n](\es)=e\\
+    \esynX{e}{\st}{\iota}\\
+    \tdeabs{\Phi}{c}{\srep{\st}}{\memD}{\tau}{\memD'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\syntrans{n}}{\memD}{\memG}{\memD'}{\memG, n : \st \leadsto \iota/x : \tau}
+}
+
+\inferrule[abs-syntrans-stored]{
+    n : \st \leadsto \iota/x : \tau \in \memG
+}{
+    \edeabs{c}{\argEnv}{\syntrans{n}}{\memD}{\memG}{x}{\memD}{\memG}
+}
+
+\inferrule[abs-x]{ }{
+    \edeabs{c}{\argEnv}{x}{\memD}{\memG}{x}{\memD}{\memG}
+}
+
+\inferrule[abs-abs]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\tau}{\memD''}{\memG'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\ilam{\qity}{x}{\qitm}}{\memD}{\memG}{\ilam{\tau}{x}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-ap]{
+    \edeabs{c}{\argEnv}{\qitm_1}{\memD}{\memG}{\iota_1}{\memD'}{\memG'}\\
+    \edeabs{c}{\argEnv}{\qitm_2}{\memD'}{\memG'}{\iota_2}{\memD''}{\memG''}\\
+}{
+    \edeabs{c}{\argEnv}{\iap{\qitm_1}{\qitm_2}}{\memD}{\memG}{\iap{\iota_1}{\iota_2}}{\memD''}{\memG''}
+}
+
+\inferrule[abs-fix]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\tau}{\memD''}{\memG'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\ifix{\qity}{x}{\qitm}}{\memD}{\memG}{\ifix{\tau}{x}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-tabs]{
+  \edeabs{c}{\argEnv}{{\qitm}}{\memD}{\memG}{{\iota}}{\memD'}{\memG'}  
+}{
+    \edeabs{c}{\argEnv}{\iLam{\alpha}{\qitm}}{\memD}{\memG}{\iLam{\alpha}{\iota}}{\memD'}{\memG'}
+}
+
+\inferrule[abs-tap]{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD}{\memG}{\iota}{\memD'}{\memG'}\\
+    \tdeabs{\Phi}{c}{\qity}{\memD'}{\tau}{\memD''}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\iAp{\qity}{\qitm}}{\memD}{\memG}{\iAp{\tau}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-fold]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\tau}{\memD''}{\memG'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\ifold{t}{\qity}{\qitm}}{\memD}{\memG}{\ifold{t}{\tau}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-unfold]{
+  \edeabs{c}{\argEnv}{{\qitm}}{\memD}{\memG}{{\iota}}{\memD'}{\memG'}  
+}{
+    \edeabs{c}{\argEnv}{\iunfold{\qitm}}{\memD}{\memG}{\iunfold{\iota}}{\memD'}{\memG'}
+}
+\end{mathpar}
+\caption{Selectively Abstracted Term Translations (1 of 2)}
+\label{fig:selectively-abstracted-term-translations-1}
+\end{figure}
+
+
+\begin{figure}[p]
+\fbox{$\edeabs{c}{\argEnv}{\qitm}{\memD}{\memG}{\itm}{\memD}{\memG}$}~(continued from Figure \ref{fig:selectively-abstracted-term-translations-1})
+\begin{mathpar}
+\inferrule[abs-triv]{ }{
+    \edeabs{c}{\argEnv}{()}{\memD}{\memG}{()}{\memD}{\memG}
+}
+
+\inferrule[abs-pair]{
+    \edeabs{c}{\argEnv}{\qitm_1}{\memD}{\memG}{\iota_1}{\memD'}{\memG'}\\
+    \edeabs{c}{\argEnv}{\qitm_2}{\memD'}{\memG'}{\iota_2}{\memD''}{\memG''}\\
+}{
+    \edeabs{c}{\argEnv}{\ipair{\qitm_1}{\qitm_2}}{\memD}{\memG}{\ipair{\iota_1}{\iota_2}}{\memD''}{\memG''}
+}
+
+\inferrule[abs-fst]{
+  \edeabs{c}{\argEnv}{{\qitm}}{\memD}{\memG}{{\iota}}{\memD'}{\memG'}  
+}{
+    \edeabs{c}{\argEnv}{\ifst{\qitm}}{\memD}{\memG}{\ifst{\iota}}{\memD'}{\memG'}
+}
+
+\inferrule[abs-snd]{
+  \edeabs{c}{\argEnv}{{\qitm}}{\memD}{\memG}{{\iota}}{\memD'}{\memG'}  
+}{
+    \edeabs{c}{\argEnv}{\isnd{\qitm}}{\memD}{\memG}{\isnd{\iota}}{\memD'}{\memG'}
+}
+
+\inferrule[abs-inl]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\tau}{\memD''}{\memG'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\iinl{\qity}{\qitm}}{\memD}{\memG}{\iinl{\tau}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-inr]{
+    \tdeabs{\Phi}{c}{\qity}{\memD}{\tau}{\memD'}\\
+    \edeabs{c}{\es;\Upsilon;\Phi}{\qitm}{\memD'}{\memG}{\tau}{\memD''}{\memG'}
+}{
+    \edeabs{c}{\es;\Upsilon;\Phi}{\iinr{\qity}{\qitm}}{\memD}{\memG}{\iinr{\tau}{\iota}}{\memD''}{\memG'}
+}
+
+\inferrule[abs-case]{
+    \edeabs{c}{\argEnv}{\qitm}{\memD}{\memG}{\itm}{\memD'}{\memG'}\\
+    \edeabs{c}{\argEnv}{\qitm_1}{\memD'}{\memG'}{\itm_1}{\memD''}{\memG''}\\
+    \edeabs{c}{\argEnv}{\qitm_2}{\memD''}{\memG''}{\itm_2}{\memD'''}{\memG'''}
+}{
+    \edeabs{c}{\argEnv}{\icase{\qitm}{x}{\qitm_1}{x}{\qitm_2}}{\memD}{\memG}{\icase{\itm}{x}{\itm_1}{x}{\itm_2}}{\memD'''}{\memG'''}
+}
+\end{mathpar}
+\caption{Selectively Abstracted Term Translations (2 of 2)}
+\label{fig:selectively-abstracted-term-translations-2}
+\end{figure}
+
+\begin{figure}
+\fbox{$\trvalidate{\argEnv}{c}{\qitm}{\st}{\iota\moutput}$}\vspace{-5px}
+\begin{mathpar}\small
+\inferrule[validate-tr]{
+  \tdeabs{\Phi}{c}{\srep{\st}}{\emptyset}{\ity_\text{abs}}{\memD}\\
+  \edeabs{c}{{\es;\Upsilon;\Phi}}{\qitm}{\memD}{\emptyset}{\iota_\text{abs}}{\memD'}{\memG}\\\\
+  \memD' \leadsto \delta : \Delta_\text{abs}\\
+  \memG \leadsto \gamma : \Gamma_\text{abs}\\
+  \Delta_\text{abs}~\Gamma_\text{abs} \vdash \iota_\text{abs} : \tau_\text{abs}
+}{
+\trvalidate{\es;\Upsilon;\Phi}{c}{\qitm}{\st}{[\delta][\gamma]\iota_\text{abs}}
+}\end{mathpar}\vspace{-9px}
+\caption{Translation Validation}
+\label{fig:translation-validation}\vspace{-8px}
+\end{figure}
+\clearpage
+
+
+\begin{figure}[p]
+\small\fbox{$\eanaX{e}{\st}{\iota}$}~
+\fbox{$\esynX{e}{\st}{\iota}$}\vspace{-3px}
+\begin{mathpar}
+\small
+\inferrule[subsume]{
+    \esynX{e}{\st}{\iota}
+}{
+    \eanaX{e}{\st}{\iota}
+}
+
+\inferrule[ascribe]{
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\st}{\kty}\\
+  \st \Downarrow_{\cdot; \emptyset; \Phi} \st'\\\\
+  \eanaX{e}{\st'}{\iota}
+}{
+  \esynX{\easc{e}{\st}}{\st'}{\iota}
+}
+
+\small\inferrule[syn-var]{
+  x : \st \in \Upsilon
+}{
+  \esynX{x}{\st}{x}
+}
+
+\inferrule[ana-fix]{
+  \eana{\Upsilon, x : \st}{\Phi}{e}{\st}{\iota}\\\\
+  \tytrans{\Phi}{\st}{\tau}
+}{
+  \eanaX{\efix{x}{e}}{\st}{\ifix{\tau}{x}{\iota}}
+}
+
+\inferrule[syn-lam]{
+    \sofkz{\emptyset}{\emptyset}{\Phi}{\st_1}{\kty}\\
+    \st_1 \Downarrow_{\cdot;\emptyset;\Phi} \st_1'\\\\
+    \esyn{\Upsilon, x : \st_1'}{\Phi}{e}{\st_2}{\iota}\\
+    \vdash_\Phi \st_1'~\mathtt{type} \leadsto \tau_1
+}{
+    \esynX{\elam{\st_1}{x}{e}}{\sty{\rightharpoonup}{(\st_1', \st_2)}}{\ilam{\tau_1}{x}{\iota}}
+}
+
+\inferrule[ana-lam]{
+    \eana{\Upsilon, x : \st_1}{\Phi}{e}{\st_2}{\iota}\\\\
+    \tytransX{\st_1}{\tau_1}
+}{
+    \eanaX{\eanalam{x}{e}}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{\ilam{\tau_1}{x}{\iota}}
+}
+
+\inferrule[syn-ap]{
+  \esynX{e_1}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{\iota_1}\\
+  \eanaX{e_2}{\st_2}{\iota_2}
+}{
+  \esynX{\eap{e_1}{e_2}}{\st_2}{\iap{\iota_1}{\iota_2}}
+}
+
+\inferrule[ana-intro]{
+  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\\\
+  \introsig{\klitidx} \in \chi\\
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\stmidx}{\klitidx}\\\\
+  \keyw{ana~intro}={\stx{def}} \in \omega\\
+  |\es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+  \stx{def}(\sttyidx)(\stmidx)(\stx{args}) \Downarrow_{\es;\Upsilon;\Phi} \sqitm{\qitm}\\\\
+  \trvalidate{\es;\Upsilon;\Phi}{\tc}{\qitm}{{\sty{\tc}{\sttyidx}}}{\iota}
+  %\validate{1}{2{3}{4}{5}
+  %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+}{
+  \eanaX{\eintro{\stmidx}{\es}}{\sty{\tc}{\sttyidx}}{\iota}
+}
+
+\inferrule[syn-targ]{
+  \esynX{e_\text{targ}}{\sty{\tc}{\sttyidx}}{\iota_\text{targ}}\\\\
+  \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi\\\\
+  \opsig{\opname{op}}{\klitidx} \in \chi\\
+  \sofkz{\emptyset}{\emptyset}{\Phi}{\stmidx}{\klitidx}\\\\
+  \keyw{syn~}\opname{op}={\stx{def}} \in \omega\\
+  |e_\text{targ}; \es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+  \stx{def}(\sttyidx)(\stmidx)(\stx{args}) \Downarrow_{(e_\text{targ}; \es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+  \trvalidate{(e_\text{targ}; \es);\Upsilon;\Phi}{\tc}{\qitm}{{\st}}{\iota}
+  %\snorm{\stx{def}~\sttyidx~\stmidx~\stx{args}}{\emptyset}{\memG_0}{{\rightharpoonup}, \tc; \Upsilon; \Phi}{\sqitm{\itm_\text{abs}}}{\memD}{\memG}\\\\
+  %\snorm{\srep{\sty{\tc}{\sttyidx}}}{\memD}{\cdot}{{\rightharpoonup}, \tc;\emptyset;\Phi}{\sqity{\ity_\text{abs}}}{\memD'}{\cdot}\\\\
+}{
+    \esynX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{\iota}
+}
+
+\inferrule[ana-intro-other]{
+    |\es| = n\\
+    \sofk{\emptyset}{\emptyset}{\Phi}{\sqitm{\qitm}}{\kitm}\\
+    \sval{\sqitm{\qitm}}{\es; \Upsilon; \Phi}\\
+    \trvalidate{\es;\Upsilon;\Phi}{\keyw{other}[m;\kappa]}{\qitm}{{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}}{\iota}
+}{
+    \eanaX{\eintro{\sqitm{\qitm}}{\es}}{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}{\iota}
+}
+
+\inferrule[syn-targ-other]{
+    \esynX{e_\text{targ}}{\sty{\keyw{other}[m;\kappa]}{\sttyidx}}{\iota_\text{targ}}\\\\
+    |e_\text{targ}; \es| = n\\
+    \sofk{\emptyset}{\emptyset}{\Phi}{\sqitm{\qitm}}{\kitm}\\
+    \sval{\sqitm{\qitm}}{(e_\text{targ}; \es); \Upsilon; \Phi}\\
+    \istype{\st}{\Phi}\\
+    \trvalidate{(e_\text{targ}; \es);\Upsilon;\Phi}{\keyw{other}[m;\kappa]}{\qitm}{{\st}}{\iota}
+}{
+     \esynX{\etarg{\opname{op}}{(\st, \sqitm{\qitm})}{e_\text{targ}}{\es}}{\st}{\iota}
+}\vspace{-15px}
+\end{mathpar}
+\caption{Typing}
+\label{fig:typing}
+\end{figure}
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\st}{\st}$}~(continued in Figure \ref{fig:backprojection-kitm})
+\begin{mathpar}\small
+\inferrule[bp-nil]{ }{
+    \bprjX{\keyw{nil}[\kappa]}{\keyw{nil}[\kappa]}
+}
+
+\inferrule[bp-cons]{
+    \bprjX{\st_1}{\st_1'}\\
+    \bprjX{\st_2}{\st_2'}
+}{
+    \bprjX{\keyw{cons}(\st_1; \st_2)}{\keyw{cons}(\st_1'; \st_2')}
+}
+
+\inferrule[bp-triv]{ }{
+    \bprjX{\striv}{\striv}
+}
+
+\inferrule[bp-pair]{
+    \bprjX{\st_1}{\st_1'}\\
+    \bprjX{\st_2}{\st_2'}
+}{
+    \bprjX{(\st_1, \st_2)}{(\st_1', \st_2')}
+}
+
+\inferrule[bp-inl]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sinl{\kappa}{\st}}{\sinl{\kappa}{\st'}}
+}
+
+\inferrule[bp-inr]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sinr{\kappa}{\st}}{\sinr{\kappa}{\st'}}
+}
+
+\inferrule[bp-ty-old]{
+    c \neq \tc'\\
+    \bprjX{\sttyidx}{\sttyidx'}
+}{
+    \bprjX{\sty{c}{\sttyidx}}{\sty{c}{\sttyidx'}}
+}
+
+\inferrule[bp-ty-new]{
+    \stx{schema}(\sttyidx) \Downarrow_{\cdot;\emptyset;\emptyset} \sqity{\qity}\\
+    \bprj{\Phi, \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}}{\tc'}{\sttyidx}{\sttyidx'}
+}{
+    \bprj{\Phi, \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}}}{\tc'}{\sty{\tc'}{\sttyidx}}{\sty{\otherc{m}{\ktyidx}}{(\sttyidx', \sqity{\qity})}}
+}
+
+\inferrule[bp-qity-trans]{
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\sqity{\srep{\st}}}{\sqity{\srep{\st'}}}
+}
+
+\inferrule[bp-qity-parr]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\iparr{\qity_1}{\qity_2}}}{\sqity{\iparr{\qity_1'}{\qity_2'}}}
+}
+
+\inferrule[bp-qity-alpha]{ }{
+    \bprjX{\sqity{\alpha}}{\sqity{\alpha}}
+}
+
+\inferrule[bp-qity-forall]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqity{\iforall{\alpha}{\qity}}}{\sqity{\iforall{\alpha}{\qity'}}}
+}
+
+\inferrule[bp-qity-t]{ }{
+    \bprjX{\sqity{t}}{\sqity{t}}
+}
+
+\inferrule[bp-qity-mu]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqity{\imu{t}{\qity}}}{\sqity{\imu{t}{\qity'}}}
+}
+
+\inferrule[bp-qity-unit]{ }{\bprjX{\sqity{\iunit}}{\sqity{\iunit}}}
+
+\inferrule[bp-qity-prod]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\iprod{\qity_1}{\qity_2}}}{\sqity{\iprod{\qity_1'}{\qity_2'}}}
+}
+
+\inferrule[bp-qity-sum]{
+    \bprjX{\sqity{\qity_1}}{\sqity{\qity_1'}}\\
+    \bprjX{\sqity{\qity_2}}{\sqity{\qity_2'}}
+}{
+    \bprjX{\sqity{\isum{\qity_1}{\qity_2}}}{\sqity{\isum{\qity_1'}{\qity_2'}}}
+}
+\end{mathpar}
+\caption{Backprojection - Static Values of Equality Kind}
+\label{fig:backprojection-eq-kind}
+\end{figure}
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\st}{\st}$} (continued from Figure \ref{fig:backprojection-eq-kind})
+\begin{mathpar}
+\inferrule[bp-qitm-var]{ }{
+    \bprjX{\sqitm{x}}{\sqitm{x}}
+}
+
+\inferrule[bp-qitm-abs]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ilam{\qity}{x}{\qitm}}}{\ilam{\qity'}{x}{\qitm'}}
+}
+
+\inferrule[bp-qitm-ap]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2}}
+}{
+    \bprjX{\sqitm{\iap{\qitm_1}{\qitm_2}}}{\sqitm{\iap{\qitm_1'}{\qitm_2'}}}
+}
+
+\inferrule[bp-qitm-fix]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifix{\qity}{x}{\qitm}}}{\sqitm{\ifix{\qity'}{x}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-tabs]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iLam{\alpha}{\qitm}}}{\sqitm{\iLam{\alpha}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-tap]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}
+}{
+    \bprjX{\sqitm{\iAp{\qity}{\qitm}}}{\sqitm{\iAp{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-fold]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifold{t}{\qity}{\qitm}}}{\sqitm{\ifold{t}{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-unfold]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iunfold{\qitm}}}{\sqitm{\iunfold{\qitm'}}}
+}
+
+\inferrule[bp-qitm-triv]{ }{
+    \bprjX{\sqitm{()}}{\sqitm{()}}
+}
+
+\inferrule[bp-qitm-pair]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1'}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2'}}
+}{
+    \bprjX{\sqitm{(\qitm_1, \qitm_2)}}{\sqitm{(\qitm_1', \qitm_2')}}
+}
+
+\inferrule[bp-qitm-fst]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\ifst{\qitm}}}{\sqitm{\ifst{\qitm'}}}
+}
+
+\inferrule[bp-qitm-snd]{
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\isnd{\qitm}}}{\sqitm{\isnd{\qitm'}}}
+}
+
+\inferrule[bp-qitm-inl]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqity{\qitm'}}
+}{
+    \bprjX{\sqitm{\iinl{\qity}{\qitm}}}{\sqitm{\iinl{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-inr]{
+    \bprjX{\sqity{\qity}}{\sqity{\qity'}}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}
+}{
+    \bprjX{\sqitm{\iinr{\qity}{\qitm}}}{\sqitm{\iinr{\qity'}{\qitm'}}}
+}
+
+\inferrule[bp-qitm-case]{
+    \bprjX{\sqitm{\qitm_1}}{\sqitm{\qitm_1'}}\\
+    \bprjX{\sqitm{\qitm_2}}{\sqitm{\qitm_2'}}\\
+    \bprjX{\sqitm{\qitm_3}}{\sqitm{\qitm_3'}}
+}{
+    \bprjX{\sqitm{\icase{\qitm_1}{x}{\qitm_2}{x}{\qitm_3}}}{\sqitm{\icase{\qitm_1'}{x}{\qitm_2'}{x}{\qitm_3'}}}
+}
+\end{mathpar}
+\caption{Backprojection - Static Values of Kind $\kitm$}
+\label{fig:backprojection-kitm}
+\end{figure}
+
+
+\begin{figure}[p]
+\small
+\fbox{$\bprj{\Phi}{\tc}{\Upsilon}{\Upsilon}$}
+\begin{mathpar}
+\inferrule[bp-ctx-emp]{ }{
+    \bprjX{\emptyset}{\emptyset}
+}
+
+\inferrule[bp-ctx-ext]{
+    \bprjX{\Upsilon}{\Upsilon'}\\
+    \bprjX{\st}{\st'}
+}{
+    \bprjX{\Upsilon, x : \st}{\Upsilon', x : \st'}
+}
+\end{mathpar}
+\caption{Backprojection - Typing Contexts}
+\label{fig:backprojection-typing-contexts}
+\end{figure}
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(contines into Figure \ref{fig:backprojection-external-terms-2})
+\begin{mathpar}
+\inferrule[bp-var]{ }{
+    \bprjeX{x}{\st}{x}
+}
+
+\inferrule[bp-syn-lam]{
+    \bprje{\Phi'}{\tc'}{\Upsilon, x : \st_1'}{e'}{\st_2}{e''}\\
+    \bprjX{\st_1'}{\st_1''}
+}{
+    \bprjeX{\elam{\st_1}{x}{e'}}{\sty{\rightharpoonup}{(\st_1', \st_2)}}{\elam{\st_1''}{x}{e''}}
+}
+
+\inferrule[bp-ana-lam]{
+    \bprje{\Phi'}{\tc'}{\Upsilon, x : \st_1'}{e'}{\st_2}{e''}
+}{
+    \bprjeX{\eanalam{x}{e'}}{\sty{\rightharpoonup}{(\st_1', \st_2)}}{\eanalam{x}{e''}}
+}
+
+\inferrule[bp-ap]{
+    \bprjeX{e_1}{\sty{\rightharpoonup}{(\st_1, \st_2)}}{e_1'}\\
+    \bprjeX{e_2}{\st_1}{e_2'}
+}{
+    \bprjeX{\eap{e_1}{e_2}}{\st_2}{\eap{e_1'}{e_2'}}
+}
+
+\inferrule[bp-fix]{
+    \bprje{\Phi}{\tc'}{\Upsilon, x : \st'}{e'}{\st'}{e''}
+}{
+    \bprjeX{\efix{x}{e'}}{\st'}{\efix{x}{e''}}
+}
+
+\inferrule[bp-asc]{
+    \bprjeX{e}{\st'}{e''}\\
+    \bprjX{\st'}{\st''}
+}{
+    \bprjeX{(e : \st)}{\st'}{e'' : \st''}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Variables, Functions and Ascription)}
+\label{fig:backprojection-external-terms-1}
+\end{figure}
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(continued from Figure \ref{fig:backprojection-external-terms-1}, continues into Figure \ref{fig:backprojection-external-terms-3})
+\begin{mathpar}
+\inferrule[bp-intro-ext-old]{
+    \tc \neq \tc'\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{ana}~\keyw{intro}=\stx{def} \in \omega\\
+    |\es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\stx{tyidx})(\stx{tmidx})(\stx{args}) \Downarrow_{\es;\Upsilon;\Phi'} \sqitm{\qitm}\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\sty{\tc}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{\es;\Upsilon;\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sttmidx}{\sttmidx'}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sttmidx}{\es}}{\sty{\tc}{\sttyidx}}{\eintro{\sttmidx'}{\es'}}
+}
+
+\inferrule[bp-intro-ext-new]{
+    \tcdef{\tc'}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{ana}~\keyw{intro}=\stx{def} \in \omega\\
+    |\es| = n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\stx{tyidx})(\stx{tmidx})(\stx{args}) \Downarrow_{\es;\Upsilon;\Phi} \sqitm{\qitm}\\\\
+    \tdeabs{\Phi'}{\tc'}{\srep{\sty{\tc'}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc'}{\es;\Upsilon;\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sttmidx}{\es}}{\sty{\tc}{\sttyidx}}{\eintro{\sqitm{\qitm'}}{\es'}}
+}
+
+\inferrule[bp-intro-other]{
+    \tdeabs{\Phi'}{\otherc{m'}{\kappa}}{\srep{\sty{\otherc{m'}{\kappa}}{\sttyidx}}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\otherc{m'}{\kappa}}{\Phi'}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\eintro{\sqitm{\qitm}}{\es}}{\sty{\otherc{m}{\kappa}}{\sttyidx}}{\eintro{\sqitm{\qitm'}}{\es'}}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Introductory Operations)}
+\label{fig:backprojection-external-terms-2}
+\end{figure}
+
+
+\begin{figure}
+\small
+\fbox{$\bprjeX{e}{\st}{e}$}~(continued from Figure \ref{fig:backprojection-external-terms-2})
+\begin{mathpar}
+\inferrule[bp-targ-ext-old]{
+    \bprjeX{e_\text{targ}}{\sty{\tc}{\sttyidx}}{e_\text{targ}'}\\
+    \tc \neq \tc'\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{syn}~\opname{op}=\stx{def} \in \omega\\
+    |\es|=n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\sttyidx)(\sttmidx)(\stx{args}) \Downarrow_{(e_\text{targ};\es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\sttmidx}{\sttmidx'}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{\sttmidx'}{e_\text{targ}'}{\es'}}
+}
+
+\inferrule[bp-targ-ext-new]{
+    \bprjeX{e_\text{targ}}{\sty{\tc'}{\sttyidx}}{e_\text{targ}'}\\\\
+    \tcdef{\tc}{\tcsig{\ktyidx}{\chi}}{\tcstruct{\stx{schema}}{\omega}} \in \Phi'\\
+    \keyw{syn}~\opname{op}=\stx{def} \in \omega\\
+    |\es|=n\\
+    \keyw{args}(n)=\stx{args}\\\\
+    \stx{def}(\sttyidx)(\sttmidx)(\stx{args}) \Downarrow_{(e_\text{targ};\es);\Upsilon;\Phi} (\st, \sqitm{\qitm})\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\st}{\st'}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{\sttmidx}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{(\st', \sqitm{\qitm'})}{e_\text{targ}'}{\es'}}
+}
+
+\inferrule[bp-targ-other]{
+    \bprjeX{e_\text{targ}}{\sty{\otherc{m}{\kappa}}{\sttyidx}}{e_\text{targ}'}\\\\
+    \tdeabs{\Phi'}{\tc}{\srep{\st}}{\emptyset}{\ity}{\memD}\\
+    \edeabs{\tc}{(e_\text{targ};\es);\Upsilon;\Phi}{\qitm}{\memD}{\emptyset}{\itm}{\memD'}{\memG}\\\\
+    \bprjX{\st}{\st'}\\
+    \bprjX{\sqitm{\qitm}}{\sqitm{\qitm'}}\\
+    \bprjeX{\es}{\memG}{\es'}
+}{
+    \bprjeX{\etarg{\opname{op}}{(\st, \sqitm{\qitm})}{e_\text{targ}}{\es}}{\st}{\etarg{\opname{op}}{(\st', \sqitm{\qitm'})}{e_\text{targ}'}{\es'}}
+}
+\end{mathpar}
+\caption{Backprojection - External Terms (Targeted Operations)}
+\label{fig:backprojection-external-terms-3}
+\end{figure}
