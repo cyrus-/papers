@@ -309,7 +309,7 @@ case(moon_phase) {
 \end{lstlisting}
 Though ill-formed patterns can sometimes be discovered dynamically via testing, empirical data gathered from large open source projects suggests that there remain many ill-formed regular expression patterns that are not detected by a project's test suite ``in the wild'' \cite{spishak2012type}. 
 
-Statically verifying that pattern formation errors will not dynamically arise is quite difficult to automate in general, because it requires reasoning about the full dynamics of the language. In this example, the verification procedure would need to be able to establish that the variable \lstinline{pattern} is equal to the parse function \lstinline{PU.parse}. If the string argument had not been written literally but rather computed, e.g. as \lstinline{"SSTR(GESTR" ^ "SSTRCESTR"} where \lstinline{^} is the string concatenation function applied in infix style, it would also need to be able to establish that this expression is equivalent to the string \lstinline{"SSTR(GCESTR"}. For patterns that are dynamically constructed based on input to a function (see below), the problem is not solved by ``simply''  evaluating the expression statically (or, more generally, in some earlier ``stage'' of evaluation). 
+Statically verifying that pattern formation errors will not dynamically arise is quite difficult to automate in general, because it requires reasoning about the full dynamics of the language. In this example, the verification procedure would need to be able to establish that the variable \lstinline{pattern} is equal to the parse function \lstinline{PU.parse}. If the string argument had not been written literally but rather computed, e.g. as \lstinline{"SSTR(GESTR" ^ "SSTRCESTR"} where \lstinline{^} is the string concatenation function applied in infix style, it would also need to be able to establish that this expression is equivalent to the string \lstinline{"SSTR(GCESTR"}. For patterns that are dynamically constructed based on input to a function (see below), the problem is not solved by ``simply''  evaluating the expression statically (or, more generally, in some earlier ``stage'' of evaluation) \cite{Jones:Gomard:Sestoft:93:PartialEvaluation}. 
 
 Of course, asking the client to provide a proof of well-formedness would completely defeat our purpose -- providing a concise concrete syntax.
 
@@ -512,7 +512,7 @@ Having to creatively repurpose existing syntax like this limits the improvements
 % \end{enumerate}
 
 \subsection{Contributions}\label{sec:syntax-contributions}
-Verse provides a new external primitive -- the \textbf{typed syntax macro} (TSM) -- that combines the syntactic flexibility of syntax extensions with the reasoning guarantees of statically-typed macros. TSMs can be parameterized by modules, so they can be used to define syntax valid at all modules satisfying a specified signature. As we will discuss in in Sec. \ref{sec:tsms} below, this addresses all of the problems brought up above, at moderate syntactic cost.
+Verse provides a new external primitive -- the \textbf{typed syntax macro} (TSM) -- that combines the syntactic flexibility of syntax extensions with the reasoning guarantees of typed macros. TSMs can be parameterized by modules, so they can be used to define syntax valid at all types defined in modules satisfying a specified signature. As we will discuss in in Sec. \ref{sec:tsms} below, this addresses all of the problems brought up above, at moderate syntactic cost.
 
 To further decrease syntactic cost (which is, of course, the entire purpose of this effort), we go on in Sec. \ref{sec:tsls} to briefly introduce \textbf{type-specific languages} (TSLs). TSLs are TSMs associated directly with a type when it is generated. Verse leverages local type inference to implicitly control TSL dispatch.
 
@@ -615,15 +615,15 @@ This premise of (syn-aptsm) thus enforces both type safety and hygiene.
 \end{enumerate}
 %We plan to give a more complete account of all of these judgements in the dissertation.
 \subsubsection{Type-Specific Languages (TSLs)}\label{sec:tsls}
-With TSMs, we achieved the conventional syntax for regular expression patterns within delimiters, but we still explicitly had to apply the TSM and provide the module parameter each time. To further lower the syntactic cost of using TSMs, Verse also  supports \emph{type-specific languages} (TSLs). This allows library providers to associate a TSM directly with a generated type or parameterized type constructor. For example, a module \lstinline{P} can associate \lstinline{pattern} with \lstinline{P.t} as follows:
+With TSMs, we achieved the conventional syntax for regular expression patterns within delimiters, but we still explicitly had to apply the TSM and provide the module parameter each time. To further lower the syntactic cost of using TSMs, Verse also  supports \emph{type-specific languages} (TSLs). This allows library providers to associate a TSM directly with a generated type (or parameterized type constructor, more generally). For example, a module \lstinline{P} can associate \lstinline{pattern} with \lstinline{P.t} as follows:
 \begin{lstlisting}[numbers=none]
 module P : PATTERN = mod {
   type t = (* ... *)
   (* ... *)
-} with syntax pattern at t (* technically, the 'at t' clause is redundant *)
+} with syntax pattern
 \end{lstlisting}
 
-\todo{clarify} Local type inference then determines which TSM is implicitly applied when analyzing a delimited form not prefixed by a TSM name. For example, this function is equivalent to \lstinline{example_tsm} (note the return type annotation):
+When the semantics encounters a delimited form not prefixed by a TSM name, the TSM associated with the type it is being analyzed against is implicitly applied. For example, the following function is equivalent to \lstinline{example_tsm} (note the return type annotation):
 \begin{lstlisting}[numbers=none]
 fun example_tsl(name : string) : P.t => 
   /SURL@EURLnameSURL: %EURLssn/
@@ -640,22 +640,22 @@ Together with the TSL for patterns, this allows us to write a list of patterns l
 \begin{lstlisting}[numbers=none]
 let val x : list(P.t) = [/SURL\dEURL/SHTML, EHTML/SURL\d\dEURL/SHTML, EHTML/SURL\d\d\dEURL/]
 \end{lstlisting}
-From the client's perspective, it is essentially as if the language had built in derived syntax for lists and regular expression patterns directly. However, we did not need to build in this syntax primitively.%The only constraint is that this syntax must be used in an analytic position, which we argue is actually better for code compren when encountering unfamiliar syntax.
+From the client's perspective, it is essentially as if the language had built in derived syntax for lists and regular expression patterns directly.%However, we did not need to build in this syntax primitively.%The only constraint is that this syntax must be used in an analytic position, which we argue is actually better for code compren when encountering unfamiliar syntax.
 
 \subsubsection{Limitations}\label{sec:tsms-limitations}
 %\todo{revise this section}The main limitation of this approach is that it 
-Elaboration validation ensures that an incorrect parser cannot threaten type safety, but proving type safety inductively is subtle because the elaboration is not a subexpression of the expression it will replace. There is a ``simple'' solution to this problem: the elaboration cannot itself use TSMs or TSLs. This would be somewhat awkward in practice, so we plan to briefly discuss other more flexible solutions as well.  
+Though elaboration validation ensures that an incorrect parser cannot threaten type safety,  proving type safety inductively is subtle because the elaboration is not a subexpression of the expression it will replace. There is a ``simple'' solution to this problem: we impose the restriction that the elaboration cannot itself use TSMs or TSLs. This would be somewhat awkward in practice, so we plan to briefly discuss other more flexible solutions as well.  
 
-Another concern is that if we define the SL such that it supports general recursion, this then causes typechecking to become undecidable, because the parse function may not terminate. In practice, this too should only be a minor concern -- a compiler might be expected to limit the running time of the parse function to ensure that compilation does not ``hang'' due to an incorrect parser. Related concerns would arise if the static language supported state or access to other external effects. Existing techniques for controlling effects would handle this problem, but this is not something we plan to discuss in detail here because our SL does not specify such effects.
+Another concern is that if we define the SL such that evaluating the parse function may not terminate, this then causes typechecking to become undecidable. In practice, this too should  be a minor concern. A compiler would be free to limit the running time of the parse function to ensure that compilation does not ``hang'' due to an incorrect parser. Related concerns would arise if the static language supported state or access to other external effects. Existing techniques for controlling effects would handle this problem, but this is not something we plan to detail here because our SL does not specify these effects.
 
 Another limitation is that TSMs as we have described them only capture idioms that occur within a single parameterized family of types,  not idioms that might span many (or all) types, e.g. control flow idioms. In fact, this is intentional, as it makes maintaining a type discipline in the presence of TSMs substantially easier -- neither humans nor tools need to examine the elaboration to determine what type it must necessarily have. We will, however, discuss other points in the design space in the dissertation.
 
-Finally, we have discussed expression syntax here, but have not explicitly considered pattern matching. In fact, we conjecture that it is completely straightforward to extend this work to allow a TSM to define both an expression parser and a pattern parser. We plan to concretely discuss this as the most immediate avenue for future work, but will not consider pattern matching in formal detail.
+Finally, we have discussed only expression syntax here, but have not considered pattern matching. In fact, we conjecture that it is completely straightforward to extend this work to allow a TSM to define both an expression parser and a pattern parser. We plan to informally discuss this as the most immediate avenue for future work, but will not consider pattern matching in formal detail in the dissertation.
 
 \subsection{Timeline and Milestones}\label{sec:syntax-timeline}
-We have described and given a more detailed formal specification of TSMs in a recently published paper \cite{sac15}, and TSLs in a paper published last year \cite{TSLs}, both in the context of the Wyvern language. The mechanics of statically invoking the parse function, elaboration encoding/decoding and hygienic elaboration validation have all been detailed there. In the dissertation, I plan to first present the formal system closely following this presentation, updating it only to ensure that it is consistent with the work in the next section to present a unified design. The rule (syn-aptsm) above represents the most substantial step of this plan. I anticipate that this will take about \textbf{1.5 weeks} of further work.
+We described and gave a more detailed formal specification of TSMs in a recently published paper \cite{sac15}, and TSLs in a paper published last year \cite{TSLs}, both in the context of the Wyvern language. The mechanics of defining a TSM, statically invoking the parse function, elaboration encoding/decoding and hygienic elaboration validation have all been detailed there. In the dissertation, I plan to first present the formal system closely following this presentation, updating it only to ensure that it is consistent with the work in the next section to present a unified design. The rule (syn-aptsm) above represents the first and most substantial step of this plan. I anticipate that this will take about \textbf{1.5 weeks} of further work.
 
-Wyvern does not have an ML-style module system (type declarations are the only form of type generation) and at the time, it did not have parameterized types, so to actually support the examples we have given in this section, we also need to update the formalization to handle parameterized TSMs. We plan to flesh this out in the course of writing the dissertation, and I anticipate it requiring 5.5 weeks of my time after the proposal is complete. We propose the following concrete milestones:
+Wyvern does not have an ML-style module system (type declarations are the only form of type generation) and at the time, it did not have parameterized types, so to actually support the examples we have given in this section, we also need to update the formalization to handle parameterized TSMs. I plan to flesh this out in the course of writing the dissertation, and I anticipate it requiring 5.5 weeks of my time after the proposal is complete. I propose the following concrete milestones:
 
 \begin{enumerate}
 \item equip the EL with an appropriately structured module context \textbf{(2 weeks)}
@@ -664,7 +664,7 @@ Wyvern does not have an ML-style module system (type declarations are the only f
 \item update the metatheory established in the work cited above to handle this \textbf{(2 weeks)}
 \end{enumerate}
 
-To validate our claims of expressiveness, we plan to give several more examples drawn from existing languages. We will include those we have worked out in the papers just cited as well as additional examples that highlight the benefits of integration with Verse's ML-based module system. For example, we will show how to implement Haskell's primitive ``do'' syntax using TSLs together with a modular encoding of monads (as described on Prof. Harper's blog \cite{SML/Monads}). We will also briefly summarize the corpus analysis we conducted in \cite{TSLs} where we found a large number of  situations in large publicly available Java libraries where dynamic string parsing was apparently being used to control syntactic cost. We anticipate that writing these examples up will take an additional \textbf{1 week} of work, bringing the total for this section up to 8 weeks. %Adding in the time I will need to propose and some buffer time for unanticipated issues, my goal is to have this portion of the dissertation complete by the end of Summer 2015.
+To validate our claims of expressiveness, I plan to give several more examples drawn from existing languages. I will include those we have worked out in the papers just cited as well as additional examples that highlight the benefits of integration with Verse's ML-based module system. For example, I will discuss implementing Haskell's primitive ``do'' syntax using TSLs together with a modular encoding of monads (as described on Prof. Harper's blog \cite{SML/Monads}). I will also show how parser generators and quasiquotation (e.g. as in Scala \cite{shabalin2013quasiquotes} or Lisp \cite{Bawd99a}) can be seen as modes of use of TSMs/TSLs. I will also briefly summarize the corpus analysis we conducted in \cite{TSLs} where we found a large number of  situations in large publicly available Java libraries where dynamic string parsing was apparently being used to control syntactic cost. I anticipate that writing these examples will take an additional \textbf{1 week} of work, bringing the total for this portion of the dissertation up to 8 weeks. %Adding in the time I will need to propose and some buffer time for unanticipated issues, my goal is to have this portion of the dissertation complete by the end of Summer 2015.
 
 
 
@@ -722,9 +722,9 @@ let type Paper = ltuple {SPCT
     SPCTconf : EPCTrstring /SURL([A-Z]+) (\d\d\d\d)EURL/
 }
 \end{lstlisting}
-The \lstinline{let type} construction defines a synonym, \lstinline{Paper}, for a type constructed by applying the \emph{type constructor} (or \emph{tycon}) \lstinline{ltuple} to a \emph{component specification}, which is a  statically valued ordered finite mapping from labels to types, written using conventional concrete syntax.
+The \lstinline{let type} construction defines a synonym, \lstinline{Paper}, for a type constructed by applying the \emph{type constructor} (or \emph{tycon}) \lstinline{ltuple} to a \emph{component specification}, which is a  statically valued (cf. Sec. 2) ordered finite mapping from labels to types, written using conventional concrete syntax.
 
-The first component is labeled \lstinline{title} and specifies the \emph{regular string type} \lstinline{rstring /SURL.+EURL/}. Regular string types are constructed by applying the tycon \lstinline{rstring} to a statically valued regular expression pattern, again written here using conventional concrete syntax like that discussed in the previous section. Regular string types classify expressions that behave like strings in the corresponding regular language, here the language of non-empty strings. The second component of type \lstinline{Paper} is labeled \lstinline{conf} and specifies a regular string type with two {parenthesized groups}, corresponding to a conference abbreviation and year.
+The first component is labeled \lstinline{title} and specifies the \emph{regular string type} \lstinline{rstring /SURL.+EURL/}. Regular string types are constructed by applying the tycon \lstinline{rstring} to a statically valued regular expression pattern, again written here using conventional concrete syntax like that discussed in the previous section. Regular string types classify expressions that behave as strings in the corresponding regular language, here the language of non-empty strings. The second component of type \lstinline{Paper} is labeled \lstinline{conf} and specifies a regular string type with two {parenthesized groups}, corresponding to a conference abbreviation and year.
 
 % Alternatively, we could have used the following construction to declare \lstinline{Paper} \emph{generatively}:
 % \begin{lstlisting}[numbers=none]
@@ -795,7 +795,7 @@ signature PAPER = sig {
   val prj_conf : t -> conf_t
 }
 \end{lstlisting}
-Here, we've taken all possible valid introductory and projection operators and specified their semantics using function types. Expressing labels explicitly is an important facet of having labeled tuple types in a language, so we put them into the function identifiers. Even with our minimal EL, we could  implement the semantics of these operators against this signature using a Church-style encoding (the details are standard and omitted here). Alternatively, if we slightly relax  our insistence on minimalism and add binary products to the EL, we could use them to implement our desired semantics as well, like this:
+Here, we've taken all possible valid introductory and projection operators and called for their expression as functions. Expressing labels explicitly is an important facet of having labeled tuple types in a language, so we must put them into the function identifiers. Even with our minimal EL, we could  implement the semantics of the corresponding operators against this signature using a Church-style encoding (the details are standard and omitted here). Alternatively, if we slightly relax  our insistence on minimalism and add binary products to the EL, we could use them to implement our desired semantics like this:
 \begin{lstlisting}
  module Paper : PAPER = mod {
    type t = title_t * conf_t
@@ -810,7 +810,7 @@ Here, we've taken all possible valid introductory and projection operators and s
 
 There are several fundamental problems with this approach. First, not every module matching the signature \lstinline{PAPER} correctly implements the semantics of the operators we seek to express, so each such module would itself need to be verified. In particular, we need to verify the universal condition that for all \lstinline{e : Paper.t} and \lstinline{f : Paper.t -> T}, we have that \lstinline{f(e)} is equivalent to \lstinline{f(Paper.intro (Paper.prj_title e) (Paper.prj_conf e))}. The volume of boilerplate code that needs to be generated and verified manually is factorial in the number of components of the labeled tuple type we are expressing (because we must encode each permutation of label orderings with a distinct introductory function).% Not all modules satisfying the signature above correctly implement the semantics, so this boilerplate must be checked for correctness in some way.
 
-Even if we were to automate this (using, for example, \emph{type macros} as found in Scala \cite{ScalaMacros2013}, adapted to a language with modules), another issue is that we can only reasonably express the introductory and projection operators by specifying their semantics as functions like this. To enumerate all possible operators that arise from the opcon \lstinline{ltuple-} using functions would require constructing an encoding of every labeled tuple type that might arise from dropping one or more components from the labeled tuple in question. If fully enumerated, this would add an  exponential factor to our volume of boilerplate code. 
+Even if we were to automate this (using, for example, \emph{type macros} as  in Scala \cite{ScalaMacros2013}, adapted to a language with ML-style modules), another issue is that we can only reasonably express the introductory and projection operators by specifying their semantics as functions like this. To enumerate all possible operators that arise from the opcon \lstinline{ltuple-} using functions would require constructing an encoding of every labeled tuple type that might arise from dropping one or more components from the labeled tuple in question. If fully enumerated, this would add an  exponential factor to our volume of boilerplate code. 
 Finally, there is simply no way to specify the semantics \lstinline{ltuple+} with a finite collection of functions because there are infinitely many extensions of any labeled tuple type. % of this operator would need to be implemented by clients manually, defeating the purpose of the operator. %For example, there are an arbitrary 
 
 % \begin{lstlisting}[numbers=none]
@@ -832,16 +832,16 @@ let type Paper_rcd = record {
   title : title_t
    conf : conf_t 
 }\end{lstlisting}
-Unlike labeled tuple types, record types are identified up to component reordering, so this mapping does not preserve certain type disequalities between labeled tuple types. It is not  possible to allow clients to omit component labels and rely on the positional information available in the type when introducing a value of record type for this reason.\todo{clarify}%, because this information is not maintained by the type system.
+Unlike labeled tuple types, record types are identified up to component reordering, so this mapping does not preserve certain type disequalities between labeled tuple types. Without positional information available in the type, it is not  possible to allow clients to omit component labels when introducing a value of record type.%, because this information is not maintained by the type system.
 
 To work around this limitation if this is the only reason we care about preserving these type disequalities, we could define two conversion functions involving unlabeled tuples:
 \begin{lstlisting}[numbers=none]
-fun Paper_of_tpl (title : title_t, conf : conf_t) => 
-  {title => title, conf => conf}
-fun tpl_of_Paper {title => title, conf => conf} =>
-  (title, conf)
+fun Paper_of_tpl (t : title_t, c : conf_t) => 
+  {title => t, conf => c}
+fun tpl_of_Paper {title => t, conf => c} =>
+  (t, c)
 \end{lstlisting}
-For clients to be able to rely on this approach, we must extrinsically verify that the library provider implemented these functions correctly. Clients must also bear the syntactic and dynamic costs of explicitly invoking these functions. We could define a TSL for every such type to reduce this cost to clients, albeit at an additional cost to providers.  %This also means that we cannot omit the labels and rely on positional information when introducing a value of a record type in an analytic position, as we did above with type \lstinline{Paper}. %If we instead use an unlabeled product type (which in ML is actually a record type with numeric labels, which are omitted syntactically), we lose the ability to use labels in the elimination form. 
+For clients to be able to rely on this approach, we must extrinsically verify that the library provider implemented these functions correctly. Clients must also bear the syntactic and dynamic costs of explicitly invoking these functions. We could define a TSM for every such type to reduce this cost to clients, albeit at an additional cost to providers.  %This also means that we cannot omit the labels and rely on positional information when introducing a value of a record type in an analytic position, as we did above with type \lstinline{Paper}. %If we instead use an unlabeled product type (which in ML is actually a record type with numeric labels, which are omitted syntactically), we lose the ability to use labels in the elimination form. 
 
 If, on the other hand, we do care about preserving all type disequalities between labeled tuple types, the workaround is even less elegant. We first need to define a record type with component labels tagged in some sufficiently unambiguous way by position, e.g.:
 \begin{lstlisting}[numbers=none]
@@ -856,19 +856,19 @@ let type Paper_rcd = (* as above *)
 \end{lstlisting}
 and four conversion functions:
 \begin{lstlisting}[numbers=none]
-fun Paper_of_tpl (title : title_t, conf : conf_t) => {
-  __0_title => title,
-  __1_conf => conf
+fun Paper_of_tpl (t : title_t, c : conf_t) => {
+  __0_title => t,
+  __1_conf => c
 }
-fun tpl_of_Paper {__0_title => title, __1_conf => conf} => 
-  (title, conf)
-fun Paper_of_rcd {title => title, conf => conf} => {
-  __0_title => title,
-  __1_conf => conf
+fun tpl_of_Paper {__0_title => t, __1_conf => c} => 
+  (t, c)
+fun Paper_of_rcd {title => t, conf => c} => {
+  __0_title => t,
+  __1_conf => c
 }
-fun rcd_of_Paper {__0_title => title, __1_conf => conf} = {
-  title => title,
-  conf => conf
+fun rcd_of_Paper {__0_title => t, __1_conf => c} = {
+  title => t,
+  conf => c
 }
 \end{lstlisting}
 Clients once again bear the costs of applying these conversion functions ahead of every operation and providers again bear the burden of defining this boilerplate code (which has volume linear in the number of components, albeit with a constant factor that is again not easy to dismiss) and verifying that these functions were implemented correctly. %We are interested in all such pragmatic issues, so this is not an entirely satisfying solution. % In any case, records, tuples and labeled tuples are all library constructs in Verse. 
@@ -883,11 +883,11 @@ The most common alternative to regular strings in existing languages is to simpl
 
 \paragraph{Type Refinements}
 We might attempt to recover the static semantics of regular strings by moving the logic governing regular string types into an external system of \emph{type refinements} \cite{Freeman91}. %This treats membership of a string in a specified regular language exclusively as a static verification condition. 
-Such  systems typically rely on refinement specifications supplied in comments:
+Such  systems, e.g. SML CIDRE \cite{Davies:1997:RTC}, typically rely on refinement specifications that are supplied in comments:
 \begin{lstlisting}[numbers=none]
 let val conf : string (* ~ rstring /([A-Z]+) (\d\d\d\d)/ *) = "EXMPL 2015"
 \end{lstlisting}
-One immediate limitation of this approach is that there is now no way to express the group projection operator described above. We cannot define a function \lstinline{#group} that can be used like this:
+One immediate limitation of this approach is that there is now no way to express the group projection operator described above, i.e. we cannot define a function \lstinline{#group} that can be applied like this:
 \begin{lstlisting}[numbers=none]
 let val conf_venue = #group 0 conf
 \end{lstlisting}
@@ -899,9 +899,9 @@ let val conf_venue = nth 0 (match /SURL([A-Z]+) (\d\d\d\d)EURL/ conf)
 This has higher syntactic and dynamic cost. Moreover, proving that there will not be an out-of-bounds error in expressions like this requires more sophisticated reasoning about dynamic behavior.
 %Refinement types are strictly a layer above the language, and thus cannot affect its dynamic semantics.
 
-Another consideration is that type refinements do not introduce type disequalities. As a result, a compiler cannot use the invariants they capture to optimize the representation of a value. For example, the fact that some value of type \lstinline{string} can be given the refinement \lstinline{rstring /A|B/} cannot be justification to locally alter its representation to, for example, a single bit, both because it could later be passed into a function expecting a standard string and because there are many other possible refinements. Another perhaps more useful optimization that is not possible is to represent regular strings that have captured groups in a manner that ensures that group projection has constant dynamic cost (by running the match once when the string is introduced and caching the group values). 
+Another consideration is that type refinements do not introduce type disequalities. As a result, a compiler cannot use the invariants they capture to optimize the representation of a value. For example, the fact that some value of type \lstinline{string} can be given the refinement \lstinline{rstring /A|B/} cannot be justification to locally alter its representation to, for example, a single bit, both because it could later be passed into a function expecting a standard string and because there are many other possible refinements. Another perhaps more useful optimization that is not possible is to represent regular strings that have captured groups in a manner that ensures that group projection has constant dynamic cost (by running the match once when the string is introduced and caching the group values). Another example where this is relevant is when a language designer considers omitting a primitive type of ``non-negative integers representable in 32 bits'' because this seems ``merely'' to be a refinement of (mathematical) integers. But by eliminating the ``structural'' distinction between the two types, compilers lose the ability to use a machine representation more suitable to this particular static invariant. Of course, such structural distinctions  are sometimes inconvenient because they require defining and applying coercions with possibly non-zero dynamic cost to go from values of one type to another. Nevertheless, it is certainly not the case that a language can reasonably predict all possible structural distinctions that might be useful \emph{a priori}.
 
-Put another way, type refinements are useful when one needs to make ``behavioral'' distinctions within a type, but they are not appropriate when new ``structural'' distinctions are needed. Another example where this is relevant is when a language designer considers omitting a primitive type of ``non-negative integers representable in 32 bits'' because this seems ``merely'' to be a refinement of (mathematical) integers. But by eliminating the structural distinction, the compiler loses the ability to use a machine representation more suitable to this particular static invariant. Of course, structural distinctions are sometimes inconvenient because they require defining and applying coercions between distinct types, but it is certainly not the case that a language can reasonably predict all possible structural distinctions that might be useful \emph{a priori}. %Refinement types cannot be used for this purpose without the possibility of conflict.
+%Put another way, type refinements are quite useful when one needs only to make ``behavioral'' distinctions within a type, but they are not appropriate when new type disequalities would be useful or new operators need to be introduced.   %Refinement types cannot be used for this purpose without the possibility of conflict.
 %This is also the reason why one cannot viably do away with primitive record types by claiming that they are refinements of finite mappings with labels as keys.
 
 %In summary, type refinements are appropriate when one needs only to make finer static distinctions within an existing type. When one needs to introduce new operators or type disequalities that have ``downstream'' impact, refinement types are not the right solution.%Refinement types are useful when no non-trivial operators need to be introduced into the language and the refinement has no impact on representation, but the type system itself must be extended in some way in more advanced situations.
@@ -942,7 +942,7 @@ Put another way, type refinements are useful when one needs to make ``behavioral
 %Other dialects are justified by a desire to proivde more special-purpose semantic constructs. For example, 
 %Substantially more sophisticated examples require at most only a very slightly more capable intermediate language (the IL of popular virtual machines, even those with flaws like ubiquitous \texttt{null} references, e.g. JVM or CIL bytecode, are also sufficient if used strictly as translation targets).
 
-Verse introduces a \emph{metamodule system} that gives library providers more direct control over the semantics of the EL. Using the metamodule system, library providers can express all of the types and operators discussed above.
+Verse introduces a \emph{metamodule system} that gives library providers more direct control over the type structure of the EL. Using the metamodule system, library providers can express all of the types and operators discussed above.
 
 Just as the Verse (i.e. ML) module system is organized around \emph{signatures} and \emph{modules}, the Verse metamodule system is organized around \emph{metasignatures} and \emph{metamodules}. These are most easily introduced by example. We consider only labeled tuple types in this section (regular string types will follow analagously; we will discuss regular string types in more detail in the dissertation).
 %Briefly summarized:
@@ -987,9 +987,9 @@ let static val Paper :: Ty = ltuple {
 
 Also note that to ensure that type equality is decidable, tycon parameters can only be of a sort for which equality coincides with structural comparison of values. We call these sorts \emph{equality sorts}. Equality sorts are exactly analagous to equality types as found in Standard ML. The main implication of this restriction is that type parameters cannot contain static functions (because they cannot be compared structurally).
 
-\paragraph{Type Translations} Recall from Sec. \ref{sec:verse} that each external type must translate to an internal type. Each metamodule controls the translation of types constructed by its tycons by defining a static function called the \emph{type translator}. This static function programmatically generates the type's translation given its type parameter. Type translations are represented as static values of sort \lstinline{ITy}, which we assume supports standard \emph{quasiquotation} syntax. 
+\paragraph{Type Translations} Recall from Sec. \ref{sec:verse} that each external type must translate to an internal type. Each metamodule controls the translation of types constructed by its tycons by defining a static function called the \emph{type translator}. This static function programmatically generates the type's translation given its type parameter. Type translations are represented as static values of sort \lstinline{ITy}, which we assume supports standard \emph{quasiquotation} syntax (e.g. as in Scala \cite{shabalin2013quasiquotes} or Lisp \cite{Bawd99a}).
 
-The  type translator for \lstinline{Ltuple.c} is defined on lines \ref{line:c-start}-\ref{line:c-end} of Figure \ref{fig:ltuplex}. We have chosen here to translate labeled tuple types to nested binary product types internally. The type translator generates these by folding over the component mapping (using helper function \lstinline{list_of_comp_spec :: ComponentSpec -> list(Lbl * Ty)}, not shown). It generates the representation of \lstinline{unit} for the empty case, and nests the binary product types in the recursive case (using the standard \emph{unquote} syntax, \lstinline{%}). 
+The  type translator for \lstinline{Ltuple.c} is defined on lines \ref{line:c-start}-\ref{line:c-end} of Figure \ref{fig:ltuplex}. We have chosen here to translate labeled tuple types to nested binary product types internally. The type translator generates these by folding over the component mapping (using helper function \lstinline{comp_spec_to_tuples :: ComponentSpec -> list(Lbl * Ty)}, not shown). It generates the representation of \lstinline{unit} for the empty case, and nests the binary product types in the recursive case (using the standard \emph{unquote} syntax, \lstinline{%}). 
 For example, the representation of the type translation of \lstinline{Paper} determined by this static function is:
 \begin{lstlisting}[numbers=none]
 `SCSStrans(ECSSrstring /SURL.+EURL/SCSS) * (trans(ECSSrstring /SURL([A-Z]+) (\d\d\d\d)EURL/SCSS) * unit)ECSS`
@@ -1031,24 +1031,24 @@ We will see why having this ability to selectively hold type translations abstra
 
 \paragraph{Operator Constructors} On line \ref{line:intro-unlabeled-sig} of Figure \ref{fig:ltuplex}, the metasignature \lstinline{LTUPLE} specifies an operator constructor, \lstinline{intro_unlabeled}, parameterized by static values of sort \lstinline{unit}. The qualifier \lstinline{ana} specifies that this opcon is only for use in analytic positions (i.e. where the expected type is known). For example, we can apply \lstinline{Ltuple.intro_unlabeled} like this, because the return type of the function determines the expected type:
 \begin{lstlisting}[numbers=none]
-fun make_paper(conf : conf_t, title : title_t) : Paper => 
-  Ltuple.intro_unlabeled () (conf; title)
+fun make_paper(c : conf_t, t : title_t) : Paper => 
+  Ltuple.intro_unlabeled () (c; t)
 \end{lstlisting}
 First, we provide the opcon with a static parameter value of the appropriate sort, here \lstinline{unit}, to create an operator. Then, we supply the operator with an \emph{argument list}, \lstinline{(conf; title)}.
 
 This is syntactically unwieldy. Luckily, we can define a parameterized TSM, \lstinline{ltpl}, that gives us a more conventional syntax. As shown on lines \ref{line:ltplx-tsm-start}-\ref{ltplx-tsm-end} of Figure \ref{fig:ltuplex}, \lstinline{ltpl} defines syntax at all types that are of the form \lstinline{L.c(param)}, where \lstinline{L} is a metamodule matching \lstinline{LTUPLE} and \lstinline{param} is a static value of sort \lstinline{ComponentSpec}. In other words, the TSM defines syntax for all labeled tuple types. We elide the parser implementation, but as the comment indicates, we can rewrite \lstinline{make_paper} like this:
 \begin{lstlisting}[numbers=none]
-fun make_paper_tsm(conf : conf_t, title : title_t) : Paper => 
-  ltpl Ltuple Paper_tyidx {confSCSS, ECSStitle}
+fun make_paper_tsm(c : conf_t, t : title_t) : Paper => 
+  ltpl Ltuple Paper_tyidx {cSCSS, ECSSt}
 \end{lstlisting}
 
 To avoid having to explicitly name the TSM and supply the parameters, we designate \lstinline{ltpl} as \lstinline{Ltuple.c}'s TSL on line \ref{line:ltplx-annotation}. Now we can rewrite \lstinline{make_paper} in the standard way:
 \begin{lstlisting}[numbers=none]
-fun make_paper_tsl(conf : conf_t, title : title_t) : Paper => 
-  {confSCSS, ECSStitle}
+fun make_paper_tsl(c : conf_t, t : title_t) : Paper => 
+  {cSCSS, ECSSt}
 \end{lstlisting}
 
-Putting syntax aside, the metamodule defining the opcon, \lstinline{Ltuple}, programmatically determines how to typecheck and translate this operation, again by the defining a static function called the \emph{opcon definition}. The definition of \lstinline{intro_unlabeled} is shown on lines \ref{line:introul-start}-\ref{line:introul-end} of Figure \ref{fig:ltuplex}. For analytic opcons like \lstinline{intro_unlabeled}, the semantics provides the opcon definition  with the type that the expression is being analyzed against, here \lstinline{Paper}, the operator parameter, here \lstinline{()}, and a list of \emph{argument interfaces}, which will allow it to ask the semantics to recursively typecheck and translate the arguments provided in the argument list. It must return a representation of an  internal expression, which will become the translation of the operation. Internal expressions are represented as static values of sort \lstinline{IExp}, and again we assume that we can use standard quasiquote syntax. 
+Putting syntax aside, the metamodule defining the opcon, \lstinline{Ltuple}, programmatically determines how to typecheck and translate this operation, again by the defining a static function called the \emph{opcon definition}. The definition of \lstinline{intro_unlabeled} is shown on lines \ref{line:introul-start}-\ref{line:introul-end} of Figure \ref{fig:ltuplex}. For analytic opcons like \lstinline{intro_unlabeled}, the semantics provides the opcon definition  with the type that the expression is being analyzed against, here \lstinline{Paper}, the operator parameter, here \lstinline{()}, and a list of \emph{argument interfaces}, which will allow it to ask the semantics to recursively typecheck and translate the arguments provided in the argument list. It must return a representation of an  internal expression, which will become the translation of the operation. Internal expressions are represented as static values of sort \lstinline{IExp}, and again we assume that we can use standard quasiquote syntax. The remaining opcons (which we will not consider in detail here) are synthetic opcons, which means they can be used anywhere. Rather than taking a type as input, they produce a pair of a type and a translation as output. 
 
 On lines \ref{line:introul-start}-\ref{line:introul-end}, the opcon definition first checks that the type is actually a labeled tuple type using the \lstinline{tycase} primitive, which case analyzes against the type constructor of the provided type. There must always be a default case to ensure exhaustiveness. In this example, the default case raises a type error (with an error message, elided here).\footnote{The reason why we use this exception-like data flow for raising type errors, rather than using an option sort, is somewhat subtle so we defer it for discussion in the dissertation.} If the tycon is \lstinline{c}, we pair up the items in the type's component specification with the arguments and fold over this list. The empty case generates the representation of the trivial internal value and the recursive case generates nested pairs. Notice that this follows the structure of the type translator for \lstinline{c}, reflecting the fact that introductory operations at a type must generate a translation consistent with the corresponding type translation for type safety to hold. The static operation \lstinline{ana(arg, ty)} requests that the provided argument be analyzed against the provided type, evaluating to a representation of its translation if this succeeds and raising an error if it fails. For our example above, the representation of the translation generated by the opcon definition is:
 \begin{lstlisting}[numbers=none]
@@ -1056,12 +1056,23 @@ On lines \ref{line:introul-start}-\ref{line:introul-end}, the opcon definition f
 \end{lstlisting}
 An \emph{argument translation} of the form \lstinline{SQTanatrans[i](EQTTSQT)} stands in for the translation of argument \lstinline{i} analyzed against type \lstinline{T}.
 
-The semantics next generates an \emph{abstracted translation}, which is a corresponding internal term where each argument translation has been replaced by a corresponding fresh variable. To validate it, we assume that the type of each variable is the abstracted type translation of the type the corresponding argument was analyzed against. So in this case, the abstracted translation is $(x_0, (x_1, ()))$ and it will be validated under a context where $x_0 : \alpha_0$ and  $x_1 : \alpha_1$ against the abstracted type translation for the type the operation as a whole was being analyzed against, i.e. $\alpha_0 \times (\alpha_1 \times \mathsf{unit})$, as discussed above. Only after this succeeds are the actual argument translations substituted in to generate the final operation translation, here $({conf}, ({title}, ())$.
+The semantics next generates an \emph{abstracted translation}, which is a corresponding internal term where each argument translation has been replaced by a corresponding fresh variable. To validate it, we assume that the type of each variable is the abstracted type translation of the type the corresponding argument was analyzed against. So in this case, the abstracted translation is $(x_0, (x_1, ()))$ and it will be validated against the abstracted type translation for \lstinline{Paper}, i.e. $\alpha_0 \times (\alpha_1 \times \mathsf{unit})$, under a context where $x_0 : \alpha_0$ and  $x_1 : \alpha_1$ (this will, of course, succeed). Only after this succeeds are the actual argument translations substituted in to generate the final operation translation, here $({c}, ({t}, ())$.
 
-By treating the arguments to the operation parametrically in this way, we can be sure that the metamodule defining labeled tuple types cannot violate the translation invariants that other metamodules maintain. For example, even if regular strings are implemented (by some other metamodule, not shown) as strings satisfying the regular string invariant, \lstinline{Ltuple} knows only that \emph{there exists} some translation for each regular string type, but nothing more. If the regular string metamodule later decides to change how it implements regular string types, this would require only local changes to that metamodule. We call this property \emph{translation independence}, by analogy to the \emph{representation independence} property that underlies modular reasoning with ML modules. An important point is that we are able to achieve modularity guarantees without requiring mechanized proofs of translation invariants (just as ML does not require mechanized proofs of representation invariants). %Translation independence allows library providers to reason locally about \emph{translation invariants} maintained by the operators in a metamodule. For example, a metamodule defining regular string types would maintain the regular string invariant. No other metamodule, by virtue of this translation independence property, can violate this invariant.
+By treating the arguments to the operation parametrically in this way, we can be sure that the metamodule defining labeled tuple types cannot violate the translation invariants that other metamodules maintain. For example, even if regular strings are implemented (by some other metamodule, not shown) as strings satisfying the regular string invariant, \lstinline{Ltuple} knows only that \emph{there exists} some translation for each regular string type, but nothing more. Thus, it cannot define ``bad'' opcons like this:
 
-To formalize the intuition just described, we would need to introduce a number of technical devices. It would require too much space to give a comprehensive formal account of this mechanism in this proposal, so  we leave this as work that remains to be done (though see below for progress). In broad strokes, it is similar to the rule for type translation described above.
+\begin{lstlisting}[numbers=none]
+syn opcon bad {
+	static fun (op_param :: unit, args :: list(Arg)) :: Ty * IExp => 
+	  (rstring /.+/, `""`)
+}
+\end{lstlisting}
+Here, the opcon ignores the arguments and synthesizes a regular string type that the client will assume classifies non-empty strings, yet the corresponding translation is in fact the empty string. That is, even if all the opcons defined in the metamodule implementing regular strings maintained this regular string invariant, this opcon would violate it. Note however that it is not simply a problem of the translation being well-typed. The operator translation (the empty string) is consistent with the type translation (\lstinline{string}), so simply validating well-typedness would not be enough. Fortunately, by holding the type translation of regular strings abstract when validating the output of this opcon, the problem is caught -- the empty string is not of type $\alpha$. Put another way, the problem with this opcon is that it is not defined in a translation-independent manner with respect to tycons defined in another metamodule. This is exactly analagous to the representation independence property underlying modular reasoning with ML-style modules. By leveraging type abstraction, we are able to achieve modularity guarantees without requiring mechanized proofs of translation invariants (just as ML does not require mechanized proofs of representation invariants). 
 
+%If the regular string metamodule later decides to change how it implements regular string types, this would require only local changes to that metamodule. We call this property \emph{translation independence}, by analogy to the \emph{representation independence} property that underlies modular reasoning with ML modules. %Translation independence allows library providers to reason locally about \emph{translation invariants} maintained by the operators in a metamodule. For example, a metamodule defining regular string types would maintain the regular string invariant. No other metamodule, by virtue of this translation independence property, can violate this invariant.
+
+To formalize the intuition just described, we would need to introduce a number of technical devices. It would require too much space to give a comprehensive formal account of this mechanism in this proposal, so  we leave this as work that remains to be done (though see below for progress). In broad strokes, it is similar to the rule for type translation described above in that we validate the operation translation before applying the substitutions for type and expression variables.
+
+Note that the static functions that define these opcons contain code that looks just like the code that would appear in a standard implementation of the first stage of a compiler for a language that built in labeled tuple types. The novelty is not in these definitions, but in how they are organized and brought into the language.
 % \begin{mathpar}
 % \inferrule[ap-anaop]{
 %   \mathbf{ana opcon}~m.\text{op}~\mathbf{of}~\uppi_\text{param}~\{ \sigma_\text{opdef} \} \in \Phi\\
@@ -1085,12 +1096,11 @@ To formalize the intuition just described, we would need to introduce a number o
 % opconap(omega; sigma_param; es) <= sigma ~> [delta][gamma]iota
 
  
-The remaining opcons are synthetic opcons, which means they can be used anywhere. They operate similarly, but rather than taking a type as input, they produce a pair of a type and a translation as output. In every other way, these are analagous to analytic opcons, so we omit the details here. Instead, note that the static functions that define these opcons contain code that looks just like the code that would appear in a standard implementation of the first stage of a compiler for a language that built in labeled tuple types. The novelty is not in these definitions, but in how they are organized and brought into the language.
 
 \subsubsection{Limitations}
-The main limitation of the mechanism just described is that it only supports defining types and operators that do not require adding new contexts to the EL typing judgement. No new binding structure can be defined. Fortunately, a number of interesting examples found in existing languages have this character, including labeled tuple types, record types, labeled sum types, object types (of various designs), regular string types and range-restricted numeric types. We plan to detail these in the thesis. On the other hand, constructs like ML-style exceptions, Ocaml-style open datatypes or Java-style class-based object systems would not be possible because they require statically tracking which constructors/classes are in scope. We plan to discuss adding support for new typing contexts as an avenue for future work in the thesis.
+The main limitation of the mechanism just described is that it only supports defining types and operators that do not require adding new contexts to the EL typing judgement. No new binding structure can be defined. Fortunately, a number of interesting examples found in existing languages have this character, including labeled tuple types, record types, labeled sum types, object types (of various designs), regular string types and range-restricted numeric types. We plan to detail these in the thesis. On the other hand, constructs like ML-style exceptions, Ocaml-style open datatypes or Java-style class-based object systems would not be possible because they require statically tracking which constructors/classes are in scope. We plan to discuss adding support for new user-defined static contexts as an avenue for future work in the dissertation.
 
-Establishing the metatheory of metamodules is also somewhat tricky, again because it involves reasoning about expressions that are not clearly subexpressions of those in the conclusion of a rule. We plan to give an induction principle by which we can prove the necessary metatheorems in the dissertation.
+Establishing the metatheory of metamodules is also somewhat tricky, again because it involves reasoning about expressions that are not clearly subexpressions of those in the conclusion of the relevant rules. We plan to give an induction principle by which we can prove the necessary metatheorems in the dissertation.
 
 
 \subsection{Timeline and Milestones}\label{sec:metamodules-timeline}
@@ -1420,15 +1430,15 @@ metamodule Ltuple :: LTUPLE = metamod {
   ^\label{line:c-start}^(* translate labeled tuple types to nested products *)
   tycon c {
   	(* type translation generator: *)
-  	static fn (param :: ComponentSpec) => fold (list_of_comp_spec param)
+  	static fn (param :: ComponentSpec) :: ITy => fold (comp_spec_to_tuples param)
       `SCSSunitECSS`
       (fn ((lbl, ty), cur_ty_trans) => `SCSStrans(ECSStySCSS) * %ECSScur_ty_trans`)
   }^\label{line:c-end}^
 
   ^\label{line:introul-start}^ana opcon intro_unlabeled {
   	(* translate intro operator to nested pairs *)
-  	static fn (ty :: Ty, op_param :: unit, args :: list(Arg)) => tycase(ty) {
-        c(ty_param) => (fold (zipExact (list_of_comp_spec ty_param) args)
+  	static fn (ty :: Ty, op_param :: unit, args :: list(Arg)) :: IExp => tycase(ty) {
+        c(ty_param) => (fold (zipExact (comp_spec_to_tuples ty_param) args)
       	  `SCSS()ECSS`
           (fn (((lbl, ty), arg), cur_trans) => `SCSS(%{ECSSana(arg, ty)SCSS}, %ECSScur_transSCSS)ECSS`)
         )
@@ -1437,25 +1447,25 @@ metamodule Ltuple :: LTUPLE = metamod {
   }^\label{line:introul-end}^
 
   ^\label{line:introl-start}^syn opcon intro_labeled {
-  	static fn (op_param :: list(Lbl), args :: list(Arg)) => 
-      (* ... same as intro_unlabeled but reorder first ... *)
+  	static fn (op_param :: list(Lbl), args :: list(Arg)) :: Ty * IExp => 
+      (* ... similar to intro_unlabeled but reorder first ... *)
   }^\label{line:introl-end}^
 
   ^\label{line:prj-start}^syn opcon # {
-  	static fn (op_param :: Lbl, args :: list(Arg)) =>  
+  	static fn (op_param :: Lbl, args :: list(Arg)) :: Ty * IExp =>  
       (* ... generate the appropriate n-fold projection ... *)
   }^\label{line:prj-end}^
 
   ^\label{line:ltpl-conc-start}^syn opcon + {
-  	static fn (op_param :: unit, args :: list(Arg)) => 
+  	static fn (op_param :: unit, args :: list(Arg)) :: Ty * IExp => 
       (* generate the new type and combine the two nested tuples *)
   }^\label{line:ltpl-conc-end}^
 
   ^\label{line:ltpl-drop-start}^syn opcon - {
-  	static fn (op_param : Lbl, args : list(Arg)) => 
-      (* generate the new type and drop the appropriate element *)
+  	static fn (op_param :: Lbl, args :: list(Arg)) :: Ty * IExp => 
+      (* generate the new type and drop the appropriate component *)
   }^\label{line:ltpl-drop-end}^
-} with syntax ltpl for c ^\label{line:ltplx-annotation}^
+} with syntax ltpl^\label{line:ltplx-annotation}^
 (* synonyms used in Sec. 5.1 *)
 ^\label{line:tycon-synonym}^let tycon ltuple = Ltuple.c
 let opcon # = Ltuple.#
