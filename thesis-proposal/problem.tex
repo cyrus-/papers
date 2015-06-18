@@ -111,6 +111,8 @@ To situate ourselves within a formal framework, let us begin with a brief overvi
 
 \subsection{Core Language}
 The Verse core language -- the language of types and expressions -- will be the focus of our formal efforts. The key novelty is that the core language is split into a user-facing \emph{typed external language} (EL) specified by type-directed translation to a minimal \emph{typed internal language} (IL). One might think of this design as shifting the first stage of a type-directed compiler (e.g. the TIL compiler for Standard ML \cite{tarditi+:til-OLD})  ``one level up'' into the language itself. A third sublanguage, the \emph{typed static language} (SL), is involved in giving library providers programmatic control over aspects of this type-directed translation from the EL to the IL. % The SL is notionally analagous to the language that the first stage itself is written in.
+
+
 We summarize the main judgements relevant to the IL, EL and SL below. Readers who prefer to see examples first can safely skim these sections for now.
 
 \subsubsection{Internal Language}
@@ -725,7 +727,7 @@ let type Paper = ltuple {SPCT
 \end{lstlisting}
 The \lstinline{let type} construction defines a synonym, \lstinline{Paper}, for a type constructed by applying the \emph{type constructor} (or \emph{tycon}) \lstinline{ltuple} to a \emph{component specification}, which is a  statically valued (cf. Sec. 2) ordered finite mapping from labels to types, written using conventional concrete syntax.
 
-The first component is labeled \lstinline{title} and specifies the \emph{regular string type} \lstinline{rstring /SURL.+EURL/}. Regular string types are constructed by applying the tycon \lstinline{rstring} to a statically valued regular expression pattern, again written here using conventional concrete syntax like that discussed in the previous section. Regular string types classify expressions that behave as strings in the corresponding regular language, here the language of non-empty strings. The second component of type \lstinline{Paper} is labeled \lstinline{conf} and specifies a regular string type with two {parenthesized groups}, corresponding to a conference abbreviation and year.
+The first component is labeled \lstinline{title} and specifies the \emph{regular string type} \lstinline{rstring /SURL.+EURL/}. Regular string types are constructed by applying the tycon \lstinline{rstring} to a statically valued regular expression pattern, again written here using conventional concrete syntax like that discussed in the previous section. The second component of type \lstinline{Paper} is labeled \lstinline{conf} and specifies a regular string type with two {parenthesized groups}, corresponding to a conference abbreviation and year. 
 
 % Alternatively, we could have used the following construction to declare \lstinline{Paper} \emph{generatively}:
 % \begin{lstlisting}[numbers=none]
@@ -736,7 +738,8 @@ The first component is labeled \lstinline{title} and specifies the \emph{regular
 % \end{lstlisting}
 % The difference is in how type equality is handled. Two labeled product types with the same signature are equal, unless declared generatively, in which case type equality is nominal.
 
-We can introduce a value of type \lstinline{Paper} in an analytic position in one of two ways. We can omit the labels and provide component values positionally:
+Clients can introduce regular strings in analytic position using standard string literal syntax, as long as the body of the literal is in the corresponding regular language. 
+Clients can introduce a value of type \lstinline{Paper} in an analytic position in one of two ways. We can omit the labels and provide component values positionally:
 \begin{lstlisting}[numbers=none]
 let val exmpl : Paper = {"SUSAn Example PaperEUS"SCSS, ECSS"SUSEXMPL 2015EUS"}
 \end{lstlisting}
@@ -884,7 +887,7 @@ The most common alternative to regular strings in existing languages is to simpl
 
 \paragraph{Type Refinements}
 We might attempt to recover the static semantics of regular strings by moving the logic governing regular string types into an external system of \emph{type refinements} \cite{Freeman91}. %This treats membership of a string in a specified regular language exclusively as a static verification condition. 
-Such  systems, e.g. SML CIDRE \cite{Davies:1997:RTC}, typically rely on refinement specifications that are supplied in comments:
+Such  systems allow programmers to specify \emph{refinements} of a type that capture more specific invariants. For example, we might consider capturing the regular string invariant using refinements of the \lstinline{string} type. Clients supply refinement specifications using structured comments or annotations (which can then be processed by external refinement checkers, like SML CIDRE \cite{Davies:1997:RTC}):
 \begin{lstlisting}[numbers=none]
 let val conf : string (* ~ rstring /([A-Z]+) (\d\d\d\d)/ *) = "EXMPL 2015"
 \end{lstlisting}
