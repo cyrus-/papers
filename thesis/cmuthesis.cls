@@ -1,11 +1,11 @@
 %% dkoes 5/10/2006
-
+%
 \LoadClassWithOptions{book}
-
-
-%% dkoes - Here's a bunch of stuff taken from mjz-titlepage.sty that makes
+%
+%
+% dkoes - Here's a bunch of stuff taken from mjz-titlepage.sty that makes
 % a pretty CMU techreport acceptable title page
-
+%
 %% titlepage parameters
 %%   required: title, author, date, Year, trnumber, committee
 %%   optional: permission, support, disclaimer, keywords
@@ -48,8 +48,8 @@
 \let\footnoterule\relax
 \vglue\@cutoutvskip
 \begin{center}
-%\begin{minipage}[t]{4.875in}   % must be a minipage due to \thanks
-\begin{minipage}[t]{4.8in}      % hackery
+\begin{minipage}[t]{4.875in}   % must be a minipage due to \thanks
+%\begin{minipage}[t]{4.8in}      % hackery
 \vbox to 2in{
 \vfill
 \begin{center}
@@ -57,7 +57,7 @@
 \vfill
 {\large \begin{tabular}[t]{c}\@author\end{tabular}\par}
 \vfill
-{\sc \@trnumber\par}
+{\@trnumber\par}
 \smallskip
 {\large \@date\par}
 \end{center}
@@ -72,7 +72,7 @@
     Carnegie Mellon University \\
     Pittsburgh, PA 15213
 \end{center}
-
+\vskip 3em
 \begin{center}
     {\bf Thesis Committee:} \\
     \@committee
@@ -104,7 +104,8 @@
 
 \newenvironment{dedication}
   {\cleardoublepage \thispagestyle{empty} \vspace*{\stretch{1}} \begin{center} \em}
-  {\end{center} \vspace*{\stretch{3}} \clearpage}
+  {\end{center} \vspace*{\stretch{3}} \clearpage
+  }
 
 
 \newenvironment{psuedochapter}[1]
@@ -112,29 +113,30 @@
    \thispagestyle{empty}
    \vspace*{\stretch{1}} 
    \begin{center} \large {\bf #1} \end{center}
-%   \addcontentsline{toc}{chapter}{\numberline{}#1} --not yet mjz 
+   %\addcontentsline{toc}{chapter}{\numberline{}#1} %--not yet mjz 
    \begin{quotation}}
   {\end{quotation} 
    \vspace*{\stretch{3}}
-   \clearpage}
+   \clearpage
+  }
 
 \newenvironment{abstract}
 	{\begin{psuedochapter}{Abstract}}{\end{psuedochapter}}
 
 \newenvironment{acknowledgments}
 	{\begin{psuedochapter}{Acknowledgments}}{\end{psuedochapter}}
-
-
-
-
-
-%% dkoes - what follows is just a result of my personal style preferences
-% most things are shamelessly ripped from various conference class files
-
-%                       Utilities
-%                       ---------
-
-
+%
+%
+%
+%
+%
+%%% dkoes - what follows is just a result of my personal style preferences
+%% most things are shamelessly ripped from various conference class files
+%
+%%                       Utilities
+%%                       ---------
+%
+%
 \newcommand{\centeroncapheight}[1]{%
   {\setbox\@tempboxa = \hbox{#1}%
    \@measurecapheight{\@tempdima}%         % Calculate ht(CAP) - ht(text)
@@ -167,7 +169,7 @@
 %                       -----
 
 \setlength{\topsep}{1pt}
- \setlength{\itemsep}{1pt}
+\setlength{\itemsep}{1pt}
 \setlength{\parsep}{3pt}
 
 \renewcommand{\labelitemi}{{\small \centeroncapheight{\textbullet}}}
@@ -200,31 +202,31 @@
   \advance \labelwidth by -\labelsep
   \listparindent = \parindent}
 
-
-% A simple style file to provide a draft marking in the background of
-% a file
-% Thank you to Will Uther who provided the base code that I rolled
-% into this package
-% ChangeLog
-% 1.1: shrunk and shifted the stamp so that it avoid the unprintable
-% area at the top of the page
-% 1.2 dkoes - made it big and rotated and light
-% 1.3 dkoes - made it small, and unrotated since Jonathan Aldrich complained
+%
+%% A simple style file to provide a draft marking in the background of
+%% a file
+%% Thank you to Will Uther who provided the base code that I rolled
+%% into this package
+%% ChangeLog
+%% 1.1: shrunk and shifted the stamp so that it avoid the unprintable
+%% area at the top of the page
+%% 1.2 dkoes - made it big and rotated and light
+%% 1.3 dkoes - made it small, and unrotated since Jonathan Aldrich complained
 \RequirePackage{graphicx}
 \RequirePackage{eso-pic}
 \RequirePackage{color}
-
+%
 %Got this from Will (will@cs.cmu.edu)
 %usage: \draftstamp{date}{label}
 \newcommand{\draftstamp}[2]{\definecolor{DraftGrey}{gray}{0.7}
   \ClearShipoutPicture\AddToShipoutPicture{
-    \begin{minipage}[b][\paperheight][t]{\paperwidth}     
+    \begin{minipage}[b][0.11\paperheight][t]{\paperwidth}     
     \centering
     	\vspace{.4in}
             \textcolor{DraftGrey}{\renewcommand{\baselinestretch}{1.0}\normalsize
             \begin{tabular}{c}
-                    #1 \\
-                    #2
+                   #1 \\
+                  #2
              \end{tabular}            
         }
         
@@ -234,9 +236,9 @@
 % mainmatter is ignoring openany, fix
 \renewcommand\mainmatter{%
   \if@openright
-    \cleardoublepage
-  \else
     \clearpage
+  \else
+    \doubleclearpage
   \fi
   \@mainmattertrue
   \pagenumbering{arabic}}
