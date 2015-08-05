@@ -225,8 +225,7 @@
     	\vspace{.4in}
             \textcolor{DraftGrey}{\renewcommand{\baselinestretch}{1.0}\normalsize
             \begin{tabular}{c}
-                   #1 \\
-                  #2
+                   #2 (#1)
              \end{tabular}            
         }
         
