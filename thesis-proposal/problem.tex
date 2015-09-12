@@ -223,10 +223,10 @@ We will begin in Sec. \ref{sec:examples} by detailing another example for which 
 Let us begin by taking the perspective of a regular expression library provider. We assume the reader has some familiarity with regular expressions \cite{Thompson:1968:PTR:363347.363387}. We will discuss a standard variant of regular expressions that supports marking \emph{captured groups} (with parentheses in the concrete syntax) to make certain examples more interesting.
 
 \paragraph{Abstract Syntax} The abstract syntax of {patterns}, $p$, over strings, $s$, is specified as below:\[p ::= \textbf{empty} ~|~ \textbf{str}(s) ~|~ \textbf{seq}(p; p) ~|~ \textbf{or}(p; p) ~|~ \textbf{star}(p) ~|~ \textbf{group}(p)\]
-One way to express this abstract syntax is by defining a recursive sum type \cite{pfpl}. Verse supports these as case types, which are comparable to datatypes in ML (we plan to show how the type structure  of case types can in fact be expressed in libraries later):
+One way to express this abstract syntax is by defining a recursive sum type \cite{pfpl}. Verse supports these as datatypes, which are comparable to datatypes in ML (we plan to show how the type structure  of datatypes can in fact be expressed in libraries later):
 
 \begin{lstlisting}[numbers=none]
-casetype Pattern {
+datatype Pattern {
     Empty | Str of string | Seq of Pattern * Pattern 
     | Or of Pattern * Pattern | Star of Pattern | Group of Pattern
 }
@@ -601,7 +601,7 @@ P.Seq(P.Str(name), P.Seq(P.Str ": ", ssn)
 \end{lstlisting}
 %Put another way, the  elaboration logic must be valid in any context. 
 
-\paragraph{Formalization} To introduce the formal specification of TSMs, let us consider the rule in the EL's semantics for handling TSM application to a delimited form. To simplify matters, we will first consider only unparameterized TSMs (i.e. TSMs defined at a single type, e.g. the case type \lstinline{Pattern}, rather than a parameterized family of types): 
+\paragraph{Formalization} To introduce the formal specification of TSMs, let us consider the rule in the EL's semantics for handling TSM application to a delimited form. To simplify matters, we will first consider only unparameterized TSMs (i.e. TSMs defined at a single type, e.g. the  datatype \lstinline{Pattern}, rather than a parameterized family of types): 
 \begin{mathpar}
 \inferrule[syn-aptsm]{
     \vdash \psi ~@~ \sigma_\text{ty}~\{\sigma_\text{parser}\}\\
@@ -670,9 +670,9 @@ fun example_tsl(name : string) : P.t =>
   /SURL@EURLnameSURL: %EURLssn/
 \end{lstlisting}
 
-As another example, we can use TSLs to express derived list syntax. For example, if we use a case type, we can define the TSL directly upon declaring the list type:
+As another example, we can use TSLs to express derived list syntax. For example, if we use a datatype, we can define the TSL directly upon declaring the list type:
 \begin{lstlisting}[numbers=none]
-casetype list('a) { Nil | Cons of 'a * list('a) } with syntax {
+datatype list('a) { Nil | Cons of 'a * list('a) } with syntax {
   static fn (body :: ParseStream) => 
     (* ... comma-delimited spliced exps ... *)
 }
@@ -702,7 +702,7 @@ module F2 = F() (* F2.t has TSL pattern(F2) *)
 For a parameterized module that takes non-trivial parameters, we need only define the TSM to also take the same parameters and apply them explicitly within the definition of the parameterized module. For example, let us define a parameterized module \lstinline{G : A -> B}:
 \begin{lstlisting}[numbers=none,mathescape=|]
 signature A = sig { type t; val x : t }
-signature B = sig { type u; val y ; u }
+signature B = sig { type u; val y : u }
 syntax $G(M : A)(G : B) at G.u { (* ... *) }
 module G(M : A) => mod { 
   type u = M.t; val y = M.x } :> B with syntax $G(M)
@@ -724,11 +724,12 @@ module N = mod {
 %\todo{revise this section}The main limitation of this approach is that it 
 Though expansion validation ensures that an incorrect parser cannot threaten type safety,  proving type safety inductively is subtle because the expansion is not a subexpression of the expression it will replace. There is a ``simple'' solution to this problem: we impose the restriction that the expansion cannot itself use TSMs or TSLs. This would be somewhat awkward in practice, so we plan to briefly discuss other more flexible solutions as well.  
 
-To provide the strongest metatheoretic guarantees, we must have that the SL is a total functional language. If we instead defined the SL such that evaluating the parse function may not terminate, this would then cause typechecking to become undecidable.\footnote{A ``hack'' that could be used in practice is to specify a limit to the running time of the parse function. The compiler would enforce this limit to ensure that compilation does not ``hang'' due to an incorrect parser.} Related concerns would arise if the static language supported external (e.g. I/O) effects -- one would generally not want the mere act of parsing and typechecking a program to have an effect on a file system. Mutation effects could be introduced, however, because the static language is kept distinct from the external language. No static values can be ``promoted'' into the external language. 
+To provide the strongest metatheoretic guarantees, we must have that the SL is a total functional language. If we instead defined the SL such that evaluating the parse function may not terminate, this would then cause typechecking to become undecidable.\footnote{This source of undecidability might not be particularly important in practice, for the same reason that non-termination is tolerated in most major languages.} Related concerns would arise if the static language supported external (e.g. I/O) effects -- one would generally not want the mere act of parsing and typechecking a program to have an effect on a file system. Mutation effects could be introduced, however, because the static language is kept distinct from the external language. No static values can be ``promoted'' into the external language. 
 
 Another limitation is that TSMs as we have described them only capture idioms that occur within a single parameterized family of types,  not idioms that might span many (or all) types, e.g. control flow idioms. In fact, this is intentional -- neither humans nor tools need to examine the expansion to determine what type it must necessarily have. We will, however, discuss other points in the design space in the dissertation.
 
-Finally, we have discussed only expression syntax here, but have not considered pattern matching. In fact, we conjecture that it is completely straightforward to extend this work to allow a TSM to define both an expression parser and a pattern parser. Similarly, one could imagine defining TSMs at the level of modules, and at the level of types. We plan to discuss these in the dissertation. Formally specifying these will be left to future work, as it would introduce a rather large amount of technical overhead for minimal conceptual gain. %, the essential ideas are mostly simply conveyed by sticking to formal specifications only at the level of expressions. 
+We have discussed only expression syntax here, but have not considered pattern matching. In fact, we conjecture that it is completely straightforward to extend this work to allow a TSM to define both an expression parser and a pattern parser. Similarly, one could imagine defining TSMs at the level of modules, and at the level of types. We plan to discuss these in the dissertation. Formally specifying these will be left to future work, as it would introduce a rather large amount of technical overhead for minimal conceptual gain. %, the essential ideas are mostly simply conveyed by sticking to formal specifications only at the level of expressions. 
+
 
 \subsection{Timeline and Milestones}\label{sec:syntax-timeline}
 We described and gave a more detailed formal specification of TSMs in a recently published paper \cite{sac15}, and TSLs in a paper published last year \cite{TSLs}, both in the context of the Wyvern language. The mechanics of defining a TSM, statically invoking the parse function, expansion encoding/decoding and hygienic expansion validation have all been detailed there. In the dissertation, I plan to first present the formal system closely following this presentation, updating it only to ensure that it is consistent with the description above and with the work in the next section. The rule (syn-aptsm) above represents the first and most substantial step of this plan. This is complete on paper, so I only need to typeset it. 
@@ -788,12 +789,12 @@ To validate our claims of expressiveness, I plan to give several more examples d
 %These mechanisms are one reason why we specify Verse by a bidirectionally typed elaboration semantics.
 
 \section{Modularly Programmable Type Structure}\label{sec:metamodules}
-In the previous section, we assumed that the EL had an otherwise standard, ML-like type structure and considered only TSMs and TSLs as departures from ML. In fact, constructs like case types (shown briefly in use in the previous section), tuples, records and objects are not built primitively into Verse. Instead, they can be expressed using \emph{metamodules} (which are distinct from, though closely related to, {modules}, as we will discuss below). Only  functions are built primitively into the Verse EL.
+In the previous section, we assumed that the EL had an otherwise standard, ML-like type structure and considered only TSMs and TSLs as departures from ML. In fact, constructs like datatypes (shown briefly in use in the previous section), tuples, records and objects are not built primitively into Verse. Instead, they can be expressed using \emph{metamodules} (which are distinct from, though closely related to, {modules}, as we will discuss below). Only  functions are built primitively into the Verse EL.
 
 This section is organized like Sec. \ref{sec:syntax}. We will begin with examples of type structure that we might want to express in Sec. \ref{sec:metamodules-example}, then discuss how existing approaches are insufficient in Sec. \ref{sec:metamodules-related}. Next, we outline how {metamodules} (together with TSMs and TSLs) serve to address these problems in Sec. \ref{sec:metamodules-solution} and conclude with a timeline in Sec. \ref{sec:metamodules-timeline}.
 
 \subsection{Motivating Example: Labeled Tuples and Regular Strings}\label{sec:metamodules-example}\label{sec:metamodules-motivating-examples}
-As a simple introductory example, let us define a \emph{labeled tuple type} for conference papers:
+As a simple introductory example showing the sorts of types and operators we might like to have available to us as clients of a language, let us define a simple \emph{labeled tuple type} for conference papers:
 \begin{lstlisting}[numbers=none]
 let type Paper = ltuple {SPCT
    title : EPCTrstring /SURL.+EURL/
@@ -828,7 +829,7 @@ Given a value of type \lstinline{Paper}, we can project out a component value by
 \begin{lstlisting}[numbers=none]
 let val exmpl_conf = # <SNATconfENAT> exmpl 
 \end{lstlisting}
-Here, \lstinline{#} identifies an \emph{operator constructor} (or \emph{opcon}) parameterized by a statically valued label, written literally here as \lstinline{<SNATconfENAT>}. The resulting \emph{operator}, \lstinline{# <SNATconfENAT>}, is then passed one \emph{argument}, \lstinline{exmpl}. An important point is that this operator is not a function, i.e. it cannot be given function type, because it is able to operate on values of \emph{any} labeled tuple type that has a component labeled \lstinline{conf}, not just \lstinline{Paper}. That type's component specification determines the type of the operation as a whole, here \lstinline{rstring /SURL([A-Z]+) (\d\d\d\d)EURL/}.
+Here, \lstinline{#} identifies an \emph{operator constructor} (or \emph{opcon}) parameterized by a statically valued label, written literally here as \lstinline{<SNATconfENAT>}. The resulting \emph{operator}, \lstinline{# <SNATconfENAT>}, is then passed one \emph{argument}, \lstinline{exmpl}. An important point is that this operator is not a function, i.e. it cannot be given function type, because it is able to operate on values of \emph{any} labeled tuple type that has a component labeled \lstinline{conf}, not just \lstinline{Paper}. The argument type's component specification determines the type of the operation as a whole, here \lstinline{rstring /SURL([A-Z]+) (\d\d\d\d)EURL/}.
 
 We can project out the first captured group from the regular string \lstinline{exmpl_conf} using the \lstinline{#group} operator constructor, which is parameterized by a statically valued natural number referring to the group index:
 \begin{lstlisting}[numbers=none]
@@ -845,7 +846,7 @@ We can drop a component using the operator constructor \lstinline{ltuple-}, whic
 \begin{lstlisting}[numbers=none]
 let val exmpl_paper_anon = ltuple- <SNATauthorsENAT> exmpl_paper_final
 \end{lstlisting}
-There are many other operators that we might wish to describe, for both labeled tuples and regular strings, but for our purposes it suffices to stop here.
+There are many other operators that we might wish to describe, for both labeled tuples \cite{Cardelli91operationson} and regular strings \cite{sanitation-psp14}, but for our purposes it suffices to stop here.
 
 \subsection{Existing Approaches}\label{sec:metamodules-related}
 Before describing how we express the type structure of labeled tuples and regular strings in Verse using metamodules, let us consider some alternative approaches for each.
@@ -866,21 +867,21 @@ signature PAPER = sig {
   type t
   (* introduction without labels *)
   val intro : title_t -> conf_t -> t
-  (* introduction with explicit labels, in both orders *)
+  (* introduction with explicit labels, in primary order *)
   val intro_title_conf : title_t -> conf_t -> t
-  val intro_conf_title : conf_t -> title_t -> t
   (* projection *)
   val prj_title : t -> title_t
   val prj_conf : t -> conf_t
 }
 \end{lstlisting}
-Here, we've taken all possible valid introductory and projection operators and called for their expression as functions. Expressing labels explicitly is an important facet of having labeled tuple types in a language, so we must put them into the function identifiers. Even with our minimal EL, we could  implement the semantics of the corresponding operators against this signature using a Church-style encoding (the details are standard and omitted here). Alternatively, if we slightly relax  our insistence on minimalism and add binary products to the EL, we could use them to implement our desired semantics like this:
+Here, we've taken all possible valid introductory and projection operators and called for their expression as functions. Expressing labels explicitly is an important facet of having labeled tuple types in a language, so we put them into the function identifiers. This is, however, suboptimal because in client code, the argument values will not appear adjacent to the corresponding labels. 
+
+Even with our minimal EL, we could  implement the semantics of the corresponding operators against this signature using a Church-style encoding (the details are standard and omitted here). Alternatively, if we slightly relax  our insistence on minimalism and add binary products to the EL, we could use them to implement our desired semantics like this:
 \begin{lstlisting}
  module Paper : PAPER = mod {
    type t = title_t * conf_t
    fun intro title conf => (title, conf)
    fun intro_title_conf title conf => (title, conf)
-   fun intro_conf_title conf title => (title, conf)
    fun prj_title (title, conf) => title 
    fun prj_conf (title, conf) => conf
  }
@@ -1090,7 +1091,7 @@ Formally, we should be able to derive that $\vdash \texttt{Paper}~\mathtt{type} 
 	\sigma_\text{trans} \uparrow_\Phi^m \tau_\text{abstrans} \parallel {\delta} : {\Delta}\\
 	{\Delta} \vdash \tau_\text{abstrans}~\mathtt{itype}
 }{
-	\vdash_\Phi \mathbf{ty}(m.c;\sigma_\text{param})~\mathtt{type}\leadsto[{\delta}]\tau_\text{abstrans}
+	\vdash_\Phi \mathbf{ty}(m\cdot c;\sigma_\text{param})~\mathtt{type}\leadsto[{\delta}]\tau_\text{abstrans}
 }
 \end{mathpar}
 Note that this rule is again slightly simplified here. It would need to be modified to handle external type abstraction, for example. However, it is pedagogically useful to begin with this simpler rule. Note that our purpose in this proposal is not to give a complete formal account of our contributions, but only to sketch out what this formal account will look like. 
@@ -1177,7 +1178,7 @@ Note that the static functions that define these opcons contain code that looks 
  
 
 \subsubsection{Limitations}
-The main limitation of the mechanism just described is that it only supports defining types and operators that do not require adding new contexts to the EL typing judgement. No new binding structure can be defined. Fortunately, a number of interesting examples found in existing languages have this character, including labeled tuple types, record types, labeled sum types, object types (of various designs), regular string types and range-restricted numeric types. We plan to detail these in the thesis. On the other hand, constructs like ML-style exceptions, OCaml-style open datatypes or Java-style class-based object systems would not be possible because they require statically tracking which constructors/classes are in scope. We plan to discuss adding support for new user-defined static contexts as an avenue for future work in the dissertation.
+The main limitation of the mechanism just described is that it only supports defining types and operators that do not require adding new contexts to the EL typing judgement. No new binding structure can be defined. Fortunately, a number of interesting examples found in existing languages have this character, including labeled tuple types, record types, labeled sum types, object types (of various designs), regular string types and range-restricted numeric types. We plan to detail these in the thesis. On the other hand, constructs like ML-style exception values, OCaml-style open datatypes or Java-style class-based object systems would not be possible because they require statically tracking which constructors/classes are in scope. We plan to discuss adding support for new user-defined static contexts as an avenue for future work in the dissertation.
 
 Establishing the metatheory of metamodules is also somewhat tricky, again because it involves reasoning about expressions that are not clearly subexpressions of those in the conclusion of the relevant rules. We plan to give an induction principle by which we can prove the necessary metatheorems in the dissertation.
 
@@ -1198,7 +1199,7 @@ We propose the following concrete milestones, to be completed after the work in 
 \item Add support for external type abstraction \textbf{(1 week)}
 \end{enumerate}
 
-To further validate our work, we plan to detail a number of the examples mentioned above, including regular strings, case types, and a simple prototypic object system. We anticipate that the writing involved to do this, along with other writing tasks, will take another \textbf{2 weeks}. So the total for this section is 9 weeks.
+To further validate our work, we plan to detail a number of the examples mentioned above, including regular strings, datatypes, and a simple prototypic object system. We anticipate that the writing involved to do this, along with other writing tasks, will take another \textbf{2 weeks}. So the total for this section is 9 weeks.
 % The semantics uses internal type abstraction to guarantee that metamodule providers can reason modularly about translation invariants, just as it uses external type abstraction to guarantee that module providers can reason modularly about representation invariants.%For example, a metamodule that expresses the type structure of records wouldLblTyList introduce a type constructor  \texttt{record} parameterized by a static mapping from labels to types, and two operators: the introductory operator \texttt{intro}, parameterized by a list of row labels, and the row projection operator \texttt{prj}, parameterized by a row label. It might then choose to internally represent records by binary products, which the IL provides. Critically, the choice of internal representation is \emph{computed} based on each record type's parameter, and it is held abstract outside the metamodule using internal type abstraction, facilitating modular reasoning about translation invariants (just as external type abstraction facilitates modular reasoning about representation invariants in the module system). Metamodules like this can express many other constructs, including variants of records that support additional operations, labeled sums, object systems, constrained strings, typechecked operations on format strings like \texttt{printf} and typechecked foreign function interfaces. By using %This simplifies the Verse core language relative to the core languages of ML,  Scala and other comparable languages.
 
 \section{Conclusion}
