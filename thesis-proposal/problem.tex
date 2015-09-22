@@ -484,9 +484,9 @@ The problems above are not unique to regular expression patterns. Whenever a lib
 \subsubsection{Direct Syntax Extension}\label{sec:syntax-extension}
 One tempting alternative to dynamic string parsing is to use a system that gives the users of a language the power to directly extend its concrete syntax with new derived forms. %for regular expression patterns.% for patterns.
 
-The simplest such systems are those where the elaboration of each new syntactic form is defined by a single rewrite rule. For example, Gallina, the ``external language'' of the Coq proof assistant, supports such extensions \cite{Coq:manual}. A formal account of such a system has been developed by Griffin \cite{5134}. Unfortunately, these systems are not expressive enough to allow us to express pattern syntax in the conventional manner. For example, sequences of characters  can only be parsed as identifiers using these systems, rather than as characters in a regular expression pattern. 
+The simplest such systems are those where the elaboration of each new syntactic form is defined by a single rewrite rule. For example, Gallina, the ``external language'' of the Coq proof assistant, supports such extensions \cite{Coq:manual}. A formal account of such a system has been developed by Griffin \cite{5134}. Unfortunately, a single equation is not enough to allow us to express pattern syntax following the usual conventions. For example, there is no way to handle sequences of characters (they can only be treated as variables) or escape characters (there is no way to define disjunctive syntax) using a system like Coq's.
 
-Other syntax extension systems are more flexible. For example, many are based on context-free grammars, e.g.  Sugar* \cite{erdweg2013framework}, Camlp4 \cite{ocaml-manual} and several others. Others give library providers direct programmatic access to the parse stream, like Common Lisp's \emph{reader macros} \cite{steele1990common} (which are distinct from its term-rewriting macros, described below) and Racket's preprocessor \cite{Flatt:2012:CLR:2063176.2063195}. All of these would allow us to add pattern syntax into our core language's grammar, perhaps following Unix conventions like this:
+Other syntax extension systems are more flexible. For example, many are based on context-free grammars, e.g.  Sugar* \cite{erdweg2013framework}, Camlp4 \cite{ocaml-manual} and several others. Other systems give library providers direct programmatic access to the parse stream, like Common Lisp's \emph{reader macros} \cite{steele1990common} (which are distinct from its term-rewriting macros, described below) and Racket's preprocessor \cite{Flatt:2012:CLR:2063176.2063195}. All of these would allow us to add pattern syntax into our core language's grammar, perhaps following Unix conventions like this:
 \begin{lstlisting}[numbers=none]
 let val ssn = /\d\d\d-\d\d-\d\d\d\d/
 \end{lstlisting}
@@ -496,11 +496,11 @@ For example, we can write \lstinline{example} equivalently, but at lower syntact
 %The body of this function elaborates to the body of \lstinline{example_fixed} as shown above. 
 %Had we mistakenly written \lstinline{%name}, we would encounter only a static type error, rather than the  silent injection  vulnerability discussed above. 
 
-The problems of dynamic string parsing described above are solved by this approach. Unfortunately, it introduces serious new problems. First, the systems mentioned thus far cannot guarantee that \emph{syntactic conflicts} between such extensions will not arise. As stated directly in the  Coq manual: ``mixing different symbolic notations in [the] same text may cause serious parsing ambiguity''. If another library provider used similar syntax for a different implementation or variant of regular expressions, or for some other unrelated construct, then a client could not simultaneously use both libraries at the same time. So properly considered, every combination of extensions introduced using these mechanisms creates a \emph{de facto} syntactic dialect of our language. The benefit of these systems is only that they lower the implementation cost of constructing syntactic dialects. % Resolving such parsing amibiguities is left to each client of the library. 
+We sidestep the problems of dynamic string parsing described above  if we directly extend the syntax of our language using any of these approaches. Unfortunately, direct syntax extension introduces serious new problems. First, the systems mentioned thus far cannot guarantee that {syntactic conflicts} between such extensions will not arise. As stated directly in the  Coq manual: ``mixing different symbolic notations in [the] same text may cause serious parsing ambiguity''. If another library provider used similar syntax for a different implementation or variant of regular expressions, or for some other unrelated construct, then a client could not simultaneously use both libraries at the same time. So properly considered, every combination of extensions introduced using these mechanisms creates a \emph{de facto} syntactic dialect of our language. The benefit of these systems is only that they lower the implementation cost of constructing syntactic dialects. % Resolving such parsing amibiguities is left to each client of the library. 
 
-In response to this problem, Schwerdfeger and Van Wyk developed a modular analysis that accepts only grammar extensions that specify a universally unique starting token and obey subtle constraints on  the follow sets of base language non-terminals \cite{conf/pldi/SchwerdfegerW09}. Extensions that satisfy these criteria can be used together in any combination without the possibility of syntactic conflict. However, note that the most natural starting tokens like \lstinline{pattern} cannot be guaranteed to be universally unique, so we would be forced to use a more verbose token like \lstinline{edu_cmu_verse_rx_pattern}. There is no simple way for clients of our extension to define scoped abbreviations for starting tokens because this mechanism operates purely on syntactic forms.
+In response to this problem, Schwerdfeger and Van Wyk developed a modular analysis that accepts only grammar extensions that specify a unique starting token and obey subtle constraints on  the follow sets of base language non-terminals \cite{conf/pldi/SchwerdfegerW09}. Extensions that satisfy these criteria can be used together in any combination without the possibility of syntactic conflict. However, the most natural starting tokens like \lstinline{pattern} cannot be guaranteed to be unique. To address this problem, programmers must agree on a convention for defining ``globally unique identifiers'', e.g. the common URI convention used on the web and by the Java ecosystem. This forces us to use a more verbose token like \lstinline{edu_cmu_verse_rx_pattern}. There is no simple way for clients of our extension to define scoped abbreviations for starting tokens because this mechanism operates purely at the level of syntactic forms.
 
-Putting this aside, we must also consider the question of how newly introduced forms expand to forms in our base grammar. In our example, this is tricky because we have defined a modular encoding of patterns -- which particular module should the expansion use? Clearly, simply assuming that some module identified as \lstinline{P} matching \lstinline{PATTERN} is in scope is a brittle solution. In fact, we should expect that the system actively prevents such capture of specific variable names to ensure that variables (including module variables) can be freely renamed. Such a \emph{hygiene discipline} is well-understood only when performing term-to-term rewriting (discussed below) or in simple language-integrated rewrite systems like those found in Coq. For mechanisms that operate strictly at the level of context-free grammars or the parse stream, this issue has not been adequately addressed. The library provider must simply be careful not to make assumptions about variable names and instead require that the client explicitly identify it as an ``argument'' to the form:
+Putting this aside, we must also consider the question of how newly introduced forms expand to forms in our base grammar. In our example, this is tricky because we have defined a modular encoding of patterns -- which particular module should the expansion use? Clearly, simply assuming that some module identified as \lstinline{P} matching \lstinline{PATTERN} is in scope is a brittle solution. In fact, we should expect that the system actively prevents such capture of specific variable names to ensure that variables (including module variables) can be freely renamed. Such a \emph{hygiene discipline} is well-understood only when performing term-to-term rewriting (discussed below) or in simple language-integrated rewrite systems like those found in Coq. For mechanisms that operate strictly at the level of context-free grammars or the parse stream, this issue has not been adequately addressed. The library provider must simply be careful not to make assumptions about variable names and instead require that the client explicitly identify the module they intend to use as an ``argument'' in the new form:
 \begin{lstlisting}[numbers=none]
 let val ssn = edu_cmu_verse_rx_pattern P /\d\d\d-\d\d-\d\d\d\d/
 \end{lstlisting}
@@ -539,7 +539,7 @@ fun example_macro(name : string) =>
 
 The logic implementing this can be seen above. We assume that there is derived syntax available for the sort \lstinline{Exp} where the \lstinline{%} prefix indicates a spliced expression, i.e. \emph{quasiquotation} as in Lisp \cite{Bawd99a} and Scala \cite{shabalin2013quasiquotes}. 
 
-Having to creatively repurpose existing syntax in this way limits the impact a library provider can have on syntactic cost (particularly when it would be desirable to adopt conventions that are not consistent with the conventions adopted by the language). It also can create confusion for readers expecting parenthesized expressions to behave in a consistent manner. However,  this approach is still preferable to direct syntax extension because it avoids many of the problems discussed above: there cannot be syntactic conflicts (because the syntax is not extended at all), we can define macro abbreviations because macros are integrated into the language, there is a hygiene discipline that guarantees that the expansion will not capture variables inadvertently, and using a typed macro system, programmers need not examine the expansion to know what type a macro application must have. 
+Having to creatively repurpose existing syntax in this way limits the effect a library provider can have on syntactic cost (particularly when it would be desirable to adopt conventions that are not consistent with the conventions adopted by the language). It also can create confusion for readers expecting parenthesized expressions to behave in a consistent manner. However,  this approach is still preferable to direct syntax extension because it avoids many of the problems discussed above: there cannot be syntactic conflicts (because the syntax is not extended at all), we can define macro abbreviations because macros are integrated into the language, there is a hygiene discipline that guarantees that the expansion will not capture variables inadvertently, and by using a typed macro system, programmers need not examine the expansion to know what type a macro application must have. 
 
 % \begin{enumerate}
 % \item Given an unfamiliar piece of syntax, there is no simple method for determining what type it has, or to identify which extension determines its desugaring, hindering code comprehension.
@@ -572,13 +572,22 @@ P.Or(P.Str "SSTRAESTR", P.Or(P.Str "SSTRTESTR", P.Or(P.Str "SSTRGESTR", P.Str "S
 %The original expression, above, is statically rewritten to this expression.
 The definition of \lstinline{pattern} looks like this:
 \begin{lstlisting}[numbers=none]
-syntax pattern[Q : PATTERN] at Q.t {
-  static fn (ps :: ParseStream) :: Exp => (* pattern parser here *)
+syntax pattern(Q : PATTERN) at Q.t {
+  static fn (body :: Body) :: Exp => (* pattern parser here *)
 }
 \end{lstlisting}
-This TSM definition first identifies the TSM as \lstinline{pattern}, then specifies a module parameter, \lstinline{Q}, which must match the signature \lstinline{PATTERN} (again, we use \lstinline{Q} to emphasize that the library provider does not make any assumptions about identifiers in scope; the client must pass in a particular module, e.g. \lstinline{P} above). This parameter is used in the type annotation \lstinline{at Q.t}, which specifies that all expansions that arise from the application of this TSM to a module and a delimited form must necessarily be of type \lstinline{Q.t}, where \lstinline{Q} is that module. These expansions arise by the static action of the parse function defined next, within braces. It is written as a static function of sort \lstinline{ParseStream -> Exp}. Both of these are defined in the Verse \emph{prelude}, which is a set of definitions available ambiently. The sort \lstinline{ParseStream} will give the function access to the {body} of the delimited form (in blue above) and the sort \lstinline{Exp}, mentioned also in the discussion of macros above,  encodes the abstract syntax of external expressions (there are also encodings of other syntactic classes, e.g. types). Note that the expansion logic cannot itself depend on the parameters (only the expansion itself can refer to the parameters). %So the parse function parses the body of the delimited form to generate an encoding of the elaboration.
+This TSM definition first identifies the TSM as \lstinline{pattern}, then specifies a module parameter, \lstinline{Q}, which must match the signature \lstinline{PATTERN} (again, we use \lstinline{Q} to emphasize that the library provider does not make any assumptions about identifiers in scope; the client must pass in a particular module, e.g. \lstinline{P} above). The type annotation \lstinline{at Q.t} specifies that all expansions that arise from the application of this TSM to a module and a delimited form must necessarily be of type \lstinline{Q.t}, where \lstinline{Q} refers to that module. 
 
-To support splicing syntax as described in Sec. \ref{sec:syntax-extension}, the parse function must be able to extract external subexpressions directly from the parse stream. For example, consider the client code below:
+When a client applies the TSM to the necessary parameters and a delimited form, e.g. the parameter \lstinline{P} and the delimited form \lstinline{/SURLA|T|G|CEURL/} in the example above, the expansion is computed by calling the \emph{parse function} defined within braces. This parse function is a static function of sort \lstinline{Body -> Exp}. Both of these sorts are defined in the Verse \emph{prelude}, which is a set of definitions available ambiently. The sort \lstinline{Body} gives the static function access to the {body} of the delimited form (e.g. the characters in blue above) and the sort \lstinline{Exp}, mentioned also in the discussion of macros above,  encodes the abstract syntax of external expressions (there are also encodings of other syntactic classes, e.g. types, that can appear in expressions). The parse function must treat the TSM parameters parametrically, i.e. it does not have access to any values in the supplied module parameter. Only the expansion the parse function generates can refer to module parameters. 
+%For example, the following definition is ill-sorted:
+%\begin{lstlisting}[numbers=none]
+%syntax pattern_bad[Q : PATTERN] at Q.t {
+%  static fn (body :: Body) :: Exp => 
+%    if Q.flag then (* ... *) else (* ... *)
+%}
+%\end{lstlisting}%So the parse function parses the body of the delimited form to generate an encoding of the elaboration.
+
+To support splicing syntax as described in Sec. \ref{sec:syntax-extension}, the parse function must be able to extract external subexpressions directly from the supplied body. For example, consider the client code below:
 \begin{lstlisting}[numbers=none]
 (* TSMs can be partially applied and abbreviated *)
 let syntax pat = pattern P
@@ -586,27 +595,26 @@ let val ssn = pat /SURL\d\d\d-\d\d-\d\d\d\dEURL/
 fun example_tsm(name: string) => 
   pat /SURL@EURLnameSURL: %EURLssn/
 \end{lstlisting}
-The subexpressions \lstinline{name} and \lstinline{ssn} on the last line occur directly in the parse stream. When the parse function encounters these, it asks the \lstinline{ParseStream} to extract these as \emph{spliced expressions} for use in the expansion. For example, the expansion generated for the body of \lstinline{example_tsm} above would, if written concretely with spliced expressions marked, be:
+The subexpressions \lstinline{name} and \lstinline{ssn} on the last line appear directly in the body of the delimited form, so we call them \emph{spliced subexpressions}. When the parse function determines that a subsequence of the body should be treated as a spliced subexpression, it can mark it as such and insert it directly into the expansion. For example, the expansion generated for the body of \lstinline{example_tsm} above would, if written concretely with spliced expressions marked, be:
 \begin{lstlisting}[numbers=none]
 Q.Seq(Q.Str(<spliced>(name)), Q.Seq(Q.Str ": ", <spliced>(ssn)))
 \end{lstlisting}
-The hygiene mechanism then ensures that only these marked portions of the generated expansion can refer to the variables at the use site, preventing inadvertent variable capture by the expansion. For example, the following would not be a valid expansion, because it has free variables that are not inside spliced subexpressions:
-\begin{lstlisting}[numbers=none]
-Q.Seq(Q.Str(name), Q.Seq(Q.Str ": ", ssn))
-\end{lstlisting}
+The hygiene mechanism then ensures that only these marked portions of the generated expansion can refer to the variables at the use site, preventing inadvertent variable capture by the expansion. %For example, had the  would not be a valid expansion, because the  that are not inside spliced subexpressions:
+%\begin{lstlisting}[numbers=none]
+%Q.Seq(Q.Str(name), Q.Seq(Q.Str ": ", ssn))
+%\end{lstlisting}
 
 After checking that the expansion is valid, i.e. that it is hygienic and that the expansion is of the type specified by the TSM, the semantics removes the splicing markers just mentioned and substitutes  the actual module parameter \lstinline{P} for \lstinline{Q}, producing the final expansion, as expected:
 \begin{lstlisting}[numbers=none]
-P.Seq(P.Str(name), P.Seq(P.Str ": ", ssn)
-\end{lstlisting}
+P.Seq(P.Str(name), P.Seq(P.Str ": ", ssn))\end{lstlisting}
 %Put another way, the  elaboration logic must be valid in any context. 
 
 \paragraph{Formalization} To introduce the formal specification of TSMs, let us consider the rule in the EL's semantics for handling TSM application to a delimited form. To simplify matters, we will first consider only unparameterized TSMs (i.e. TSMs defined at a single type, e.g. the  datatype \lstinline{Pattern}, rather than a parameterized family of types): 
 \begin{mathpar}
 \inferrule[syn-aptsm]{
     \vdash \psi ~@~ \sigma_\text{ty}~\{\sigma_\text{parser}\}\\
-    \mathbf{parsestream}(b) = \sigma_\text{ps}\\
-    \sigma_\text{parser}(\sigma_\text{ps}) \Downarrow \sigma_\text{exp}\\
+    b \downarrow \sigma_\text{body}\\
+    \sigma_\text{parser}(\sigma_\text{body}) \Downarrow \sigma_\text{exp}\\
     \sigma_\text{exp} \uparrow e_\text{exp}\\\\
     \Gamma; \emptyset \vdash e_\text{exp} \Leftarrow \sigma_\text{ty} \leadsto \iota_\text{trans}
 }{
@@ -621,7 +629,7 @@ Note also that we omit various contexts relevant only to other Verse primitives.
 The premises can be understood as follows, in order:
 \begin{enumerate}
 \item The first premise can be pronounced ``TSM expression $\psi$ defines a valid TSM at type $\sigma_\text{ty}$ with parse function $\sigma_\text{parser}$''.  The ``outputs'' of this judgement are the type $\sigma_\text{ty}$ (of sort $\mathsf{Ty}$) and the static parse function, $\sigma_\text{parser}$ (of sort $\mathsf{ParseStream} \rightarrow \mathsf{Exp}$), defined by the TSM.% We must omit the rules governing this judgement here (a complete specification of this judgement represents the main piece of remaining work, see below). % Application of a parameterized TSM to its parameters is handled by this judgement (not shown).
-\item The second premise creates a parse stream, $\sigma_\text{ps}$, of sort $\mathsf{ParseStream}$, from the body of the delimited form.
+\item The second premise creates an encoding of the body of the delimited form, $\sigma_\text{body}$, of sort $\mathsf{Body}$.
 \item The third premise applies the parse function to the parse stream to generate a static representation of the expansion, $\sigma_\text{exp}$ (of sort $\mathsf{Exp}$).% Note that this is ``metaprogramming'' -- a static expression in the external semantics to generate an encoding of another external term.
 \item The fourth premise decodes $\sigma_\text{exp}$, producing the expansion itself, $e_\text{exp}$.
 \item The final premise \emph{validates} the expansion by analyzing it against the type $\sigma_\text{ty}$ specified by the TSM. The {current} typing context is ``saved'' for use when a spliced subexpression is encountered during this process by setting it as the new \emph{outer context}, as indicated.
@@ -686,7 +694,7 @@ From the client's perspective, it is essentially as if the language had built in
 \paragraph{Abstract Types}
 Let us examine how this mechanism works for abstract types in more detail. When sealing a module expression with a signature, the programmer can specify a previously defined TSMs for each abstract type that arises from the ascription. Each must be parameterized by a module satisfying the specified signature.
 
-For parameterized modules, the situation is similar. For example, consider a trivially parameterized module that creates modules satisfying \lstinline{PATTERN}:
+For parameterized modules, the situation is similar. For example, consider a trivially parameterized module that creates modules sealed against \lstinline{PATTERN}:
 \begin{lstlisting}[numbers=none]
 module F() => mod {
   type t = (* ... *)
@@ -709,7 +717,7 @@ module G(M : A) => mod {
 \end{lstlisting}
 Note that within the definition of \lstinline{G}, type \lstinline{u} does not have a TSL available to it.
 
-TSL lookup respects type equality, so any aliases to a type with a TSL will also have that TSL. We can see this in the following example, where the type \lstinline{u} has a different TSL associated with it inside and outside the definition of the module \lstinline{N}:
+TSL lookup respects type equality, so any synonyms of a type with a TSL will also have that TSL. We can see this in the following example, where the type \lstinline{u} has a different TSL associated with it inside and outside the definition of the module \lstinline{N}:
 \begin{lstlisting}[numbers=none,mathescape=|]
 module M : A = mod { type t = int; val x = 0 }
 module G1 = G(M) (* G1.t has TSL $G(M), per above *)
@@ -717,14 +725,14 @@ module N = mod {
   type u = G1.t (* u = G1.t in this scope, so u also has TSL $G(M) *)
   val y = /asdf/ (* we can use it to create a value of that type *) 
 } :> B (* did not specify a TSL for N.u at the point where it is sealed, 
-            so N.u has no TSL in this scope *)
+            so N.u has no TSL in the outer scope *)
 \end{lstlisting}
 
 \subsubsection{Limitations}\label{sec:tsms-limitations}
 %\todo{revise this section}The main limitation of this approach is that it 
 Though expansion validation ensures that an incorrect parser cannot threaten type safety,  proving type safety inductively is subtle because the expansion is not a subexpression of the expression it will replace. There is a ``simple'' solution to this problem: we impose the restriction that the expansion cannot itself use TSMs or TSLs. This would be somewhat awkward in practice, so we plan to briefly discuss other more flexible solutions as well.  
 
-To provide the strongest metatheoretic guarantees, we must have that the SL is a total functional language. If we instead defined the SL such that evaluating the parse function may not terminate, this would then cause typechecking to become undecidable.\footnote{This source of undecidability might not be particularly important in practice, for the same reason that non-termination is tolerated in most major languages.} Related concerns would arise if the static language supported external (e.g. I/O) effects -- one would generally not want the mere act of parsing and typechecking a program to have an effect on a file system. Mutation effects could be introduced, however, because the static language is kept distinct from the external language. No static values can be ``promoted'' into the external language. 
+To provide the strongest metatheoretic guarantees, we must have that the SL is a total functional language. Allowing non-termination in the SL would cause typechecking of the EL to become undecidable because macro expansion occurs during typechecking (typechecking the IL would remain decidable, however). Related concerns would arise if the static language supported external (e.g. I/O) effects -- one would generally not want the mere act of parsing and typechecking a program to have an arbitrary effect on, for example, the programmer's file system. Mutation effects could, however, be introduced, because the static language is distinct from the external language. No static values can be ``promoted'' into the external language. 
 
 Another limitation is that TSMs as we have described them only capture idioms that occur within a single parameterized family of types,  not idioms that might span many (or all) types, e.g. control flow idioms. In fact, this is intentional -- neither humans nor tools need to examine the expansion to determine what type it must necessarily have. We will, however, discuss other points in the design space in the dissertation.
 
@@ -1162,7 +1170,7 @@ Note that the static functions that define these opcons contain code that looks 
 %   \sigma_\text{trans} \parallel \emptyset~\emptyset \uparrow_{\hat{\Gamma}; \Phi; \es}^m \tau_\text{abstrans} \parallel \memD~\memG\\
 %   \mathsf{trans}(\sigma_\text{ty}) \parallel \memD \uparrow_{\Phi}^m 
 % }{
-% 	\hat{\Gamma} \vdash_\Phi \mathbf{opconap}(m; \text{op}; \sigma_\text{param}; \bar{e}) \Leftarrow \sigma_\text{ty} \leadsto [\delta][\gamma]\iota
+% 	\hat{\Gamma} \vdash_\Phi \mathbf{opconap}(m; \text{op}; \sigma_\text{param}; \dot{e}) \Leftarrow \sigma_\text{ty} \leadsto [\delta][\gamma]\iota
 % }
 % \end{mathpar}
 % omega anaop of pi_param { sigma_opdef }
