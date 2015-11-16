@@ -15,18 +15,18 @@
 %all major contemporary languages seem to leave room for improvement. 
 %General-purpose programming languages are a dime a. 
 %Among the chief goals in the design of a general-purpose programming languages must achieve \emph{stability}: they  very rarely needs to be extended or forked into dialects by the user community surrounding it. Instead, its users are able to modularly  express a wide variety of useful constructs in libraries, using the comparatively small set of primitives that the language builds in. 
-Functional programming languages come in many sizes. The smallest functional languages -- often referred to as ``{lambda calculi}'' -- allow researchers and language designers to study the mathematical properties of language primitives of interest in isolation. These ``small-scale'' languages inform the design of ``full-scale'' 
+Functional programming languages come in many sizes. The smallest such languages -- often called ``{lambda calculi}'' -- allow researchers and language designers to study the mathematical properties of language primitives of interest in isolation. These ``small-scale'' languages inform the design of ``full-scale'' 
 %\footnote{Throughout this work, words and phrases that should be read as having an intuitive or informal meaning, rather than a strict mathematical meaning, will be introduced with quotation marks.} 
- languages, which combine several such primitives and also define various derived syntactic forms (colloquially, ``syntactic sugar'') that decrease the syntactic cost of selected idioms. 
+ languages, which combine several such primitives and also define various derived syntactic forms (colloquially, ``syntactic sugar'') designed to decrease the syntactic cost of selected idioms. 
 For example, Standard ML (SML) \cite{mthm97-for-dart,harper1997programming}, OCaml \cite{ocaml-manual} and Haskell \cite{jones2003haskell}   build in 
 %record types, generalizing the nullary and binary product types that suffice in simpler calculi, because labeled components are cognitively useful to human programmers. Similarly, these languages all build in 
-derived forms that decrease the syntactic cost of working with lists. For example, in these languages, the form \lstinline{[1, 2, 3, 4, 5]} desugars to: 
+derived forms that decrease the syntactic cost of working with lists. In these languages, the form \lstinline{[1, 2, 3, 4, 5]} desugars to: 
 \begin{lstlisting}[numbers=none]
 Cons(1, Cons(2, Cons(3, Cons(4, Cons(5, Nil)))))
 \end{lstlisting}
 
 The hope amongst many language designers is that a limited number of derived forms like these will suffice to produce a ``general-purpose'' programming language, i.e. one that satisfies programmers working in a wide variety of application domains. Unfortunately, a stable language design that fully achieves this ideal has yet to emerge, as evidenced by the diverse array of \emph{syntactic dialects} -- dialects that introduce only new derived forms -- that continue to proliferate around all major contemporary languages. For example, Ur/Web is a syntactic dialect of Ur (an ML-like full-scale language \cite{conf/pldi/Chlipala10}) that builds in derived forms for SQL queries, HTML elements and other datatypes used in the domain of web programming \cite{conf/popl/Chlipala15}. %Syntactic cost is often assessed qualitatively \cite{green1996usability}, though quantitative metrics can be defined. 
-We will consider another example -- regular expression patterns -- in Sec. \ref{sec:examples}. 
+We will consider another example -- a dialect with syntactic support for regular expression patterns -- in Sec. \ref{sec:examples}. 
 Tools like Camlp4 \cite{ocaml-manual}, Sugar* \cite{erdweg2011sugarj,erdweg2013framework} and Racket's preprocessor \cite{Flatt:2012:CLR:2063176.2063195}, which we will discuss in Sec. \ref{sec:syntax-existing-approaches}, have decreased the engineering costs of constructing syntactic dialects, further contributing to their proliferation. 
 
 \subsection{Dialects Considered Harmful}
@@ -34,7 +34,7 @@ Tools like Camlp4 \cite{ocaml-manual}, Sugar* \cite{erdweg2011sugarj,erdweg2013f
 % test 
 Some  view this proliferation of dialects as harmless or even as desirable, arguing that programmers can simply choose the right dialect for the job at hand \cite{journals/stp/Ward94}. However, this ``dialect-oriented'' approach is, in an important sense, anti-modular: programmers cannot always ``combine'' different dialects if they want to use the primitives that they feature together in a single program. For example, a programmer might have access to a syntactic dialect featuring HTML syntax and one featuring regular expression syntax, but it may not be straightforward to construct a dialect featuring both. 
 
-In some cases, coming up with a combined dialect is difficult because the dialects are specified using different formalisms. In other cases, a common formalism has been used, but it does not operationalize the notion of dialect combination (e.g. Racket's preprocessor \cite{Flatt:2012:CLR:2063176.2063195}). But even if we restrict our interest to dialects specified using a common formalism that does operationalize some notion of dialect combination, there may still be a problem: the formalism may not guarantee that the combined dialect will conserve important properties that can be established about the dialects in isolation. %In other words, any putative ``combined language'' must formally be considered a  distinct system for which one must derive essentially all metatheorems of interest anew, guided only informally by those derived for the dialects individually. %There is no well-defined mechanism for constructing such a ``combined language'' in general. 
+In some cases, coming up with such a combined dialect is difficult because the dialects are specified using different formalisms. In other cases, a common formalism has been used, but it does not operationalize the notion of dialect combination (e.g. Racket's preprocessor \cite{Flatt:2012:CLR:2063176.2063195}). But even if we restrict our interest to dialects specified using a common formalism that does operationalize some notion of dialect combination, there may still be a problem: the formalism may not guarantee that the combined dialect will conserve important properties that can be established about the dialects in isolation. %In other words, any putative ``combined language'' must formally be considered a  distinct system for which one must derive essentially all metatheorems of interest anew, guided only informally by those derived for the dialects individually. %There is no well-defined mechanism for constructing such a ``combined language'' in general. 
 For example, consider two syntactic dialects specified using Camlp4, one specifying derived syntax for finite mappings, the other specifying overlapping syntax for \emph{ordered} finite mappings. Though each dialect has an unambiguous (a.k.a. deterministic) grammar, when these grammars are na\"ively  combined,  ambiguities will arise. We are aware of only one formalism that guarantees that determinism is conserved when syntactic dialects are combined \cite{conf/pldi/SchwerdfegerW09}, but it has limited expressive power, as we will discuss in Sec. \ref{sec:direct-syntax-extension}.
 %It is thus infeasible to simply allow different contributors to a software system to choose their own favorite dialect for each component they are responsible for. 
 %It it clear that dialects are better rhetorical devices than practical engineering artifacts. 
@@ -83,7 +83,7 @@ The main challenge in the design of the primitives we introduce will come in ens
 \item a \emph{hygiene discipline} (a.k.a. a \emph{binding discipline}), meaning that the expansion logic does not make any assumptions about the names of variables in the context surrounding the expansion, nor does it introduce ``hidden bindings'' into subexpressions; and 
 \item \emph{modular reasoning principles}, meaning that library providers will have the ability to reason about the constructs that they have defined in isolation, and clients will be able to use them safely in any combination, without the possibility of conflict.\footnote{This is not quite true -- simple naming conflicts can arise. We will tacitly assume that they are being avoided extrinsically, e.g. by using a URI-based naming scheme as in the Java ecosystem.} 
 \end{itemize}
-%We will make these notions completely precise as we continue.
+We will make these notions completely precise as we continue.
 
 \subsection{Thesis Statement}
 In summary, we propose a thesis defending the following statement:
@@ -560,12 +560,12 @@ R.Or(R.Str "SSTRAESTR", R.Or(R.Str "SSTRTESTR", R.Or(R.Str "SSTRGESTR", R.Str "S
 The definition of \lstinline{rx} looks like this:
 \begin{lstlisting}[numbers=none]
 syntax rx[Q : RX] at Q.t {
-  static fn (body : Body) : Exp => (* regex expression parser here *)
+  static fn (body : Body) : Exp option => (* regex literal parser here *)
 }
 \end{lstlisting}
 This \emph{TSM definition} first identifies the TSM as \lstinline{rx}, then specifies a module parameter, \lstinline{Q}, which quantifies over modules that match the signature \lstinline{RX} (again, we use \lstinline{Q} to emphasize that the library provider does not make any assumptions about identifiers in scope; the client must pass in a particular module, e.g. \lstinline{R} above). The \emph{type annotation} \lstinline{at Q.t} specifies that all expansions that arise from the application of this TSM to a module, \lstinline{Q}, and a delimited form must necessarily be of type \lstinline{Q.t}. 
 
-When a client applies the TSM to the necessary parameters and a delimited form, e.g. the parameter \lstinline{P} and the delimited form \lstinline{/SURLA|T|G|CEURL/} in the example above, the expansion is computed by calling the \emph{parse function} defined within braces. The parse function is a static function of type \lstinline{Body -> Exp}. Both of these types are defined in the VerseML \emph{prelude}, which is a set of definitions available ambiently. The type \lstinline{Body} gives the static function access to the {body} of the delimited form (e.g. the characters in blue above) and the type \lstinline{Exp}, mentioned also in the discussion of macros above,  encodes the abstract syntax of expressions (there are also encodings of other syntactic classes, e.g. types and variables, that can appear in expressions). %The parse function must treat the TSM parameters parametrically, i.e. it does not have access to any values in the supplied module parameter. Only the expansion the parse function generates can refer to module parameters. 
+When a client applies the TSM to the necessary parameters and a delimited form, e.g. the parameter \lstinline{P} and the delimited form \lstinline{/SURLA|T|G|CEURL/} in the example above, the expansion is computed by calling the \emph{parse function} defined within braces. The parse function is a static function of type \lstinline{Body -> Exp option}. Both of these types are defined in the VerseML \emph{prelude}, which is a set of definitions available ambiently. The type \lstinline{Body} gives the static function access to the {body} of the delimited form (e.g. the characters in blue above) and the type \lstinline{Exp}, mentioned also in the discussion of macros above,  encodes the abstract syntax of expressions (there are also encodings of other syntactic classes, e.g. types and variables, that can appear in expressions). %The parse function must treat the TSM parameters parametrically, i.e. it does not have access to any values in the supplied module parameter. Only the expansion the parse function generates can refer to module parameters. 
 %For example, the following definition is ill-sorted:
 %\begin{lstlisting}[numbers=none]
 %syntax pattern_bad[Q : PATTERN] at Q.t {
@@ -599,30 +599,31 @@ R.Seq(R.Str(name), R.Seq(R.Str ": ", ssn))\end{lstlisting}
 
 \subsection{Formalization}\label{sec:tsm-formalism}
 \begin{figure}$\begin{array}{llllll}
-\textbf{variables} & \textbf{type variables} & \textbf{TSM variables} & \textbf{bodies}\\
-x & t & m & b\\~\end{array}$\\
+\textbf{variables} & \textbf{type variables} & \textbf{TSM identifiers} & \textbf{literal bodies}\\
+x & t & a & b\\~\end{array}$\\
 $\begin{array}{l}
 \textbf{types}\\
 \tau ::= t ~\vert~ \tau \rightharpoonup \tau ~\vert~ \forall t.\tau ~\vert~ \mu t.\tau ~\vert~ \mathsf{1}\\
 ~\\
+\textbf{expanded expressions}\\
+e ::= x ~\vert~ \lambda x{:}{\tau}.e ~\vert~ e(e) ~\vert~ \Lambda t.e ~\vert~ e\texttt{[}\tau\texttt{]} ~\vert~ \mathsf{fold}[t.\tau](e) ~\vert~ \mathsf{unfold}(e) ~\vert~ ()\\
+~\\
+\textbf{unexpanded expressions}\\
+\hat{e} ::= {x} ~\vert~ \lambda x{:}\tau.\hat{e} ~\vert~ \hat{e}(\hat{e}) ~\vert~ \Lambda t.\hat{e} ~\vert~ \hat{e}\texttt{[}\tau\texttt{]} ~\vert~ \mathsf{fold}[t.\tau](\hat{e}) ~\vert~ \mathsf{unfold}(\hat{e}) ~\vert~ () ~\vert~ \mathsf{syntax}~a~\mathsf{at}~\tau~\{\hat{e}\} ~\mathsf{in}~\hat{e} ~\vert~ a\,\texttt{/}b\texttt{/}
+\\~\\
 \textbf{marked types}\\
 \dot{\tau} ::= t ~\vert~ \dot{\tau} \rightharpoonup \dot{\tau} ~\vert~ \forall t.\dot{\tau} ~\vert~ \mu t.\dot{\tau} ~\vert~ \mathsf{1} ~\vert~ \mathsf{spliced}(\tau)\\
 ~\\
-\textbf{TSM expressions}\\
-\eta ::= m ~\vert~ \mathsf{syntax} \,@\, \tau\,\{\hat{e}\}
-\\~\\
-\textbf{unexpanded expressions}\\
-\hat{e} ::= {x} ~\vert~ \lambda x{:}\tau.\hat{e} ~\vert~ \hat{e}(\hat{e}) ~\vert~ \Lambda t.\hat{e} ~\vert~ \hat{e}\texttt{[}\tau\texttt{]} ~\vert~ \mathsf{fold}[t.\tau](\hat{e}) ~\vert~ \mathsf{unfold}(\hat{e}) ~\vert~ () ~\vert~ \mathsf{let~syntax}~m = \eta ~\mathsf{in}~\hat{e} ~\vert~ \eta\,\texttt{/}b\texttt{/}
-\\~\\
+%\textbf{TSM expressions}\\
+%\eta ::= m ~\vert~ \mathsf{syntax} \,@\, \tau\,\{\hat{e}\}
+%\\~\\
 \textbf{marked expressions}\\
 \dot{e} ::= x ~\vert~ \lambda x{:}{\dot{\tau}}.\dot{e} ~\vert~ \dot{e}(\dot{e}) ~\vert~ \Lambda t.\dot{e} ~|~ \dot{e}\texttt{[}\dot{\tau}\texttt{]} ~\vert~ \mathsf{fold}[t.\dot\tau](\dot{e}) ~\vert~ \mathsf{unfold}(\dot{e}) ~\vert~ () ~\vert~ \mathsf{spliced}(\hat{e})
 \\~\\
-\textbf{expanded expressions}\\
-e ::= x ~\vert~ \lambda x{:}{\tau}.e ~\vert~ e(e) ~\vert~ \Lambda t.e ~\vert~ e\texttt{[}\tau\texttt{]} ~\vert~ \mathsf{fold}[t.\tau](e) ~\vert~ \mathsf{unfold}(e) ~\vert~ ()\end{array}\\\vspace{8px}$
-~\\
-$\begin{array}{ll}
-\textbf{type formation contexts} & \textbf{typing contexts}\\
-\Delta ::= \emptyset ~\vert~ \Delta, t & \Gamma ::= \emptyset ~\vert~ \Gamma, x : \tau
+\end{array}\\\vspace{8px}$
+$\begin{array}{lll}
+\textbf{type formation contexts} & \textbf{typing contexts} & \textbf{TSM environments}\\
+\Delta ::= \emptyset ~\vert~ \Delta, t & \Gamma ::= \emptyset ~\vert~ \Gamma, x : \tau & \Sigma ::= \emptyset ~\vert~ \Sigma, a \hookrightarrow \mathsf{syntax}(\tau; e)
 %~\\
 %\textbf{typing contexts}\\
 %\Gamma ::= \emptyset ~\vert~ \Gamma, x : \tau
@@ -678,7 +679,7 @@ Programs ultimately evaluate as expanded expressions, but programmers write prog
 
 $\begin{array}{ll}
 \textbf{Judgement Form} & \textbf{Description}\\
-\Delta~\Gamma \vdash \hat{e} \leadsto e : \tau & \text{$\hat{e}$ expands to $e$ at type $\tau$ under $\Delta$ and $\Gamma$}
+\Delta~\Gamma \vdash_\Sigma  \hat{e} \leadsto e : \tau & \text{$\hat{e}$ expands to $e$ at type $\tau$ under $\Delta$, $\Gamma$ and macro environment $\Sigma$}
 \end{array}$
 
 Every form in the syntax of $e$ has a corresponding form in the syntax of $\hat{e}$ (cf. Figure \ref{fig:lambda-tsm-syntax}). For each rule in the static semantics of $e$, there is a corresponding typed expansion rule where the unexpanded and expanded forms correspond. For example, the rules for variables, functions and function application are shown below (the remaining such rules are analagous, but we omit them here for concision):
@@ -687,58 +688,48 @@ Every form in the syntax of $e$ has a corresponding form in the syntax of $\hat{
 
 \inferrule[T-U-abs]{
 	\Delta \vdash \tau~\mathtt{type}\\
-	\Delta~\Gamma, x:\tau \vdash \hat{e} \leadsto e : \tau'
+	\Delta~\Gamma, x:\tau \vdash_\Sigma \hat{e} \leadsto e : \tau'
 }{
-	\Delta~\Gamma \vdash \lambda x{:}\tau.\hat{e} \leadsto \lambda x{:}\tau.e : \tau \rightharpoonup \tau'
+	\Delta~\Gamma \vdash_\Sigma \lambda x{:}\tau.\hat{e} \leadsto \lambda x{:}\tau.e : \tau \rightharpoonup \tau'
 }
 
 \inferrule[T-U-ap]{
-	\Delta~\Gamma \vdash \hat{e}_1 \leadsto e_1 : \tau \rightharpoonup \tau' \\
-	\Delta~\Gamma \vdash \hat{e}_2 \leadsto e_2 : \tau
+	\Delta~\Gamma \vdash_\Sigma \hat{e}_1 \leadsto e_1 : \tau \rightharpoonup \tau' \\
+	\Delta~\Gamma \vdash_\Sigma \hat{e}_2 \leadsto e_2 : \tau
 }{
-	\Delta~\Gamma \vdash \hat{e}_1(\hat{e}_2) \leadsto e_1(e_2) : \tau'
+	\Delta~\Gamma \vdash_\Sigma \hat{e}_1(\hat{e}_2) \leadsto e_1(e_2) : \tau'
 }
 \end{mathpar}
-There are two forms in the syntax of $\hat{e}$ that have no corresponding form in the syntax of $e$. The first allows the programmer to bind a \emph{TSM variable}, $m$, to a \emph{TSM expression}, $\eta$. TSM expressions are either TSM variables or \emph{TSM definitions}. Substitution for TSM variables is performed statically, so we only need a rule for the case where the TSM variable is being bound to a TSM definition:
+There are two forms in the syntax of $\hat{e}$ that have no corresponding form in the syntax of $e$. The first allows the programmer to introduce a new TSM, identified as $a$, at type $\tau$, with \emph{unexpanded parse function} $\hat{e}_\text{parse}$, into the macro environment of another unexpanded expression, $\hat{e}$:
 \begin{mathpar}
 \inferrule[T-U-TSM-let]{
-	\Delta \vdash \mathsf{syntax}~@~\tau~\{\hat{e}_\text{parse}\}~\mathtt{tsm}\\
-	\Delta~\Gamma \vdash [\mathsf{syntax}~@~\tau~\{\hat{e}_\text{parse}\}/m]\hat{e} \leadsto e : \tau'
-}{
-	\Delta~\Gamma \vdash \mathsf{let}~\mathsf{syntax}~m=\mathsf{syntax}~@~\tau~\{\hat{e}_\text{parse}\}~\mathsf{in}~\hat{e} \leadsto e : \tau'
-}
-\end{mathpar}
-The first premise checks that the TSM definition is valid. It is defined by the following rule:
-\begin{mathpar}
-\inferrule[TSM-OK]{
 	\Delta \vdash \tau~\mathtt{type}\\
-	\emptyset~\emptyset \vdash \hat{e}_\text{parse} \leadsto e_\text{parse} : \mathsf{Body} \rightharpoonup \mathsf{ExpOption}
+	\emptyset~\emptyset \vdash_{\emptyset} \hat{e}_\text{parse} \leadsto e_\text{parse} : \mathsf{Body} \rightharpoonup \mathsf{ExpOption}\\
+	a \notin \text{dom}(\Sigma)\\
+	\Delta~\Gamma \vdash_{\Sigma, a \hookrightarrow \mathsf{syntax}(\tau; e_\text{parse})} \hat{e} \leadsto e : \tau'
 }{
-	\Delta \vdash \mathsf{syntax}~@~\tau~\{\hat{e}_\text{parse}\}~\mathtt{tsm}
+	\Delta~\Gamma \vdash_\Sigma \mathsf{syntax}~a~\mathsf{at}~\tau~\{\hat{e}_\text{parse}\}~\mathsf{in}~\hat{e} \leadsto e : \tau'
 }
 \end{mathpar}
-The first premise of (TSM-OK) checks that the type is valid. The second premise typechecks and expands the parse function, which must be closed. We discuss the abbreviated types $\mathsf{Body}$ and $\mathsf{Exp}$ below.
+The first premise of this rule checks that the type annotation is valid. The second premise types that unexpanded parse function and generates an expanded parse function, $e_\text{parse}$. We describe the types $\mathsf{Body}$ and $\mathsf{ExpOption}$ below. The third premise checks that another macro identified as $a$ is not already in scope. The final premise adds the definition of $a$ to the macro environment, $\Sigma$, and proceeds to type and expand $\hat{e}$.
 
-The second form in the syntax of $\hat{e}$ that has no corresponding form in the syntax of $e$ is the form for TSM application to a delimited body, $\eta\,\texttt{/}b\texttt{/}$. Again because substitution for TSM variables is performed statically, we only need a rule for the case where $\eta$ is a TSM definition:
+
+The second form in the syntax of $\hat{e}$ that has no corresponding form in the syntax of $e$ is the form for applying a TSM identified as $a$ to a delimited body: $a\,\texttt{/}b\texttt{/}$.
 \begin{mathpar}
 \inferrule[T-U-TSM-ap]{
-	\Delta \vdash \tau~\mathtt{type}\\
-	\emptyset~\emptyset \vdash \hat{e}_\text{parse} \leadsto e_\text{parse} : \mathsf{Body} \rightharpoonup \mathsf{ExpOption}\\\\
 	b \downarrow e_\text{body} : \mathsf{Body}\\
 	e_\text{parse}(e_\text{body}) \Downarrow \mathsf{Some}(e_\text{exp})\\
 	e_\text{exp} : \mathsf{Exp} \uparrow \dot{e}_\text{exp}\\\\
-	\Delta~\Gamma; \emptyset~\emptyset \vdash \dot{e}_\text{exp} \leadsto e : \tau
+	\emptyset~\emptyset \vdash^{\Delta; \Gamma; \Sigma, a \hookrightarrow \mathsf{syntax}(\tau; e_\text{parse})} \dot{e}_\text{exp} \leadsto e : \tau
 }{
-	\Delta~\Gamma \vdash \mathsf{syntax}~@~\tau~\{\hat{e}_\text{parse}\}~\texttt{/}b\texttt{/} \leadsto e : \tau
+	\Delta~\Gamma \vdash_{\Sigma, a \hookrightarrow \mathsf{syntax}(\tau; e_\text{parse})} a\,\texttt{/}b\texttt{/} \leadsto e : \tau
 }
 \end{mathpar}
 The premises can be understood as follows, in order:
 \begin{enumerate}
-\item The first premise checks that the type specified by the TSM is valid.
-\item The second premise typechecks and expands the parse function.
-\item The third premise encodes the body, $b$, as a term, $e_\text{body}$ of type $\mathsf{Body}$ (we will give more details on how bodies are encoded in the dissertation, but omit the definition of $\mathsf{Body}$ here for concision).
-\item The fourth premise applies the expanded parse function to the encoding of the body to produce an encoding of the expansion, $e_\text{exp}$, of  type $\mathsf{Exp}$. 
-\item The fifth premise decodes $e_\text{exp}$ to produce the \emph{marked expansion}, $\dot{e}_\text{exp}$. Every value of type $\mathsf{Exp}$ corresponds to a \emph{marked expressions}, $\dot{e}$. Per Figure \ref{fig:lambda-tsm-syntax}, marked expressions can contain variables, type variables and marked types, $\dot{\tau}$, so there is also a mapping from values of types abbreviated $\mathsf{Var}$, $\mathsf{TVar}$ and $\mathsf{Type}$ onto variables, type variables, and {marked types}, respectively. We also omit the full definitions of these types for concision (cf. the SML/NJ Visible Compiler library \cite{SML/VisibleCompiler} for an example of such an encoding of the abstract syntax of a language). These mappings are specified by the \emph{expansion decoding judgements}:
+\item The first premise encodes the body, $b$, as a term, $e_\text{body}$ of type $\mathsf{Body}$ (we will give more details on how bodies are encoded in the dissertation, but omit the definition of $\mathsf{Body}$ here for concision).
+\item The second premise applies the expanded parse function to the encoding of the body to produce an encoding of the expansion, $e_\text{exp}$, of  type $\mathsf{Exp}$. 
+\item The third premise decodes $e_\text{exp}$ to produce the \emph{marked expansion}, $\dot{e}_\text{exp}$. Every value of type $\mathsf{Exp}$ corresponds to a \emph{marked expressions}, $\dot{e}$. Per Figure \ref{fig:lambda-tsm-syntax}, marked expressions can contain variables, type variables and marked types, $\dot{\tau}$, so there is also a mapping from values of types abbreviated $\mathsf{Var}$, $\mathsf{TVar}$ and $\mathsf{Type}$ onto variables, type variables, and {marked types}, respectively. We also omit the full definitions of these types for concision (cf. the SML/NJ Visible Compiler library \cite{SML/VisibleCompiler} for an example of such an encoding of the abstract syntax of a language). These mappings are specified by the \emph{expansion decoding judgements}:
 
 $\begin{array}{ll}
 \textbf{Judgement Form} & \textbf{Description}\\
@@ -753,37 +744,44 @@ e : \mathsf{Exp} \uparrow \dot{e} & \text{$e$ decodes to marked expression $\dot
 
 $\begin{array}{ll}
 \textbf{Judgement Form} & \textbf{Description}\\
-\Delta_\text{out}; \Delta \vdash \dot{\tau} \leadsto \tau~\mathtt{type} & \text{Marked type $\dot{\tau}$ expands to $\tau$ under outer context $\Delta_\text{out}$}\\
-& \text{and current context $\Delta$.}\\
-\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \dot{e} \leadsto e : \tau & \text{Marked expression $\dot{e}$ expands to $e$ at type $\tau$ under outer}\\
-& \text{contexts $\Delta_\text{out}$ and $\Gamma_\text{out}$ and current contexts $\Delta$ and $\Gamma$.}
+\Delta \vdash^{\Delta_\text{S}} \dot{\tau} \leadsto \tau~\mathtt{type} & \text{Marked type $\dot{\tau}$ expands to $\tau$ under application site}\\
+& \text{context $\Delta_\text{S}$ and current context $\Delta$.}\\
+\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \dot{e} \leadsto e : \tau & \text{Marked expression $\dot{e}$ expands to $e$ at type $\tau$ under}\\
+& \text{application site contexts $\Delta_\text{S}$, $\Gamma_\text{S}$ and $\Sigma_\text{S}$ and current}\\
+& \text{contexts $\Delta$ and $\Gamma$.}
 \end{array}$
 
 Each form in the syntax of expanded expressions has a corresponding form in the syntax of marked expressions (cf. Figure \ref{fig:lambda-tsm-syntax}). For each rule in the static semantics of $e$, there is a corresponding expansion validation rule where the marked and expanded forms correspond. Only the current contexts are examined or extended by these rules. For example, the expansion validation rules for variables, functions and function application are shown below (the remaining such rules are analagous, but we omit them for concision):
 \begin{mathpar}
-\inferrule[T-M-var]{ }{\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma, x : \tau \vdash x \leadsto x : \tau}
+\inferrule[T-M-var]{ }{\Delta~\Gamma, x : \tau \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} x \leadsto x : \tau}
 
 \inferrule[T-M-abs]{
-	\Delta_\text{out}; \Delta \vdash \dot{\tau} \leadsto \tau ~\mathtt{type}\\
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma, x : \tau \vdash \dot{e} \leadsto e : \tau'
+	\Delta \vdash^{\Delta_\text{S}} \dot{\tau} \leadsto \tau ~\mathtt{type}\\
+	\Delta~\Gamma, x : \tau \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \dot{e} \leadsto e : \tau'
 }{
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \lambda x{:}\dot{\tau}.\dot{e} \leadsto \lambda x{:}\tau.e : \tau \rightharpoonup \tau'
+	\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \lambda x{:}\dot{\tau}.\dot{e} \leadsto \lambda x{:}\tau.e : \tau \rightharpoonup \tau'
 }
 
 \inferrule[T-M-app]{
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \dot{e}_1 \leadsto e_1 : \tau \rightharpoonup \tau'\\
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \dot{e}_2 \leadsto e_2 : \tau
+	\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \dot{e}_1 \leadsto e_1 : \tau \rightharpoonup \tau'\\
+	\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \dot{e}_2 \leadsto e_2 : \tau
 }{
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \dot{e}_1(\dot{e}_2) \leadsto e_1(e_2) : \tau'
+	\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \dot{e}_1(\dot{e}_2) \leadsto e_1(e_2) : \tau'
 }
 \end{mathpar}
 
-The purpose of the outer contexts is to ``remember'' the context that the macro application appeared in so that spliced subexpressions extracted from the body, which are marked with the form $\mathsf{spliced}(\hat{e})$, can be checked appropriately:
+The purpose of the application site contexts is to ``remember'' the context that the macro application appeared in so that spliced subexpressions extracted from the body, which are marked with the form $\mathsf{spliced}(\hat{e})$, can be checked appropriately:
 \begin{mathpar}
-\inferrule[T-M-spliced]{
-	\Delta_\text{out}~\Gamma_\text{out} \vdash \hat{e} \leadsto e : \tau
+\inferrule[T-F-spliced]{
+	\Delta_\text{S} \vdash \tau~\mathtt{type}
 }{
-	\Delta_\text{out}~\Gamma_\text{out}; \Delta~\Gamma \vdash \mathsf{spliced}(\hat{e}) \leadsto e : \tau
+	\Delta \vdash^{\Delta_\text{S}} \mathsf{spliced}(\tau) \leadsto \tau~\mathtt{type}
+}
+
+\inferrule[T-M-spliced]{
+	\Delta_\text{S}~\Gamma_\text{S} \vdash_{\Sigma_\text{S}} \hat{e} \leadsto e : \tau
+}{
+	\Delta~\Gamma \vdash^{\Delta_\text{S}; \Gamma_\text{S}; \Sigma_\text{S}} \mathsf{spliced}(\hat{e}) \leadsto e : \tau
 }
 \end{mathpar}
 
