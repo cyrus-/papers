@@ -48,7 +48,7 @@
   formfeed=\newpage,
   tabsize=4,
   commentstyle=\itshape\color{light-gray},
-  basicstyle=\ttfamily\scriptsize,
+  basicstyle=\ttfamily\footnotesize,
   morekeywords={lambda, self, assert, cls, @classmethod, with,as},
   deletendkeywords={tuple,id,buffer,map},
   numbers=left,
@@ -71,7 +71,7 @@
   morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
 }
 
-\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily\small,deletendkeywords={tuple,buffer,map}]{#1}}
+\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily,deletendkeywords={tuple,buffer,map}]{#1}}
 
 \usepackage{float}
 \floatstyle{ruled}
@@ -254,7 +254,7 @@ In this paper, we pursue an alternative \emph{library-oriented approach} to the 
 %two languages - the first, $\typy$, a full-scale language, and the second, $\lambda_\text{frag}$, a minimal calculus - that 
 %allows library providers to express  semantic structures that are, or would need to be, built primitively into languages organized in a ``monolithic'' manner, e.g. variations on functional datatypes or object systems. 
 This approach sidesteps the lateral compatibility problem -- when a library requires clients to manipulate, e.g., functional records, it need only designate the library that defines the record fragment as a dependency. 
-Of course, designing an expressive \emph{semantic fragment system} equipped with useful composition principles presents several  challenges.
+Of course, designing an expressive {semantic fragment system} equipped with useful composition principles presents several  challenges.
 
 % We pursue an alternative \emph{fragment-oriented approach}: programmers  express new semantic structures, e.g. functional sums and products or new object systems, as composable \emph{fragments}, which are distributed in libraries. 
 %In   an internally extensible language, programmers  can \emph{granularly} import the primitive constructs best suited to each component of their application or library. Providers can thus more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
@@ -274,11 +274,11 @@ At the level of the semantics, we must maintain essential metatheoretic properti
 
 We address the problems of syntax very simply: fragment providers cannot extend the concrete nor the abstract syntax of our language.  Instead, the semantics allows fragments to ``share'' syntactic forms by delegating control over each term to a contextually relevant fragment definition. For example, our semantics delegates control over terms of curly-brace delimited form like those discussed above to the fragment that defines the type that the term is being checked against. As such, the record fragment is delegated control only if the term is being checked against a record type. The delegation protocol is deterministic and its choice is stable under fragment composition, so semantic ambiguities cannot arise.
 
-The delegated fragment is tasked first with typechecking the term. If typechecking fails, the fragment generates the error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language like one might find in the first stage of a compiler (here shifted into the semantics of the language.) For example, the record fragment might translate records to simple products internally.
+The delegated fragment is tasked first with typechecking the term. If typechecking fails, the fragment generates the error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language like one might find in the first stage of a compiler (here shifted into the semantics of the language.) For example, the record fragment might translate records to simple products.
 
 The general fragment delegation protocol just outlined is the main conceptual contribution of this paper. To make matters concrete, each language incorporating this protocol must choose a particular syntax and IL. We will describe two such languages. 
 
-In Sec. \ref{sec:typy-by-example}, we describe  \texttt{typy}, which repurposes  Python's syntax and uses Python itself as the IL. There are two main reasons for this choice: 1) Python supports both syntactic reflection and dynamic code generation, so we can bootstrap this mechanism itself as a Python library; and 2) Python's syntax, cleverly repurposed, is rich enough to express a wide variety of interesting constructs cleanly. We detail simple examples in Sec. \ref{sec:typy-by-example} and then describe several other more sophisticated examples in Sec. \ref{sec:more-examples}, including...\todo{list examples (?)}%Programmers do not need to adopt new tools to use \texttt{typy}.
+In Sec. \ref{sec:typy-by-example}, we describe  \texttt{typy}, which repurposes  Python's syntax and uses Python itself as the IL \cite{sanner1999python,python}. There are two main reasons for this choice: 1) Python supports both syntactic reflection and dynamic code generation, so we can bootstrap this mechanism itself as a Python library; and 2) Python's syntax, cleverly repurposed, is rich enough to express a wide variety of interesting constructs cleanly. We detail simple examples in Sec. \ref{sec:typy-by-example} and then describe several other more sophisticated examples in Sec. \ref{sec:more-examples}, including...\todo{list examples (?)}%Programmers do not need to adopt new tools to use \texttt{typy}.
 
 In Sec. \ref{sec:formal-semantics}, we formalize this protocol as a  bidirectionally typed translation semantics\todo{name}. This gives us a minimal system where we can rigorously establish the essential metatheory. Theoretically minded readers may wish to read this section before reading Sec. \ref{sec:typy-by-example} and Sec. \ref{sec:more-examples}.
 
@@ -298,10 +298,10 @@ We summarize related work in Sec. \ref{sec:related-work}  and conclude with a di
 \section{\texttt{typy}}\label{sec:typy-by-example}
 \begin{codelisting}[t]
 \begin{lstlisting}
-from typy.std import (component, record, string, 
-  string_in, dyn)
+from typy.std import (component, record, string,  ^\label{fig:record-example/line:import-start}^
+  string_in, dyn) ^\label{fig:record-example/line:import-end}^
 
-@component
+@component ^\label{fig:record-example/line:component-start}^
 def Listing1():
   Account [: type] = record[
     name        : string,
@@ -313,7 +313,7 @@ def Listing1():
     name:        "Harry Q. Bovik",
     account_num: "00-12345678",
     memo:        None
-  }
+  }^\label{fig:record-example/line:component-end}^
 \end{lstlisting}
 \caption{Types and values in $\typy $.}
 \label{fig:record-example}
@@ -321,21 +321,27 @@ def Listing1():
 
 Listing \ref{fig:record-example} shows an example of a well-typed \texttt{typy} program. %We will refer to it throughout this section.
 
-\paragraph{Dynamic Embedding} \texttt{typy} is dynamically embedded into Python, so Listing \ref{fig:record-example} is simply a Python script at the top level. $\typy$ supports versions 2.6+ and 3.0+ of Python, but in our examples, we will use certain syntactic conveniences available only under versions 3.0+. The appendix discusses the changes necessary to port the examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
+\paragraph{Dynamic Embedding} \texttt{typy} is dynamically embedded into Python, so Listing \ref{fig:record-example} is simply a standard Python script at the top level. $\typy$ supports versions 2.6+ and 3.0+ of Python, though in later examples, we will use syntactic conveniences available only under versions 3.0+. Appendix \ref{sec:python2-support} discusses the changes necessary to port these examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
 
 %Code inside , is evaluated during the dynamic phase, i.e. these functions can only be called after the active typechecking and translation process we will describe below is complete. %There are two ways to transition from the static phase to the dynamic phase, \emph{standalone compilation}, which we will discuss in Sec. \ref{external-compilation} and Sec. \
 % For example, the string on line \ref{account-start}, discussed further below, is \emph{dynamically valued}. %Of particular note, types are statically valued.%No features specific to its primary implementation, CPython, are needed (so \texttt{typy} should support alternative implementations like Jython and PyPy, though as of this writing this claim has not been tested). 
 
-\paragraph{Package Management} Using Python as \verb|typy|'s static language pays off immediately on the first line: \texttt{typy} uses Python's import mechanism directly, so Python's package management tools (e.g. \lip{pip}) and package repostories (e.g. \lip{PyPI}) are directly available for distributing \texttt{typy} libraries, including those defining type system fragments. In this case, all of the constructs we will use are part of the \verb|typy| standard library, \texttt{typy.std}, though \texttt{typy}'s semantics do not fundamentally privilege it. All existing Python libraries can be used from typed functions, as we will discuss later.% Here, \lip{typy.std} is the ``standard library'' but does not benefit from special support in \lip{typy} itself.% Nothing in \lip{typy.std} benefits from special support from \lip{typy}, the core language package. We will see \lip{typy} being used directly below. %\texttt{typy} can be installed with a single command: \emph{omitted for review}. %\texttt{typy} is agnostic about the particular design choices that we made in our examples.
+\paragraph{Package Management} Embedding $\typy$ into Python pays off immediately on the first line of Listing \ref{fig:record-example}: we can use Python's import mechanism directly, so Python's package management tools (e.g. \lip{pip}) and package repostories (e.g. \lip{PyPI}) are directly available for distributing \texttt{typy} libraries, including those defining semantic fragments. 
+
+All imports on Lines \ref{fig:record-example/line:import-start}-\ref{fig:record-example/line:import-end} are fragments that are defined in the \verb|typy| standard library, \texttt{typy.std}. The semantics of $\typy$ does not fundamentally privilege the standard library.% fragments are simply defined in the same library and distributed with the language for convenience.
+
+% All existing Python libraries are also available from w, as we will discuss later.% Here, \lip{typy.std} is the ``standard library'' but does not benefit from special support in \lip{typy} itself.% Nothing in \lip{typy.std} benefits from special support from \lip{typy}, the core language package. We will see \lip{typy} being used directly below. %\texttt{typy} can be installed with a single command: \emph{omitted for review}. %\texttt{typy} is agnostic about the particular design choices that we made in our examples.
 
 %The top-level statements in an \texttt{typy} file, like the \lip{print} statement on line 10, are executed to control the compile-time behavior, rather than the run-time behavior, of the program. %That is, Python serves as the \emph{compile-time metalanguage} (and, as we will see shortly, the \emph{type-level language}) of \texttt{typy}. %For readers familiar with C/C++, Python can be thought of as serving a role similar to (but more general than) its preprocessor and template system (as we will see).
 %\subsection{Active Typechecking} 
 
 % Python is dynamically typed, but functions governed by \verb|typy| (those decorated with \lip{@fn} in this example) will be statically typed (Section \ref{s:atc}) and then translated to dynamically typed Python code (Section \ref{s:atr}), both under the control of the type constructors of the types used within them. These steps can occur either during a standalone compilation phase (Section \ref{compilation}) or just-in-time upon their first invocation (Section \ref{interactive}). 
 
-\paragraph{Top-Level Components}
+\paragraph{Top-Level Values}
+On Lines \ref{fig:record-example/line:component-start}-\ref{fig:record-example/line:component-end}, we define a top-level $\typy$ value named \lip{Listing1} by decorating a Python function definition with a fragment, \lip{component}. Decorator syntax in Python is syntactic sugar for applying the decorator to the function value being decorated as a transformation. Here, the decorator is a $\typy$ fragment, not a Python function, but $\typy$ uses Python's operator overloading to allow fragments to function as decorators at the top level. The decorated Python function is discarded entirely after $\typy$ extracts its abstract syntax tree and \emph{static environment}, i.e. its closure and the globals dictionary of the surrounding Python module, using the reflection capabilities exposed by the \lip{inspect} and \lip{ast} packages in Python's standard library.\footnote{The reader may need to refer to the  documentation for the \lip{ast} package, available at \url{https://docs.python.org/3.6/library/ast.html}, to fully understand the examples in the remainder of this section.}
 
 \paragraph{Statements}
+Next, $\typy$ delegates control over the statements in the body of the definition to the fragment. In this example, there are two assignment statements.
 
 \paragraph{Types}
 
@@ -611,7 +617,7 @@ class record(typy.Type):
 
 A \emph{typed function} can be defined by decorating a Python function definition with a tycon, here \lip{fn}, as shown on lines \ref{log-transfer-start} and \ref{main-start} of Listing \ref{example}. 
 
-Decorator syntax in Python is syntactic sugar for applying a transformation to the function being decorated \cite{python}. Because the decorator value in this case is a tycon, which is a Python class, we must again use Python's  metaclasses and operator overloading, here of the call operator, to enable this usage. This is one reason why we must use subscript notation, rather than function application notation, for type construction (another being the usefulness of array slice syntax for record-like types, which is only available inside the subscript form). 
+Decorator syntax in Python is syntactic sugar for applying the decorator to the function being decorated \cite{python}. Because the decorator value in this case is a tycon, which is a Python class, we must again use Python's  metaclasses and operator overloading, here of the call operator, to enable this usage. This is one reason why we must use subscript notation, rather than function application notation, for type construction (another being the usefulness of array slice syntax for record-like types, which is only available inside the subscript form). 
 
 The result of this decorator transformation is  an instance of \lip{typy.Function}. The underlying Python function is discarded after \lip{typy} extracts its abstract syntax tree and \emph{static environment}, i.e. its closure and the globals dictionary of the Python module it was defined within, using Python's reflection capabilities and the \lip{inspect} and \lip{ast} packages in Python's standard library \cite{python}. The \lip{ast} package exposes Python's parser and abstract syntax tree. The reader is encouraged to refer to its documentation (available online at \url{https://docs.python.org/2/library/ast.html#abstract-grammar}) to fully understand the example code in the remainder of this section. 
 
@@ -3321,6 +3327,7 @@ We are actively developing the \verb|typy| library and its surrounding ecosystem
 %\caption{\texttt{[ooclxfp.c]} The C99 code generated by running \texttt{acec ooclxfp.py}.}
 %\label{ooclxfpc}
 %\end{codelisting}
-
-
+\clearpage
+\appendix
+\section{Support for Python 2.x}\label{sec:python2-support}
 \end{document}
