@@ -131,7 +131,7 @@
 \CopyrightYear{2015}
 \crdata{978-1-4503-3249-1/15/03}
 
-\title{Dynamically Composable Type System Fragments}
+\title{Programmable Semantic Fragments}
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
 %\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
 
@@ -165,12 +165,17 @@
 
 % Programmers can be convinced to adopt new libraries more easily than they can be convinced to adopt new languages. Unfortunately, new languages are seen as the only viable vehicle for constructs that introduce new static type structure. %Our aim in this paper is to introduce a mechanism that allows abstraction providers to extend the type system of a language from within, in a way that guarantees that any combination of extensions can be used together without worrying about conflicts. 
 % Our aim in this paper is to show that there is another way. 
-Programmers often develop new languages when they want to express new semantic structures. The problem with this \emph{language-oriented} approach is that sibling languages cannot always cleanly interact. This paper instead pursues a more compositional \emph{fragment-oriented} approach to the problem of expressing new semantic structures. 
-In particular, we define a semantics that delegates control over each term drawn from a fixed syntax to some contextually relevant user-defined \emph{fragment definition}. 
-% For example, \texttt{typy} delegates control over terms of literal form (e.g. dictionary literal form) to the fragment that defines the type that the term is being checked against. 
-The delegated fragment is tasked with typechecking the term and  with assigning dynamic meaning to the term by computing its translation to a fixed internal language. Syntactic conflicts cannot occur and the meaning of a program remains stable under fragment composition (unlike systems where the semantics is a ``bag of rules''.) 
 
-We formalize this mechanism with a bidirectionally typed translation semantics. We also introduce $\typy$, a practical implementation of this mechanism embedded into Python by syntactic reflection. We establish the expressive power of this mechanism by showing fragments that define 1) functional record types; 2) a variant of JavaScript's prototypic object system; 3) labeled sum types (with support for nested pattern matching \emph{a la} ML); and 4) foreign function interfaces with Python and OpenCL.% We formalize this mechanism as a small bidirectionally typed lambda calculus and prove that 
+% Language designers package interesting semantic structures together into monolithic programming languages. This imposes barriers to adoption. % This paper introduces 
+
+% This paper introduces a more compositional \emph{fragment-oriented} approach. 
+
+This paper introduces $\typy$, a bidirectionally typed language embedded into Python by syntactic reflection. Rather than defining a monolithic semantics, $\typy$  delegates semantic control over each term drawn from Python's fixed syntax to some implicitly relevant \emph{semantic fragment}. 
+% For example, \texttt{typy} delegates control over terms of literal form (e.g. dictionary literal form) to the fragment that defines the type that the term is being checked against. 
+This fragment programmatically 1)  typechecks the term, and then 2) gives dynamic meaning to the term by computing its translation to Python. 
+This design is theoretically well-behaved: it side\-steps the expression problem and the problem of  syntactic conflict, and programs are semantically stable under fragment composition (unlike systems where the semantics is a ``bag of rules.'') 
+To demonstrate the expressive power of this mechanism, we discuss user-defined fragments that define 1) functional record types; 2) a variation on JavaScript's prototypic object system; 3) labeled sum types (with support for nested pattern matching \emph{a la} ML); and 4)   foreign function interfaces to Python and OpenCL. 
+% We formalize this mechanism as a small bidirectionally typed lambda calculus and prove that 
 
 %Fragments are \emph{composable}: 
 
@@ -216,13 +221,13 @@ We formalize this mechanism with a bidirectionally typed translation semantics. 
 
 % Our aim in this paper is to help rescue these constructs. We develop a mechanism that allows constructs that today are found only as primitives of obscure languages to be expressed as composable libraries for a more widely adopted language, Python. 
 
-When choosing a programming language, developers prize library availability  \cite{Meyerovich:2013:EAP:2509136.2509515,chen05}. 
+When choosing a programming language, developers prize library availability  \cite{Meyerovich:2013:EAP:2509136.2509515,chen05}.  
 In response, new languages tend either to extend a language that has an established  ecosystem of libraries, like JavaScript or Java, or to come equipped with a safe and low-cost foreign function interface (FFI) to such a language. For example, TypeScript \cite{bierman2014understanding} and Flow \cite{Flow} extend JavaScript with different  object systems, and PureScript \cite{PureScript} is a functional language similar to Haskell that interfaces cleanly with JavaScript.
 %  %\emph{Language workbenches} \cite{erdweg2013state} have made it easy to develop sophisticated tooling around such dialects. %As a result, there are now a large number of dialects structured in this manner. 
 
-These designs address the problem of \emph{backwards compat\-ibility}, but as languages like these continue to proliferate (aided by language workbenches and other tools \cite{erdweg2013state}), language designers face the more difficult problem of \emph{lateral compatibility}, i.e. of interfacing with libraries  written in sibling languages. 
+These designs address the problem of \emph{backwards compat\-ibility}, but as languages like these continue to proliferate (with the help of language workbenches and other tools \cite{erdweg2013state}), developers face the more daunting problem of \emph{lateral compatibility}, i.e. of interfacing with libraries that are written in sibling languages. 
 %The problem is that as languages like these continue to proliferate (aided by increasingly convenient {language definition systems} \cite{erdweg2013state}), client programmers must contend not only with the problem of {backwards compatibility} but also with the more difficult problem of \emph{lateral compatibility}, i.e. of interfacing with libraries written in sibling languages. 
-Defining an FFI between every pair of languages is not a scalable solution, but absent a direct FFI, clients can only interface indirectly with these libraries through code generated by a compiler  that targets the more established language. This is  unnatural (the syntactic and semantic conveniences of the sibling language are not available), unsafe (the type system of the sibling language is not enforced) and anti-modular (if the compiler changes, client programs can break.) The \emph{language-oriented approach} \cite{journals/stp/Ward94} seems, then, to be difficult to reconcile with the practices of ``programming in the large'' \cite{DeRemer76}. %As more languages emerge (e.g. with the aid of powerful language definition systems), these problems become more acute.\footnote{``Little languages'' \cite{DBLP:journals/cacm/Bentley86c} can, of course, be useful to clients even if they lack interoperability mechanisms, but to support programming in the large, interoperability is crucial.}  %and unsafe (the FFI cannot enforce any non-trivial implementation invariants maintained by the compiler.)  This safety threat can in some cases be mitigated by instrumenting the compiled code with dynamic  contracts \cite{typescript-contracts}, but this is non-trivial for higher-order constructs and decreases performance, even when not crossing language boundaries.% This likely explains much of the resistance that developers have toward ideas housed in ``toy dialects''. %As more languages are used together, more FFIs need to be constructed and traversed.% This can defeat the productivity gains afforded by these dialects.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
+Defining an FFI between every pair of languages is not a scalable solution, but absent a direct FFI, clients can only interface indirectly with such libraries through the code generated by a compiler  that targets the established language. This is unnatural (syntactic and semantic conveniences of the sibling language are not available), unsafe (the type system of the sibling language is not enforced) and anti-modular (if the compiler changes, client programs can break.) The \emph{language-oriented approach} \cite{journals/stp/Ward94} seems, then, to be difficult to reconcile with the practices of ``programming in the large'' \cite{DeRemer76}. %As more languages emerge (e.g. with the aid of powerful language definition systems), these problems become more acute.\footnote{``Little languages'' \cite{DBLP:journals/cacm/Bentley86c} can, of course, be useful to clients even if they lack interoperability mechanisms, but to support programming in the large, interoperability is crucial.}  %and unsafe (the FFI cannot enforce any non-trivial implementation invariants maintained by the compiler.)  This safety threat can in some cases be mitigated by instrumenting the compiled code with dynamic  contracts \cite{typescript-contracts}, but this is non-trivial for higher-order constructs and decreases performance, even when not crossing language boundaries.% This likely explains much of the resistance that developers have toward ideas housed in ``toy dialects''. %As more languages are used together, more FFIs need to be constructed and traversed.% This can defeat the productivity gains afforded by these dialects.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
 
 
 
@@ -240,27 +245,36 @@ Defining an FFI between every pair of languages is not a scalable solution, but 
 %The problem of lateral compatibility is intractable because it has a \emph{many-to-many} character, unlike the problem of backwards compatibility, which has a \emph{many-to-one} character. 
 % It is little wonder, then, that the communities around established languages have settled on a single backwards-compatible successor -- the Java community has settled on Scala, the JavaScript community on TypeScript and so on.
 
-% In this paper, we seek to redeem the \emph{library-oriented approach}. 
+% Our work seeks to develop a \emph{fragment-oriented approach} to the problem of expressing new semantic structures. 
 % in favor of the \emph{language-oriented approach} \cite{journals/stp/Ward94} is, in many cases,  premature. 
-In this paper, we pursue a \emph{fragment-oriented approach} to the problem of semantic evolution. Rather than packaging, for example, functional sums and products or novel object systems into monolithic language definitions, we introduce a language mechanism that allows programmers to express semantic structures like these as composable \emph{fragments}, which are distributed in libraries. This sidesteps the lateral compatibility problem -- if a library requires clients to manipulate, e.g., functional records, it can simply designate the library that defines the record fragment as a dependency. 
+%In , we instead pursue a \emph{fragment-oriented approach} to the problem of expressing new semantic structures. 
+% Rather than packaging, for example, functional sums and products or new object systems into monolithic language definitions, 
+
+In this paper, we pursue an alternative \emph{library-oriented approach} to the problem of packaging semantic fragments. %: rather than packaging, for example, new  object systems or variations on functional products and sums into different ``monolithic'' languages, we seek to express them as composable \emph{semantic fragments} packaged into libraries for a single ``extensible'' language. %an ``extensible'' language that  
+%two languages - the first, $\typy$, a full-scale language, and the second, $\lambda_\text{frag}$, a minimal calculus - that 
+%allows library providers to express  semantic structures that are, or would need to be, built primitively into languages organized in a ``monolithic'' manner, e.g. variations on functional datatypes or object systems. 
+This approach sidesteps the lateral compatibility problem -- when a library requires clients to manipulate, e.g., functional records, it need only designate the library that defines the record fragment as a dependency. 
+Of course, designing an expressive \emph{semantic fragment system} equipped with useful composition principles presents several  challenges.
+
+% We pursue an alternative \emph{fragment-oriented approach}: programmers  express new semantic structures, e.g. functional sums and products or new object systems, as composable \emph{fragments}, which are distributed in libraries. 
 %In   an internally extensible language, programmers  can \emph{granularly} import the primitive constructs best suited to each component of their application or library. Providers can thus more easily develop, deploy and evaluate new abstractions in the context of existing codebases, narrowing one of the gaps between research and practice \cite{basili2008understanding}. 
 % %Indeed, abstractions could compete on their individual merit, rather than  by the serious adoption barriers mentioned above.
-Of course, designing a  mechanism capable of compositionally expressing what are usually understood as the semantic primitives of a language presents several  challenges.
+
 % The issue of the most fundamental importance is that the mechanism must not allow conflicts. Conflicts are a concern at every level. 
 
-First, language designers typically define new concrete forms for the primitive structures that they introduce, but if we allow fragment providers to define new concrete forms in a decentralized manner (following Sugar* \cite{erdweg2013framework} and related systems), then different fragments could define conflicting forms. For example, consider the following forms:
+First, language designers typically define  concrete forms specific to the primitive structures that they introduce, but if we allow fragment providers to define new concrete forms in a decentralized manner (following Sugar* \cite{erdweg2013framework} and similar systems), then different fragments could define conflicting forms. For example, consider the following family of forms:
 \begin{lstlisting}[numbers=none]
 { label_1: expr_1, ..., label_n: expr_n }
 \end{lstlisting}
 One fragment might take these as the introductory forms for functional records, while another fragment might take these as the introductory forms for JavaScript-style objects. These forms might also conflict with those for Python-style dictionaries (which use values, not labels, as keys.) Such syntactic conflicts inhibit composition.
 
-At the level of abstract syntax, we encounter the classic \emph{expression problem} \cite{wadler1998expression,Reynolds75}: if fragment providers can define new term constructors, then it becomes difficult to define functions that proceed by exhaustive case analysis over the  constructors, like pretty-printers.
+At the level of abstract syntax, we encounter the classic \emph{expression problem} \cite{wadler1998expression,Reynolds75}: if library providers can define new term constructors in a decentralized manner, then it becomes difficult to define functions that proceed by exhaustive case analysis over the  constructors, like pretty-printers.
 
 At the level of the semantics, we must maintain essential metatheoretic properties, like type safety. Moreover, clients should be able to  assume that importing a new fragment will not change the meaning of an existing program, nor allow a program to take on more than one meaning.\footnote{We assume throughout that simple naming conflicts are handled by some external coordination mechanism, e.g. a package repository.} This implies that we cannot simply operationalize the semantics as a ``bag of inference rules'' that fragment providers can contribute to unconstrained.\todo{Example?}
 
+We address the problems of syntax very simply: fragment providers cannot extend the concrete nor the abstract syntax of our language.  Instead, the semantics allows fragments to ``share'' syntactic forms by delegating control over each term to a contextually relevant fragment definition. For example, our semantics delegates control over terms of curly-brace delimited form like those discussed above to the fragment that defines the type that the term is being checked against. As such, the record fragment is delegated control only if the term is being checked against a record type. The delegation protocol is deterministic and its choice is stable under fragment composition, so semantic ambiguities cannot arise.
 
-We address the problems of syntax very simply: fragment providers cannot extend the concrete nor the abstract syntax of our language.  Instead, the semantics allows fragments to ``share'' syntactic forms by delegating control over each term to a contextually relevant fragment definition. This choice is deterministic and stable under fragment composition, so conflicts do not arise. 
-The delegated fragment is tasked first with typechecking the term. If typechecking fails, the fragment generates the error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language as one might find in the first stage of a compiler (here shifted into the semantics of the language.)
+The delegated fragment is tasked first with typechecking the term. If typechecking fails, the fragment generates the error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language like one might find in the first stage of a compiler (here shifted into the semantics of the language.) For example, the record fragment might translate records to simple products internally.
 
 The general fragment delegation protocol just outlined is the main conceptual contribution of this paper. To make matters concrete, each language incorporating this protocol must choose a particular syntax and IL. We will describe two such languages. 
 
@@ -282,9 +296,32 @@ We summarize related work in Sec. \ref{sec:related-work}  and conclude with a di
 % \end{itemize}
 
 \section{\texttt{typy}}\label{sec:typy-by-example}
-Listing \ref{example} shows an example of a well-typed \texttt{typy} program. We will refer to it throughout this section.
+\begin{codelisting}[t]
+\begin{lstlisting}
+from typy.std import (component, record, string, 
+  string_in, dyn)
 
-\paragraph{Phase Separation} The top level of a \texttt{typy} program is simply a Python script (versions 2.6+ and 3.0+ are supported). The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
+@component
+def Listing1():
+  Account [: type] = record[
+    name        : string,
+    account_num : string_in[r'\d{2}-\d{8}'],
+    memo        : dyn
+  ]
+
+  test_acct [: Account] = {
+    name:        "Harry Q. Bovik",
+    account_num: "00-12345678",
+    memo:        None
+  }
+\end{lstlisting}
+\caption{Types and values in $\typy $.}
+\label{fig:record-example}
+\end{codelisting}
+
+Listing \ref{fig:record-example} shows an example of a well-typed \texttt{typy} program. %We will refer to it throughout this section.
+
+\paragraph{Dynamic Embedding} \texttt{typy} is dynamically embedded into Python, so Listing \ref{fig:record-example} is simply a Python script at the top level. $\typy$ supports versions 2.6+ and 3.0+ of Python, but in our examples, we will use certain syntactic conveniences available only under versions 3.0+. The appendix discusses the changes necessary to port the examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
 
 %Code inside , is evaluated during the dynamic phase, i.e. these functions can only be called after the active typechecking and translation process we will describe below is complete. %There are two ways to transition from the static phase to the dynamic phase, \emph{standalone compilation}, which we will discuss in Sec. \ref{external-compilation} and Sec. \
 % For example, the string on line \ref{account-start}, discussed further below, is \emph{dynamically valued}. %Of particular note, types are statically valued.%No features specific to its primary implementation, CPython, are needed (so \texttt{typy} should support alternative implementations like Jython and PyPy, though as of this writing this claim has not been tested). 
@@ -296,8 +333,26 @@ Listing \ref{example} shows an example of a well-typed \texttt{typy} program. We
 
 % Python is dynamically typed, but functions governed by \verb|typy| (those decorated with \lip{@fn} in this example) will be statically typed (Section \ref{s:atc}) and then translated to dynamically typed Python code (Section \ref{s:atr}), both under the control of the type constructors of the types used within them. These steps can occur either during a standalone compilation phase (Section \ref{compilation}) or just-in-time upon their first invocation (Section \ref{interactive}). 
 
+\paragraph{Top-Level Components}
+
+\paragraph{Statements}
+
+\paragraph{Types}
+
+\paragraph{Introductory Expression Forms}
+
+\paragraph{Targeted Forms}
+
+\paragraph{Binary Forms}
+
+\paragraph{Pattern Forms}
 
 \section{More Examples}\label{sec:more-examples}
+The examples in the previous section are all found in existing languages. In this section, we give examples of novel semantic structures.
+
+\subsection{Prototypic Objects}
+
+\subsection{Foreign Function Interfaces}
 
 \section{Formal Semantics}\label{sec:formal-semantics}
 
@@ -330,27 +385,6 @@ Second, existing mechanisms are often themselves  tied to an obscure language di
 
 % Our aim is to develop a mechanism that addresses these concerns and implement this mechanism itself as a library, \texttt{typy}, for a widely adopted language, Python, using its existing metaprogramming constructs. %Programmers can construct types and, using these, define typed functions, from within a Python script. Typed functions, unlike regular Python functions, go through a process of static typechecking and translation. %This process can occur either ahead-of-time or just-in-time. 
 
-\begin{codelisting}[t]
-\begin{lstlisting}
-from typy.std import (component, record, string, 
-  string_in, dyn)
-
-@component
-def Listing1():
-  Account [: type] = record[
-    name        : string,
-    account_num : string_in[r'\d{2}-\d{8}'],
-    memo        : dyn
-  ]
-
-  test_acct [: Account] = {
-    name:        "Harry Q. Bovik",
-    account_num: "00-12345678",
-    memo:        None
-  }
-\end{lstlisting}
-\caption{Types and values in $\typy $.}
-\end{codelisting}
 
 \begin{codelisting}[t]
 \begin{lstlisting}
@@ -360,7 +394,7 @@ from listing1 import Listing1
 @component
 def Listing2():
   @fn
-  def hello(account : Account):
+  def hello(account : Listing1.Account):
     """Computes a string greeting."""
     "Hello, " + account.name
 
