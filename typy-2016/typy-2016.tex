@@ -15,6 +15,9 @@
 %\setlength{\topmargin}{0pt}
 %\setlength{\topsep}{0pt}
 %\setlength{\partopsep}{0pt}
+\usepackage[colorlinks=true,allcolors=Green,backref,pageanchor=true,plainpages=false, pdfpagelabels, bookmarks,bookmarksnumbered,
+pdfborder={0 0 0},  %removes outlines around hyper links in online display
+]{hyperref}
 
 \usepackage{subfigure}
 \usepackage{adjustbox}
@@ -71,17 +74,20 @@
   morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
 }
 
-\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily,deletendkeywords={tuple,buffer,map}]{#1}}
+\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily\footnotesize,deletendkeywords={tuple,buffer,map}]{#1}}
+\newcommand{\li}[1]{\lip{#1}}
 
 \usepackage{float}
 \floatstyle{ruled}
 \newfloat{codelisting}{tp}{lop}
 \floatname{codelisting}{Listing}
 \setlength{\floatsep}{5pt}
-\setlength{\textfloatsep}{6pt}
+\setlength{\textfloatsep}{10pt}
 %\setlength{\intextsep}{0pt}
 \setlength{\belowcaptionskip}{0pt}
-
+% \usepackage[bottom]{footmisc}
+% \setlength{\skip\footins}{3px}
+% \setlength{\footnotesep}{0px}
 \definecolor{very-light-gray}{gray}{0.9}
 
 
@@ -96,7 +102,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
 
-
+\usepackage{microtype}
 %\lefthyphenmin=8
 \sloppy
 %\makeatletter
@@ -138,8 +144,7 @@
 
 %\authorinfo{~}{~}{~}
 \authorinfo{Cyrus Omar \and Jonathan Aldrich}
-          {          Carnegie Mellon University\\
-          Pittsburgh, PA, USA}
+          {          Carnegie Mellon University}
           {\{comar, aldrich\}@cs.cmu.edu\vspace{-10px}}   
 
 \maketitle
@@ -169,12 +174,14 @@
 % Language designers package interesting semantic structures together into monolithic programming languages. This imposes barriers to adoption. % This paper introduces 
 
 % This paper introduces a more compositional \emph{fragment-oriented} approach. 
-
-This paper introduces $\typy$, a bidirectionally typed language embedded into Python by syntactic reflection. Rather than defining a monolithic semantics, $\typy$  delegates semantic control over each term drawn from Python's fixed syntax to some implicitly relevant \emph{semantic fragment}. 
+This paper introduces $\typy$, a bidirectionally typed language embedded reflectively into Python. Rather than defining a monolithic semantics, $\typy$  delegates semantic control over each term drawn from Python's fixed syntax to a contextually relevant \emph{semantic fragment}. 
 % For example, \texttt{typy} delegates control over terms of literal form (e.g. dictionary literal form) to the fragment that defines the type that the term is being checked against. 
-This fragment programmatically 1)  typechecks the term, and then 2) gives dynamic meaning to the term by computing its translation to Python. 
-This design is theoretically well-behaved: it side\-steps the expression problem and the problem of  syntactic conflict, and programs are semantically stable under fragment composition (unlike systems where the semantics is a ``bag of rules.'') 
-To demonstrate the expressive power of this mechanism, we discuss user-defined fragments that define 1) functional record types; 2) a variation on JavaScript's prototypic object system; 3) labeled sum types (with support for nested pattern matching \emph{a la} ML); and 4)   foreign function interfaces to Python and OpenCL. 
+This fragment programmatically 1)  typechecks the term, and 2) assigns dynamic meaning to the term by computing its translation to Python. 
+
+We argue that this design is \emph{expressive} with examples of fragments that express the semantics of 1) functional record types; 2) a variation on JavaScript's prototypic object system; 3) labeled sum types (with nested pattern matching \emph{a la} ML); and 4)   foreign function interfaces to Python and OpenCL. 
+
+We further argue that this design is \emph{compositionally well-behaved}. It side\-steps the problems of  grammar composition and the expression problem by allowing different fragments to deterministically share a fixed concrete and abstract syntax. Moreover, programs are semantically stable under fragment composition (unlike systems where the semantics is a ``bag of inference rules.'') 
+
 % We formalize this mechanism as a small bidirectionally typed lambda calculus and prove that 
 
 %Fragments are \emph{composable}: 
@@ -200,7 +207,7 @@ To demonstrate the expressive power of this mechanism, we discuss user-defined f
 %\category{F.3.1}{Logics \& Meanings of Programs}{Specifying and Verifying and Reasoning about Programs}[Specification Techniques]
 % \keywords
 % type systems; extensible languages; metaprogramming
-% \vspace{-5px}
+\vspace{-6px}
 \section{Introduction}\label{intro}
 % Established programming languages like JavaScript and Java often serve as compilation targets for languages with alternative type structure. For example, TypeScript \cite{typescript} and Flow \cite{flow} extend JavaScript with different object systems, and PureScript \cite{purescript} is a functional language in the tradition of ML and Haskell that can be compiled to JavaScript.
 
@@ -222,12 +229,12 @@ To demonstrate the expressive power of this mechanism, we discuss user-defined f
 % Our aim in this paper is to help rescue these constructs. We develop a mechanism that allows constructs that today are found only as primitives of obscure languages to be expressed as composable libraries for a more widely adopted language, Python. 
 
 When choosing a programming language, developers prize library availability  \cite{Meyerovich:2013:EAP:2509136.2509515,chen05}.  
-In response, new languages tend either to extend a language that has an established  ecosystem of libraries, like JavaScript or Java, or to come equipped with a safe and low-cost foreign function interface (FFI) to such a language. For example, TypeScript \cite{bierman2014understanding} and Flow \cite{Flow} extend JavaScript with different  object systems, and PureScript \cite{PureScript} is a functional language similar to Haskell that interfaces cleanly with JavaScript.
+In response, new languages tend either to extend a language that has an established  ecosystem of libraries like Java, JavaScript or Python, or to define a safe and low-cost foreign function interface (FFI) to such a language. For example, TypeScript \cite{bierman2014understanding} and Flow \cite{Flow} extend JavaScript with different  object systems, and PureScript \cite{PureScript} is a functional language similar to Haskell that interfaces cleanly with JavaScript.
 %  %\emph{Language workbenches} \cite{erdweg2013state} have made it easy to develop sophisticated tooling around such dialects. %As a result, there are now a large number of dialects structured in this manner. 
 
-These designs address the problem of \emph{backwards compat\-ibility}, but as languages like these continue to proliferate (with the help of language workbenches and other tools \cite{erdweg2013state}), developers face the more daunting problem of \emph{lateral compatibility}, i.e. of interfacing with libraries that are written in sibling languages. 
+These designs satisfyingly address the problem of \emph{backwards compat\-ibility}, but as new languages like these continue to proliferate (with the help of  language workbenches and other tools \cite{erdweg2013state}), developers face the more daunting problem of \emph{lateral compatibility}, i.e. of interfacing with libraries that are written in sibling languages. 
 %The problem is that as languages like these continue to proliferate (aided by increasingly convenient {language definition systems} \cite{erdweg2013state}), client programmers must contend not only with the problem of {backwards compatibility} but also with the more difficult problem of \emph{lateral compatibility}, i.e. of interfacing with libraries written in sibling languages. 
-Defining an FFI between every pair of languages is not a scalable solution, but absent a direct FFI, clients can only interface indirectly with such libraries through the code generated by a compiler  that targets the established language. This is unnatural (syntactic and semantic conveniences of the sibling language are not available), unsafe (the type system of the sibling language is not enforced) and anti-modular (if the compiler changes, client programs can break.) The \emph{language-oriented approach} \cite{journals/stp/Ward94} seems, then, to be difficult to reconcile with the practices of ``programming in the large'' \cite{DeRemer76}. %As more languages emerge (e.g. with the aid of powerful language definition systems), these problems become more acute.\footnote{``Little languages'' \cite{DBLP:journals/cacm/Bentley86c} can, of course, be useful to clients even if they lack interoperability mechanisms, but to support programming in the large, interoperability is crucial.}  %and unsafe (the FFI cannot enforce any non-trivial implementation invariants maintained by the compiler.)  This safety threat can in some cases be mitigated by instrumenting the compiled code with dynamic  contracts \cite{typescript-contracts}, but this is non-trivial for higher-order constructs and decreases performance, even when not crossing language boundaries.% This likely explains much of the resistance that developers have toward ideas housed in ``toy dialects''. %As more languages are used together, more FFIs need to be constructed and traversed.% This can defeat the productivity gains afforded by these dialects.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
+Defining an FFI between every pair of sibling languages is not a scalable solution, but absent a direct FFI, clients can  interface only indirectly with these libraries through the code generated by a compiler  that targets the established language. This is unnatural (the syntactic and semantic conveniences of the sibling language are unavailable), unsafe (the type system of the sibling language is not enforced) and anti-modular (if the compiler changes, client programs can break.) The \emph{language-oriented} approach \cite{journals/stp/Ward94} seems, then, to be difficult to reconcile with the best practices of ``programming in the large'' \cite{DeRemer76}. %As more languages emerge (e.g. with the aid of powerful language definition systems), these problems become more acute.\footnote{``Little languages'' \cite{DBLP:journals/cacm/Bentley86c} can, of course, be useful to clients even if they lack interoperability mechanisms, but to support programming in the large, interoperability is crucial.}  %and unsafe (the FFI cannot enforce any non-trivial implementation invariants maintained by the compiler.)  This safety threat can in some cases be mitigated by instrumenting the compiled code with dynamic  contracts \cite{typescript-contracts}, but this is non-trivial for higher-order constructs and decreases performance, even when not crossing language boundaries.% This likely explains much of the resistance that developers have toward ideas housed in ``toy dialects''. %As more languages are used together, more FFIs need to be constructed and traversed.% This can defeat the productivity gains afforded by these dialects.%To avoid this, it is necessary to combine the different languages and their associated tools, but this often requires significant effort and expertise (we will discuss this further in Sec. \ref{related-work}). 
 
 
 
@@ -250,10 +257,11 @@ Defining an FFI between every pair of languages is not a scalable solution, but 
 %In , we instead pursue a \emph{fragment-oriented approach} to the problem of expressing new semantic structures. 
 % Rather than packaging, for example, functional sums and products or new object systems into monolithic language definitions, 
 
-In this paper, we pursue an alternative \emph{library-oriented approach} to the problem of packaging semantic fragments. %: rather than packaging, for example, new  object systems or variations on functional products and sums into different ``monolithic'' languages, we seek to express them as composable \emph{semantic fragments} packaged into libraries for a single ``extensible'' language. %an ``extensible'' language that  
+%In this paper, we propose a more compositional \emph{fragment-oriented} approach to the problem of expressing new semantic structures. 
+This situation calls for a more compositional approach: rather than packaging, for example, new  object systems or variations on functional type structures into separate ``monolithic'' languages, we seek a single ``extensible'' language where library providers can express semantic structures like these as composable \emph{semantic fragments}. %an ``extensible'' language that  
 %two languages - the first, $\typy$, a full-scale language, and the second, $\lambda_\text{frag}$, a minimal calculus - that 
 %allows library providers to express  semantic structures that are, or would need to be, built primitively into languages organized in a ``monolithic'' manner, e.g. variations on functional datatypes or object systems. 
-This approach sidesteps the lateral compatibility problem -- when a library requires clients to manipulate, e.g., functional records, it need only designate the library that defines the record fragment as a dependency. 
+This \emph{fragment-oriented} approach sidesteps the lateral compatibility problem -- clients of a library that uses, for example, functional records, in its public interface, can simply import the record fragment themselves (i.e. the record fragment can be listed as a dependency, in the usual manner.) 
 Of course, designing an expressive {semantic fragment system} equipped with useful composition principles presents several  challenges.
 
 % We pursue an alternative \emph{fragment-oriented approach}: programmers  express new semantic structures, e.g. functional sums and products or new object systems, as composable \emph{fragments}, which are distributed in libraries. 
@@ -262,25 +270,25 @@ Of course, designing an expressive {semantic fragment system} equipped with usef
 
 % The issue of the most fundamental importance is that the mechanism must not allow conflicts. Conflicts are a concern at every level. 
 
-First, language designers typically define  concrete forms specific to the primitive structures that they introduce, but if we allow fragment providers to define new concrete forms in a decentralized manner (following Sugar* \cite{erdweg2013framework} and similar systems), then different fragments could define conflicting forms. For example, consider the following family of forms:
+First, language designers typically define  concrete forms specific to the primitive structures that they introduce, but if we allow fragments to define new concrete forms in a decentralized manner (following the approach of Sugar* \cite{erdweg2013framework} and similar systems), then different fragments could define conflicting forms. For example, consider the following family of forms:
 \begin{lstlisting}[numbers=none]
-{ label_1: expr_1, ..., label_n: expr_n }
+{ label^$_1$^: expr^$_1$^, ..., label^$_n$^: expr^$_n$^ }
 \end{lstlisting}
-One fragment might take these as the introductory forms for functional records, while another fragment might take these as the introductory forms for JavaScript-style objects. These forms might also conflict with those for Python-style dictionaries (which use values, not labels, as keys.) Such syntactic conflicts inhibit composition.
+One fragment might take these as the introductory forms for functional records, while another fragment might take these as the introductory forms for JavaScript-style objects. These forms might also conflict with those for Python-style dictionaries (which use values, rather than labels, as keys.) Such syntactic conflicts inhibit composition.
 
-At the level of abstract syntax, we encounter the classic \emph{expression problem} \cite{wadler1998expression,Reynolds75}: if library providers can define new term constructors in a decentralized manner, then it becomes difficult to define functions that proceed by exhaustive case analysis over the  constructors, like pretty-printers.
+At the level of abstract syntax, we encounter the classic \emph{expression problem} \cite{wadler1998expression,Reynolds75}: if library providers can define new term constructors in a decentralized manner, then it becomes difficult to define functions that proceed by exhaustive case analysis over term  constructors, like pretty-printers.
 
-At the level of the semantics, we must maintain essential metatheoretic properties, like type safety. Moreover, clients should be able to  assume that importing a new fragment will not change the meaning of an existing program, nor allow a program to take on more than one meaning.\footnote{We assume throughout that simple naming conflicts are handled by some external coordination mechanism, e.g. a package repository.} This implies that we cannot simply operationalize the semantics as a ``bag of inference rules'' that fragment providers can contribute to unconstrained.\todo{Example?}
+At the level of the semantics, we must maintain essential metatheoretic properties, like type safety. Moreover, clients should be able to  assume that importing a new fragment will not change the meaning of an existing program, nor allow a program to take on more than one meaning.\footnote{We assume throughout that simple naming conflicts are handled by some external coordination mechanism, e.g. a package repository.} This implies that we cannot simply operationalize the semantics as a ``bag of rules'' that fragments contribute to unconstrained.\todo{cite shen?}
 
-We address the problems of syntax very simply: fragment providers cannot extend the concrete nor the abstract syntax of our language.  Instead, the semantics allows fragments to ``share'' syntactic forms by delegating control over each term to a contextually relevant fragment definition. For example, our semantics delegates control over terms of curly-brace delimited form like those discussed above to the fragment that defines the type that the term is being checked against. As such, the record fragment is delegated control only if the term is being checked against a record type. The delegation protocol is deterministic and its choice is stable under fragment composition, so semantic ambiguities cannot arise.
+In this paper, we design a semantic fragment system that addresses the problems of concrete and abstract syntax very simply: fragment providers cannot extend the concrete nor the abstract syntax of the language.  Instead, the semantics allows fragments to ``share'' syntactic forms by delegating control over each term to a contextually relevant fragment definition. For example, our semantics delegates control over terms of curly-brace delimited form (discussed above) to the fragment that defines the type that the term is being checked against. As such, these forms can serve as introductory forms for records, objects and dictionaries alike. The delegation protocol is deterministic and the choice it makes is stable under fragment composition, so  conflicts cannot arise.
 
-The delegated fragment is tasked first with typechecking the term. If typechecking fails, the fragment generates the error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language like one might find in the first stage of a compiler (here shifted into the semantics of the language.) For example, the record fragment might translate records to simple products.
+What does it mean for a fragment to be ``delegated control'' over a term? In our system, the delegated fragment is tasked first with programmatically typechecking the term, following a \emph{bidirectional} protocol, i.e. one that supports local type inference by distinguishing situations where a type needs to be synthesized from situations where the type is known \cite{Pierce:2000:LTI:345099.345100}. (Scala is another notable language that has a bidirectional type system \cite{OdeZenZen01}.) If the fragment decides that the term is ill-typed, it generates an error message. If typechecking succeeds, the fragment is then tasked with assigning dynamic meaning to the term by computing a translation to a fixed \emph{internal language} (IL). The IL is analagous to an intermediate language like one might find in the first stage of a compiler (here shifted into the semantics of the language.) Defining the dynamics by translation (following the approach taken in the type theoretic definition of Standard ML \cite{Harper00atype-theoretic}) means that we need only establish type safety for the IL. 
 
-The general fragment delegation protocol just outlined is the main conceptual contribution of this paper. To make matters concrete, each language incorporating this protocol must choose a particular syntax and IL. We will describe two such languages. 
+The general fragment delegation protocol just outlined is the primary conceptual contribution of this paper. To make matters concrete, we must choose a particular syntax and IL. We choose to repurpose Python's syntax and use Python itself as the IL. 
+%In Sec. \ref{sec:typy-by-example}, we describe  \texttt{typy}, which repurposes  Python's syntax and uses Python itself as the IL \cite{sanner1999python,python}. 
+There are two main reasons for this choice: 1) Python supports both  dynamic reflection and code generation, so we can implement our system itself as a Python library, called $\typy$; and 2) Python's syntax, cleverly repurposed, is rich enough to express a wide variety of interesting constructs cleanly.\todo{Python known to be type safe -- POPL paper?} We introduce $\typy$ with simple examples in Sec. \ref{sec:typy-by-example} and then give several more sophisticated examples in Sec. \ref{sec:more-examples}.%Programmers do not need to adopt new tools to use \texttt{typy}.
 
-In Sec. \ref{sec:typy-by-example}, we describe  \texttt{typy}, which repurposes  Python's syntax and uses Python itself as the IL \cite{sanner1999python,python}. There are two main reasons for this choice: 1) Python supports both syntactic reflection and dynamic code generation, so we can bootstrap this mechanism itself as a Python library; and 2) Python's syntax, cleverly repurposed, is rich enough to express a wide variety of interesting constructs cleanly. We detail simple examples in Sec. \ref{sec:typy-by-example} and then describe several other more sophisticated examples in Sec. \ref{sec:more-examples}, including...\todo{list examples (?)}%Programmers do not need to adopt new tools to use \texttt{typy}.
-
-In Sec. \ref{sec:formal-semantics}, we formalize this protocol as a  bidirectionally typed translation semantics\todo{name}. This gives us a minimal system where we can rigorously establish the essential metatheory. Theoretically minded readers may wish to read this section before reading Sec. \ref{sec:typy-by-example} and Sec. \ref{sec:more-examples}.
+%In Sec. \ref{sec:formal-semantics}, we formalize this protocol as a  bidirectionally typed translation semantics\todo{name}. This gives us a minimal system where we can rigorously establish the essential metatheory. Theoretically minded readers may wish to read this section before reading Sec. \ref{sec:typy-by-example} and Sec. \ref{sec:more-examples}.
 
 We summarize related work in Sec. \ref{sec:related-work}  and conclude with a discussion of present limitations and future work in Sec. \ref{sec:discussion}.
 % Because the dynamics are given by translation, establishing type safety is straightforward: we simply check that the translation is well-typed. Moreover, this protocol is deterministic and stable under fragment composition, so importing a new fragment will not change the meaning of a program, nor allow a program to take on more than one meaning.
@@ -295,40 +303,47 @@ We summarize related work in Sec. \ref{sec:related-work}  and conclude with a di
 % \item 
 % \end{itemize}
 
+\newpage
+\vspace{-6px}
 \section{\texttt{typy}}\label{sec:typy-by-example}
 \begin{codelisting}[t]
+\vspace{-3px}
 \begin{lstlisting}
-from typy.std import (component, record, string,  ^\label{fig:record-example/line:import-start}^
-  string_in, dyn) ^\label{fig:record-example/line:import-end}^
+from typy import component
+from typy.std import record, string_in, dyn ^\label{fig:record-example/line:import-start}^ ^\label{fig:record-example/line:import-end}^
 
 @component ^\label{fig:record-example/line:component-start}^
 def Listing1():
-  Account [: type] = record[
-    name        : string,
+  Account [: type] = record[ ^\label{line:Account-start}^
+    name        : string_in[r'.+'],
     account_num : string_in[r'\d{2}-\d{8}'],
     memo        : dyn
-  ]
+  ] ^\label{line:Account-end}^
 
-  test_acct [: Account] = {
+  test_acct [: Account] = {  ^\label{line:test_acct-start}^
     name:        "Harry Q. Bovik",
     account_num: "00-12345678",
-    memo:        None
-  }^\label{fig:record-example/line:component-end}^
+    memo:        { }
+  }^\label{fig:record-example/line:component-end}\label{line:test_acct-end}^
 \end{lstlisting}
 \caption{Types and values in $\typy $.}
 \label{fig:record-example}
 \end{codelisting}
 
-Listing \ref{fig:record-example} shows an example of a well-typed \texttt{typy} program. %We will refer to it throughout this section.
+Listing \ref{fig:record-example} shows an example of a well-typed \texttt{typy} program that first imports several fragments, then defines a top-level {component}, \lip{Listing1}, that exports a record type, \lip{Account}, and a value of that type, \lip{test_acct}. 
+%Let us examine this program in more detail starting at the top level.
 
-\paragraph{Dynamic Embedding} \texttt{typy} is dynamically embedded into Python, so Listing \ref{fig:record-example} is simply a standard Python script at the top level. $\typy$ supports versions 2.6+ and 3.0+ of Python, though in later examples, we will use syntactic conveniences available only under versions 3.0+. Appendix \ref{sec:python2-support} discusses the changes necessary to port these examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
+\subsection{Dynamic Embedding} 
+\texttt{typy} is dynamically embedded into Python, meaning that Listing \ref{fig:record-example} is simply a standard Python script at the top level. $\typy$ supports Python 2.6+, though in later examples, we use syntactic conveniences not introduced until Python 3.0+. Appendix \ref{sec:python2-support} discusses the minor changes necessary to port these examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
 
 %Code inside , is evaluated during the dynamic phase, i.e. these functions can only be called after the active typechecking and translation process we will describe below is complete. %There are two ways to transition from the static phase to the dynamic phase, \emph{standalone compilation}, which we will discuss in Sec. \ref{external-compilation} and Sec. \
 % For example, the string on line \ref{account-start}, discussed further below, is \emph{dynamically valued}. %Of particular note, types are statically valued.%No features specific to its primary implementation, CPython, are needed (so \texttt{typy} should support alternative implementations like Jython and PyPy, though as of this writing this claim has not been tested). 
 
-\paragraph{Package Management} Embedding $\typy$ into Python pays off immediately on the first line of Listing \ref{fig:record-example}: we can use Python's import mechanism directly, so Python's package management tools (e.g. \lip{pip}) and package repostories (e.g. \lip{PyPI}) are directly available for distributing \texttt{typy} libraries, including those defining semantic fragments. 
+\paragraph{Package Management} On Line \ref{fig:record-example/line:import-start}, we use Python's \lip{import} mechanism to import three fragments from \texttt{typy.std}, the \verb|typy| standard library. This library receives no special treatment from $\typy$'s semantics -- it comes bundled with $\typy$ merely for convenience.
 
-All imports on Lines \ref{fig:record-example/line:import-start}-\ref{fig:record-example/line:import-end} are fragments that are defined in the \verb|typy| standard library, \texttt{typy.std}. The semantics of $\typy$ does not fundamentally privilege the standard library.% fragments are simply defined in the same library and distributed with the language for convenience.
+\paragraph{Fragments}  $\typy$ fragments are Python classes that extend \lip{typy.Fragment}. These classes are never instantiated -- instead, $\typy$ interacts with them exclusively through class methods (i.e. methods on the class object.)  Listing \ref{fig:type-validation} shows a portion of the \lip{record} fragment, discussed in Sec. \ref{sec:types}. 
+
+% Embedding $\typy$ into Python pays off immediately on the first two lines of Listing \ref{fig:record-example}: we use Python's standard import system to distribute $\typy$ itself, and users of $\typy$ can also use these systems to distribute libraries that define constructs governed by $\typy$, including semantic fragments. % fragments are simply defined in the same library and distributed with the language for convenience.
 
 % All existing Python libraries are also available from w, as we will discuss later.% Here, \lip{typy.std} is the ``standard library'' but does not benefit from special support in \lip{typy} itself.% Nothing in \lip{typy.std} benefits from special support from \lip{typy}, the core language package. We will see \lip{typy} being used directly below. %\texttt{typy} can be installed with a single command: \emph{omitted for review}. %\texttt{typy} is agnostic about the particular design choices that we made in our examples.
 
@@ -337,21 +352,290 @@ All imports on Lines \ref{fig:record-example/line:import-start}-\ref{fig:record-
 
 % Python is dynamically typed, but functions governed by \verb|typy| (those decorated with \lip{@fn} in this example) will be statically typed (Section \ref{s:atc}) and then translated to dynamically typed Python code (Section \ref{s:atr}), both under the control of the type constructors of the types used within them. These steps can occur either during a standalone compilation phase (Section \ref{compilation}) or just-in-time upon their first invocation (Section \ref{interactive}). 
 
-\paragraph{Top-Level Values}
-On Lines \ref{fig:record-example/line:component-start}-\ref{fig:record-example/line:component-end}, we define a top-level $\typy$ value named \lip{Listing1} by decorating a Python function definition with a fragment, \lip{component}. Decorator syntax in Python is syntactic sugar for applying the decorator to the function value being decorated as a transformation. Here, the decorator is a $\typy$ fragment, not a Python function, but $\typy$ uses Python's operator overloading to allow fragments to function as decorators at the top level. The decorated Python function is discarded entirely after $\typy$ extracts its abstract syntax tree and \emph{static environment}, i.e. its closure and the globals dictionary of the surrounding Python module, using the reflection capabilities exposed by the \lip{inspect} and \lip{ast} packages in Python's standard library.\footnote{The reader may need to refer to the  documentation for the \lip{ast} package, available at \url{https://docs.python.org/3.6/library/ast.html}, to fully understand the examples in the remainder of this section.}
 
-\paragraph{Statements}
-Next, $\typy$ delegates control over the statements in the body of the definition to the fragment. In this example, there are two assignment statements.
+\paragraph{Top-Level Components}
+On Lines \ref{fig:record-example/line:component-start}-\ref{fig:record-example/line:component-end} of Listing \ref{fig:record-example}, we define a top-level $\typy$ component by decorating a Python function value with \lip{component}, a decorator defined by $\typy$. 
+%Python assigns the value produced by calling the decorator with the decorated function value as an argument to the name specified by the function definition (here, \lip{Listing1}.)
+This decorator discards the decorated function value  after extracting its abstract syntax tree (AST) and \emph{static environment}, i.e. its closure and the globals dictionary, using the reflection mechanisms exposed by the \lip{ast} and \lip{inspect}  packages in Python's standard library.\footnote{The reader may need to refer to  documentation for the \lip{ast} package, available at \url{https://docs.python.org/3.6/library/ast.html}, to fully understand some examples in the remainder of this section.} It then processes the syntactic forms in the body of the function definition according to an alternative semantics. In particular, \lip{component} repurposes Python's assignment and array slicing forms to allow for the definition of type and value members. We will discuss the type member \lip{Account} in Sec. \ref{sec:types} and the value member \lip{test_acct} in Sec. \ref{sec:typechecking-and-translation} below. The return value of the decorator is an instance of \lip{typy.Component} that 1) tracks the identities of the type members; 2) tracks the types and translations of the value members; and 3) mediates interactions with the top-level Python script.\todo{sec...?} %(the details are straightforward and not pedagogically useful at the moment, so we elide them.)
 
-\paragraph{Types}
+%
 
-\paragraph{Introductory Expression Forms}
+% \paragraph{Statements}
+% $\typy$ then delegates control to the decorating fragment. In particular, this fragment is responsible for computing a $\typy$ type and a translation on the basis of the extracted AST and the static environment. The return value of the decorator (i.e. the top-level value of \lip{Listing1}) is the result of evaluating the generated translation under the static environment.
 
-\paragraph{Targeted Forms}
+% Here, \lip{component} defines the semantics of labeled collections of types and values. The details of this fragment are somewhat complex, so we will only outline its semantics as we proceed to consider simpler examples below. (Briefly: $\typy$ uses \emph{singleton kinds} to encode type synonyms \cite{StoneHarper00}. The \lip{component} fragment leverages the same machinery to support type members.)
 
-\paragraph{Binary Forms}
+\vspace{-4px}\subsection{Fragmentary Type Validation}\label{sec:types}\vspace{-3px}
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+import ast, typy
+class record(typy.Fragment):
+  @classmethod
+  def init_idx(cls, ctx, idx_ast):
+    if isinstance(idx_ast, ast.Slice):
+      # Python special cases single slices
+      # we don't want that
+      idx_ast = ast.ExtSlice(dims=[idx_ast])
+    if isinstance(idx_ast, ast.ExtSlice):
+      idx_value = dict()
+      for dim in idx_ast.dims:
+        if (isinstance(dim, ast.Slice) and 
+            dim.step is None and 
+            dim.upper is not None and 
+            isinstance(dim.lower, ast.Name)):
+          lbl = dim.lower.id
+          if lbl in idx_value:
+            raise typy.TypeFormationError(
+              "Duplicate label.", dim)
+          ty = ctx.as_type(dim.upper) ^\label{line:as_type}^
+          idx_value[lbl] = ty
+        else: raise typy.TypeFormationError(
+          "Invalid field spec.", dim)
+      return idx_value
+    else: raise typy.TypeFormationError(
+      "Invalid record spec.", idx_ast)
+\end{lstlisting}
+\caption{Type validation in $\typy$.}
+\label{fig:type-validation}
+\end{codelisting}
 
-\paragraph{Pattern Forms}
+The type member definition on Lines \ref{line:Account-start}-\ref{line:Account-end} of Listing \ref{fig:record-example} is of the following general form:
+\begin{lstlisting}[numbers=none]
+name [: kind] = ty_expr
+\end{lstlisting}
+where \lip{name} is a Python name, \lip{kind} is a $\typy$ \emph{kind} and \lip{ty_expr} is a $\typy$ \emph{type expression}. Kinds classify type expressions, so when $\typy$ encounters a definition like this, it checks that \lip{ty_expr} is of kind \lip{kind}. 
+
+$\typy$ adopts the system of \emph{dependent singleton kinds} developed for the ML module system \cite{DBLP:conf/lfmtp/Crary09,pfpl}, which elegantly handles the details of type synonynms, type members and parameterized types. The only major deviation from this established account of type expressions, which we will not repeat here, is that types in canonical form are  expressed as:
+\begin{lstlisting}[numbers=none]
+fragment[idx]
+\end{lstlisting}
+where \lip{fragment} is a fragment in the static environment and \lip{idx} is some Python slice form. In other words, every $\typy$ type in canonical form is associated with a fragment (there are no ``primitive'' types defined by $\typy$ itself.) For convenience, programmers can write \lip{fragment} by itself when the index is trivial, i.e. when it is of the form \lip{()}. 
+
+For example, the type expression on Lines \ref{line:Account-start}-\ref{line:Account-end} of Listing \ref{fig:record-example} is a \lip{record} type in canonical form. The index, which is in Python's \emph{extended slice form}, specifies fields named \lip{name}, \lip{account_num} and \lip{memo} and  corresponding field types as shown. We discuss the field types in Sec. \ref{sec:typechecking-and-translation} -- for now, it suffices to see that these are also canonical.
+
+To establish that a type in canonical form is valid, i.e. of kind \lip{type}, $\typy$ calls the fragment class method \lip{init_idx} with the \emph{context} and the AST of the index as arguments. This method must return a Python value called the type's \emph{index value} if the type is valid, or raise \lip{typy.TypeValidationError} with an error message and a reference to the location of the error within the index otherwise. The {context} 1) tracks contextual information, e.g. the kinds of type variables; and 2) provides methods that fragments use to interact with the kind system. In particular, the context provides a method \lip{as_type} that turns the given Python AST into a type expression, i.e. an instance of \lip{typy.TypeExpr}, and checks that it is of kind \lip{type}.
+
+For example, the \lip{record} fragment validates record types as shown in Listing \ref{fig:type-validation} by checking that the index consists of a  sequence of field specifications of the form \lip{name : ty}, where \lip{name} is a Python name, no names are duplicated and \lip{ty} is a valid type as determined by calling \lip{ctx.as_type} (Line \ref{line:as_type}.) The returned index value is a Python dictionary mapping the names to the corresponding instances of \lip{typy.TypeExpr}. 
+
+
+%This method raises a \lip{TypeFormationError} if any of the components are not of the form \lip{label : ty}, or if there are duplicate labels, or if any of the field types are themselves invalid in the context where they appear, as determined by calling the method \lip{as_type} of the provided $\typy$ \emph{context}, \lip{ctx}.  % The \emph{context}, \lip{ctx}, tracks  provided by $\typy$.
+
+\vspace{-4px}
+\subsection{Fragmentary Bidirectional Typing and Translation}\label{sec:typechecking-and-translation}
+% \vspace{-3px}
+The value member definition on Lines \ref{line:test_acct-start}-\ref{line:test_acct-end} of Listing \ref{fig:record-example} is of the following general form:
+\begin{lstlisting}[numbers=none]
+name [: ty_expr] = expr
+\end{lstlisting}
+where \lip{name} is a Python name, \lip{ty_expr} is a type expression and \lip{expr} is an expression. When $\typy$ encounters a definition like this, it 1) checks that \lip{ty_expr} is of kind \li{type}, as described in Sec. \ref{sec:types}; 2) \emph{analyzes} \lip{expr} against \lip{ty_expr}; and 3) generates a \emph{translation} for \lip{expr}, which is another Python AST.%If this succeeds, $\typy$ generates a \emph{translation} for \lip{expr}. The dynamic behavior of \lip{expr} is determined by its translation.
+
+The type annotation is not necessary:% type annotation is not necessary:
+\begin{lstlisting}[numbers=none]
+name = expr
+\end{lstlisting}
+In this case, $\typy$ attempts to \emph{synthesize} a type from \lip{expr} before generating a translation, rather than analyzing it against a known type. 
+
+Type systems that distinguish type analysis (where the type is known) from type synthesis (also known as \emph{local type inference}, where the type must be determined from the expression) are called \emph{bidirectional type systems} \cite{Pierce:2000:LTI:345099.345100}. Our system is based on the system developed by Dunfield and Krishnaswami \cite{conf/icfp/DunfieldK13}. Again, we will not repeat standard details here -- our interest will be only in how $\typy$ delegates control  to some contextually relevant fragment according to the $\typy$ \emph{delegation protocol}. This section describes how the delegation protocol works for different expression forms.
+ % -- there is not enough space to repeat the details of standard constructs.
+
+% Taken together, we say that $\typy$ has a \emph{bidirectionally typed translation semantics} where Python serves as the \emph{internal language}.
+
+\vspace{-3px}
+\subsubsection{Literal Forms}\label{sec:literals}
+\vspace{-3px}
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+# class record(typy.Fragment): 
+  # ... continued from Listing 2 ...
+  ^\label{ana_Dict}^@classmethod
+  def ana_Dict(cls, ctx, idx, e):
+    for lbl, value in zip(e.keys, e.values):
+      if isinstance(lbl, ast.Name):
+        if lbl.id in idx: 
+          ctx.ana(value, idx[lbl.id])
+        else: 
+          raise typy.TyError("<bad label>", f)
+      else: 
+        raise typy.TyError("<not a label>", f)
+    if len(idx) != len(e.keys): 
+      raise typy.TyError("<label missing>", e)
+
+  @classmethod
+  def trans_Dict(self, ctx, idx, e): 
+    if len(idx) == 1: 
+      return ctx.trans(e.values[0])
+    ast_dict = dict((k.id, v) 
+      for k, v in zip(e.keys, e.values))
+    return ast.Tuple(
+      (lbl, ctx.trans(ast_dict[lbl]))
+      for lbl in idx.iterkeys())
+\end{lstlisting}
+\caption{Introductory forms in $\typy$.}
+\label{fig:record-intro}
+\end{codelisting}
+$\typy$ delegates control over the typechecking and translation of expressions of literal form to the fragment defining the type that the expression is being analyzed against. 
+
+For example, the expression on Lines \ref{line:test_acct-start}-\ref{line:test_acct-end} of Listing \ref{fig:record-example} is of dictionary literal form. The type that this expression is being analyzed against is \li{Account}, which is synonymous with a \li{record} type. $\typy$ first calls the \li{record.ana_Dict} class method, shown in Figure \ref{fig:record-intro}. This method receives the context, the index value of the type and the AST of the literal expression as arguments and must return (trivially) if typechecking is successful or raise \li{typy.TyError} with an error message and a reference to the subterm where the error occurred otherwise. In this case, \li{record.ana_Dict} checks that each key expression is a Python name that appears in the type index, and then asks $\typy$ to analyze the value against the corresponding type by calling \li{ctx.ana}. Finally, it makes sure that all the components specified by the type index have appeared in the literal.
+
+The three values in Listing \ref{fig:record-example} that \li{record.ana_Dict} asks $\typy$ to analyze are also of literal form -- the values of \li{name} and \li{account_num} are string literals and the value of \li{memo} is another dictionary literal. As such, when \li{ctx.ana} is called, \li{typy} follows the same protocol just described, delegating to \li{string_in.ana_Str} to analyze the string literals and to \li{dyn.ana_Dict} to analyze the dictionary literal. The \li{string_in} fragment implements a regex-based constrained string system, which we described, along with its implementation in $\typy$, in a workshop paper \cite{sanitation-psp14}.\footnote{Certain details of $\typy$ have changed since that paper was published, but the essential idea remains the same.} The \li{dyn} fragment allows dynamic Python values to appear inside $\typy$ programs, so \li{\{ \}} is analyzed as an empty Python dictionary.\todo{py?}\todo{cite leroy and mauny dynamics in ML} We omit the details of these methods for concision.
+
+If typechecking is successful, $\typy$ must next generate a translation. Again, it does so by calling a class method on the fragment defining the type that the expression is being analyzed against. For example, the \li{record.trans_Dict} method shown in Figure \ref{fig:record-intro} translates records to Python tuples (the labels do not need to appear in the translation.) This method asks $\typy$ to determine the translations of the field values, following the same protocol,  by calling \li{ctx.trans}.
+
+\vspace{-3px}
+\subsubsection{Function Forms}
+\vspace{-3px}
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+from typy import component
+from typy.std import fn
+from listing1 import Listing1
+
+@component
+def Listing4():
+  @fn ^\label{line:hello-start}^
+  def hello(account : Listing1.Account):
+    """Computes a string greeting."""
+    name = account.name ^\label{line:assign}^
+    "Hello, " + name ^\label{line:hello-end}^
+
+  print(hello(Listing1.test_acct)) ^\label{line:print-hello}^
+\end{lstlisting}
+\caption{Functions, targeted forms and binary forms.}
+\label{fig:hello}
+\end{codelisting}
+
+
+Listing \ref{fig:hello} shows an example of another component, \li{Listing4}, that defines a $\typy$ function, \li{hello}, on Lines \ref{line:hello-start}-\ref{line:hello-end} and then applies it to print a greeting on Line \ref{line:print-hello}. This listing imports the component \li{Listing1} defined in Listing \ref{fig:record-example} (we assume that Listing \ref{fig:record-example} is in a file called \li{listing1.py}.)
+
+$\typy$ delegates control over the typechecking and translation of function definitions that appear inside components to the fragment that appears as the top-most decorator. 
+
+Here, the \li{fn} fragment appears as the top-most decorator, so $\typy$ begins by calling the \li{fn.syn_FunctionDef} class method, outlined in Listing \ref{fig:fn}. This method is passed the context and the AST of the function and must manipulate the context as desired and return the type that is to be synthesized for the function, or raise \li{typy.TyError} if this is not possible. We omit some of the details of this method for concision. 
+
+Observe on Lines \ref{line:check-1}-\ref{line:check-2} of Listing \ref{fig:fn} that \li{fn} calls \li{ctx.check} on each statement in the body of the function definition (other than the docstring, following Python's conventions.) This prompts $\typy$ to follow its delegation protocol for each statement, described in Sec. \ref{sec:statements}. 
+
+We chose to take the value of the final expression in the body of the function as its return value, following the usual convention in functional languages (an alternative function fragment could use Python-style \li{return} statements.) The synthesized function type is constructed programmatically on Lines \ref{line:rty-first}-\ref{rty-second} by pairing the argument types (elided) with the synthesized return type.
+
+If typechecking is successful, $\typy$ calls the class method \li{fn.trans_FunctionDef} to generate the translation of the function definition. This method, elided due to its simplicity, recursively asks $\typy$ to generate the translations of the statements in the body of the function definition by calling \li{ctx.trans} and inserts the necessary \li{return} keyword on the final statement.
+
+\subsubsection{Statement Forms}\label{sec:statements}
+\begin{codelisting}
+\vspace{-3px}
+\begin{lstlisting}
+class fn(typy.Fragment):
+  ^\label{syn_FunctionDef}^@classmethod
+  def syn_FunctionDef(cls, ctx, tree):
+    # (elided) process args + their types
+    # (elided) process docstring
+    # check each statement in remaining body
+    for stmt in tree.proper_body: ^\label{line:check-1}^
+      ctx.check(stmt) ^\label{line:check-2}^
+    # synthesize return type from last stmt
+    last_stmt = tree.proper_body[-1]
+    if isinstance(last_stmt, ast.Expr): 
+      rty = ctx.syn(last_stmt.value)
+    else: rty = unit
+    # generate fn type
+    return typy.CanonicalType( ^\label{line:rty-first}^
+      fn, (arg_types, rty)) ^\label{rty-second}^
+
+  @classmethod
+  def check_Assign(cls, ctx, stmt):
+    # (details of _process_assn elided)
+    pat, ann, e = _process_assn(stmt)
+    if ann is None: 
+      ty = ctx.syn(e)
+    else:
+      ty = ctx.as_type(ann) ^\label{line:check_Assign_1}^
+      ctx.ana(e, ty) ^\label{line:check_Assign_2}^
+    ctx.ana_pat(pat, ty)
+
+  ^\label{check_Expr}^@classmethod
+  def check_Expr(cls, ctx, stmt):
+    ctx.syn(stmt.value)
+    
+  # trans_FunctionDef, trans_Assign & trans_Expr
+  # are elided 
+\end{lstlisting}
+\caption{A portion of the \li{fn} fragment.}
+\label{fig:fn}
+% @classmethod
+% def syn_Call(cls, ctx, idx, e):
+%   # ... implements the semantics in 
+%   #     Dunfield and Krishnaswami, 2013 ...
+\end{codelisting}
+Statement forms, unlike expression forms, are not classified by types. Rather, $\typy$ simply checks them for validity when the governing fragment calls \li{ctx.check} by 
+
+For most statement forms, $\typy$ simply delegates control over validation back to the fragment delegated control over the function that the statement appears within. For example, when \li{fn.syn_FunctionDef} calls \li{ctx.check} on the assignment statement on Line \ref{line:assign} of Listing \ref{fig:hello}, $\typy$ delegates control back to the \li{fn} fragment by calling \li{fn.check_Assign}. Similarly, \li{fn.check_Expr} handles expression statements, i.e. statements that consist of a single expression, like the expression statement on Line \ref{line:hello-end} of Listing \ref{fig:hello}. Let us consider these in turn.
+
+\paragraph{Assignment}
+The definition of \li{fn.check_Assign} given in Listing \ref{fig:fn} begins by extracting a \emph{pattern} and an optional \emph{type annotation} from the left-hand side of the assignment, and an expression from the right-hand side of the assignment. 
+
+%For the assignment statement in Listing \ref{fig:hello}, the pattern is simply a variable, \li{name}, and there is no type annotation. The expression on the right-hand side is \li{account.name}, which is of \emph{attribute access} form.
+
+There is no type ascription in Listing \ref{fig:hello}, so \li{fn.check_Assign} asks $\typy$ to synthesize a type from the expression by calling \li{ctx.syn}. Here, this expression is of attribute access form -- we will describe how $\typy$ synthesizes a type for expressions of this form in Sec. \ref{sec:targeted-forms}.
+
+In case where an ascription is provided, \li{fn.check_Assign} instead  asks $\typy$ to kind check the ascription to produce a type, then it asks $\typy$ to analyze the expression against that type by calling \li{ctx.ana} (Lines \ref{line:check_Assign_1}-\ref{line:check_Assign_2}.)
+
+Finally, \li{fn.check_Assign} checks that the pattern matches values of the type that was synthesized or provided as an annotated by calling \li{ctx.ana_pat}. Patterns of variable form, like \li{name} in Listing \ref{fig:hello}, match values of any type. We will see more sophisticated examples of pattern matching in Sec. \ref{sec:pattern-matching}. A side effect of calling \li{ctx.ana_pat} is that the context is updated with the bindings that the pattern introduces.
+
+During translation, $\typy$ delegates to \li{fn.trans_Assign}. This method is again omitted because it is straightforward. The only subtlety has to do with shadowing -- \li{fn} follows the functional  convention where different bindings of the same name are entirely distinct, rather than treating them as imperative assignments to a common stack location. This requires generating fresh identifiers when shadowing occurs. As with the semantics of return values, a different function fragment could make a different decision in this regard.
+
+\paragraph{Expression Statements} The \li{fn.check_Expr} method, shown in Listing \ref{fig:fn}, handles expression statements, e.g. the statement on Line \ref{line:hello-end} of Listing \ref{fig:hello}, by simply asking $\typy$ to synthesize a type for the expression, which in Listing \ref{fig:hello} is of binary operator form. We will describe how $\typy$ synthesizes a type for expressions of this form in Sec. \ref{sec:binary-forms}. 
+
+\paragraph{Other Statement Forms}
+$\typy$ does not delegate to the fragment governing the enclosing function for statements of function and class definition form that have their own fragment decorator. Instead, $\typy$ delegates to the decorating fragment, just as at the top-level of a component definition
+
+$\typy$ also does not delegate to the decorating fragment for statements that 1) assign to an attribute, e.g. \li{e1.x = e2};  2) assign to a subscript, e.g. \li{e1[e2] = e3}; or 3) statements with guards, e.g. \li{if}, \li{for} and \li{while}.  These operate as \emph{targeted forms}, described next.
+
+\subsubsection{Targeted Forms}\label{sec:targeted-forms}
+\emph{Targeted forms} include 1) the statement forms just mentioned; 2) expression forms having exactly one sub-expression, like \lip{-e1} or \lip{e1.attr}; and 3) expression forms where there may be multiple sub-expressions but the left-most one is the only one required, like \lip{e1[slices]} or \lip{e1(args)}. When $\typy$ encounters terms of targeted form, it first synthesizes a type for the target subexpression \li{e1}. It then delegates control over typechecking and translation to the fragment defining the type of \li{e1}.
+
+For example, the expression on the right-hand side of the assignment statement on Line \ref{line:assign} of Listing \ref{fig:hello} is \li{account.name}, so $\typy$ first synthesizes a type for \li{account}. Due to the type annotation on \li{hello}, we have that \li{account} synthesizes type \li{Listing1.Account} (following the rule for variables, which are tracked by the context.) This type is synonymous with a \li{record} type, so $\typy$ first calls the \li{record.syn_Attribute} class method given in Figure \ref{fig:record-elim}. This method looks up the attribute, here \li{name}, in the type index and returns the corresponding field type, or raises a type error if the attribute is not found in the type index. Here, the synthesized type is \li{string_in[r".+"]}.
+
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+# class record(typy.Fragment): 
+  # ... continued from Listing 3 ...
+  @classmethod
+  def syn_Attribute(cls, ctx, idx, e):
+    if e.attr in idx:
+      return idx[e.attr]
+    else:
+      raise typy.TypeError("<bad label>", e)
+
+  @classmethod
+  def trans_Attribute(self, ctx, idx, e): 
+    position = position_of(e.attr, idx)
+    return ast.Subscript(
+      value=ctx.trans(e.value),
+      slice=ast.Index(ast.Num(n=position)))
+\end{lstlisting}
+\caption{Targeted forms in $\typy$.}
+\label{fig:record-elim}
+\end{codelisting}
+
+
+To generate a translation for a targeted form, $\typy$ follows an analagous delegation protocol. For example, $\typy$ calls \li{record.trans_Attribute}, shown in Listing \ref{fig:record-elim}, to generate a translation for \li{account.name}. Because record values translate to tuples, this class method translates field projection to tuple projection, using the position of the attribute within the index to determine where the desired field value is located.
+
+\vspace{-3px}\subsubsection{Binary Forms}\label{sec:binary-forms}
+\vspace{-3px}
+Python's grammar also defines a number of binary operator forms, e.g. \li{e1 + e2}. One approach for handling these forms would be to privilege the leftmost argument, \li{e1}, and treat these forms as targeted forms. This approach is unsatisfying because these binary operators are often commutative. For this reason, $\typy$ instead uses a more sophisticated protocol to determine which fragment is delegated control over binary forms. First, $\typy$ attempts to synthesize a type for both arguments.
+If neither argument synthesizes a type, a type error is raised. 
+
+If only one of the two arguments synthesizes a type, then the fragment defining that type is delegated control. For example, the binary operator on Line \ref{line:hello-end} of Listing \ref{fig:hello} consists of a string literal on the left (which does not synthesize a type, per Sec. \ref{sec:literals}) and a variable, \li{name}, of type \li{string_in[r".+"]} on the right, so \li{string_in} is delegated control over this form.
+
+If both arguments synthesize a type and both types are defined by the same fragment, then that fragment is delegated control. If each type is defined by a different fragment, then $\typy$ refers to a \emph{precedence tree} to determine which fragment is delegated control. The precedence tree is generated by examining attributes of each fragment named \li{precedence}. These must be a sets containing other fragments that the defining fragment claims precedence over (if omitted, the precedence set is assumed empty.) $\typy$ checks that there are no cycles in the graph induced by these precedence sets. If no precedence can be determined, then a type error is raised.% (i.e. that the precedence graph is a tree.)
+
+For example, if we would like to be able to add \li{int}s and \li{float}s and these are defined by separate fragments, then we can put the necessary logic in either fragment and then place the other fragment in its precendence set.
+
+% \subsubsection{Name Expression Forms}\label{sec:name-forms}
+% Finally, let us consider how expressions of name form work in $\typy$. For example, we use the names \li{account} and \li{name} in the definition of \li{hello} in Listing \ref{fig:hello}. Like most statement forms, $\typy$ delegates to the fragment decorating the function in the enclosing 
+
+\subsection{Delegated Pattern Matching}\label{sec:pattern-matching}
 
 \section{More Examples}\label{sec:more-examples}
 The examples in the previous section are all found in existing languages. In this section, we give examples of novel semantic structures.
@@ -360,11 +644,130 @@ The examples in the previous section are all found in existing languages. In thi
 
 \subsection{Foreign Function Interfaces}
 
-\section{Formal Semantics}\label{sec:formal-semantics}
+\section{Related Work}\label{related}\label{sec:related-work}
 
-\section{Related Work}\label{sec:related-work}
+%\parindent0pt
+%
+%\subsection{Active Libraries}
+
+%We have implemented the full OpenCL programming language as  primary example showed how to support low-level GPU programming from a high-level language. Other languages have supported similar workflows, e.g. Rust \cite{rustgpu}. These have not been fundamentally extensible and suffer from the ``bootstrapping'' problem described in Sec. \ref{intro}. 
+
+Early work proposing the inclusion of compile-time logic in libraries led to the phrase {\it active libraries} \cite{activelibraries}. We borrow the prefix ``active''. Our focus on type constructors and type system extension differs substantially from previous work, which focused on term rewriting for the purpose of optimization over a fixed semantics. Several contemporary projects have the same goals, e.g. LMS \cite{Rompf:2012:LMS}, which allows staged translation of well-typed Scala programs to other targets and supports composing optimizations. Macro systems can also be used to define optimizations and operations with interesting dynamic semantics. In both cases, the language's type system itself remains fixed. Our mechanism permits true type system extensions. New types are not merely aliases, nor must their rules be admissible in some base type system (e.g. \lip{string_in} would be difficult to define in Scala, particularly as directly as we can here). Note that in \texttt{typy}, macros can be seen as a mode of use of the term constructor \verb|Call|, as we can give the macro a singleton type (like Python modules, discussed above) that performs the desired rewriting in \verb|ana_Call| and \verb|syn_Call|.
+
+%Generic functions are a novel strategy for {\it function polymorphism} -- defining functions that operate over more than a single type. In \texttt{typy}, generic functions are implicitly polymorphic and can be called with arguments of {\it any type that supports the operations used by the function}. This is related to structural polymorphism \cite{malayeri2009structural}. Structural types make explicit the structure required of an argument, unlike generic functions, which are only given singleton types because the structure may depend on the semantics of an active type. 
+%Structural typing can be compared to the more \emph{ad hoc} approach taken by dynamically-typed languages like Python itself, sometimes called ``duck typing''. It is also comparable to the C++ template system, as discussed previously. 
+
+{\it Operator overloading} \cite{vanWijngaarden:Mailloux:Peck:Koster:Sintzoff:Lindsey:Meertens:Fisker:acta:1975} and {\it metaobject dispatch} \cite{Kiczales91} are run-time protocols that translate operator invocations into function calls. The function is typically selected according to the dynamic tag or value of one or more operands. These protocols share the notion of {\it inversion of control} with our strategy for targeted expressions. However, our strategy is a {\it compile-time} protocol. Note that we used Python's operator overloading and metaobject protocol for convenience in the static language. %Our dispatch protocol was designed to be conceptually similar to Python's operator overloading protocol \cite{python}.
+
+Language-external mechanisms for creating and composing dialects (e.g. extensible compilers like Xoc \cite{conf/asplos/CoxBCKK08} or language workbenches \cite{erdweg2013state}) have ambiguity problems, and so they might benefit from the type constructor oriented view that we propose here as well. We argue that if ambiguities cannot occur and safety is guaranteed, there is no reason to leave the mechanism outside the language. Though we do not support syntax extension (other than via creative reuse of string literals), we argue that this is actually a benefit: we can use a variety of existing tools and avoid many facets of the expression problem \cite{wadler1998expression} in this way.
+
+Typed Racket and other typed LISPs also add a type system to a fixed syntax atop a dynamically typed core \cite{TypedScheme2008}. However, these treat the semantics as a ``bag of rules'', so adding new rules can cause  ambiguities. Our work (particularly @$\lambda$, with its use of lists ubiquitously) provides a blueprint for a typed LISP oriented around type constructors, rather than rulesets. Type constructors are a natural organizational unit. For example, Harper's textbook, upon which we base our terminology and abstract syntax in this paper, identifies languages directly as a collection of type constructors \cite{pfpl}. 
+
+Bidirectional type systems are increasingly being used in practical settings, e.g. in Scala and C\#. They are useful in producing good error messages (which our mechanism shows can be customized) and help avoid the need for redundant type annotations while avoiding decidability limitations associated with whole-program type inference. Bidirectional techniques have also been used for adding refinement types to languages like ML and Twelf \cite{Lovas08abidirectional}. Refinement types can add stronger static checking over a fixed type system (analagous to formal verification), but cannot be used to add new operations directly to the language. Our use of a dynamic semantics for the static language relates to the notion of \emph{type-level computation}, being explored in a number of languages (e.g. Haskell) for reasons other than extensibility. %Combining the approaches may be a fruitful avenue for future work. 
+
+In recent work on the Wyvern programming language, we also used bidirectional typechecking to control aspects of literal syntax in a manner similar to, but somewhat more syntactically flexible than, how we treat introductory forms \cite{TSLs}. Wyvern is its own language dialect and does not have an extensible type system, supporting only desugarings like SugarJ \cite{erdweg2011sugarj}. The Wyvern formalism guarantees hygiene, using an approach that is also likely applicable in the setting of this paper.
+%\begin{figure*}[t]
+%\small
+%\vspace{-10pt}
+%{\onecolumn
+%\begin{longtable}{l l@{}l c@{}c c@{}c c@{}c c@{}c}
+%%\toprule%
+%
+%&&  &&  {\bfseries Itself} && {\bfseries Extensible} && {\bfseries Extensible} && {\bfseries Unambiguous}\\
+%
+%{\bfseries Approach} && {\bfseries Examples} && {\bfseries Library} && {\bfseries Syntax} && {\bfseries Type System} && {\bfseries Composition}  \\
+%
+%\cmidrule(l){1-1} \cmidrule(l){2-3} \cmidrule(l){4-5} \cmidrule(l){6-7} \cmidrule(l){8-9} \cmidrule(l){10-11} 
+%
+%\endhead
+%
+%
+%Active Types && && \CIRCLE && \Circle && \CIRCLE && \CIRCLE  \\
+%\myrowcolour%
+%Type-Specific Literals && \cite{Omar:2013:TWP:2489812.2489815} && \Circle && \CIRCLE && \Circle && \CIRCLE  \\
+%Desugaring && \cite{erdweg2011sugarj} && \Circle && \CIRCLE && \Circle && \Circle\\
+%\myrowcolour%
+%Typed LISP && Qi, \cite{TypedScheme2008} &&  \CIRCLE && \Circle && \CIRCLE && \Circle \\
+%Attribute Grammars && \cite{VanWyk:2010:SEA}, \cite{conf/asplos/CoxBCKK08} && \Circle && \CIRCLE && \CIRCLE && \Circle\\
+%%\myrowcolour
+%%Static macros /  && \cite{ScalaMacros2013}, \cite{MorphJ2011}, && \Circle && \Circle && \Circle && \CIRCLE && \Circle \\
+%%\myrowcolour
+%%Metaprogramming &&  \cite{Sheard:1999:UMS} && && && && && \\
+%%
+%%Cross-Compilation && \cite{Rompf:2012:LMS, Delite2011} && \CIRCLE && \Circle && \Circle && \Circle && \CIRCLE \\
+%%
+%\myrowcolour%
+%%EDSL Frameworks && ? && \CIRCLE && \CIRCLE && \CIRCLE && \Circle && \Circle \\
+%\end{longtable}}
+%\caption{Comparison to related approaches to language extensibility.}\label{relatedtable}
+%\end{figure*}
+%
+%TODO: mention this http://blog.codeclimate.com/blog/2014/05/06/gradual-type-checking-for-ruby/
+
+TODO: talk about Python/PHP interop work by that editor guy
+
+TODO: talk about Delaware's work
+
+TODO: look at prior reviews
+
+TODO: Sylvia Grewe's recent OOPSLA(?) work
 
 \section{Discussion}\label{sec:discussion}
+This work aimed to show that one can add static typechecking to a language like Python as a library, without undue syntactic overhead using techniques available in a growing number of languages: reflection, quasiquotes and a form of open sum for representing type constructors (here, Python's classes). The type system is not fixed, but flexibly extensible in a natural and direct manner, without resorting to complex encodings and, crucially, without the possibility of ambiguities arising at link-time. 
+%We achieve this by combining a bidrectional type system and an elaboration semantics and delegating to static functions associated with user-defined type constructors, rather than operating in the usual syntax-directed manner. 
+%Our examples were not trivial, showing a prototypic object system, a powerful string tracking system and immutable records coexisting as libraries within a language that initially had no static typechecking at all. 
+
+Although we only touched on the details here, we have conducted a substantial case study using \texttt{typy}: an implementation of the entirety of the OpenCL type system (a variant of C99), as well as several extensions to it, as a library. Our operations translate to Python's lower-level FFI with OpenCL but guarantee type safety at the interface between languages. A neurobiological circuit simulation framework has been built atop this library (a detailed case study is in preparation). %Based on our examples in this paper and this admittedly anecdotal experience report, we submit that active type constructors deserve broad consideration by the research community as a foundational technique for structuring typed programming languages. We are currently refactoring these projects against the (new) bidirectional semantics described here. The language core of  has already been implemented.
+
+There remain several promising avenues for future work, many of which we mentioned throughout this paper. From a practical perspective, extensible implicit coercions (i.e. subtyping) using a mechanism similar to our ``handle sets'' mechanism for binary expressions would be useful. An extensible mechanism supporting type index polymorphism would also be of substantial utility and theoretical interest. Debuggers and other tools that rely not just on Python's syntax but also its semantics cannot be used directly. We believe that active types can be used to control debugging and other tools, and plan to explore this in the future. We have also not yet evaluated the feasibility of implementing more advanced type systems (e.g. linear, dependent or flow-dependent type systems) and those that require a more ``global'' view (e.g. security-oriented types) using our framework. Type systems that require tracking contextual information are possible using our framework, but the context needs to be initialized on first use of a type that needs it. This is somewhat awkward, so we plan to include a mechanism that allows any imported tycons to initialize the context ahead of typechecking.
+
+From a theoretical perspective, the next step is to introduce a static semantics for the internal language and the static language, so that we can help avoid issues of extension correctness and guarantee extension safety (by borrowing techniques from the typed compilation literature). An even more interesting goal would be to guarantee that extensions are mutually conservative: that one cannot weaken any of the guarantees of the other. We believe that by enforcing strict abstraction barriers between extensions, we can approach this goal (and a manuscript is in preparation). Bootstrapping the \texttt{typy} compiler would be an interesting direction to explore, to avoid the awkwardness of relying on a loose dynamically typed language to implement static type systems.
+% Different dialects can be difficult to combine manually, as we discussed in the introduction. We have implemented the full OpenCL programming language (a variant of C99) as a library (though the details are left for future work), showing that such languages can instead be written as libraries, rather than as dialects.
+% 
+%\subsection{Compositional Reasoning}\label{safety}
+%Every statement and expression in an \texttt{typy} function is governed by exactly one active type, determined by the dispatch protocol, or by the single active base associated with the \texttt{typy} function. The representational consistency check ensures that compilation is successful without requiring that types that abstract over other types (e.g. container types) know about their internal implementation details. Together, this permits compositional reasoning about the semantics of \texttt{typy} functions even in the presence of many extensions. This stands on contrast to many prior approaches to extensibility, where extensions could insert themselves into the semantics in conflicting ways, making the order of imports matter (see Sec. \ref{related}). 
+
+
+%\begin{enumerate}
+%\item We address the ``chicken-and-egg'' problem by designing \texttt{typy}, an extensible language  embedded within Python \cite{Politz:2013:PFM:2509136.2509536,python} entirely as a library. The top-level of an \texttt{typy} file is a \emph{compilation script} written in Python and Python serves as \texttt{typy}'s \emph{type-level language}, as we will discuss.  \texttt{typy} and Python thus share a common syntax and package system, so users of \texttt{typy} can directly leverage established tools, infrastructure and coding standards. Functions marked by a decorator as under the control of \texttt{typy} are, unlike Python functions, \emph{statically} typechecked. This makes it possible to rule out many potential issues ahead of execution, and thus  avoid  costly dynamic checks. %The semantics of  define run-time behavior.
+%\item  % Instead, \texttt{typy} has a statically-typed semantics that can be extended by users from within libraries. 
+%There is \emph{no particular type system built into \texttt{typy}}. Instead, a type is any  object implementing the \lip{ace.Type} interface constructed by the compilation script. We call these \emph{active types}. When statically assigning a type to a compound form, e.g. \lip{e.x}, the \texttt{typy} {compiler} delegates to the type of a subexpression, e.g. to the type of \lip{e}, to determine how to assign a type to the expression as a whole. As we will show, this {type-directed protocol}, \emph{active typing}, permits the expression of a rich variety of type systems as libraries. Unlike syntax-directed protocols, there cannot be ambiguities when separately defined type sytems are combined (types control non-overlapping sets of expressions by construction). Base cases, e.g.  variables and certain statement forms, are handled on a {per-function basis} by a \emph{base semantics}, also a compile-time object implementing an interface, \lip{ace.Base}.
+%\end{enumerate}
+%% As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur .
+%
+%The dynamic behavior of an \texttt{typy} function is determined by translation to a \emph{target language}. We begin by  targeting Python, then discuss targeting OpenCL and CUDA, lower-level languages used to program many-core processors (e.g. GPUs). Active types and bases control translation by the same type-directed protocol that governs type assignment. We call this phase \emph{active translation}. A \emph{target} mediates this process and is also a user-defined compile-time object implementing an interface, \lip{ace.Target}. 
+%%One base or type can support multiple targets. 
+%When targeting a typed language, care must be taken to ensure that well-typed \texttt{typy} expressions have well-typed translations, so we integrate a technique for compositionally reasoning about compiler correctness (developed for the TIL compiler for Standard ML \cite{tarditi+:til-OLD}) into the language.
+%
+%%TODO
+%%
+%%Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions.
+%
+%It is legitimate to ask, however, why dynamically-typed languages are so widely-used in multiple domains. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
+%redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that professional end-users are exposed to, are often verbose, requiring explicit and often redundant type annotations on each function and variable declaration, separate header files, explicit template headers and  instantiation and other sorts of annotations.  Dynamically-typed languages, on the other hand, avoid most of this overhead by relying on support from the run-time system. \texttt{typy} was first conceived to explore the question: \emph{does conciseness require run-time mechanisms, or can one develop a statically-typed language with the same usability profile?}
+%
+%
+%Rather than designing a new syntax, or modifying the syntax of an existing language, we chose to utilize, \emph{without modification}, the syntax of an existing language, Python. This choice was not arbitrary, but rather a key means by which \texttt{typy} satisfies extrinsic design criteria related to familiarity and tool support. Researchers often dismiss the importance of syntax. By repurposing a well-developed syntax, they no longer need to worry about the ``trivial'' task of implementing it.
+%
+%Most programming languages are {\em monolithic} -- a collection of primitives are given first-class treatment by the language implementation, and users can only creatively combine them to implement  abstractions of their design. Although highly-expressive general-purpose mechanisms have been developed (such as object systems or functional datatypes), these may not suffice when researchers or domain experts wish to evolve aspects of the type system, exert control over the representation of data, introduce specialized run-time mechanisms, if defining an abstraction in terms of existing mechanisms is unnatural or verbose, or if custom error messages are useful. In these situations, it would be desirable to have the ability to modularly extend existing systems with new compile-time logic and be assured that such extensions will never interfere with one another when used in the same program.
+%
+%Python does not truly prevent extensions from interfering with one another because it lacks, e.g., data hiding mechanisms. One type could change the implementation of another by replacing its methods, for example. But these kinds of conflicts do not occur ``innocently'', as conflicts between two libraries in SugarJ that use similar syntax might.
+% 
+%
+%
+
+Not all extensions will be useful. Indeed, some language designers worry that offering too much flexibility to users leads to abuse. This must be balanced with the possibilities made available by a vibrant ecosystem of competing statically-typed abstractions that can be developed and deployed as libraries, and thus more easily evaluated in the wild. With an appropriate community process, this could lead to faster adoption of ideas from the research community, and quicker abandonment of mistakes. %We also anticipate that coding guidelines and tools mandating the use of abstractions that are known to have certain desirable properties will replace designer-mandated enforcement.
+% 
+%This paper is presented as a language design paper. The theoretical foundations of this work lie in type-level computation. We have developed a simplified, type-theoretic formalism of active typechecking and translation, where we prove the safety properties we have outlined here, as well as several additional ones that are only possible to achieve using a typed metalanguage (currently in submission at ESOP 2014). The work described here  extends that mechanism in several directions: \texttt{typy} supports a rich syntax, makes syntax trees available to extensions, supports a pluggable backend and per-function base semantics. It is implemented in an existing language and supports a wider range of practical extensions. 
+
+%\acks
+%The author is grateful to Jonathan Aldrich, Robert Bocchino and anonymous referees for their useful suggestions. This work was funded by the DOE Computational Science Graduate Fellowship under grant number DE-FG02-97ER25308.
+%Acknowledgments, if needed.
+
+\section{Implementation}
+We are actively developing the \verb|typy| library and its surrounding ecosystem as a free open source project. The \lip{typy} website can be found at \url{http://www.cs.cmu.edu/~comar/typy/}.
+
+\section{Conclusion}This appears to be a widespread problem: programmers and development teams often cannot use  the constructs they might prefer because they are only available in specialized dialects they cannot  adopt \cite{Meyerovich:2012:SDR:2414721.2414724,Meyerovich:2013:EAP:2509136.2509515}.\todo{finish this} %
 
 % Chicken-and-egg problem
 
@@ -392,29 +795,12 @@ Second, existing mechanisms are often themselves  tied to an obscure language di
 % Our aim is to develop a mechanism that addresses these concerns and implement this mechanism itself as a library, \texttt{typy}, for a widely adopted language, Python, using its existing metaprogramming constructs. %Programmers can construct types and, using these, define typed functions, from within a Python script. Typed functions, unlike regular Python functions, go through a process of static typechecking and translation. %This process can occur either ahead-of-time or just-in-time. 
 
 
-\begin{codelisting}[t]
-\begin{lstlisting}
-from typy.std import component, fn, dyn
-from listing1 import Listing1
-
-@component
-def Listing2():
-  @fn
-  def hello(account : Listing1.Account):
-    """Computes a string greeting."""
-    "Hello, " + account.name
-
-  @dyn
-  def main():
-    print(hello(Listing1.test_acct))
-
-Listing2.main()
-\end{lstlisting}
-\caption{Functions in $\typy $.}
-\end{codelisting}
 
 
-\newpage
+\clearpage
+
+
+
 In this paper, we develop 
 
 This design constrains us: we must stay within the confines of Python's existing syntax. In fact, this constraint is freeing: questions about syntactic ambiguity never arise, the syntax is familiar and tools that require an exhaustive syntax specification (e.g. syntax highlighters and documentation generators)  work without modification. In other words, this design largely sidesteps the \emph{expression problem} \cite{wadler1998expression}.%Taken together, this design addresses many more of the the extrinsic concerns about adoption than a dialect-oriented approach. %Indeed, enabling the decentralized introduction of new term constructors is the standard example used when describing the more general problem of enabling the extension of a sum type with new cases as well as new  functions over its cases  \cite{Reynolds75}, prompting Wadler to dub it the \emph{expression problem} \cite{wadler1998expression}. 
@@ -1248,7 +1634,7 @@ Each invocation of \lip{map} received the same buffer, but a different function.
 
 Though we do not show any other extensions atop the OpenCL library here, it is straightforward to implement variants of those described above that target their translation phase to OpenCL rather than Python. In many cases, the typechecking code can be inherited directly. This is, we argue, rather compelling: a decidedly low-level language like OpenCL can be extended with low-overhead versions of sophisticated features, like a prototypic object system or case types, modularly, via its foreign function interface from a scripting language like Python.
 
-\section{@$\lambda$: Active Type Constructors, Minimally}\label{theory}
+\section{Active Type Constructors, Minimally}\label{theory}
 \newcommand{\cev}[1]{\reflectbox{\ensuremath{\vec{\reflectbox{\ensuremath{#1}}}}}}
 \newcommand{\tri}{i}
 \newcommand{\trt}{\cev\tau}
@@ -2872,130 +3258,6 @@ Other metatheoretic guarantees about the translation cannot be provided in the f
 %
 %%Not shown are several additional conveniences, such as delegated kernel sizing and \lip{In} and \lip{Out} constructs that can reduce the size and improve the clarity of this code further; due to a lack of space, the reader is referred to the language documentation.
 
-\section{Related Work}\label{related}
-
-%\parindent0pt
-%
-%\subsection{Active Libraries}
-
-%We have implemented the full OpenCL programming language as  primary example showed how to support low-level GPU programming from a high-level language. Other languages have supported similar workflows, e.g. Rust \cite{rustgpu}. These have not been fundamentally extensible and suffer from the ``bootstrapping'' problem described in Sec. \ref{intro}. 
-
-Early work proposing the inclusion of compile-time logic in libraries led to the phrase {\it active libraries} \cite{activelibraries}. We borrow the prefix ``active''. Our focus on type constructors and type system extension differs substantially from previous work, which focused on term rewriting for the purpose of optimization over a fixed semantics. Several contemporary projects have the same goals, e.g. LMS \cite{Rompf:2012:LMS}, which allows staged translation of well-typed Scala programs to other targets and supports composing optimizations. Macro systems can also be used to define optimizations and operations with interesting dynamic semantics. In both cases, the language's type system itself remains fixed. Our mechanism permits true type system extensions. New types are not merely aliases, nor must their rules be admissible in some base type system (e.g. \lip{string_in} would be difficult to define in Scala, particularly as directly as we can here). Note that in \texttt{typy}, macros can be seen as a mode of use of the term constructor \verb|Call|, as we can give the macro a singleton type (like Python modules, discussed above) that performs the desired rewriting in \verb|ana_Call| and \verb|syn_Call|.
-
-%Generic functions are a novel strategy for {\it function polymorphism} -- defining functions that operate over more than a single type. In \texttt{typy}, generic functions are implicitly polymorphic and can be called with arguments of {\it any type that supports the operations used by the function}. This is related to structural polymorphism \cite{malayeri2009structural}. Structural types make explicit the structure required of an argument, unlike generic functions, which are only given singleton types because the structure may depend on the semantics of an active type. 
-%Structural typing can be compared to the more \emph{ad hoc} approach taken by dynamically-typed languages like Python itself, sometimes called ``duck typing''. It is also comparable to the C++ template system, as discussed previously. 
-
-{\it Operator overloading} \cite{vanWijngaarden:Mailloux:Peck:Koster:Sintzoff:Lindsey:Meertens:Fisker:acta:1975} and {\it metaobject dispatch} \cite{Kiczales91} are run-time protocols that translate operator invocations into function calls. The function is typically selected according to the dynamic tag or value of one or more operands. These protocols share the notion of {\it inversion of control} with our strategy for targeted expressions. However, our strategy is a {\it compile-time} protocol. Note that we used Python's operator overloading and metaobject protocol for convenience in the static language. %Our dispatch protocol was designed to be conceptually similar to Python's operator overloading protocol \cite{python}.
-
-Language-external mechanisms for creating and composing dialects (e.g. extensible compilers like Xoc \cite{conf/asplos/CoxBCKK08} or language workbenches \cite{erdweg2013state}) have ambiguity problems, and so they might benefit from the type constructor oriented view that we propose here as well. We argue that if ambiguities cannot occur and safety is guaranteed, there is no reason to leave the mechanism outside the language. Though we do not support syntax extension (other than via creative reuse of string literals), we argue that this is actually a benefit: we can use a variety of existing tools and avoid many facets of the expression problem \cite{wadler1998expression} in this way.
-
-Typed Racket and other typed LISPs also add a type system to a fixed syntax atop a dynamically typed core \cite{TypedScheme2008}. However, these treat the semantics as a ``bag of rules'', so adding new rules can cause  ambiguities. Our work (particularly @$\lambda$, with its use of lists ubiquitously) provides a blueprint for a typed LISP oriented around type constructors, rather than rulesets. Type constructors are a natural organizational unit. For example, Harper's textbook, upon which we base our terminology and abstract syntax in this paper, identifies languages directly as a collection of type constructors \cite{pfpl}. 
-
-Bidirectional type systems are increasingly being used in practical settings, e.g. in Scala and C\#. They are useful in producing good error messages (which our mechanism shows can be customized) and help avoid the need for redundant type annotations while avoiding decidability limitations associated with whole-program type inference. Bidirectional techniques have also been used for adding refinement types to languages like ML and Twelf \cite{Lovas08abidirectional}. Refinement types can add stronger static checking over a fixed type system (analagous to formal verification), but cannot be used to add new operations directly to the language. Our use of a dynamic semantics for the static language relates to the notion of \emph{type-level computation}, being explored in a number of languages (e.g. Haskell) for reasons other than extensibility. %Combining the approaches may be a fruitful avenue for future work. 
-
-In recent work on the Wyvern programming language, we also used bidirectional typechecking to control aspects of literal syntax in a manner similar to, but somewhat more syntactically flexible than, how we treat introductory forms \cite{TSLs}. Wyvern is its own language dialect and does not have an extensible type system, supporting only desugarings like SugarJ \cite{erdweg2011sugarj}. The Wyvern formalism guarantees hygiene, using an approach that is also likely applicable in the setting of this paper.
-%\begin{figure*}[t]
-%\small
-%\vspace{-10pt}
-%{\onecolumn
-%\begin{longtable}{l l@{}l c@{}c c@{}c c@{}c c@{}c}
-%%\toprule%
-%
-%&&  &&  {\bfseries Itself} && {\bfseries Extensible} && {\bfseries Extensible} && {\bfseries Unambiguous}\\
-%
-%{\bfseries Approach} && {\bfseries Examples} && {\bfseries Library} && {\bfseries Syntax} && {\bfseries Type System} && {\bfseries Composition}  \\
-%
-%\cmidrule(l){1-1} \cmidrule(l){2-3} \cmidrule(l){4-5} \cmidrule(l){6-7} \cmidrule(l){8-9} \cmidrule(l){10-11} 
-%
-%\endhead
-%
-%
-%Active Types && && \CIRCLE && \Circle && \CIRCLE && \CIRCLE  \\
-%\myrowcolour%
-%Type-Specific Literals && \cite{Omar:2013:TWP:2489812.2489815} && \Circle && \CIRCLE && \Circle && \CIRCLE  \\
-%Desugaring && \cite{erdweg2011sugarj} && \Circle && \CIRCLE && \Circle && \Circle\\
-%\myrowcolour%
-%Typed LISP && Qi, \cite{TypedScheme2008} &&  \CIRCLE && \Circle && \CIRCLE && \Circle \\
-%Attribute Grammars && \cite{VanWyk:2010:SEA}, \cite{conf/asplos/CoxBCKK08} && \Circle && \CIRCLE && \CIRCLE && \Circle\\
-%%\myrowcolour
-%%Static macros /  && \cite{ScalaMacros2013}, \cite{MorphJ2011}, && \Circle && \Circle && \Circle && \CIRCLE && \Circle \\
-%%\myrowcolour
-%%Metaprogramming &&  \cite{Sheard:1999:UMS} && && && && && \\
-%%
-%%Cross-Compilation && \cite{Rompf:2012:LMS, Delite2011} && \CIRCLE && \Circle && \Circle && \Circle && \CIRCLE \\
-%%
-%\myrowcolour%
-%%EDSL Frameworks && ? && \CIRCLE && \CIRCLE && \CIRCLE && \Circle && \Circle \\
-%\end{longtable}}
-%\caption{Comparison to related approaches to language extensibility.}\label{relatedtable}
-%\end{figure*}
-%
-%TODO: mention this http://blog.codeclimate.com/blog/2014/05/06/gradual-type-checking-for-ruby/
-
-TODO: talk about Python/PHP interop work by that editor guy
-
-TODO: talk about Delaware's work
-
-TODO: look at prior reviews
-
-TODO: Sylvia Grewe's recent OOPSLA(?) work
-
-\section{Discussion}\label{discussion}
-This work aimed to show that one can add static typechecking to a language like Python as a library, without undue syntactic overhead using techniques available in a growing number of languages: reflection, quasiquotes and a form of open sum for representing type constructors (here, Python's classes). The type system is not fixed, but flexibly extensible in a natural and direct manner, without resorting to complex encodings and, crucially, without the possibility of ambiguities arising at link-time. 
-%We achieve this by combining a bidrectional type system and an elaboration semantics and delegating to static functions associated with user-defined type constructors, rather than operating in the usual syntax-directed manner. 
-%Our examples were not trivial, showing a prototypic object system, a powerful string tracking system and immutable records coexisting as libraries within a language that initially had no static typechecking at all. 
-
-Although we only touched on the details here, we have conducted a substantial case study using \texttt{typy}: an implementation of the entirety of the OpenCL type system (a variant of C99), as well as several extensions to it, as a library. Our operations translate to Python's lower-level FFI with OpenCL but guarantee type safety at the interface between languages. A neurobiological circuit simulation framework has been built atop this library (a detailed case study is in preparation). %Based on our examples in this paper and this admittedly anecdotal experience report, we submit that active type constructors deserve broad consideration by the research community as a foundational technique for structuring typed programming languages. We are currently refactoring these projects against the (new) bidirectional semantics described here. The language core of  has already been implemented.
-
-There remain several promising avenues for future work, many of which we mentioned throughout this paper. From a practical perspective, extensible implicit coercions (i.e. subtyping) using a mechanism similar to our ``handle sets'' mechanism for binary expressions would be useful. An extensible mechanism supporting type index polymorphism would also be of substantial utility and theoretical interest. Debuggers and other tools that rely not just on Python's syntax but also its semantics cannot be used directly. We believe that active types can be used to control debugging and other tools, and plan to explore this in the future. We have also not yet evaluated the feasibility of implementing more advanced type systems (e.g. linear, dependent or flow-dependent type systems) and those that require a more ``global'' view (e.g. security-oriented types) using our framework. Type systems that require tracking contextual information are possible using our framework, but the context needs to be initialized on first use of a type that needs it. This is somewhat awkward, so we plan to include a mechanism that allows any imported tycons to initialize the context ahead of typechecking.
-
-From a theoretical perspective, the next step is to introduce a static semantics for the internal language and the static language, so that we can help avoid issues of extension correctness and guarantee extension safety (by borrowing techniques from the typed compilation literature). An even more interesting goal would be to guarantee that extensions are mutually conservative: that one cannot weaken any of the guarantees of the other. We believe that by enforcing strict abstraction barriers between extensions, we can approach this goal (and a manuscript is in preparation). Bootstrapping the \texttt{typy} compiler would be an interesting direction to explore, to avoid the awkwardness of relying on a loose dynamically typed language to implement static type systems.
-% Different dialects can be difficult to combine manually, as we discussed in the introduction. We have implemented the full OpenCL programming language (a variant of C99) as a library (though the details are left for future work), showing that such languages can instead be written as libraries, rather than as dialects.
-% 
-%\subsection{Compositional Reasoning}\label{safety}
-%Every statement and expression in an \texttt{typy} function is governed by exactly one active type, determined by the dispatch protocol, or by the single active base associated with the \texttt{typy} function. The representational consistency check ensures that compilation is successful without requiring that types that abstract over other types (e.g. container types) know about their internal implementation details. Together, this permits compositional reasoning about the semantics of \texttt{typy} functions even in the presence of many extensions. This stands on contrast to many prior approaches to extensibility, where extensions could insert themselves into the semantics in conflicting ways, making the order of imports matter (see Sec. \ref{related}). 
-
-
-%\begin{enumerate}
-%\item We address the ``chicken-and-egg'' problem by designing \texttt{typy}, an extensible language  embedded within Python \cite{Politz:2013:PFM:2509136.2509536,python} entirely as a library. The top-level of an \texttt{typy} file is a \emph{compilation script} written in Python and Python serves as \texttt{typy}'s \emph{type-level language}, as we will discuss.  \texttt{typy} and Python thus share a common syntax and package system, so users of \texttt{typy} can directly leverage established tools, infrastructure and coding standards. Functions marked by a decorator as under the control of \texttt{typy} are, unlike Python functions, \emph{statically} typechecked. This makes it possible to rule out many potential issues ahead of execution, and thus  avoid  costly dynamic checks. %The semantics of  define run-time behavior.
-%\item  % Instead, \texttt{typy} has a statically-typed semantics that can be extended by users from within libraries. 
-%There is \emph{no particular type system built into \texttt{typy}}. Instead, a type is any  object implementing the \lip{ace.Type} interface constructed by the compilation script. We call these \emph{active types}. When statically assigning a type to a compound form, e.g. \lip{e.x}, the \texttt{typy} {compiler} delegates to the type of a subexpression, e.g. to the type of \lip{e}, to determine how to assign a type to the expression as a whole. As we will show, this {type-directed protocol}, \emph{active typing}, permits the expression of a rich variety of type systems as libraries. Unlike syntax-directed protocols, there cannot be ambiguities when separately defined type sytems are combined (types control non-overlapping sets of expressions by construction). Base cases, e.g.  variables and certain statement forms, are handled on a {per-function basis} by a \emph{base semantics}, also a compile-time object implementing an interface, \lip{ace.Base}.
-%\end{enumerate}
-%% As a result, clients are able to import any combination of extensions with the confidence that link-time ambiguities cannot occur .
-%
-%The dynamic behavior of an \texttt{typy} function is determined by translation to a \emph{target language}. We begin by  targeting Python, then discuss targeting OpenCL and CUDA, lower-level languages used to program many-core processors (e.g. GPUs). Active types and bases control translation by the same type-directed protocol that governs type assignment. We call this phase \emph{active translation}. A \emph{target} mediates this process and is also a user-defined compile-time object implementing an interface, \lip{ace.Target}. 
-%%One base or type can support multiple targets. 
-%When targeting a typed language, care must be taken to ensure that well-typed \texttt{typy} expressions have well-typed translations, so we integrate a technique for compositionally reasoning about compiler correctness (developed for the TIL compiler for Standard ML \cite{tarditi+:til-OLD}) into the language.
-%
-%%TODO
-%%
-%%Static type systems are powerful tools for programming language design and implementation. By tracking the type of a value statically, a typechecker can verify the absence of many kinds of errors over all inputs. This simplifies and increases the performance of the run-time system, as errors need not be detected dynamically using tag checks and other kinds of assertions.
-%
-%It is legitimate to ask, however, why dynamically-typed languages are so widely-used in multiple domains. Although slow and difficult to reason about, these languages generally excel at satisfying the criteria of \textbf{ease-of-use}. More specifically, Cordy identified the principle of \emph{conciseness} as elimination of
-%redundancy and the availability of reasonable defaults \cite{cordy1992hints}. Statically-typed languages, particularly those that professional end-users are exposed to, are often verbose, requiring explicit and often redundant type annotations on each function and variable declaration, separate header files, explicit template headers and  instantiation and other sorts of annotations.  Dynamically-typed languages, on the other hand, avoid most of this overhead by relying on support from the run-time system. \texttt{typy} was first conceived to explore the question: \emph{does conciseness require run-time mechanisms, or can one develop a statically-typed language with the same usability profile?}
-%
-%
-%Rather than designing a new syntax, or modifying the syntax of an existing language, we chose to utilize, \emph{without modification}, the syntax of an existing language, Python. This choice was not arbitrary, but rather a key means by which \texttt{typy} satisfies extrinsic design criteria related to familiarity and tool support. Researchers often dismiss the importance of syntax. By repurposing a well-developed syntax, they no longer need to worry about the ``trivial'' task of implementing it.
-%
-%Most programming languages are {\em monolithic} -- a collection of primitives are given first-class treatment by the language implementation, and users can only creatively combine them to implement  abstractions of their design. Although highly-expressive general-purpose mechanisms have been developed (such as object systems or functional datatypes), these may not suffice when researchers or domain experts wish to evolve aspects of the type system, exert control over the representation of data, introduce specialized run-time mechanisms, if defining an abstraction in terms of existing mechanisms is unnatural or verbose, or if custom error messages are useful. In these situations, it would be desirable to have the ability to modularly extend existing systems with new compile-time logic and be assured that such extensions will never interfere with one another when used in the same program.
-%
-%Python does not truly prevent extensions from interfering with one another because it lacks, e.g., data hiding mechanisms. One type could change the implementation of another by replacing its methods, for example. But these kinds of conflicts do not occur ``innocently'', as conflicts between two libraries in SugarJ that use similar syntax might.
-% 
-%
-%
-
-Not all extensions will be useful. Indeed, some language designers worry that offering too much flexibility to users leads to abuse. This must be balanced with the possibilities made available by a vibrant ecosystem of competing statically-typed abstractions that can be developed and deployed as libraries, and thus more easily evaluated in the wild. With an appropriate community process, this could lead to faster adoption of ideas from the research community, and quicker abandonment of mistakes. %We also anticipate that coding guidelines and tools mandating the use of abstractions that are known to have certain desirable properties will replace designer-mandated enforcement.
-% 
-%This paper is presented as a language design paper. The theoretical foundations of this work lie in type-level computation. We have developed a simplified, type-theoretic formalism of active typechecking and translation, where we prove the safety properties we have outlined here, as well as several additional ones that are only possible to achieve using a typed metalanguage (currently in submission at ESOP 2014). The work described here  extends that mechanism in several directions: \texttt{typy} supports a rich syntax, makes syntax trees available to extensions, supports a pluggable backend and per-function base semantics. It is implemented in an existing language and supports a wider range of practical extensions. 
-
-%\acks
-%The author is grateful to Jonathan Aldrich, Robert Bocchino and anonymous referees for their useful suggestions. This work was funded by the DOE Computational Science Graduate Fellowship under grant number DE-FG02-97ER25308.
-%Acknowledgments, if needed.
-
-\section{Implementation}
-We are actively developing the \verb|typy| library and its surrounding ecosystem as a free open source project. The \lip{typy} website can be found at \url{http://www.cs.cmu.edu/~comar/typy/}.
-
-\section{Conclusion}This appears to be a widespread problem: programmers and development teams often cannot use  the constructs they might prefer because they are only available in specialized dialects they cannot  adopt \cite{Meyerovich:2012:SDR:2414721.2414724,Meyerovich:2013:EAP:2509136.2509515}.\todo{finish this} %
 
 \newpage
 % We recommend abbrvnat bibliography style.
@@ -3330,4 +3592,8 @@ We are actively developing the \verb|typy| library and its surrounding ecosystem
 \clearpage
 \appendix
 \section{Support for Python 2.x}\label{sec:python2-support}
+
+\section{Type Equality}\label{sec:type-equality}
+Although not necessary in this example, fragments can compare type expressions for equivalence \cite{StoneHarper00}. Two types in canonical form are equivalent if they arise from the same fragment and have equivalent index values (as determined by Python's \lip{==} operator, which can be overloaded to introduce interesting equivalences.) For example,  we can freely reorder the fields in the definition of \lip{Account} because Python dictionaries are not order-preserving.
+
 \end{document}
