@@ -396,7 +396,7 @@ class record(typy.Fragment):
     else: raise typy.TypeFormationError(
       "Invalid record spec.", idx_ast)
 \end{lstlisting}
-\caption{Type validation in $\typy$.}
+\caption{Record type validation.}
 \label{fig:type-validation}
 \end{codelisting}
 
@@ -410,13 +410,13 @@ $\typy$ adopts the system of \emph{dependent singleton kinds} developed for the 
 \begin{lstlisting}[numbers=none]
 fragment[idx]
 \end{lstlisting}
-where \lip{fragment} is a fragment in the static environment and \lip{idx} is some Python slice form. In other words, every $\typy$ type in canonical form is associated with a fragment (there are no ``primitive'' types defined by $\typy$ itself.) For convenience, programmers can write \lip{fragment} by itself when the index is trivial, i.e. when it is of the form \lip{()}. 
+where \lip{fragment} is a fragment in the static environment and \lip{idx} is some Python slice form. In other words, every $\typy$ type in canonical form is associated with a fragment -- there are no ``primitive'' types defined by $\typy$ itself. For convenience, programmers can write \lip{fragment} by itself when the index is trivial, i.e. when it is of the form \lip{()}. 
 
 For example, the type expression on Lines \ref{line:Account-start}-\ref{line:Account-end} of Listing \ref{fig:record-example} is a \lip{record} type in canonical form. The index, which is in Python's \emph{extended slice form}, specifies fields named \lip{name}, \lip{account_num} and \lip{memo} and  corresponding field types as shown. We discuss the field types in Sec. \ref{sec:typechecking-and-translation} -- for now, it suffices to see that these are also canonical.
 
-To establish that a type in canonical form is valid, i.e. of kind \lip{type}, $\typy$ calls the fragment class method \lip{init_idx} with the \emph{context} and the AST of the index as arguments. This method must return a Python value called the type's \emph{index value} if the type is valid, or raise \lip{typy.TypeValidationError} with an error message and a reference to the location of the error within the index otherwise. The {context} 1) tracks contextual information, e.g. the kinds of type variables; and 2) provides methods that fragments use to interact with the kind system. In particular, the context provides a method \lip{as_type} that turns the given Python AST into a type expression, i.e. an instance of \lip{typy.TypeExpr}, and checks that it is of kind \lip{type}.
+To establish that a type in canonical form is valid, i.e. of kind \lip{type}, $\typy$ calls the fragment class method \lip{init_idx} with the \emph{context} and the AST of the index as arguments. This method must return a Python value called the type's \emph{index value} if the type is valid, or raise \lip{typy.TypeValidationError} with an error message and a reference to the location of the error within the index otherwise. %The {context} 1) tracks contextual information, e.g. the kinds of type variables; and 2) provides methods that fragments use to interact with the kind system. In particular, the context provides a method \lip{as_type} that 
 
-For example, the \lip{record} fragment validates record types as shown in Listing \ref{fig:type-validation} by checking that the index consists of a  sequence of field specifications of the form \lip{name : ty}, where \lip{name} is a Python name, no names are duplicated and \lip{ty} is a valid type as determined by calling \lip{ctx.as_type} (Line \ref{line:as_type}.) The returned index value is a Python dictionary mapping the names to the corresponding instances of \lip{typy.TypeExpr}. 
+For example, the \lip{record.init_idx} class method given in Listing \ref{fig:type-validation} validates record types by checking that 1) the index consists of a  sequence of field specifications of the form \lip{name : ty}, where \lip{name} is a Python name; 2) no names are duplicated; and 3) \lip{ty} is a valid type as determined by calling a method of the context object, \lip{ctx.as_type} (Line \ref{line:as_type}.) This method turns the given Python AST into a type expression, i.e. an instance of \lip{typy.TyExpr}, and checks that it is of kind \lip{type}. The returned index value is a Python dictionary mapping the names to the corresponding instances of \lip{typy.TyExpr}.\todo{show example?}
 
 
 %This method raises a \lip{TypeFormationError} if any of the components are not of the form \lip{label : ty}, or if there are duplicate labels, or if any of the field types are themselves invalid in the context where they appear, as determined by calling the method \lip{as_type} of the provided $\typy$ \emph{context}, \lip{ctx}.  % The \emph{context}, \lip{ctx}, tracks  provided by $\typy$.
@@ -464,22 +464,20 @@ Type systems that distinguish type analysis (where the type is known) from type 
 
   @classmethod
   def trans_Dict(self, ctx, idx, e): 
-    if len(idx) == 1: 
-      return ctx.trans(e.values[0])
     ast_dict = dict((k.id, v) 
       for k, v in zip(e.keys, e.values))
     return ast.Tuple(
       (lbl, ctx.trans(ast_dict[lbl]))
       for lbl in idx.iterkeys())
 \end{lstlisting}
-\caption{Introductory forms in $\typy$.}
+\caption{Typing and translation of literal forms.}
 \label{fig:record-intro}
 \end{codelisting}
 $\typy$ delegates control over the typechecking and translation of expressions of literal form to the fragment defining the type that the expression is being analyzed against. 
 
 For example, the expression on Lines \ref{line:test_acct-start}-\ref{line:test_acct-end} of Listing \ref{fig:record-example} is of dictionary literal form. The type that this expression is being analyzed against is \li{Account}, which is synonymous with a \li{record} type. $\typy$ first calls the \li{record.ana_Dict} class method, shown in Figure \ref{fig:record-intro}. This method receives the context, the index value of the type and the AST of the literal expression as arguments and must return (trivially) if typechecking is successful or raise \li{typy.TyError} with an error message and a reference to the subterm where the error occurred otherwise. In this case, \li{record.ana_Dict} checks that each key expression is a Python name that appears in the type index, and then asks $\typy$ to analyze the value against the corresponding type by calling \li{ctx.ana}. Finally, it makes sure that all the components specified by the type index have appeared in the literal.
 
-The three values in Listing \ref{fig:record-example} that \li{record.ana_Dict} asks $\typy$ to analyze are also of literal form -- the values of \li{name} and \li{account_num} are string literals and the value of \li{memo} is another dictionary literal. As such, when \li{ctx.ana} is called, \li{typy} follows the same protocol just described, delegating to \li{string_in.ana_Str} to analyze the string literals and to \li{dyn.ana_Dict} to analyze the dictionary literal. The \li{string_in} fragment implements a regex-based constrained string system, which we described, along with its implementation in $\typy$, in a workshop paper \cite{sanitation-psp14}.\footnote{Certain details of $\typy$ have changed since that paper was published, but the essential idea remains the same.} The \li{dyn} fragment allows dynamic Python values to appear inside $\typy$ programs, so \li{\{ \}} is analyzed as an empty Python dictionary.\todo{py?}\todo{cite leroy and mauny dynamics in ML} We omit the details of these methods for concision.
+The three values in Listing \ref{fig:record-example} that \li{record.ana_Dict} asks $\typy$ to analyze are also of literal form -- the values of \li{name} and \li{account_num} are string literals and the value of \li{memo} is another dictionary literal. As such, when \li{ctx.ana} is called, $\typy$ follows the same protocol just described, delegating to \li{string_in.ana_Str} to analyze the string literals and to \li{dyn.ana_Dict} to analyze the dictionary literal. The \li{string_in} fragment implements a regex-based constrained string system, which we described, along with its implementation in $\typy$, in a workshop paper \cite{sanitation-psp14}.\footnote{Certain details of $\typy$ have changed since that paper was published, but the essential idea remains the same.} The \li{dyn} fragment allows dynamic Python values to appear inside $\typy$ programs, so \li{\{ \}} is analyzed as an empty Python dictionary.\todo{py?}\todo{cite leroy and mauny dynamics in ML} We omit the details of these methods for concision.
 
 If typechecking is successful, $\typy$ must next generate a translation. Again, it does so by calling a class method on the fragment defining the type that the expression is being analyzed against. For example, the \li{record.trans_Dict} method shown in Figure \ref{fig:record-intro} translates records to Python tuples (the labels do not need to appear in the translation.) This method asks $\typy$ to determine the translations of the field values, following the same protocol,  by calling \li{ctx.trans}.
 
@@ -550,7 +548,7 @@ class fn(typy.Fragment):
     else:
       ty = ctx.as_type(ann) ^\label{line:check_Assign_1}^
       ctx.ana(e, ty) ^\label{line:check_Assign_2}^
-    ctx.ana_pat(pat, ty)
+    ctx.ana_pat(pat, ty) ^\label{line:ana_pat}^
 
   ^\label{check_Expr}^@classmethod
   def check_Expr(cls, ctx, stmt):
@@ -570,7 +568,7 @@ Statement forms, unlike expression forms, are not classified by types. Rather, $
 
 For most statement forms, $\typy$ simply delegates control over validation back to the fragment delegated control over the function that the statement appears within. For example, when \li{fn.syn_FunctionDef} calls \li{ctx.check} on the assignment statement on Line \ref{line:assign} of Listing \ref{fig:hello}, $\typy$ delegates control back to the \li{fn} fragment by calling \li{fn.check_Assign}. Similarly, \li{fn.check_Expr} handles expression statements, i.e. statements that consist of a single expression, like the expression statement on Line \ref{line:hello-end} of Listing \ref{fig:hello}. Let us consider these in turn.
 
-\paragraph{Assignment}
+\vspace{-3px}\paragraph{Assignment}
 The definition of \li{fn.check_Assign} given in Listing \ref{fig:fn} begins by extracting a \emph{pattern} and an optional \emph{type annotation} from the left-hand side of the assignment, and an expression from the right-hand side of the assignment. 
 
 %For the assignment statement in Listing \ref{fig:hello}, the pattern is simply a variable, \li{name}, and there is no type annotation. The expression on the right-hand side is \li{account.name}, which is of \emph{attribute access} form.
@@ -579,21 +577,18 @@ There is no type ascription in Listing \ref{fig:hello}, so \li{fn.check_Assign} 
 
 In case where an ascription is provided, \li{fn.check_Assign} instead  asks $\typy$ to kind check the ascription to produce a type, then it asks $\typy$ to analyze the expression against that type by calling \li{ctx.ana} (Lines \ref{line:check_Assign_1}-\ref{line:check_Assign_2}.)
 
-Finally, \li{fn.check_Assign} checks that the pattern matches values of the type that was synthesized or provided as an annotated by calling \li{ctx.ana_pat}. Patterns of variable form, like \li{name} in Listing \ref{fig:hello}, match values of any type. We will see more sophisticated examples of pattern matching in Sec. \ref{sec:pattern-matching}. A side effect of calling \li{ctx.ana_pat} is that the context is updated with the bindings that the pattern introduces.
+Finally, \li{fn.check_Assign} checks that the pattern matches values of the type that was synthesized or provided as an annotated by calling \li{ctx.ana_pat}. Patterns of variable form, like \li{name} in Listing \ref{fig:hello}, match values of any type. We will see more sophisticated examples of pattern matching in Sec. \ref{sec:pattern-matching}. A side effect of calling \li{ctx.ana_pat} is that the context is updated with the bindings that the pattern introduces.\todo{no}
 
 During translation, $\typy$ delegates to \li{fn.trans_Assign}. This method is again omitted because it is straightforward. The only subtlety has to do with shadowing -- \li{fn} follows the functional  convention where different bindings of the same name are entirely distinct, rather than treating them as imperative assignments to a common stack location. This requires generating fresh identifiers when shadowing occurs. As with the semantics of return values, a different function fragment could make a different decision in this regard.
 
-\paragraph{Expression Statements} The \li{fn.check_Expr} method, shown in Listing \ref{fig:fn}, handles expression statements, e.g. the statement on Line \ref{line:hello-end} of Listing \ref{fig:hello}, by simply asking $\typy$ to synthesize a type for the expression, which in Listing \ref{fig:hello} is of binary operator form. We will describe how $\typy$ synthesizes a type for expressions of this form in Sec. \ref{sec:binary-forms}. 
+\vspace{-3px}\paragraph{Expression Statements} The \li{fn.check_Expr} method, shown in Listing \ref{fig:fn}, handles expression statements, e.g. the statement on Line \ref{line:hello-end} of Listing \ref{fig:hello}, by simply asking $\typy$ to synthesize a type for the expression, which in Listing \ref{fig:hello} is of binary operator form. We will describe how $\typy$ synthesizes a type for expressions of this form in Sec. \ref{sec:binary-forms}. 
 
-\paragraph{Other Statement Forms}
+\vspace{-3px}\paragraph{Other Statement Forms}
 $\typy$ does not delegate to the fragment governing the enclosing function for statements of function and class definition form that have their own fragment decorator. Instead, $\typy$ delegates to the decorating fragment, just as at the top-level of a component definition
 
 $\typy$ also does not delegate to the decorating fragment for statements that 1) assign to an attribute, e.g. \li{e1.x = e2};  2) assign to a subscript, e.g. \li{e1[e2] = e3}; or 3) statements with guards, e.g. \li{if}, \li{for} and \li{while}.  These operate as \emph{targeted forms}, described next.
 
 \subsubsection{Targeted Forms}\label{sec:targeted-forms}
-\emph{Targeted forms} include 1) the statement forms just mentioned; 2) expression forms having exactly one sub-expression, like \lip{-e1} or \lip{e1.attr}; and 3) expression forms where there may be multiple sub-expressions but the left-most one is the only one required, like \lip{e1[slices]} or \lip{e1(args)}. When $\typy$ encounters terms of targeted form, it first synthesizes a type for the target subexpression \li{e1}. It then delegates control over typechecking and translation to the fragment defining the type of \li{e1}.
-
-For example, the expression on the right-hand side of the assignment statement on Line \ref{line:assign} of Listing \ref{fig:hello} is \li{account.name}, so $\typy$ first synthesizes a type for \li{account}. Due to the type annotation on \li{hello}, we have that \li{account} synthesizes type \li{Listing1.Account} (following the rule for variables, which are tracked by the context.) This type is synonymous with a \li{record} type, so $\typy$ first calls the \li{record.syn_Attribute} class method given in Figure \ref{fig:record-elim}. This method looks up the attribute, here \li{name}, in the type index and returns the corresponding field type, or raises a type error if the attribute is not found in the type index. Here, the synthesized type is \li{string_in[r".+"]}.
 
 \begin{codelisting}[t]
 \vspace{-3px}
@@ -614,12 +609,16 @@ For example, the expression on the right-hand side of the assignment statement o
       value=ctx.trans(e.value),
       slice=ast.Index(ast.Num(n=position)))
 \end{lstlisting}
-\caption{Targeted forms in $\typy$.}
+\caption{Typing and translation of targeted forms.}
 \label{fig:record-elim}
 \end{codelisting}
+\emph{Targeted forms} include 1) the statement forms just mentioned; 2) expression forms having exactly one sub-expression, like \lip{-e1} or \lip{e1.attr}; and 3) expression forms where there may be multiple sub-expressions but the left-most one is the only one required, like \lip{e1[slices]} or \lip{e1(args)}. When $\typy$ encounters terms of targeted form, it first synthesizes a type for the target subexpression \li{e1}. It then delegates control over typechecking and translation to the fragment defining the type of \li{e1}.
+
+For example, the expression on the right-hand side of the assignment statement on Line \ref{line:assign} of Listing \ref{fig:hello} is \li{account.name}, so $\typy$ first synthesizes a type for \li{account}. Due to the type annotation on \li{hello}, we have that \li{account} synthesizes type \li{Listing1.Account} (following the rule for variables, which are tracked by the context.) This type is synonymous with a \li{record} type, so $\typy$ first calls the \li{record.syn_Attribute} class method given in Listing \ref{fig:record-elim}. This method looks up the attribute, here \li{name}, in the type index and returns the corresponding field type, here \li{string_in[r".+"]}, or raises a type error if the attribute is not found in the type index.
 
 
-To generate a translation for a targeted form, $\typy$ follows an analagous delegation protocol. For example, $\typy$ calls \li{record.trans_Attribute}, shown in Listing \ref{fig:record-elim}, to generate a translation for \li{account.name}. Because record values translate to tuples, this class method translates field projection to tuple projection, using the position of the attribute within the index to determine where the desired field value is located.
+
+To generate the translation for \li{account.name}, $\typy$ calls \li{record.trans_Attribute}, shown in Listing \ref{fig:record-elim}. Because record values translate to tuples, this class method translates field projection to tuple projection, using the position of the attribute within the index to determine the slice index.
 
 \vspace{-3px}\subsubsection{Binary Forms}\label{sec:binary-forms}
 \vspace{-3px}
@@ -635,7 +634,103 @@ For example, if we would like to be able to add \li{int}s and \li{float}s and th
 % \subsubsection{Name Expression Forms}\label{sec:name-forms}
 % Finally, let us consider how expressions of name form work in $\typy$. For example, we use the names \li{account} and \li{name} in the definition of \li{hello} in Listing \ref{fig:hello}. Like most statement forms, $\typy$ delegates to the fragment decorating the function in the enclosing 
 
-\subsection{Delegated Pattern Matching}\label{sec:pattern-matching}
+\subsection{Fragmentary Pattern Matching}\label{sec:pattern-matching}
+As we saw on Line \ref{line:ana_pat} of Listing \ref{fig:fn}, fragments can request that $\typy$ check that a given \emph{pattern} matches values of a given type by calling \li{ctx.ana_pat}. In the example in Listing \ref{fig:hello}, the pattern was simply a name -- name patterns match values of any type. In this section, we will consider more sophisticated patterns. For example, the assignment statement below uses a tuple pattern:
+\begin{lstlisting}[numbers=none]
+(x, y, z) = e
+\end{lstlisting}
+
+$\typy$ also supports a more general \li{match} construct, shown on Lines \ref{line:match-start}-\ref{line:match-end} of Listing \ref{fig:patterns}. This construct, which spans several syntactic statements, is treated as a single expression statement by $\typy$. The \emph{scrutinee} is \li{t} and each \emph{clause}  is of the following form:
+\begin{lstlisting}[numbers=none]
+with pat: e
+\end{lstlisting}
+where \li{pat} is a pattern and \li{e} is the corresponding \emph{branch expression}.
+
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+from typy import component
+from typy.std import finsum, tpl, fn
+
+@component
+def Listing7():
+    # polymorphic recursive finite sum type
+    tree(+a) [: type] = finsum[ ^\label{line:tree-start}^
+      Empty, 
+      Node(tree(+a), tree(+a)),
+      Leaf(+a)
+    ] ^\label{line:tree-end}^
+
+    # polymorphic recursive function over trees
+    @fn
+    def map(f : fn[+a, +b], 
+            t : tree(+a)) -> tree(+b):
+      [t].match ^\label{line:match-start}^
+      with Empty: Empty ^\label{line:Empty}^
+      with Node(left, right): ^\label{line:Node}^
+        Node(map(f, left), map(f, right))
+      with Leaf(x):
+        Leaf(f(x)) ^\label{line:match-end}^
+\end{lstlisting}
+\caption{Polymorphism, recursion and pattern matching in $\typy$. An analagous OCaml file is shown in Appendix \ref{sec:ocaml-examples}.}
+\label{fig:patterns}
+\end{codelisting}
+
+To typecheck a match expression statement, $\typy$ first synthesizes a type for the scrutinee. Here, the scrutinee, \li{t}, is a variable of type \li{tree(+a)}. This type is an instance of the parameterized recursive type \li{tree} defined on Lines \ref{line:tree-start}-\ref{line:tree-end} (the mechanisms involved in defining recursive and parameterized types are built into $\typy$ in the usual manner.) Type variables prefixed by \li{+}, like \li{+a} and \li{+b}, implicitly quantify over types at the function definition site (like \lstinline[language=ML]{'a} in OCaml \cite{ocaml-manual}.) 
+
+More specifically, \li{tree(+a)} is a \emph{recursive finite sum type} defined by the \li{finsum} fragment imported from \li{typy.std} \cite{pfpl}. Values of finite sum type are translated into Python tuples, where the first element is a string \emph{tag} giving one of the names in the type index and the remaining elements are the corresponding values. For example, a value \li{Node(e1, e2)} translates to \li{("Node", tr1, tr2)} where \li{tr1} and \li{tr2} are the translations of \li{e1} and \li{e2}. Note that names and call expressions beginning with a capitalized letter are treated as literal forms in $\typy$ (following Haskell's datatype convention \cite{jones2003haskell}.) 
+
+For each clause in a match expression statement, $\typy$ checks that the pattern matches values of the scrutinee type by delegating to the fragment defining that type. For example, to check the pattern \li{Node(left, right)} on Line \ref{line:Empty}, $\typy$ calls \li{finsum.ana_pat_Call}, shown in Listing \ref{fig:finsum}. This method must return a dictionary of \emph{bindings}, i.e. a mapping from variables to types, which $\typy$ adds to the typing context when typechecking the corresponding branch expression, or raise a type error if the pattern does not match values of the scrutinee type. In this case, \li{finsum.ana_pat_Call} first checks to make sure that 1) the name that appears in the pattern appears in the type index (for \li{finsum} types, this is a mapping from names to sequences of types); and 2) that the correct number of pattern arguments have been provided. If so, it asks $\typy$ to check each subpattern against the corresponding type. Here, \li{left} and \li{right} are both checked against \li{tree(+a)}. The returned dictionary of bindings is constructed by combining the two dictionaries returned by these calls to \li{ctx.ana_pat}. The \li{_combine} function, not shown, also checks to make sure that the bound variables are distinct.
+
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}[deletendkeywords={slice}]
+import typy
+
+class finsum(typy.Fragment):
+  # ... 
+
+  @classmethod
+  def ana_pat_Call(cls, ctx, idx, pat):
+    if (isinstance(pat.func, ast.Name) and 
+        pat.func.id in idx and 
+        len(pat.args) == len(idx[pat.func.id])):
+      bindings, lbl = {}, pat.func.id
+      for p, ty in zip(pat.args, idx[lbl]):
+        _combine(bindings, ctx.ana_pat(p, ty))
+      return bindings
+    else:
+      raise typy.TyError("<bad pattern>", pat)
+
+  @classmethod
+  def trans_pat_Call(cls, ctx, idx, pat, 
+                     scrutinee_trans):
+    conditions = [
+      ast.Compare( # tag check
+        left=_project(scrutinee_trans, 0),
+        ops=[ast.Eq()],
+        comparators=[ast.Str(s=pat.func.id)])
+    ]
+    binding_translations = {}
+    for n, p in enumerate(pat.args):
+      arg_scrutinee = _project(scrutinee_trans, 
+                               n+1)
+      c, b = ctx.trans_pat(p, arg_scrutinee)
+      conditions.append(c)
+      binding_translations[pat.func.id] = b
+    condition = ast.BoolOp(op=ast.And(), 
+      values=conditions)
+    return (condition, binding_translations)
+
+def _project(e, n): # helper function
+  return ast.Subscript(value=e, 
+    slice=ast.Index(ast.Num(n=n)))
+\end{lstlisting}
+\caption{Typing and translation of patterns.}
+\label{fig:finsum}
+\end{codelisting}
+
+Match expression statements translate to Python \li{if...elif} statements. For each clause, $\typy$ needs a boolean \emph{condition expression}, which determines whether that branch is taken, and for each binding introduced by that clause, $\typy$ needs a translation. Both the the condition expression and the binding translation can refer to the scrutinee. To determine the condition and the binding translations, $\typy$ again delegates to the fragment defining the scrutinee type, here by calling \li{finsum.trans_pat_Call}, given in Listing \ref{fig:finsum}. This class method is passed the context, the type index, the pattern AST and an AST representing the scrutinee. The generated condition expression first checks the tag. Then, for each, subpattern, it recursively generates its conditions and binding translations by calling \li{ctx.trans_pat(p, arg_scrutinee)}, where \li{arg_scrutinee} makes the new ``effective scrutinee'' for the subpattern be the corresponding projection out of the original scrutinee. The returned condition expression is the conjunction of the tag check and the subpattern conditions.
 
 \section{More Examples}\label{sec:more-examples}
 The examples in the previous section are all found in existing languages. In this section, we give examples of novel semantic structures.
@@ -1072,7 +1167,7 @@ class fn(typy.Type):
     if x in ctx.assn_ctx: ctx.ana(e, ctx.assn_ctx[x])
     else: ctx.assn_ctx[x] = ctx.syn(e)
 
-  ^\label{check_Expr}^@classmethod
+  @classmethod
   def check_Expr(cls, ctx, stmt):
     ctx.syn(stmt.value)
     
@@ -1141,7 +1236,7 @@ To support this, when \lip{typy} encounters an expression of a literal form  in 
 class record(typy.Type): 
   # ... continued from Listing 2 ...
 
-  ^\label{ana_Dict}^def ana_Dict(self, ctx, e):
+  def ana_Dict(self, ctx, e):
     for lbl, value in zip(e.keys, e.values):
       if isinstance(lbl, ast.Str):
         if lbl.s in self.idx.rows: 
@@ -3595,5 +3690,29 @@ Other metatheoretic guarantees about the translation cannot be provided in the f
 
 \section{Type Equality}\label{sec:type-equality}
 Although not necessary in this example, fragments can compare type expressions for equivalence \cite{StoneHarper00}. Two types in canonical form are equivalent if they arise from the same fragment and have equivalent index values (as determined by Python's \lip{==} operator, which can be overloaded to introduce interesting equivalences.) For example,  we can freely reorder the fields in the definition of \lip{Account} because Python dictionaries are not order-preserving.
+
+\section{OCaml Examples}\label{sec:ocaml-examples}
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}[language=ML, morekeywords={module,match}]
+module Listing7 = 
+struct
+  type 'a tree = 
+  | Empty
+  | Node of 'a tree * 'a tree
+  | Leaf of 'a
+
+  let map (f : 'a -> b, 
+           tree : 'a tree) : 'b tree  =
+    match tree with 
+    | Empty -> Empty
+    | Node(left, right) -> 
+        Node(map(f, left), map(f, right))
+    | Leaf(x) -> Leaf(f(x))
+end
+\end{lstlisting}
+\caption{An OCaml module analagous to the component defined in Listing \ref{fig:patterns}.}
+\label{fig:ocaml-example-1}
+\end{codelisting}
 
 \end{document}
