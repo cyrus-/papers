@@ -82,7 +82,7 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
 \newfloat{codelisting}{tp}{lop}
 \floatname{codelisting}{Listing}
 \setlength{\floatsep}{5pt}
-\setlength{\textfloatsep}{10pt}
+\setlength{\textfloatsep}{6pt}
 %\setlength{\intextsep}{0pt}
 \setlength{\belowcaptionskip}{0pt}
 % \usepackage[bottom]{footmisc}
@@ -179,7 +179,7 @@ This paper introduces $\typy$, a statically typed programming language embedded 
 % For example, \texttt{typy} delegates control over terms of literal form (e.g. dictionary literal form) to the fragment that defines the type that the term is being checked against. 
 This fragment programmatically 1)  typechecks the term, and 2) assigns dynamic meaning to the term by computing its translation to Python. 
 
-We argue that this design is \emph{expressive} with examples of fragments that express the semantics of 1) functional record types; 2) a variation on JavaScript's prototypic object system; 3) labeled sum types (with nested pattern matching \emph{a la} ML); and 4)   foreign interfaces to Python and OpenCL. 
+We argue that this design is \emph{expressive} with examples of fragments that express the semantics of 1) functional record types; 2) a variation on JavaScript's prototypal object system; 3) labeled sum types (with nested pattern matching \emph{a la} ML); and 4)   foreign interfaces to Python and OpenCL. 
 
 We further argue that this design is \emph{compositionally well-behaved}. It side\-steps the problems of  grammar composition and the expression problem by allowing different fragments to deterministically share a fixed concrete and abstract syntax. Moreover, programs are semantically stable under fragment composition (unlike systems where the semantics is a ``bag of inference rules.'') 
 
@@ -365,7 +365,7 @@ Listing \ref{fig:record-example} shows an example of a well-typed \texttt{typy} 
 \paragraph{Top-Level Components}
 On Lines \ref{fig:record-example/line:component-start}-\ref{fig:record-example/line:component-end} of Listing \ref{fig:record-example}, we define a top-level $\typy$ component by decorating a Python function value with \lip{component}, a decorator defined by $\typy$. 
 %Python assigns the value produced by calling the decorator with the decorated function value as an argument to the name specified by the function definition (here, \lip{Listing1}.)
-This decorator discards the decorated function value  after extracting its abstract syntax tree (AST) and \emph{static environment}, i.e. its closure and globals dictionary, using the reflection mechanisms exposed by the \lip{ast} and \lip{inspect}  packages in Python's standard library.\footnote{The reader may need to refer to  documentation for the \lip{ast} package, available at \url{https://docs.python.org/3.6/library/ast.html}, to fully understand some examples in the remainder of this paper.} It then processes the syntactic forms in the body of the function definition according to an alternative semantics. In particular, \lip{component} repurposes Python's assignment and array slicing forms to allow for the definition of type members, described in Sec. \ref{sec:types}, and value members, described in Sec. \ref{sec:typechecking-and-translation}. The return value of the decorator is an instance of \lip{typy.Component} that tracks 1) the identities of type members; and 2) the types and evaluated translations of value members.% The translations of top-level value members are evaluated immediately. %(the details are straightforward and not pedagogically useful at the moment, so we elide them.)
+This decorator discards the decorated function value  after extracting its abstract syntax tree (AST) and \emph{static environment}, i.e. its closure and globals dictionary, using the reflection mechanisms exposed by the \lip{ast} and \lip{inspect}  packages in Python's standard library.\footnote{The reader may need to refer to  documentation for the \lip{ast} package, available at \url{https://docs.python.org/3.6/library/ast.html}, to fully understand some examples in the remainder of this paper.} It then processes the syntactic forms in the body of the function definition according to an alternative semantics. In particular, \lip{component} repurposes Python's assignment and array slicing forms to allow for type member definitions, described in Sec. \ref{sec:types}, and value member definitions, described in Sec. \ref{sec:typechecking-and-translation}. The return value of the decorator is an instance of \lip{typy.Component} that tracks 1) the identities of type members; and 2) the types and evaluated translations of value members.% The translations of top-level value members are evaluated immediately. %(the details are straightforward and not pedagogically useful at the moment, so we elide them.)
 
 %
 
@@ -477,7 +477,7 @@ Type systems that distinguish type analysis (where the type is known) from type 
       for k, v in zip(e.keys, e.values))
     return ast.Tuple(
       (lbl, ctx.trans(ast_dict[lbl]))
-      for lbl in idx.iterkeys())
+      for lbl in sorted(idx.keys()))
 \end{lstlisting}
 \caption{Typing and translation of literal forms.}
 \label{fig:record-intro}
@@ -488,7 +488,7 @@ For example, the expression on Lines \ref{line:test_acct-start}-\ref{line:test_a
 
 The three subexpressions in Listing \ref{fig:record-example} that \li{record.ana_Dict} asks $\typy$ to analyze are also of literal form -- the values of \li{name} and \li{account_num} are string literals and the value of \li{memo} is another dictionary literal. As such, when \li{ctx.ana} is called, $\typy$ follows the same protocol just described, delegating to \li{string_in.ana_Str} to analyze the string literals and to \li{py.ana_Dict} to analyze the dictionary literal. The \li{string_in} fragment implements a regex-based constrained string system, which we described, along with its implementation in $\typy$, in a workshop paper \cite{sanitation-psp14}.\footnote{Certain details of $\typy$ have changed since that paper was published, but the essential idea remains the same.} The \li{py} fragment allows dynamic Python values to appear inside $\typy$ programs, so \li{\{ \}} is analyzed as an empty Python dictionary. We omit the details of these methods for concision.
 
-If typechecking is successful, $\typy$ delegates to the same fragment to generate a translation. For example, $\typy$ calls the \li{record.trans_Dict} method shown in Figure \ref{fig:record-intro}, which translates records to Python tuples (the labels do not need to appear in the translation.) This method asks $\typy$ to determine translations for the field values by calling \li{ctx.trans}.
+If typechecking is successful, $\typy$ delegates to the same fragment to generate a translation. For example, $\typy$ calls the \li{record.trans_Dict} method shown in Figure \ref{fig:record-intro}, which translates records to Python tuples (the labels do not need to appear in the translation.) This method asks $\typy$ to determine translations for the field values by calling \li{ctx.trans}. The field ordering is alphabetical.
 
 \vspace{-3px}
 \subsubsection{Function Forms}\label{sec:fns}
@@ -517,15 +517,17 @@ def Listing4():
 
 Listing \ref{fig:hello} shows an example of another component, \li{Listing4}, that defines a $\typy$ function, \li{hello}, on Lines \ref{line:hello-start}-\ref{line:hello-end} and then applies it to print a greeting on Line \ref{line:print-hello}. This listing imports the component \li{Listing1} defined in Listing \ref{fig:record-example} (we assume that Listing \ref{fig:record-example} is in a file called \li{listing1.py}.)
 
-$\typy$ delegates control over the typechecking and translation of function definitions that appear inside components to the fragment that appears as the top-most decorator. 
+$\typy$ delegates control over the typechecking and translation of function definition forms that appear inside components, or in other synthetic positions, to the fragment that appears as the top-most decorator.
 
-Here, the \li{fn} fragment appears as the top-most decorator, so $\typy$ begins by calling the \li{fn.syn_FunctionDef} class method, outlined in Listing \ref{fig:fn}. This method is passed the context and the AST of the function and must manipulate the context as desired and return the type that is to be synthesized for the function, or raise \li{typy.TyError} if this is not possible. We omit some of the details of this method for concision. 
+Here, the \li{fn} fragment appears as the top-most decorator, so $\typy$ begins by calling the \li{fn.syn_FunctionDef} class method, outlined in Listing \ref{fig:fn}. This method is passed the context and the AST of the function and must initialize the context as desired and return the type that is to be synthesized for the function, or raise \li{typy.TyError} if this is not possible. We omit some of the details of this method for concision. 
 
 Observe on Lines \ref{line:check-1}-\ref{line:check-2} of Listing \ref{fig:fn} that \li{fn} calls \li{ctx.check} on each statement in the body of the function definition (other than the docstring, following Python's conventions.) This prompts $\typy$ to follow its delegation protocol for each statement, described in Sec. \ref{sec:statements}. 
 
 We chose to take the value of the final expression in the body of the function as its return value, following the usual convention in functional languages (an alternative function fragment could use Python-style \li{return} statements.) The synthesized function type is constructed programmatically on Lines \ref{line:rty-first}-\ref{rty-second} by pairing the argument types (elided) with the synthesized return type.
 
 If typechecking is successful, $\typy$ calls the class method \li{fn.trans_FunctionDef} to generate the translation of the function definition. This method, elided due to its simplicity, recursively asks $\typy$ to generate the translations of the statements in the body of the function definition by calling \li{ctx.trans} and inserts the necessary \li{return} keyword on the final statement.
+
+For function definition forms in analytic positions, or those that are decorated by a type expression rather than a fragment, $\typy$ treats the function definition as a literal form. We will see examples of these in Sec. \ref{sec:more-examples}. 
 
 \subsubsection{Statement Forms}\label{sec:statements}
 \begin{codelisting}
@@ -596,7 +598,7 @@ During translation, $\typy$ delegates to \li{fn.trans_Assign}. This method is ag
 \vspace{-3px}\paragraph{Other Statement Forms}
 $\typy$ does not delegate to the fragment governing the enclosing function for statements of function definition form that have their own fragment decorator. Instead, $\typy$ delegates to the decorating fragment, just as at the top-level of a component definition. The fragment governing the enclosing function determines only how the translation is integrated into its own translation (through a \li{integrate_trans_FunctionDef} method, omitted for concision.)
 
-$\typy$ also does not delegate to the decorating fragment for statements that 1) assign to an attribute, e.g. \li{e1.x = e2};  2) assign to a subscript, e.g. \li{e1[e2] = e3}; or 3) statements with guards, e.g. \li{if}, \li{for} and \li{while}.  These operate as \emph{targeted forms}, described next.
+$\typy$ also does not delegate to the decorating fragment for statements that 1) assign to an attribute, e.g. \li{e1.x = e2} or \li{e1.x += e2};  2) assign to a subscript, e.g. \li{e1[e2] = e3}; or 3) statements with guards, e.g. \li{if}, \li{for} and \li{while}.  These operate as \emph{targeted forms}, described next.
 
 \subsubsection{Targeted Forms}\label{sec:targeted-forms}
 
@@ -690,8 +692,6 @@ To typecheck a match expression statement, $\typy$ first synthesizes a type for 
 
 More specifically, \li{tree(+a)} is a \emph{recursive finite sum type} defined by the \li{finsum} fragment imported from \li{typy.std} \cite{pfpl}. Values of finite sum type are translated into Python tuples, where the first element is a string \emph{tag} giving one of the names in the type index and the remaining elements are the corresponding values. For example, a value \li{Node(e1, e2)} translates to \li{("Node", tr1, tr2)} where \li{tr1} and \li{tr2} are the translations of \li{e1} and \li{e2}. Note that names and call expressions beginning with a capitalized letter are treated as literal forms in $\typy$ (following Haskell's datatype convention \cite{jones2003haskell}.) 
 
-For each clause in a match expression statement, $\typy$ checks that the pattern matches values of the scrutinee type by delegating to the fragment defining that type. For example, to check the pattern \li{Node(left, right)} on Line \ref{line:Empty}, $\typy$ calls \li{finsum.ana_pat_Call}, shown in Listing \ref{fig:finsum}. This method must either return a dictionary of \emph{bindings}, i.e. a mapping from variables to types, which $\typy$ adds to the typing context when typechecking the corresponding branch expression, or raise a type error if the pattern does not match values of the scrutinee type. In this case, \li{finsum.ana_pat_Call} first checks to make sure that 1) the name that appears in the pattern appears in the type index (for \li{finsum} types, this is a mapping from names to sequences of types); and 2) that the correct number of pattern arguments have been provided. If so, it asks $\typy$ to check each subpattern against the corresponding type. Here, \li{left} and \li{right} are both checked against \li{tree(+a)}. The returned dictionary of bindings is constructed by combining the two dictionaries returned by these calls to \li{ctx.ana_pat}. The \li{_combine} function, not shown, also checks to make sure that the bound variables are distinct.
-
 \begin{codelisting}[t]
 \vspace{-3px}
 \begin{lstlisting}[deletendkeywords={slice}]
@@ -739,6 +739,10 @@ def _project(e, n): # helper function
 \label{fig:finsum}
 \end{codelisting}
 
+For each clause in a match expression statement, $\typy$ checks that the pattern matches values of the scrutinee type by delegating to the fragment defining that type. For example, to check the pattern \li{Node(left, right)} on Line \ref{line:Empty}, $\typy$ calls \li{finsum.ana_pat_Call}, shown in Listing \ref{fig:finsum}. This method must either return a dictionary of \emph{bindings}, i.e. a mapping from variables to types, which $\typy$ adds to the typing context when typechecking the corresponding branch expression, or raise a type error if the pattern does not match values of the scrutinee type. In this case, \li{finsum.ana_pat_Call} first checks to make sure that 1) the name that appears in the pattern appears in the type index (for \li{finsum} types, this is a mapping from names to sequences of types); and 2) that the correct number of pattern arguments have been provided. If so, it asks $\typy$ to check each subpattern against the corresponding type. Here, \li{left} and \li{right} are both checked against \li{tree(+a)}. The returned dictionary of bindings is constructed by combining the two dictionaries returned by these calls to \li{ctx.ana_pat}. The \li{_combine} function, not shown, also checks to make sure that the bound variables are distinct.
+
+
+
 Match expression statements translate to Python \li{if...elif} statements. For each clause, $\typy$ needs a boolean \emph{condition expression}, which determines whether that branch is taken, and for each binding introduced by that clause, $\typy$ needs a translation. Both the the condition expression and the binding translations can refer to the scrutinee. To determine the condition and the binding translations, $\typy$ again delegates to the fragment defining the scrutinee type, here by calling \li{finsum.trans_pat_Call}, given in Listing \ref{fig:finsum}. This class method is passed the context, the type index, the pattern AST and an AST representing the scrutinee (bound to a variable, to avoid duplicating effects.) The generated condition expression first checks the tag. Then, for each, subpattern, it recursively generates its conditions and binding translations by calling \li{ctx.trans_pat(p, arg_scrutinee)}, where \li{arg_scrutinee} makes the new ``effective scrutinee'' for the subpattern be the corresponding projection out of the original scrutinee. The returned condition expression is the conjunction of the tag check and the subpattern conditions.\todo{show example?}
 
 \subsection{Determinism and Stability}
@@ -757,36 +761,84 @@ Finally, for patterns (Sec. \ref{sec:pattern-matching}), the fragment defining t
 Like many other ``pragmatic'' language designs, we are not able to formally prove these metatheorems about $\typy$ (because it incorporates the entirety of Python.) 
 
 \section{More Examples}\label{sec:more-examples}
-The examples in the previous section are all found in existing languages. In this section, we give examples of novel semantic structures.
+% In the previous section, we described fragments that express the semantics of standard functional constructs. We also introduced the \li{py} fragment, which embeds Python, a dynamic language, into $\typy$ by treating it like a ``uni-typed'' language \cite{pfpl,scott1980lambda}. Finally, we showed the \li{string_in} fragment, which express a semantics of constrained strings \cite{sanitation-psp14}. 
+In this section, we will further demonstrate the flexibility of $\typy$'s fragment system by outlining additional examples.
 
-\subsection{Prototypic Objects}
+\subsection{Prototypal Object Types}
 \begin{codelisting}[t]
 \vspace{-3px}
 \begin{lstlisting}
 from typy import component
-from typy.std import proto, decimal
+from typy.std import proto, decimal, fn, unit
 from listing1 import Listing1
 
-@component ^\label{fig:record-example/line:component-start}^
+@component 
 def Listing9():
   Transaction [: type] = proto[
     amount : decimal,
+    incr   : fn[Transaction, unit]
     proto  : Listing1.Account
   ]
 
-  test_trans [: Transaction] = {
-    amount: 36.50,
-    proto: Listing1.test_acct
-  }
+  @Transaction ^\label{line:test_trans-start}^
+  def test_trans():
+    amount = 36.50
+    def incr(self): self.amount += 1 ^\label{line:mutable-field}^
+    proto = Listing1.test_acct ^\label{line:test_trans-end}^
 
-  test_trans.amount += 5 # mutable fields
-  print(test_trans.name) # prints Harry Q. Bovik
+  test_trans.incr() # self passed automatically ^\label{line:auto-self}^
+  print(test_trans.name) # prints Harry Q. Bovik^\label{line:proto-inherit}^
 \end{lstlisting}
-\caption{Prototypic objects in $\typy$.}
+\caption{Prototypal objects in $\typy$.}
 \label{fig:proto-example}
 \end{codelisting}
 
-\subsection{Foreign Function Interfaces}
+JavaScript's object system supports \emph{prototypal inheritance} (based on a similar mechanism in the Self language \cite{Ungar:Smith:oopsla:1987,Lie86}.) We have implemented a statically typed variant of this system as a fragment, \li{typy.std.proto}. 
+
+Figure \ref{fig:proto-example} defines a \emph{prototypal object type}, \li{Transaction}, that specifies fields named \li{amount}, \li{incr} and \li{proto}. We introduce a value of this type using the \li{def} form on Lines \ref{line:test_trans-start}-\ref{line:test_trans-end} (i.e. this form is treated as a literal form, per Sec. \ref{sec:fns}, so $\typy$ calls \li{proto.ana_FunctionDef}.) The inner \li{def} form, which defines the \li{incr} field, is governed by the \li{fn} fragment because \li{proto.ana_FunctionDef} analyzes it against a \li{fn} type (i.e. it also behaves as a literal.) As such, no annotations are needed.
+
+The fields of a prototypic object are mutable, e.g. as shown in the body of \li{incr} on Line \ref{line:mutable-field}. The delegation protocol treats an assignment of this form as a targeted form, so in this case, \li{proto} is delegated control.
+
+On Line \ref{line:auto-self}, we call \li{incr}. The \li{proto} fragment passes in the target of a method call as the first argument. 
+
+When a field is not found in the object itself, e.g. \li{name} on Line \ref{line:proto-inherit}, the \li{proto} fragment delegates to the \li{proto} field. Here, that field contains a record value, \li{Listing1.test_acct}. 
+
+\subsection{Low-Level Foreign-Function Interfaces}
+Python is widely used in computational science and engineering \cite{oliphant2007python}. One reason is that Python has support for calling into low-level languages, e.g. C (via SWIG \cite{beazley2003automated}) and languages for programming GPUs and other compute devices, like CUDA and OpenCL \cite{klockner2011pycuda}. Many popular libraries, including \li{numpy} \cite{van2011numpy}, serve as wrappers around low-level code written in these languages. It is also possible to dynamically compile low-level code generated as a Python string, e.g. using the PyCUDA and PyOpenCL libraries \cite{klockner2011pycuda}.
+
+We have designed fragments that allow for statically typed access to these libraries. 
+
+\begin{codelisting}[t]
+\vspace{-3px}
+\begin{lstlisting}
+from typy import component
+from typy.numpy import array, f64
+from typy.opencl import buffer, to_device
+
+@component
+def Listing10():
+  # (device selection code elided)
+
+  # make numpy array + send to device
+  x [: array[f64]] = [1, 2, 3, 4]
+  d_x = to_device(x) # device buffer
+
+  # define a typed data-parallel OpenCL function
+  @tycl.fn
+  def add5(x : buffer[f64]):
+    gid = get_global_id() # OpenCL primitive
+    x[gid] = x[gid] + 5
+
+  # spawn one device thread per element and run
+  add5(d_x, global_size=d_x.length)
+
+  # retrieve from device and print
+  y = d_x.from_device()
+  print(y.to_string()) # prints [6, 7, 8, 9]
+\end{lstlisting}
+\caption{\li{numpy} and OpenCL in $\typy$.}
+\label{fig:numerics}
+\end{codelisting}
 
 \section{Related Work}\label{related}\label{sec:related-work}
 
