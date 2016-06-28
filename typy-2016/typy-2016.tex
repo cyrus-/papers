@@ -73,19 +73,19 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
   morekeywords={kernel, __kernel, global, __global, size_t, get_global_id, sin, printf, int2}
 }
 
-\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily\footnotesize,deletendkeywords={tuple,buffer,map}]{#1}}
+\newcommand{\lip}[1]{\lstinline[language=Python,basicstyle=\ttfamily\footnotesize,morekeywords={with},deletendkeywords={tuple,buffer,map}]{#1}}
 \newcommand{\li}[1]{\lip{#1}}
 
 \usepackage{float}
 \floatstyle{ruled}
 \newfloat{codelisting}{tp}{lop}
 \floatname{codelisting}{Listing}
-\setlength{\floatsep}{5pt}
-\setlength{\textfloatsep}{6pt}
-%\setlength{\intextsep}{0pt}
-\setlength{\belowcaptionskip}{0pt}
+% \setlength{\floatsep}{4pt}
+\setlength{\textfloatsep}{10pt plus 1.0pt minus 4.0pt}
+% \setlength{\intextsep}{10pt}
+% \setlength{\belowcaptionskip}{0pt}
 % \usepackage[bottom]{footmisc}
-\setlength{\skip\footins}{3px}
+\setlength{\skip\footins}{3px plus 10px minus 5px}
 % \setlength{\footnotesep}{0px}
 \definecolor{very-light-gray}{gray}{0.9}
 
@@ -106,12 +106,12 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
 \sloppy
 \makeatletter
 \renewcommand\section{\@startsection{section}{1}{\z@}%
-                      {-6\p@ \@plus -4\p@ \@minus -4\p@}%
+                      {-6\p@ \@plus 4\p@ \@minus -4\p@}%
                       {2\p@ \@plus 4\p@ \@minus 4\p@}%
                       {\normalfont\large\bfseries\boldmath
                        \rightskip=\z@ \@plus 8em\pretolerance=10000 }}
 \renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-                      {-6\p@ \@plus -4\p@ \@minus -4\p@}%
+                      {-6\p@ \@plus 4\p@ \@minus -4\p@}%
                       {2\p@ \@plus 4\p@ \@minus 4\p@}%
                       {\normalfont\normalsize\bfseries\boldmath
                        \rightskip=\z@ \@plus 8em\pretolerance=10000 }}
@@ -648,23 +648,18 @@ For example, if we would like to be able to add \li{int}s and \li{float}s and th
 % Finally, let us consider how expressions of name form work in $\typy$. For example, we use the names \li{account} and \li{name} in the definition of \li{hello} in Listing \ref{fig:hello}. Like most statement forms, $\typy$ delegates to the fragment decorating the function in the enclosing 
 
 \subsection{Fragmentary Pattern Matching}\label{sec:pattern-matching}
-As we saw on Line \ref{line:ana_pat} of Listing \ref{fig:fn}, fragments can request that $\typy$ check that a given \emph{pattern} matches values of a given type by calling \li{ctx.ana_pat}. In the example in Listing \ref{fig:hello}, the pattern was simply a name -- name patterns match values of any type. In this section, we will consider more sophisticated patterns. For example, the assignment statement below uses a tuple pattern:
-\begin{lstlisting}[numbers=none]
+As we saw on Line \ref{line:ana_pat} of Listing \ref{fig:fn}, fragments can request that $\typy$ check that a given \emph{pattern} matches values of a given type by calling \li{ctx.ana_pat}. In the example in Listing \ref{fig:hello}, the pattern was simply a name -- name patterns match values of any type. In this section, we will consider other patterns. For example, the statement below uses a tuple pattern:
+\vspace{-2px}\begin{lstlisting}[numbers=none]
 (x, y, z) = e
-\end{lstlisting}
+\end{lstlisting}\vspace{-1px}
 
-$\typy$ also supports a more general \li{match} construct, shown on Lines \ref{line:match-start}-\ref{line:match-end} of Listing \ref{fig:patterns}. This construct, which spans several syntactic statements, is treated as a single expression statement by $\typy$. The \emph{scrutinee} is \li{t} and each \emph{clause}  is of the following form:
-\begin{lstlisting}[numbers=none]
-with pat: e
-\end{lstlisting}
-where \li{pat} is a pattern and \li{e} is the corresponding \emph{branch expression}. $\typy$ also supports an expression-level match construct, discussed in Appendix \ref{appendix:match-expressions}.
+$\typy$ also supports a more general \li{match} construct, shown on Lines \ref{line:match-start}-\ref{line:match-end} of Listing \ref{fig:patterns}. This construct, which spans several syntactic statements, is treated as a single expression statement by $\typy$. The \emph{scrutinee} is \li{t} and each \emph{clause}  is of the form \li{with pat: stmts} where \li{pat} is a pattern and \li{stmts} is the corresponding \emph{branch}. $\typy$ also supports an analagous expression-level match construct, discussed in Appendix \ref{appendix:match-expressions}.
 
 \begin{codelisting}[t]
 \vspace{-3px}
 \begin{lstlisting}
 from typy import component
 from typy.std import finsum, tpl, fn
-
 @component
 def Listing7():
     # polymorphic recursive finite sum type
@@ -673,7 +668,6 @@ def Listing7():
       Node(tree(+a), tree(+a)),
       Leaf(+a)
     ] ^\label{line:tree-end}^
-
     # polymorphic recursive function over trees
     @fn
     def map(f : fn[+a, +b], 
@@ -691,7 +685,7 @@ def Listing7():
 
 To typecheck a match expression, $\typy$ first synthesizes a type for the scrutinee. Here, the scrutinee, \li{t}, is a variable of type \li{tree(+a)}. This type is an instance of the parameterized recursive type \li{tree} defined on Lines \ref{line:tree-start}-\ref{line:tree-end} (the mechanisms involved in defining recursive and parameterized types are built into $\typy$ in the usual manner.) Type variables prefixed by \li{+}, like \li{+a} and \li{+b}, implicitly quantify over types at the function definition site (like \lstinline[language=ML]{'a} in OCaml \cite{ocaml-manual}.) 
 
-More specifically, \li{tree(+a)} is a \emph{recursive finite sum type} defined by the \li{finsum} fragment imported from \li{typy.std} \cite{pfpl}. This fragment is defined such that values of finite sum type translate to Python tuples, where the first element is a string \emph{tag} giving one of the names in the type index and the remaining elements are the corresponding values. For example, a value \li{Node(e1, e2)} translates to \li{("Node", tr1, tr2)} where \li{tr1} and \li{tr2} are the translations of \li{e1} and \li{e2}. Note that names and call expressions beginning with a capitalized letter are  treated as literal forms in $\typy$ (following Haskell \cite{jones2003haskell}.) %It is only if the delegated fragment does not define their semantics that they are treated as targeted forms.
+More specifically, \li{tree(+a)} is a \emph{recursive finite sum type} defined by the \li{finsum} fragment imported from \li{typy.std} \cite{pfpl}. This fragment is defined such that values of finite sum type translate to Python tuples, where the first element is a string \emph{tag} giving one of the names in the type index and the remaining elements are the corresponding values. For example, a value \li{Node(e1, e2)} translates to \li{("Node", tr1, tr2)} where \li{tr1} and \li{tr2} are the translations of \li{e1} and \li{e2}. Names and call expressions beginning with a capitalized letter are initially treated as literal forms in $\typy$ (following Haskell \cite{jones2003haskell}.) If the delegated fragment does not define their semantics, they are then treated as targeted forms.
 
 \begin{codelisting}[t]
 \vspace{-3px}
@@ -713,17 +707,15 @@ class finsum(typy.Fragment):
 
   @classmethod
   def trans_pat_Call(cls, ctx, idx, pat, 
-                     scrutinee_trans):
+                     scrutinee_tr):
     conditions = [
-      ast.Compare( # tag check
-        left=_project(scrutinee_trans, 0),
+      ast.Compare(left=_prj(scrutinee_tr, 0), 
         ops=[ast.Eq()],
         comparators=[ast.Str(s=pat.func.id)])
     ]
     binding_translations = {}
     for n, p in enumerate(pat.args):
-      arg_scrutinee = _project(scrutinee_trans, 
-                               n+1)
+      arg_scrutinee = _prj(scrutinee_tr, n+1)
       c, b = ctx.trans_pat(p, arg_scrutinee)
       conditions.append(c)
       binding_translations[pat.func.id] = b
@@ -731,7 +723,7 @@ class finsum(typy.Fragment):
       values=conditions)
     return (condition, binding_translations)
 
-def _project(e, n): # helper function
+def _prj(e, n): # helper function
   return ast.Subscript(value=e, 
     slice=ast.Index(ast.Num(n=n)))
 \end{lstlisting}
@@ -744,6 +736,8 @@ $\typy$ delegates control over patterns to the fragment that defines the scrutin
 
 
 Match expression statements translate to Python \li{if...elif} statements. For each clause, $\typy$ needs a boolean \emph{condition expression}, which determines whether that branch is taken, and for each binding introduced by that clause, $\typy$ needs a translation. To determine the condition and the binding translations, $\typy$ again delegates to the fragment defining the scrutinee type, here by calling \li{finsum.trans_pat_Call}, given in Listing \ref{fig:finsum}. This class method is passed the context, the type index, the pattern AST and an AST representing the scrutinee (bound to a variable, to avoid duplicating effects.) The generated condition expression first checks the tag. Then, for each, subpattern, it recursively generates its conditions and binding translations by calling \li{ctx.trans_pat(p, arg_scrutinee)}, where \li{arg_scrutinee} makes the new ``effective scrutinee'' for the subpattern be the corresponding projection out of the original scrutinee. The returned condition expression is the conjunction of the tag check and the subpattern conditions. For example, for \li{Node(left, right)}, the condition expression is \li{scrutinee[0] == 'Node' and True and True}. The two \li{True}s are because variables always match (these are optimized away.)
+
+The delegated fragment also has responsibility for checking exhaustiveness, via the class method \li{is_exhaustive} (not shown.) It can call \li{ctx.is_exhaustive(pats, ty)} to check the exhaustiveness of another sequence of patterns.
 
 \subsection{Determinism and Stability}
 We argue that the $\typy$ delegation protocol is compositionally well-behaved, i.e. it exhibits \emph{determinism} and \emph{stability under fragment composition}. By {determinism}, we mean that under a given context, there is always a single fragment that can be delegated control over any type expression, statement, expression or pattern form, i.e. there can be no ambiguity. By \emph{stability}, we mean that the delegation protocol will not make a different choice simply because a new fragment has been added to the \emph{fragment context} (the set of fragments in the static environment.) A virtue of the design we have presented is that these properties follow essentially immediately. We contrast this with related work in Sec. \ref{sec:related-work}.%In contrast, when the semantics is a ``bag of inference rules'', proofs of these properties often require sophisticated reasoning (if they hold at all.) %Like many other ``pragmatic'' language designs, we are not able to formally prove these metatheorems about $\typy$ (because it incorporates the entirety of Python.)\todo{move to disc?} 
@@ -958,7 +952,7 @@ We were able to implement $\typy$ itself as a Python library, using Python's sta
 Our design does have its limitations. Python is a complex dynamic language, so we are not able to rigorously prove determinism and stability. Our argument is simply that these properties are essentially immediate consequences of our proposed design. The same complexity makes it difficult for fragment providers to reason about correctness (relative to, e.g., an inductive specification.) 
 In the future, we hope to develop a dialect of $\typy$ using a reduced subset of Python (e.g. RPython \cite{ancona2007rpython} or $\lambda_\pi$ \cite{Politz:2013:PFM:2509136.2509536}) or a simpler language still for which a complete formal definition is available. Another approach would be to design a fragment system where the fragment definition language is dependently typed. This would make it possible to prove interesting correctness properties about fragments. By imposing stronger abstraction barriers between fragments, we conjecture that it should be possible for the language to guarantee that a broad class of such properties are conserved by fragment composition, without the need for ``combine-time'' proofs. 
 
-It would also be interesting to automate the generation of fragment definitions from inductive specifications, building on the techniques developed by the Veritas project \cite{grewe2015type}.
+It is not presently possible to define fragments using $\typy$ directly, but this is an interesting future direction. It would also be interesting to automate the generation of fragment definitions from inductive specifications, e.g. building on the techniques developed by the Veritas project \cite{grewe2015type}. 
  %A related line of future work is to allow new fragments to be written using $\typy$ itself, rather than Python. %Finally, we have made substantial progress on a ``minimal'' variant of our fragment system based on the typed lambda calculus. %Due to space limitations, it is impossible to give a satisfactory account of this calculus in this paper. 
 
 %Like many other ``pragmatic'' language designs, we are not able to formally prove these metatheorems about $\typy$ (because it incorporates the entirety of Python.)\todo{move to disc?} In contrast, when the semantics is a ``bag of inference rules'', proofs of these properties often require sophisticated reasoning.
