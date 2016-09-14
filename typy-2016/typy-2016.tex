@@ -1,5 +1,6 @@
 %\documentclass[12pt]{article}
-\documentclass[preprint,10pt]{sigplanconf}
+\documentclass[10pt]{sigplanconf}
+\toappear{}
 \newcommand{\typy}{\texttt{typy}}
 \newcommand{\sigmat}[1]{\sigma_{\text{#1}}}
 
@@ -15,7 +16,7 @@
 %\setlength{\topmargin}{0pt}
 %\setlength{\topsep}{0pt}
 %\setlength{\partopsep}{0pt}
-\usepackage[colorlinks=true,allcolors=blue,backref,pageanchor=true,plainpages=false, pdfpagelabels, bookmarks,bookmarksnumbered,
+\usepackage[colorlinks=true,allcolors=black,backref,pageanchor=true,plainpages=false, pdfpagelabels, bookmarks,bookmarksnumbered,
 pdfborder={0 0 0},  %removes outlines around hyper links in online display
 ]{hyperref}
 
@@ -132,19 +133,20 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
 \def \TirNameStyle #1{\small\rulename{#1}}
 \begin{document}
 
-\conferenceinfo{MODULARITY'15,}{March 16--19, 2015, Fort Collins, CO, USA}
-\CopyrightYear{2015}
-\crdata{978-1-4503-3249-1/15/03}
+% \conferenceinfo{MODULARITY'15,}{March 16--19, 2015, Fort Collins, CO, USA}
+% \CopyrightYear{2015}
+% \crdata{978-1-4503-3249-1/15/03}
 
 \title{Programmable Semantic Fragments}
+\subtitle{The Design and Implementation of $\typy$}
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
 %\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
 
 
 %\authorinfo{~}{~}{~}
 \authorinfo{Cyrus Omar \and Jonathan Aldrich}
-          {          Carnegie Mellon University}
-          {\{comar, aldrich\}@cs.cmu.edu\vspace{-10px}}   
+          {          Carnegie Mellon University \\ {Pittsburgh, PA, USA}}
+          {\{comar, aldrich\}@cs.cmu.edu}   
 
 \maketitle
 \begin{abstract}
@@ -174,13 +176,13 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
 % Language designers package interesting semantic structures together into monolithic programming languages. This imposes barriers to adoption. % This paper introduces 
 
 % This paper introduces a more compositional \emph{fragment-oriented} approach. 
-This paper introduces $\typy$, a statically typed programming language embedded by reflection into Python. Rather than defining a monolithic semantics, $\typy$ features a \emph{fragmentary semantics}, i.e. it delegates semantic control over each term, drawn from Python's fixed syntax, to a contextually relevant user-defined \emph{semantic fragment}. 
+This paper introduces $\typy$, a statically typed programming language embedded by reflection into Python. $\typy$ features a \emph{fragmentary semantics}, i.e. it delegates semantic control over each term, drawn from Python's fixed concrete and abstract syntax, to some contextually relevant user-defined \emph{semantic fragment}. 
 % For example, \texttt{typy} delegates control over terms of literal form (e.g. dictionary literal form) to the fragment that defines the type that the term is being checked against. 
-This fragment programmatically 1)  typechecks the term, and 2) assigns dynamic meaning to the term by computing its translation to Python. 
+This fragment is tasked with programmatically 1)  typechecking the term (following a bidirectional protocol); and 2) assigning dynamic meaning to the term by translation to Python. 
 
-We argue that this design is \emph{expressive} with examples of fragments that express the static and dynamic semantics of 1) functional records; 2) a variation on JavaScript's prototypal object system; 3) labeled sums (with nested pattern matching \emph{a la} ML); and 4)  typed foreign interfaces to Python and OpenCL. These semantic structures are, or would need to be, defined primitively in other languages.
+We argue that this design is \emph{expressive} with examples of fragments that express the static and dynamic semantics of 1) functional records; 2) labeled sums (with nested pattern matching \emph{a la} ML); 3) a variation on JavaScript's prototypal object system; and 4) typed foreign interfaces to Python and OpenCL. These semantic structures are, or would need to be, defined primitively in conventionally structured languages.
 
-We further argue that this design is \emph{compositionally well-behaved}. It side\-steps the problems of  grammar composition and the expression problem by allowing different fragments to deterministically share a fixed syntax. Moreover, programs are semantically stable under fragment composition. %(unlike systems where the semantics is a ``bag of inference rules.'') 
+We further argue that this design is \emph{compositionally well-behaved}. It avoids the expression problem and the problems of grammar composition because the syntax is not extensible. Moreover, programs are semantically stable under fragment composition (i.e. defining new fragments will not change the meaning of existing programs.) %(unlike systems where the semantics is a ``bag of inference rules.'') 
 
 % We formalize this mechanism as a small bidirectionally typed lambda calculus and prove that 
 
@@ -202,11 +204,11 @@ We further argue that this design is \emph{compositionally well-behaved}. It sid
 %Researchers developing languages and abstractions for high-performance computing must consider a number of design criteria, including performance, verifiability, portability and ease-of-use. Despite the deficiencies of legacy tools and the availability of seemingly superior options, end-users have been reluctant to adopt new language-based abstractions. We argue that this can be largely attributed to a failure to consider three additional criteria: continuity, extensibility\- and interoperability. This paper introduces \texttt{typy}, a language that aims to satisfy this more comprehensive set of design criteria. To do so, \texttt{typy} introduces several novel compile-time mechanisms, makes principled design choices, and builds upon existing standards in HPC, particularly Python and OpenCL. OpenCL support, rather than being built into the language, is implemented atop an extensibility mechanism that also admits abstractions drawn from other seemingly disparate paradigms. The core innovation underlying this and other features of \texttt{typy} is a novel reification of types as first-class objects at compile-time, representing a refinement to the concept of active libraries that we call \emph{active types}. We validate our overall design by considering a case study of a simulation framework enabling the modular specification and efficient execution of ensembles of neural simulations across a cluster of GPUs.
 \end{abstract}
 
-% \category{D.3.2}{Programming Lan\-guages}{Language Classifications}[Extensible Languages]
+\category{D.3.2}{Programming Lan\-guages}{Language Classifications}[Extensible Languages]
 %\category{D.3.4}{Programming Languages}{Processors}[Compilers]
 %\category{F.3.1}{Logics \& Meanings of Programs}{Specifying and Verifying and Reasoning about Programs}[Specification Techniques]
-% \keywords
-% type systems; extensible languages; metaprogramming
+\keywords
+metaprogramming; bidirectional typechecking; pattern matching; foreign function interfaces
 % \vspace{-2px}
 \section{Introduction}\label{intro}
 % \vspace{-2px}
@@ -829,6 +831,7 @@ def Listing10():
 \caption{\li{numpy} and OpenCL in $\typy$.}
 \label{fig:numerics}
 \end{codelisting}
+
 Python is widely used in scientific computing \cite{oliphant2007python}. One reason is that Python has support for calling into low-level languages like C (e.g. via SWIG \cite{beazley2003automated}.) Many popular libraries, e.g. \li{numpy} \cite{van2011numpy}, operate essentially as wrappers around low-level routines written in these languages. It is also possible to dynamically compile low-level code generated by Python code as a string. This is particularly useful when working with GPUs and other compute devices, e.g. using the PyCUDA and PyOpenCL libraries \cite{klockner2011pycuda}.
 
 We have designed fragments that allow for statically typed access to these libraries. For example, on Line \ref{line:make-array} of Listing \ref{fig:numerics}, we create a typed \li{numpy} array of 64-bit floating point numbers. The \li{typy.numpy.array} fragment supports the use of list literal syntax to do so. As such, the cost of the type annotation is ``canceled out'' because we don't need to explicitly call \li{numpy.array} as one does in Python. For arrays in analytic position (e.g. as function arguments), this interface to \li{numpy} is therefore of lower syntactic cost.
