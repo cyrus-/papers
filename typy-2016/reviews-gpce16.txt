@@ -1,0 +1,222 @@
+(my comments on how these were addressed in the final paper are prefixed by >>> )
+----------------------- REVIEW 1 ---------------------
+PAPER: 52
+TITLE: Programmable Semantic Fragments
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: 1 (weak accept)
+REVIEWER'S CONFIDENCE: 2 (medium)
+
+----------- Review -----------
+The paper is nicely written and well-structured. Not being a Python
+guy, I understood most of the general approach. Here are some more
+specific comments and suggestions for improvement.
+
+* "It sidesteps the problems of grammar composition"
+  At least from the abstract, this sounds surprising, since the approach
+  does not seem to innovate on grammars and language structure (but on
+  semantics)
+
+      >>> changed "sidesteps" to "avoids" and simplified the sentence structure
+
+* "we introduce a single “extensible” statically typed language, typy, that has no primitive types. Instead, typy allows library providers to define new semantic fragments that library clients can import"
+  I do not understand the connection between not having primitive types
+  and the fact that semantic fragments can be imported.
+
+      >>> removed the clause about no primitive types from the intro
+
+* You use a lot of "new" concepts in the introduction. I think a simple
+  example (source code!) right in the introduction would be useful.
+
+      >>> got rid of the "detail" paragraph in the intro, since we cover it immediately in sec 2
+
+* "For example, consider the following family of forms:"
+  Again, you are talking about syntactic ambiguity in what follows. From
+  the abstract I got the impression that "only" semantics are addressed by
+  typy. Please consolidate.
+
+      >>> restructured a bit to emphasize that the problems are those that any extensible language must address. we happen to do it by allowing different fragments to share a fixed syntax
+
+* "Moreover, clients should be able to assume that importing a new fragment for use in one portion of a program will not change the meaning of other portions of the program"
+  Is this a problem because the same syntactic form is parsed into something
+  different if the syntax is ambiguous? So is this a parsing problem?
+
+      >>> the paragraph in question here is about semantic problems, so I think it's clear that I don't mean syntactic conflicts...
+
+* "For example, typy delegates control over terms ..."
+  What follows is too short to really understand it, and too detailed
+  ("protocol, delegate") to only serve as a teaser.
+
+      >>> simplified a bit
+
+* "Python’s syntax, cleverly repurposed, is rich enough to express a wide variety of interesting constructs cleanly"
+  But this is quite a limitation. If you think about DSLs, lots of interesting
+  things cannot be expressed with this approach.
+* "so we inherit various tools “for free”"
+  This seems also like a strong claim. Because, at least as I understand
+  it at the end of Section 1, I cannot see how generic Python IDE can know
+  about the new semantics of existing forms. How, if at all, does typy include
+  IDE customization? Or do you consider this to be out of scope, since Python
+  is dynamically typed and IDE concerns are not (very) important?
+* "Luckily, Python chose the “generic” def keyword – had it chosen, e.g. fun, this might be less clean, because components are not functions"
+  ... nicely shows the limitations of reusing host language syntax :-)
+* "so when typy encounters a definition like this, it checks that ty_expr is of kind kind."
+  So you cannot really have fine-grained mixes of fragments because, for
+  each fragment, you have use a kind or a decorator to tell the system
+  how to interpret it?
+* Detail: I'd use conciseness instead of concision
+* You say in the intro that the system supports composition. I understand this
+  a little bit better now: syntactically, there is no composition because
+  everything uses existing Python syntactic forms. And the semantics are
+  specified explicitly using decorators or kinds. Right?
+* "By stability, we mean that the delegation protocol will not make a different choice simply because a new fragment has been added to the fragment context "
+  ... because what I said in the previous bullet point, right?
+* Why do you put "language workbenches" into quotes?
+* In related work, I would have liked a comparison to Converge in terms of
+  the syntactic degrees of freedom. Could the two be combined? Converge
+  syntactic freedom (through parsing) and your semantics?
+* We plan to curate a substantial standard library of high-quality fragments.
+  With an appropriate community process, ..."
+  Do you expect significant practical uptake of this approach? What
+  makes you believe this? Not skepical, just curious!
+
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 52
+TITLE: Programmable Semantic Fragments
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: 1 (weak accept)
+REVIEWER'S CONFIDENCE: 3 (high)
+
+----------- Review -----------
+This is a signed review by Matthew Flatt.
+
+typy is an extensible language that includes a protocol for extending
+both the language's set of constructs and the language's type checker.
+Language extensions are implemented in a macro-like way, but with a
+macro protocol that is enriched to communicate type information both
+up and down the parse tree. This bidirectional handling of type
+elaboration is based on the author's extensive previous work on type
+systems, and the paper provides examples and details on how the
+protocol works.
+
+typy is novel and a nice application of the author's previous work on
+bidirectional type protocols. The paper provides valuable details on
+how to make it work, and the examples seem to support the claims. I'm
+less enthusiastic about the presentation, especially at the beginning.
+
+
+The introduction seems to be describing Scheme-style extensibility,
+where "sharing syntactic forms" corresponds to using S-expressions,
+and the "delegation protocol" corresponds to macro definition and
+invocation. This kind of extensibility is not about parentheses, but
+about a fixed `read` notation; see Honu (GPCE'12) for an elaboration
+on the Lisp idea of separating `read` from parsing to an AST.
+
+The authors understandably describe work on Lisp-style macros as only
+somewhat related, given that Lisp is untyped and that macros
+traditionally deliver information only in one direction. Furthermore,
+although Typed Racket is typed, the authors correctly note that its
+type system is not extensible; it doesn't work like typy.
+
+Nevertheless, a bidirectional and binding-anchored flow of
+information, as in typy, is at the heart of Racket's macro system. A
+description of Racket's approach is in
+
+ Macros that Work Together
+ Flatt, Culpepper, Darais, and Findler
+ J. Functional Programming, 2012
+
+See also (an invited article, not a refereed paper)
+
+ Creating Languages in Racket
+ Flatt
+ Queue 2011
+
+for a toy example of implementing a type checker through a protocol
+not unlike typy's. Compared to my toy, this paper has a far more
+complete story on bidirectional checking and the details to make typy
+work. (Others are working on a more complete variant in Racket, but
+there's not yet a paper to cite, as far I know.)
+
+For more on macro-inspired protocols for static analysis, see
+Zigguarat:
+
+  Building Language Towers with Ziggurat
+  Fisher
+  PhD dissertation, Northeastern U.
+
+Finally, in terms of protocols for pushing information up and down an
+emerging AST, especially including questions of determinism and
+incrementality (related to stability), the paper largely ignores
+extensive prior work on attribute grammars. Again, that relationship
+does not negate the contributions of this paper, which I see as a
+specific protocol for type checking in a familiar framework, but the
+paper should explain the connection.
+
+
+The introduction later says, with respect to a rewriting approach like
+macros or typy: "type safety of the extensible external language
+reduces to type safety of the fixed IL". This bit seems misstated,
+because it's true in a boring sense and false in a more interesting
+and relevant sense. Surely, the core language doesn't enforce the
+string constraints implied by `string_in`.
+
+"The general fragment delegation protocol just outlined is the primary
+conceptual contribution of this paper." Just to be clear, I think this
+sentence should change to clarify the contribution relative to prior
+work like macros and attribute grammars.
+
+
+Section 2 starts out with an example, but the prose all but ignores it
+initially and dives into details of Python's reflection and slices.
+Instead of diving into the mechanisms that the example in figure 2
+relies on, I suggest taking some time to explain what the code is
+supposed to mean and how it reflects an extensible language.
+
+Concretely, the listing is a Python script in a sense, but it's not
+really meant to be read by a human as Python code; it's a program that
+is written in a language as determined by the file's imports. Explain
+that `Account` is a type definition and that `test_acct` uses that
+type --- before talking about the mechanisms that make it work.
+Explain that `string_in` is a type constructor that comes from the
+`string_in` import, which demonstrates composing language fragments
+with their type checkers. Show an alternative that would be rejected
+by the typechecker behind `string_in`. Show an example where a type is
+synthesized, and show an example to illustrate why it's "synthesized"
+instead of "inferred".
+
+After a reader has absorbed the goal, the current section 2 provides a
+good overview of how things are implemented. Exploiting Python in this
+way is a neat trick; a Lisper would say that you're using Python
+mainly for its `read` plus binding-triggered dispatch (in an way
+that's not entirely awkward :).
+
+The examples in section 3 look good. For section 4, it makes sense
+that typy provided macros, since I see it as partly a macro expander;
+as above, it might be worth pointing out that a sufficiently powerful
+macro system can support a typy protocol. Along those lines, I imagine
+that Sugar* could host the protocol, and then a user could get the
+best of both worlds: flexible syntax --- with lots of tools to allow
+composition and manage conflicts --- plus composable type checking.
+
+I like various suggestions for future work in section 5. I think I can
+safely speak for Racket community and say that we'll be thrilled to
+have more people work on these problems!
+
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 52
+TITLE: Programmable Semantic Fragments
+AUTHORS: Cyrus Omar and Jonathan Aldrich
+
+OVERALL EVALUATION: 0 (borderline paper)
+REVIEWER'S CONFIDENCE: 1 (low)
+
+----------- Review -----------
+The paper presents typy a python-based strongly typed language with a type system that can be extended by libraries providing so-called semantic fragments. The core contribution of the paper is a description of the typing and desugaring framework implemented to support this flexibility.
+
+The paper is very well written and easy to understand, even for someone like me with a limited background in type theory and typing. It focuses strongly on the pragmatic design and implementation choices made in typy. This, in my mind, is at the same time a strength and a weakness of the paper. It is a strength, because it makes it very clear from a programmer's perspective what is going on and how to use the system. It is, however, a weakness because it makes it very difficult to understand how the system related to other approaches, to the underlying type theory, and what its contributions and limitations really are. Unfortunately, this is also not really addressed through the evaluation presented.
+
+It seems that the main differences to other approaches (e.g., attribute grammars or desugarings, say in Stratego) are (1) that the fragment code is dynamically integrated into the parsing/interpretation process at program run time, and (2) that typy does not allow any extension to the abstract or concrete syntax of the underlying language. I'm not sure whether this makes for a sufficiently strong contribution for a conference paper.
