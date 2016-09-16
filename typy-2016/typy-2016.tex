@@ -1,6 +1,8 @@
 %\documentclass[12pt]{article}
 \documentclass[10pt]{sigplanconf}
 \toappear{}
+\newif\ifext
+\exttrue
 \newcommand{\typy}{\texttt{\footnotesize typy}}
 \newcommand{\sigmat}[1]{\sigma_{\text{#1}}}
 
@@ -148,7 +150,7 @@ pdfborder={0 0 0},  %removes outlines around hyper links in online display
 % \CopyrightYear{2015}
 % \crdata{978-1-4503-3249-1/15/03}
 
-\title{Programmable Semantic Fragments}
+\title{Programmable Semantic Fragments \ifext(Extended Version)\fi}
 \subtitle{The Design and Implementation of \texttt{typy}}
 %\titlebanner{{\tt \textcolor{Red}{{\small Under Review -- distribute within CMU only.}}}}        % These are ignored unless
 %\preprintfooter{Distribute within CMU only.}   % 'preprint' option specified.
@@ -283,7 +285,7 @@ In this paper, we propose a more compositional \emph{fragment-oriented} approach
 single ``extensible'' statically typed language, $\typy$, that allows library providers to define new semantic structures as \emph{semantic fragments}. Library clients can import these fragments in any combination.\footnote{We assume throughout that simple naming conflicts are handled by some external coordination mechanism, e.g. a package repository.} %an ``extensible'' language that  
 %two languages - the first, $\typy$, a full-scale language, and the second, $\lambda_\text{frag}$, a minimal calculus - that 
 %allows library providers to express  semantic structures that are, or would need to be, built primitively into languages organized in a ``monolithic'' manner, e.g. variations on functional datatypes or object systems. 
-For example, we will consider a fragment that expresses the static and dynamic semantics of functional records, and another fragment that expresses the static and dynamic semantics of a prototypal object system.
+For example, we will consider a fragment that expresses the static and dynamic semantics of functional records (\emph{a la} ML), and another fragment that expresses the static and dynamic semantics of a prototypal object system (\emph{a la} JavaScript.)
 
 This fragment-oriented approach diminishes the need for standalone languages -- clients of a library that requires the use of, for example, functional records at its public interface can simply import the record fragment themselves, even if they otherwise prefer using an object system. % This approach sidesteps the lateral compatibility problem.
 Moreover, when interacting with libraries in a foreign language \emph{is} necessary, the fragment system helps address the lateral compatibility problem by allowing library providers to implement a natural, type-safe foreign interface as a library. For example, we will define a type-safe foreign interface to OpenCL (a low-level language for working with GPUs, similar to CUDA \cite{klockner2011pycuda}.)
@@ -362,7 +364,7 @@ Listing \ref{fig:record-example} gives an example of a well-typed $\typy$ progra
 %Let us examine this program in more detail starting at the top level.
 
 \subsection{Dynamic Embedding} 
-$\typy$ is dynamically embedded into Python, meaning that Listing \ref{fig:record-example} is simply a standard Python script at the top level. $\typy$ supports Python 2.6+, though in later examples, we use syntactic conveniences not introduced until Python 3.0 \cite{pep3107}. The extended version of this paper, available as a technical report \cite{gpce16tr}, discusses the minor changes necessary to port these examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
+$\typy$ is dynamically embedded into Python, meaning that Listing \ref{fig:record-example} is simply a standard Python script at the top level. $\typy$ supports Python 2.6+, though in later examples, we use syntactic conveniences not introduced until Python 3.0 \cite{pep3107}. \ifext Appendix \ref{sec:python2-support} \else The extended version of this paper, available as a technical report \cite{gpce16tr}, \fi discusses the minor changes necessary to port these examples to Python 2.6+.% The execution of this script begins the \emph{static phase} of compilation, as suggested by line \ref{hello-ct}. The main purpose of this phase is to define the tycons and types that will be used by the \emph{typed functions} in the program, marked in this example by the decorator \lip{@fn}. The static phase ends once  these typed functions have gone through the process of active typechecking and translation. The generated translation is what ultimately determines the run-time behavior of the program. % The evaluation of the translation of a typed function represents the \emph{dynamic phase}. %For example, the string on line \ref{hello-ct} is a statically valued string. Types are also statically valued, as we will discuss shortly. 
 
 %Code inside , is evaluated during the dynamic phase, i.e. these functions can only be called after the active typechecking and translation process we will describe below is complete. %There are two ways to transition from the static phase to the dynamic phase, \emph{standalone compilation}, which we will discuss in Sec. \ref{external-compilation} and Sec. \
 % For example, the string on line \ref{account-start}, discussed further below, is \emph{dynamically valued}. %Of particular note, types are statically valued.%No features specific to its primary implementation, CPython, are needed (so $\typy$ should support alternative implementations like Jython and PyPy, though as of this writing this claim has not been tested). 
@@ -509,7 +511,7 @@ For example, the expression on Lines \ref{line:test_acct-start}-\ref{line:test_a
 
 The three subexpressions in Listing \ref{fig:record-example} that \li{record.ana_Dict} asks $\typy$ to analyze are also of literal form -- the values of \li{name} and \li{account_num} are string literals and the value of \li{memo} is another dictionary literal. As such, when \li{ctx.ana} is called, $\typy$ follows the same protocol just described, delegating to \li{string_in.ana_Str} to analyze the string literals and to \li{py.ana_Dict} to analyze the dictionary literal. The \li{string_in} fragment implements a regex-based constrained string system, which we described, along with its implementation in $\typy$, in a workshop paper \cite{sanitation-psp14}.\footnote{Certain details of $\typy$ have changed since that paper was published, but the essential idea remains the same.} The \li{py} fragment allows dynamic Python values to appear inside $\typy$ programs, consistent with the view of Python as a statically unityped language \cite{scott1980lambda,pfpl}. 
 %As such, \li{\{ \}} is analyzed as an empty Python dictionary. 
-Additional details about Python interoperability are available in the extended version of the paper \cite{gpce16tr}.
+Additional details about Python interoperability are available in \ifext Appendix \ref{appendix:py}. \else the extended version of the paper \cite{gpce16tr}.\fi
 
 If typechecking is successful, $\typy$ delegates to the same fragment to generate a translation, i.e. another Python AST. For example, $\typy$ calls the \li{record.trans_Dict} method shown in Listing \ref{fig:record-intro}, which translates records to Python tuples (the field names are needed only statically.) The field ordering is alphabetical. This method asks $\typy$ to determine translations for the field values by calling \li{ctx.trans}, which again follows the delegation protocol ($\typy$ stores the types determined during typechecking as attributes of the AST nodes.)
 
@@ -672,7 +674,7 @@ As we saw on Line \ref{line:ana_pat} of Listing \ref{fig:fn}, fragments can requ
 (x, y, z) = e
 \end{lstlisting}\vspace{-1px}
 
-$\typy$ also supports a more general \li{match} construct, shown on Lines \ref{line:match-start}-\ref{line:match-end} of Listing \ref{fig:patterns}. This construct, which spans several syntactic statements, is treated as a single expression statement by $\typy$. The \emph{scrutinee} is \li{t} and each \emph{clause}  is of the form \li{with pat: stmts} where \li{pat} is a pattern and \li{stmts} is the corresponding \emph{branch}. $\typy$ also supports an analagous expression-level match construct, which is discussed in the extended version of the paper \cite{gpce16tr}.
+$\typy$ also supports a more general \li{match} construct, shown on Lines \ref{line:match-start}-\ref{line:match-end} of Listing \ref{fig:patterns}. This construct, which spans several syntactic statements, is treated as a single expression statement by $\typy$. The \emph{scrutinee} is \li{t} and each \emph{clause}  is of the form \li{with pat: stmts} where \li{pat} is a pattern and \li{stmts} is the corresponding \emph{branch}. $\typy$ also supports an analagous expression-level match construct, which is discussed in \ifext Appendix \ref{appendix:match-expressions}. \else the extended version of the paper \cite{gpce16tr}.\fi
 
 \begin{codelisting}[t]
 \vspace{-3px}
@@ -697,7 +699,7 @@ def Listing7():
         Node(map(f, left), map(f, right))
       with Leaf(x): Leaf(f(x)) ^\label{line:match-end}^
 \end{lstlisting}
-\caption{Polymorphism, recursion and pattern matching in $\typy$. An analagous OCaml file is given in the extended version of the paper \cite{gpce16tr}.}
+\caption{Polymorphism, recursion and pattern matching in $\typy$. An analagous OCaml file is given in \ifext Appendix \ref{sec:ocaml-examples}. \else the extended version of the paper \cite{gpce16tr}.\fi}
 \label{fig:patterns}
 \end{codelisting}
 
@@ -3890,5 +3892,109 @@ We are grateful to Kayvon Fatahalian, Christian K\"astner, Joshua Sunshine, Matt
 % %\caption{\texttt{[ooclxfp.c]} The C99 code generated by running \texttt{acec ooclxfp.py}.}
 % %\label{ooclxfpc}
 % %\end{codelisting}
+\ifext
+\clearpage
+\appendix
+\section*{Appendix}
+\section{Syntactic Support for Python 2.x}\label{sec:python2-support}
+\begin{codelisting}[h!]
+\vspace{-3px}
+\begin{lstlisting}
+@fn
+def map(f, t):
+  {f : fn[+a, +b], t : tree(+a)} > tree(+b)
+  [t].match 
+  with Empty: Empty 
+  with Node(left, right): 
+    Node(map(f, left), map(f, right))
+  with Leaf(x):
+    Leaf(f(x)) 
+\end{lstlisting}
+\caption{An alternative syntax for argument and return type annotations.}
+\label{fig:python2-alt-syntax}
+\end{codelisting}
 
+\noindent Python 3.0 introduced syntax for argument and return type annotations on function definitions \cite{pep3107}. However, Python 2.6+ remains widely adopted because Python 3.0+ did not maintain backwards compatibility. As such, our implementations of \li{typy.std.fn} and \li{typy.opencl.kernel} support an alternative syntax for argument and return type annotations that supports Python 2.6+ as well as Python 3.0+. For example, Listing \ref{fig:python2-alt-syntax} shows the function \li{map} from Listing \ref{fig:patterns} written using this alternative syntax.
+
+
+
+% \section{Type Equivalence}\label{sec:type-equality}
+% Our technique for checking type equivalence is essentially standard in most respects \cite{StoneHarper00}. The main departure has to do with types in canonical form: two types in canonical form are equivalent if they arise from the same fragment and have equivalent index values as determined by Python's \lip{==} operator. This operator can be overloaded to introduce interesting equivalences. For example,  we can freely reorder the fields in the definition of \lip{Account} because Python dictionaries are not order-preserving. Fragments are responsible for ensuring for the operations that they define that typing respects type equivalence. 
+
+\section{Python Interoperability}\label{appendix:py}
+\begin{codelisting}[h!]
+\begin{lstlisting}
+from typy import component
+from typy.std import str
+x = 3
+@component
+def TestLift():
+  y = x # y has type std.py
+
+  with let[z : str]: # block let
+    [x].match
+    with int(n): "n : std.int"
+    with float(f): "f : std.float"
+    with str(s): "s : std.string"
+    with list(xs): "xs : std.list[py]"
+    with tpl[2](xs): "xs : std.tpl[py, py]"
+    with {'a': a}: "a : py"
+    with instance[C](x): "x : py"
+    with _: "otherwise"
+\end{lstlisting}
+\caption{Lifting and pattern matching over \li{py}.}
+\label{fig:lifting}
+\end{codelisting}
+
+\noindent The \li{py} fragment defines a single type, \li{py[()]} (which can be abbreviated \li{py}, per Sec. \ref{sec:types}.) This type classifies Python values. Variables that refer to values in the static environment  are assigned type \li{py} by default. (Technically, the default is the canonical type that \li{typy.lift_type} is set to. Importing \li{typy.std} sets \li{typy.lift_type} to \li{typy.CanonicalType(py, ())}.) 
+ For example, the component member \li{y} in Listing \ref{fig:lifting} refers to \li{x}, so it has type \li{py}.
+
+In addition to standard operations, \li{py} supports pattern matching on the Python dynamic type tag or class, as shown in Listing \ref{fig:lifting}. This is consistent with a view of Python as a uni-typed language with a rich dynamic tag structure \cite{pfpl,scott1980lambda}. 
+
+Most fragments in \li{typy.std} also support a coercion back to type \li{py} by accessing the ``attribute'' \li{.to_py}. For example, if \li{x : std.tpl[py, py]} (a pair of \li{py} values), then \li{x.to_py} is of type \li{py}. All arguments to Python functions of type \li{py} must be of type \li{py} (we are exploring coercions between \li{std.fn} and \li{std.py}, but have not implemented this as of this writing.)
+
+The recommended way to interact with $\typy$ code from a Python script is simply to define a $\typy$ component. This is straightforward because $\typy$ is itself a library -- it does not require that an entire project be compiled using a different toolchain. However, for convenience, Python code can directly access values of type \li{py} that appear in a $\typy$ component. Internally, the fragment system asks fragments that wish to expose themselves to untyped code to indicate this by inheriting from \li{typy.PythonInterop}. They must also implement a coercion method \li{coerce_python} that is called to transform the value upon first access. For \li{py}, this is simply the identity function. We have also experimented with allowing calls to \li{std.fn} values that take and return \li{py} values -- here, \li{coerce_python} wraps the function with a check to ensure that the correct number of arguments have been provided. 
+
+
+\section{OCaml Example}\label{sec:ocaml-examples}
+\begin{codelisting}[h!]
+\vspace{-3px}
+\begin{lstlisting}[language=ML, morekeywords={module,match}]
+module Listing7 = 
+struct
+  type 'a tree = 
+  | Empty
+  | Node of 'a tree * 'a tree
+  | Leaf of 'a
+
+  let map (f : 'a -> b, 
+           tree : 'a tree) : 'b tree  =
+    match tree with 
+    | Empty -> Empty
+    | Node(left, right) -> 
+        Node(map(f, left), map(f, right))
+    | Leaf(x) -> 
+        Leaf(f(x))
+end
+\end{lstlisting}
+\caption{An OCaml module analagous to the component defined in Listing \ref{fig:patterns}.}
+\label{fig:ocaml-example-1}
+\end{codelisting}
+
+$\typy$'s fragment system, together with its primitive support for recursive and polymorphic types, is powerful enough to capture standard idioms in languages like OCaml at very similar syntactic cost -- compare Listing \ref{fig:ocaml-example-1} to Listing \ref{fig:patterns}. 
+
+\section{Match Expressions}\label{appendix:match-expressions}
+\begin{codelisting}[h!]
+\vspace{-3px}
+\begin{lstlisting}
+[scrutinee].match[
+  pat^$_1$^: branch^$_n$^, 
+  # ...
+  pat^$_n$^: branch^$_n$^]\end{lstlisting}
+\caption{Expression-level pattern matching.}
+\label{fig:match-exp}
+\end{codelisting}
+
+Python's syntax distinguishes statements from expressions. In Sec. \ref{sec:pattern-matching}, we described a statement-level match expression. It is also sometimes useful to pattern match inside an expression, so $\typy$ supports an expression-level match expression, shown in Listing \ref{fig:match-exp}, that operates analagously to the statement-level match expression. 
+\fi
 \end{document}
